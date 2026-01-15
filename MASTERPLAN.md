@@ -176,11 +176,12 @@ Go-Mission/
 | Item | Path/URL |
 |------|----------|
 | Local Repo | `/Volumes/Wotg Drive Mike/GitHub/Go-Mission` |
-| GitHub Repo | https://github.com/PinedaMikeB/Go-Mission (to be created) |
+| GitHub Repo | https://github.com/PinedaMikeB/Go-Mission |
 | Dev Standards | https://github.com/PinedaMikeB/dev-standards |
+| Firebase Console | https://console.firebase.google.com/project/shaped-by-grace |
+| Firebase Project | shaped-by-grace |
 | Live Site | TBD |
 | Netlify Dashboard | TBD |
-| Firebase Console | TBD |
 
 ---
 
@@ -269,14 +270,15 @@ Go-Mission/
 - [x] Define app modules and features
 - [x] Establish naming conventions (Mission vocabulary)
 - [x] Set up project documentation (MASTERPLAN, HANDOFF, CHANGELOG)
-- [ ] Create GitHub repository
-- [ ] Set up Firebase project
+- [x] Create GitHub repository
+- [x] Set up Firebase project (using shaped-by-grace)
+- [x] Design database schema
 - [ ] Set up Netlify deployment
 
 ### Phase 2: Database Design
-- [ ] Design Firestore schema
-- [ ] Define security rules
-- [ ] Create sample data structure
+- [x] Design Firestore schema
+- [ ] Deploy security rules
+- [ ] Create sample data
 - [ ] Document data relationships
 
 ### Phase 3: Core App Development

@@ -11,11 +11,12 @@
 | Resource | URL |
 |----------|-----|
 | Local Repo | `/Volumes/Wotg Drive Mike/GitHub/Go-Mission` |
-| GitHub Repo | TBD (to be created) |
+| GitHub Repo | https://github.com/PinedaMikeB/Go-Mission |
 | Dev Standards | https://github.com/PinedaMikeB/dev-standards |
+| Firebase Console | https://console.firebase.google.com/project/shaped-by-grace |
+| Firebase Project | shaped-by-grace |
 | Live Site | TBD |
 | Netlify Dashboard | TBD |
-| Firebase Console | TBD |
 
 ---
 
@@ -31,12 +32,14 @@
 - ✅ App modules identified
 - ✅ Mission vocabulary established
 - ✅ Project documentation created (MASTERPLAN, HANDOFF, CHANGELOG)
+- ✅ GitHub repository created and pushed
+- ✅ Firebase config created (using shaped-by-grace project)
+- ✅ Database schema designed (DATABASE-SCHEMA.md)
 
 ### What's Not Yet Built
-- ❌ GitHub repository
-- ❌ Firebase project
 - ❌ Netlify deployment
-- ❌ Database schema
+- ❌ Security rules deployed
+- ❌ Sample data created
 - ❌ App code (any screens)
 
 ---
@@ -83,34 +86,25 @@
 
 ## 📋 NEXT STEPS (Priority Order)
 
-1. **Create GitHub Repository**
-   - Initialize Go-Mission repo
-   - Push initial documentation
+1. **Set Up Netlify Deployment**
+   - Connect GitHub repo
+   - Configure build settings
 
-2. **Set Up Firebase Project**
-   - Create new Firebase project: go-mission
-   - Enable Firestore
-   - Enable Authentication
-   - Set up security rules
-
-3. **Design Database Schema**
-   - members collection
-   - groups collection
-   - missionTraining collection
-   - weeklyDebriefs collection
-   - materials collection
-
-4. **Create Basic App Structure**
+2. **Create Basic App Structure**
    - index.html with navigation
-   - Firebase configuration
    - Authentication flow
    - Role-based routing
 
-5. **Build First Screen: Dashboard**
+3. **Build First Screen: Dashboard**
    - Role detection
    - My Journey summary
    - My Mission Group info
    - Quick actions
+
+4. **Create Sample Data**
+   - Test members
+   - Test groups
+   - Test debriefs
 
 ---
 
