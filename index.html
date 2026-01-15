@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Mission - Making Disciple-Making Leaders</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-md w-full">
+            <!-- Logo & Title -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Go Mission</h1>
+                <p class="text-gray-600">Making Disciple-Making Leaders</p>
+            </div>
+
+            <!-- Login Card -->
+            <div class="bg-white rounded-2xl shadow-lg p-8">
+                <div class="text-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-2">Welcome, Missionary!</h2>
+                    <p class="text-gray-600 text-sm">Sign in to continue your mission journey</p>
+                </div>
+
+                <!-- Google Sign In Button -->
+                <button id="googleSignInBtn" class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 text-gray-700 font-medium py-3 px-4 rounded-xl transition-all duration-200">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+            </div>
+
+            <!-- Footer -->
+            <p class="text-center text-gray-500 text-sm mt-6">
+                Word On The Go Online Fellowship
+            </p>
+        </div>
+    </div>
+
+    <!-- Main App (After Login) -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-gray-900">Go Mission</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="userName" class="text-sm text-gray-600 hidden sm:block"></span>
+                    <img id="userPhoto" class="w-8 h-8 rounded-full" src="" alt="">
+                    <button id="signOutBtn" class="text-gray-500 hover:text-red-600 transition-colors" title="Sign out">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="max-w-7xl mx-auto px-4 py-6">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-6 text-white">
+                <h1 class="text-2xl font-bold mb-2">Welcome, Missionary <span id="userFirstName"></span>!</h1>
+                <p class="text-blue-100">You are on a mission to know God and make Him known.</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-3xl font-bold text-blue-600" id="statPhase">-</div>
+                    <div class="text-sm text-gray-600">Current Phase</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-3xl font-bold text-green-600" id="statDiscipling">0</div>
+                    <div class="text-sm text-gray-600">Discipling</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-3xl font-bold text-purple-600" id="statGenerations">0</div>
+                    <div class="text-sm text-gray-600">Generations</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-3xl font-bold text-orange-600" id="statStreak">0</div>
+                    <div class="text-sm text-gray-600">Week Streak</div>
+                </div>
+            </div>
+
+            <!-- Main Cards -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- My Journey -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">🎯</span> My Journey
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg" id="journeyPhaseNumber">1</div>
+                            <div>
+                                <div class="font-medium text-gray-900" id="journeyPhaseName">Recruit</div>
+                                <div class="text-sm text-gray-500" id="journeyPhaseTagline">Know Your Commander</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-100 rounded-full h-2 mb-2">
+                            <div class="bg-blue-600 rounded-full h-2 transition-all" id="journeyProgress" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500" id="journeyProgressText">0 of 8 sessions completed</p>
+                    </div>
+                </div>
+
+                <!-- My Mission Group -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">👥</span> My Mission Group
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div id="groupInfo" class="hidden">
+                            <div class="font-medium text-gray-900" id="groupName">Monday 8PM Manila</div>
+                            <div class="text-sm text-gray-500 mb-3" id="groupSchedule">Mondays at 8:00 PM</div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                <span class="text-gray-600"><span id="groupMemberCount">0</span> missionaries</span>
+                            </div>
+                        </div>
+                        <div id="noGroupInfo">
+                            <p class="text-gray-500 text-sm mb-3">You haven't been assigned to a Mission Group yet.</p>
+                            <button class="text-blue-600 text-sm font-medium hover:underline">Find a group →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Debrief -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">📋</span> Weekly Debrief
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div id="debriefPending">
+                            <p class="text-gray-600 text-sm mb-3">How was your week on mission?</p>
+                            <button id="startDebriefBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                                Submit Debrief
+                            </button>
+                        </div>
+                        <div id="debriefDone" class="hidden">
+                            <div class="flex items-center gap-2 text-green-600 mb-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                <span class="font-medium">Debrief submitted!</span>
+                            </div>
+                            <p class="text-sm text-gray-500">Thank you for checking in this week.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Generations -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">🌳</span> My Generations
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div id="hasGenerations" class="hidden">
+                            <div class="space-y-2" id="generationsList"></div>
+                        </div>
+                        <div id="noGenerations">
+                            <p class="text-gray-500 text-sm mb-3">You haven't started discipling anyone yet.</p>
+                            <p class="text-xs text-gray-400">Complete Phase 1 training to learn how to make disciples.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission Training -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">📚</span> Mission Training
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                    <span class="text-sm font-medium">Recruit</span>
+                                </div>
+                                <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">Current</span>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg opacity-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                    <span class="text-sm text-gray-600">Field Missionary</span>
+                                </div>
+                                <span class="text-xs text-gray-400">🔒 Locked</span>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg opacity-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                                    <span class="text-sm text-gray-600">Mission Coach</span>
+                                </div>
+                                <span class="text-xs text-gray-400">🔒 Locked</span>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg opacity-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                                    <span class="text-sm text-gray-600">Mission Leader</span>
+                                </div>
+                                <span class="text-xs text-gray-400">🔒 Locked</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Discussion Guide -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <span class="text-xl">📖</span> This Week's Guide
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="text-sm text-gray-500 mb-1">Foundations Series</div>
+                        <div class="font-medium text-gray-900 mb-3">Week 4: The Holy Spirit</div>
+                        <button class="w-full border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded-lg transition-colors">
+                            View Guide
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation (Mobile) -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40">
+            <div class="flex justify-around py-2">
+                <button class="flex flex-col items-center p-2 text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-xs mt-1">Home</span>
+                </button>
+                <button class="flex flex-col items-center p-2 text-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="text-xs mt-1">Group</span>
+                </button>
+                <button class="flex flex-col items-center p-2 text-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    <span class="text-xs mt-1">Debrief</span>
+                </button>
+                <button class="flex flex-col items-center p-2 text-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    <span class="text-xs mt-1">Training</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
+            authDomain: "shaped-by-grace.firebaseapp.com",
+            projectId: "shaped-by-grace",
+            storageBucket: "shaped-by-grace.firebasestorage.app",
+            messagingSenderId: "421948043828",
+            appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // DOM Elements
+        const loading = document.getElementById('loading');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Auth State Listener
+        onAuthStateChanged(auth, async (user) => {
+            loading.classList.add('hidden');
+            
+            if (user) {
+                // User is signed in
+                console.log('User signed in:', user.email);
+                
+                // Update UI with user info
+                document.getElementById('userName').textContent = user.displayName || user.email;
+                document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User');
+                document.getElementById('userFirstName').textContent = user.displayName?.split(' ')[0] || 'Missionary';
+                
+                // Check if user exists in database, create if not
+                await ensureUserExists(user);
+                
+                // Show main app
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                
+                // Load user data
+                await loadUserData(user.uid);
+            } else {
+                // User is signed out
+                loginScreen.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+            }
+        });
+
+        // Ensure user exists in database
+        async function ensureUserExists(user) {
+            const userRef = doc(db, 'goMission_members', user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                // Create new user document
+                await setDoc(userRef, {
+                    id: user.uid,
+                    name: user.displayName || '',
+                    email: user.email,
+                    phone: '',
+                    messenger: '',
+                    photoURL: user.photoURL || '',
+                    location: {
+                        type: 'philippines',
+                        country: 'Philippines',
+                        city: '',
+                        timezone: 'GMT+8'
+                    },
+                    stage: 'seeker',
+                    roles: {
+                        isMissionary: true,
+                        isGroupLeader: false,
+                        isTrainer: false,
+                        isShepherd: false,
+                        isWelcomeTeam: false,
+                        isAdmin: false
+                    },
+                    groupId: null,
+                    groupRole: 'member',
+                    discipledBy: null,
+                    discipling: [],
+                    generationDepth: 1,
+                    training: {
+                        currentPhase: 1,
+                        phases: {
+                            phase1: { status: 'enrolled', sessionsAttended: [], exitRequirementMet: false },
+                            phase2: { status: 'locked' },
+                            phase3: { status: 'locked' },
+                            phase4: { status: 'locked' }
+                        }
+                    },
+                    joinedAsSeeker: serverTimestamp(),
+                    status: 'active',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    source: 'google_signin'
+                });
+                console.log('New user created in database');
+            }
+        }
+
+        // Load user data
+        async function loadUserData(uid) {
+            try {
+                const userRef = doc(db, 'goMission_members', uid);
+                const userDoc = await getDoc(userRef);
+                
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    
+                    // Update stats
+                    document.getElementById('statPhase').textContent = data.training?.currentPhase || 1;
+                    document.getElementById('statDiscipling').textContent = data.discipling?.length || 0;
+                    document.getElementById('statGenerations').textContent = data.generationDepth || 0;
+                    
+                    // Update journey card
+                    const phase = data.training?.currentPhase || 1;
+                    const phaseNames = ['', 'Recruit', 'Field Missionary', 'Mission Coach', 'Mission Leader'];
+                    const phaseTaglines = ['', 'Know Your Commander', 'Make God Known', 'Multiply Missionaries', 'Lead the Mission'];
+                    
+                    document.getElementById('journeyPhaseNumber').textContent = phase;
+                    document.getElementById('journeyPhaseName').textContent = phaseNames[phase];
+                    document.getElementById('journeyPhaseTagline').textContent = phaseTaglines[phase];
+                    
+                    const sessionsAttended = data.training?.phases?.[`phase${phase}`]?.sessionsAttended?.length || 0;
+                    const progress = (sessionsAttended / 8) * 100;
+                    document.getElementById('journeyProgress').style.width = progress + '%';
+                    document.getElementById('journeyProgressText').textContent = `${sessionsAttended} of 8 sessions completed`;
+                    
+                    // Update generations
+                    if (data.discipling && data.discipling.length > 0) {
+                        document.getElementById('hasGenerations').classList.remove('hidden');
+                        document.getElementById('noGenerations').classList.add('hidden');
+                    }
+                    
+                    // Update group info
+                    if (data.groupId) {
+                        document.getElementById('groupInfo').classList.remove('hidden');
+                        document.getElementById('noGroupInfo').classList.add('hidden');
+                        // Load group details here
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Google Sign In
+        googleSignInBtn.addEventListener('click', async () => {
+            try {
+                errorMessage.classList.add('hidden');
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                console.error('Sign in error:', error);
+                errorMessage.textContent = 'Sign in failed. Please try again.';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+
+        // Sign Out
+        signOutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error('Sign out error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
