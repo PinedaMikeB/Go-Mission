@@ -2,7 +2,8 @@
 
 **Project:** Disciple-Making Journey App for Word On The Go Online Fellowship  
 **Owner:** Mike Pineda  
-**Last Updated:** January 16, 2026  
+**Last Updated:** January 18, 2026  
+**Current Version:** v0.2.1
 
 ---
 
@@ -23,10 +24,24 @@ Go Mission is a disciple-making journey app that tracks every person from seeker
 | Ministry Name | Word On The Go Online Fellowship |
 | YouTube Channel | Word On The Go |
 | Target Audience | Filipino seekers worldwide (Philippines, OFWs, immigrants) |
+| Reach | 120 million+ potential (Filipinos worldwide) |
 | Language | Tagalog/Taglish |
 | Platform | Online (Messenger, Zoom, Facebook, YouTube) |
 | Current Scale | 70 Mission Groups |
 | Welcome Team | 2 people |
+
+### The OFW Advantage
+- Shared experience (loneliness, sacrifice, far from family)
+- Same language (Tagalog heart-to-heart)
+- Same platform (Messenger, Zoom)
+- Flexible timezone (Dubai can disciple Qatar)
+- Same felt needs (gospel meets them where they are)
+
+### Broadcast → Response → Disciple Strategy
+1. YouTube/Facebook bridging content (seeds)
+2. Seekers type "JOIN" in comments (warm leads, not cold outreach)
+3. Welcome Team matches to Mission Groups
+4. Filipino missionaries disciple Filipino seekers
 
 ---
 
@@ -41,31 +56,35 @@ You are created for good works. We will train you to grow, share, and
 make disciples."
 ```
 
-### Two Tracks
+### The Journey Stages
+
+```
+SEEKER → DISCIPLE → DISCIPLE-MAKER → LEADER → MULTIPLIER
+   │         │            │             │          │
+   └─────────┴────────────┴─────────────┴──────────┘
+                          │
+                          ▼
+              DISCIPLE-MAKING LEADER
+                  (The One Goal)
+```
+
+### Two Tracks Working Together
 
 | Track | Purpose | Frequency |
 |-------|---------|-----------|
 | **Mission Group** | Ongoing discipleship, accountability, community | Weekly (forever) |
 | **Mission Training** | Progressive equipping with action requirements | 8 sessions per phase |
 
-### The Journey Stages
-
-```
-SEEKER → DISCIPLE → DISCIPLE-MAKER → COACH → LEADER → MULTIPLIER
-   │         │            │             │        │          │
-   └─────────┴────────────┴─────────────┴────────┴──────────┘
-                                │
-                                ▼
-                    DISCIPLE-MAKING LEADER
-                    (The One Goal)
-```
+### Key Principle
+**No advancement without multiplication.** You can't progress to next phase until action requirement is met.
 
 ---
 
 ## 🎓 MISSION TRAINING PHASES
 
 ### Phase 1: RECRUIT
-*"Know Your Commander & Your Mission"*
+*"Know Your Commander & Your Mission"*  
+**Schedule:** Tuesdays 8PM Manila
 
 | Session | Module |
 |---------|--------|
@@ -84,7 +103,8 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → COACH → LEADER → MULTIPLIER
 ---
 
 ### Phase 2: FIELD MISSIONARY
-*"Deployed to Make God Known"*
+*"Deployed to Make God Known"*  
+**Schedule:** Wednesdays 8PM Manila
 
 | Session | Module |
 |---------|--------|
@@ -140,34 +160,108 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → COACH → LEADER → MULTIPLIER
 
 ---
 
-## 🏗️ APP ARCHITECTURE
+## 🗂️ APP MODULES
 
-```
-Go-Mission/
-├── auth/               Authentication & roles       [ ]
-├── dashboard/          Role-based home screens      [ ]
-├── mission-groups/     Group management             [ ]
-├── mission-training/   Phase 1-4 tracking           [ ]
-├── generations/        Discipleship tree            [ ]
-├── weekly-debrief/     Check-in system              [ ]
-├── materials/          Discussion guides            [ ]
-├── pipeline/           Welcome team dashboard       [ ]
-├── shepherd/           Care dashboard               [ ]
-└── admin/              Oversight & analytics        [ ]
-```
+### Module 1: My Journey ✅ (UI Complete)
+*Where am I in the mission?*
+- [x] Current stage display (Seeker → Multiplier)
+- [x] Progress path visualization
+- [x] Next steps button
+- [ ] Dynamic data from Firestore
 
-### Tech Stack
+### Module 2: My Mission Group ✅ (UI Complete)
+*My team on mission*
+- [x] Weekly meeting display
+- [x] Accountability checklist (Bible Study, Share & Pray, Accountability)
+- [x] Personal habits checklist (Prayer, Word, Faith sharing)
+- [x] Chat with Group button
+- [ ] Dynamic group assignment
+- [ ] Real member list
+- [ ] Actual chat functionality
 
-*See: https://github.com/PinedaMikeB/dev-standards/blob/main/TECH-STACK.md*
+### Module 3: Weekly Debrief ❌ (Form Not Built)
+*How was my week?*
+- [ ] Quiet time check (days 0-7)
+- [ ] Mission Group huddle attendance
+- [ ] Bold steps (gospel shared/recruited)
+- [ ] Wins or struggles
+- [ ] Submit to Firestore
+
+### Module 4: My Generations ❌ (Not Built)
+*Who am I discipling? Who are they discipling?*
+- [ ] Visual family tree
+- [ ] Status of each person
+- [ ] Generations depth counter
+- [ ] Multiplication celebration
+
+### Module 5: Mission Training ✅ (UI Complete)
+*Phase 1-4 content & tracking*
+- [x] Phase 1 curriculum display
+- [x] Checkbox progress indicators
+- [x] Phase requirement display
+- [ ] Session detail pages
+- [ ] Track actual attendance
+- [ ] Deployment requirements verification
+- [ ] Phase 2-4 content
+
+### Module 6: Discussion Guides ❌ (Not Built)
+*Weekly materials for huddles*
+- [ ] Series management
+- [ ] Facilitator's Guide (leader view)
+- [ ] Participant's Guide (member view)
+- [ ] Share via Messenger
+
+### Module 7: Pipeline Dashboard ❌ (Not Built)
+*Welcome Team - New seekers management*
+- [ ] New leads from YouTube/Facebook
+- [ ] Contact details collection
+- [ ] Availability matching
+- [ ] Group placement
+- [ ] Follow-up tracking
+
+### Module 8: Shepherd Dashboard ❌ (Not Built)
+*Pastoral care*
+- [ ] Multiple groups oversight
+- [ ] Connection status (green/yellow/red)
+- [ ] Care list (who needs a call)
+- [ ] Contact logging
+
+### Module 9: Admin/Leader Dashboard ✅ (UI Complete)
+*Mission health*
+- [x] Stats display (Groups, Disciples, Recruits, Leaders)
+- [x] Admin mode toggle
+- [ ] Full pipeline visualization
+- [ ] Phase progression stats
+- [ ] Stuck/awaiting deployment alerts
+- [ ] Group health overview
+- [ ] Multiplication metrics
+
+---
+
+## 🏗️ TECH STACK
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | HTML/JS with Tailwind CSS |
-| Backend | Netlify Functions |
+| Frontend | HTML/JS with Tailwind CSS (CDN) |
+| Backend | Netlify Functions (planned) |
 | Database | Firebase Firestore |
-| Auth | Firebase Authentication |
-| Hosting | Netlify |
+| Auth | Firebase Authentication (Google Sign-In) |
+| Hosting | Netlify (auto-deploy from GitHub) |
 | Repo | GitHub |
+| Design | Cinzel + Inter fonts, custom CSS |
+
+### Firebase Project
+- **Project:** shaped-by-grace
+- **Console:** https://console.firebase.google.com/project/shaped-by-grace
+
+### Collections (with `goMission_` prefix)
+1. `goMission_members` - All users
+2. `goMission_groups` - Mission Groups
+3. `goMission_training` - Training batches
+4. `goMission_debriefs` - Weekly debriefs
+5. `goMission_materials` - Discussion guides
+6. `goMission_contacts` - Contact logs
+7. `goMission_settings` - App config
 
 ---
 
@@ -179,79 +273,9 @@ Go-Mission/
 | GitHub Repo | https://github.com/PinedaMikeB/Go-Mission |
 | Dev Standards | https://github.com/PinedaMikeB/dev-standards |
 | Firebase Console | https://console.firebase.google.com/project/shaped-by-grace |
-| Firebase Project | shaped-by-grace |
-| Live Site | TBD |
-| Netlify Dashboard | TBD |
-
----
-
-## 🗂️ APP MODULES
-
-### Module 1: My Journey
-*Where am I in the mission?*
-- [ ] Current phase display
-- [ ] Training progress
-- [ ] Deployment requirements status
-- [ ] Next steps guidance
-
-### Module 2: My Mission Group
-*My team on mission*
-- [ ] Group info display
-- [ ] Members list
-- [ ] Meeting schedule
-- [ ] This week's discussion guide
-
-### Module 3: My Generations
-*Who am I discipling? Who are they discipling?*
-- [ ] Visual family tree
-- [ ] Status of each person
-- [ ] Generations depth counter
-- [ ] Multiplication celebration
-
-### Module 4: Weekly Debrief
-*How was my week?*
-- [ ] Quiet time check (days with God)
-- [ ] Mission Group huddle attendance
-- [ ] Bold steps (gospel shared/recruited)
-- [ ] Wins or struggles
-
-### Module 5: Mission Training
-*Phase 1-4 content & tracking*
-- [ ] Phase curriculum display
-- [ ] Session attendance tracking
-- [ ] Facilitator's Guide
-- [ ] Participant's Guide
-- [ ] Deployment requirements verification
-
-### Module 6: Discussion Guides
-*Weekly materials for huddles*
-- [ ] Series management
-- [ ] Facilitator's Guide (leader view)
-- [ ] Participant's Guide (member view)
-- [ ] Share via Messenger
-
-### Module 7: Pipeline Dashboard (Welcome Team)
-*New seekers management*
-- [ ] New leads from YouTube/Facebook
-- [ ] Contact details collection
-- [ ] Availability matching
-- [ ] Group placement
-- [ ] Follow-up tracking
-
-### Module 8: Shepherd Dashboard
-*Pastoral care*
-- [ ] Multiple groups oversight
-- [ ] Connection status (green/yellow/red)
-- [ ] Care list (who needs a call)
-- [ ] Contact logging
-
-### Module 9: Admin Dashboard
-*Mission health*
-- [ ] Full pipeline visualization
-- [ ] Phase progression stats
-- [ ] Stuck/awaiting deployment alerts
-- [ ] Group health overview
-- [ ] Multiplication metrics
+| Live Site | https://gomission.netlify.app |
+| Netlify Dashboard | https://app.netlify.com/projects/gomission |
+| Design System | `/Users/mike/Downloads/go-mission (1)` |
 
 ---
 
@@ -263,58 +287,56 @@ Go-Mission/
 - `[ ]` Not Started
 - `[!]` Blocked
 
-### Phase 1: Foundation & Planning
+### Phase 1: Foundation & Planning ✅ COMPLETE
 - [x] Define ministry vision and goal
 - [x] Design the journey framework
-- [x] Create Mission Training curriculum outline
-- [x] Define app modules and features
+- [x] Create Mission Training curriculum outline (Phase 1-4)
+- [x] Define app modules and features (9 modules)
 - [x] Establish naming conventions (Mission vocabulary)
 - [x] Set up project documentation (MASTERPLAN, HANDOFF, CHANGELOG)
 - [x] Create GitHub repository
 - [x] Set up Firebase project (using shaped-by-grace)
-- [x] Design database schema
-- [ ] Set up Netlify deployment
+- [x] Design database schema (7 collections)
+- [x] Set up Netlify deployment
 
-### Phase 2: Database Design
-- [x] Design Firestore schema
-- [ ] Deploy security rules
-- [ ] Create sample data
-- [ ] Document data relationships
+### Phase 2: Core App & Design ✅ COMPLETE
+- [x] Authentication (Firebase Google Sign-In)
+- [x] Auto user profile creation
+- [x] Dashboard layout
+- [x] Navigation structure
+- [x] Premium design system applied
+- [x] Mobile responsive
+- [x] Deploy security rules
 
-### Phase 3: Core App Development
-- [ ] Authentication (Firebase Auth)
-- [ ] Role-based access control
-- [ ] Dashboard layouts
-- [ ] Navigation structure
-
-### Phase 4: Member Features
-- [ ] My Journey screen
-- [ ] My Mission Group screen
+### Phase 3: Member Features 🔄 IN PROGRESS
+- [x] My Journey screen (UI)
+- [x] My Mission Group screen (UI)
+- [x] Mission Training card (UI)
+- [ ] Weekly Debrief form (functional)
 - [ ] My Generations tree
-- [ ] Weekly Debrief form
 - [ ] Discussion Guides viewer
+- [ ] Dynamic data loading
 
-### Phase 5: Leader Features
+### Phase 4: Leader Features
 - [ ] Mission Group management
 - [ ] Member list with debrief status
 - [ ] Field reports view
 - [ ] Group health indicators
 
-### Phase 6: Training System
-- [ ] Mission Training tracker
-- [ ] Phase curriculum display
-- [ ] Session attendance
+### Phase 5: Training System
+- [ ] Session detail pages
+- [ ] Session attendance tracking
 - [ ] Deployment requirements verification
 - [ ] Phase advancement logic
+- [ ] Phase 2-4 content
 
-### Phase 7: Admin Features
-- [ ] Pipeline dashboard
-- [ ] Welcome team tools
+### Phase 6: Admin Features
+- [ ] Pipeline dashboard (Welcome Team)
 - [ ] Shepherd care dashboard
 - [ ] Analytics and reporting
+- [ ] Group management
 
-### Phase 8: Polish & Launch
-- [ ] Mobile responsiveness
+### Phase 7: Polish & Launch
 - [ ] PWA setup
 - [ ] Testing with real users
 - [ ] Documentation for volunteers
@@ -332,6 +354,9 @@ Go-Mission/
 | 2026-01-16 | Goal: Disciple-making leaders | Not just disciples, but multiplying leaders |
 | 2026-01-16 | Keep traditional spiritual terms | Quiet time, prayer, devotion - sacred and familiar |
 | 2026-01-16 | Mission vocabulary for structure | Groups, training, roles use mission language |
+| 2026-01-18 | Design: Dark maroon + gold | Matches Word On The Go branding |
+| 2026-01-18 | Fonts: Cinzel + Inter | Premium, readable, mission feel |
+| 2026-01-18 | Tagalog UI elements | Target audience is Filipino worldwide |
 
 ---
 
@@ -362,23 +387,45 @@ Go-Mission/
 
 ---
 
+## 📣 VLOG CALL TO ACTION (Tagalog)
+
+```
+"Kaibigan, kung naantig ka sa video na ito...
+
+Gusto kong imbitahan kang SUMALI SA AMING MISSION GROUP.
+
+May PURPOSE ang Diyos para sa iyo. May MISYON ka.
+Ang misyon na iyon ay MAKILALA ANG DIYOS at IPAKILALA SIYA sa iba.
+
+Dito mo mahahanap ang FULFILLMENT.
+NILIKHA KA PARA SA MABUBUTING GAWA.
+
+Kung gusto mong MAG-MATTER ang buhay mo...
+SASANAYIN ka namin. Tutulungan ka naming LUMAGO.
+TUTURUAN ka naming I-SHARE ang Diyos.
+SASANAYIN ka naming GUMAWA NG MGA ALAGAD.
+
+I-type mo lang: JOIN
+
+Download ang Go Mission app. At hihintayin ka namin."
+```
+
+---
+
 ## 🔧 DEVELOPMENT NOTES
 
-### Documentation Workflow
-
-*See: https://github.com/PinedaMikeB/dev-standards/blob/main/SESSION-WORKFLOW.md*
-
-**During every coding session:**
-1. Update HANDOFF.md with current work
-2. Update MASTERPLAN.md with completed tasks
-3. Update CHANGELOG.md after deployments
-
-**Starting a new session:**
+### Starting a New Session
 ```
 Read my dev standards from https://github.com/PinedaMikeB/dev-standards
+
 Then use Desktop Commander to read HANDOFF.md, MASTERPLAN.md, and CHANGELOG.md 
 from /Volumes/Wotg Drive Mike/GitHub/Go-Mission
 ```
+
+### During Every Session
+1. Update HANDOFF.md with current work
+2. Update MASTERPLAN.md with completed tasks
+3. Update CHANGELOG.md after deployments
 
 ---
 
