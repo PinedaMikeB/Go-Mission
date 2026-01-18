@@ -219,7 +219,7 @@
             <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
                 <div class="flex items-center gap-2 mb-6">
                     <span class="text-amber-500">★</span>
-                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Journey</h2>
+                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight" id="journeyCardTitle">My Journey</h2>
                 </div>
                 
                 <div class="relative px-2 mb-8">
@@ -229,7 +229,7 @@
                     <div class="flex justify-between relative z-10">
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-seeker"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">Seeker</span>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">On The<br>Journey</span>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-disciple"></div>
@@ -250,13 +250,19 @@
                     </div>
                 </div>
 
-                <div class="bg-black/40 rounded-xl p-6 text-center border border-white/5">
-                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.25em] mb-1">CURRENT STAGE</p>
-                    <p class="text-3xl font-black text-white uppercase tracking-tight" id="journeyPhaseName">SEEKER</p>
-                    <div class="h-[1px] bg-white/5 w-2/3 mx-auto my-4"></div>
-                    <p class="text-sm text-slate-300 italic" id="journeyNextStep">Next: Become a Disciple</p>
-                    <button class="mission-button w-full mt-6 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
-                        View Next Steps
+                <div class="bg-black/40 rounded-xl p-6 border border-white/5">
+                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.15em] mb-1" id="journeyStageLabel">WHERE GOD HAS YOU TODAY</p>
+                    <p class="text-2xl font-black text-white uppercase tracking-tight mb-4" id="journeyPhaseName">ON THE JOURNEY</p>
+                    
+                    <!-- Encouragement Message -->
+                    <div class="border-l-2 border-amber-500/50 pl-4 mb-4">
+                        <p class="text-sm text-slate-300 italic leading-relaxed" id="journeyEncouragement">God drew you to Himself.<br>He sees your seeking heart and delights in it.</p>
+                    </div>
+                    
+                    <p class="text-sm text-slate-400 mb-4"><span id="journeyNextLabel">Next:</span> <span class="text-slate-200" id="journeyNextStep">Walk as a Disciple</span></p>
+                    
+                    <button class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        <span id="viewNextStepsBtn">View Next Steps</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
@@ -625,7 +631,8 @@
                 const userDoc = await getDoc(userRef);
                 if (userDoc.exists()) {
                     const data = userDoc.data();
-                    updateJourneyDisplay(data.stage || 'seeker');
+                    window.currentUserStage = data.stage || 'seeker';
+                    updateJourneyDisplay(window.currentUserStage);
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -634,14 +641,79 @@
 
         function updateJourneyDisplay(stage) {
             const stages = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
-            const stageNames = { 'seeker': 'SEEKER', 'disciple': 'DISCIPLE', 'disciple-maker': 'DISCIPLE-MAKER', 'builder': 'BUILDER', 'multiplier': 'MULTIPLIER' };
-            const nextSteps = { 'seeker': 'Next: Become a Disciple', 'disciple': 'Next: Become a Disciple-Maker', 'disciple-maker': 'Next: Become a Builder', 'builder': 'Next: Become a Multiplier', 'multiplier': 'You are making disciple-making leaders!' };
+            
+            // Stage content in English and Tagalog
+            const stageContent = {
+                'seeker': {
+                    name_en: 'ON THE JOURNEY',
+                    name_tl: 'NASA PAGLALAKBAY',
+                    encouragement_en: 'God drew you to Himself.<br>He sees your seeking heart and delights in it.',
+                    encouragement_tl: 'Inakay ka ng Diyos palapit sa Kanya.<br>Nakikita Niya ang puso mong naghahanap, at kinalulugdan Niya ito.',
+                    next_en: 'Walk as a Disciple',
+                    next_tl: 'Mamuhay Bilang Alagad'
+                },
+                'disciple': {
+                    name_en: 'DISCIPLE',
+                    name_tl: 'ALAGAD',
+                    encouragement_en: 'You are learning to follow Jesus.<br>He is shaping you to be more like Him.',
+                    encouragement_tl: 'Natututo kang sumunod kay Jesus.<br>Hinuhubog ka Niya upang maging katulad Niya.',
+                    next_en: 'Become a Disciple-Maker',
+                    next_tl: 'Maging Tagapaghubog ng Alagad'
+                },
+                'disciple-maker': {
+                    name_en: 'DISCIPLE-MAKER',
+                    name_tl: 'TAGAPAGHUBOG NG ALAGAD',
+                    encouragement_en: 'You are now investing in others.<br>God is multiplying His kingdom through you.',
+                    encouragement_tl: 'Namumuhunan ka na sa iba.<br>Pinarami ng Diyos ang Kanyang kaharian sa pamamagitan mo.',
+                    next_en: 'Become a Builder',
+                    next_tl: 'Maging Tagapagtayo'
+                },
+                'builder': {
+                    name_en: 'BUILDER',
+                    name_tl: 'TAGAPAGTAYO',
+                    encouragement_en: 'You are building a community of disciples.<br>God is using you to lead His mission.',
+                    encouragement_tl: 'Nagtatayo ka ng komunidad ng mga alagad.<br>Ginagamit ka ng Diyos upang pangunahan ang Kanyang misyon.',
+                    next_en: 'Become a Multiplier',
+                    next_tl: 'Maging Tagapagparami'
+                },
+                'multiplier': {
+                    name_en: 'MULTIPLIER',
+                    name_tl: 'TAGAPAGPARAMI',
+                    encouragement_en: 'You are raising leaders who raise leaders.<br>Generations will be transformed because of your faithfulness.',
+                    encouragement_tl: 'Naghuhubog ka ng mga lider na naghuhubog ng mga lider.<br>Mababago ang mga henerasyon dahil sa iyong katapatan.',
+                    next_en: 'Keep multiplying!',
+                    next_tl: 'Patuloy na magparami!'
+                }
+            };
+            
+            const content = stageContent[stage] || stageContent['seeker'];
+            const lang = currentLanguage || 'tl';
             
             const currentIndex = stages.indexOf(stage);
             const progressPercent = (currentIndex / (stages.length - 1)) * 100;
             
             document.getElementById('journeyProgressLine').style.width = progressPercent + '%';
             
+            // Update card title
+            document.getElementById('journeyCardTitle').textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
+            
+            // Update stage label
+            document.getElementById('journeyStageLabel').textContent = lang === 'tl' ? 'KUNG SAAN KA NILALAGAY NG DIYOS NGAYON' : 'WHERE GOD HAS YOU TODAY';
+            
+            // Update stage name
+            document.getElementById('journeyPhaseName').textContent = lang === 'tl' ? content.name_tl : content.name_en;
+            
+            // Update encouragement
+            document.getElementById('journeyEncouragement').innerHTML = lang === 'tl' ? content.encouragement_tl : content.encouragement_en;
+            
+            // Update next step
+            document.getElementById('journeyNextLabel').textContent = lang === 'tl' ? 'Susunod:' : 'Next:';
+            document.getElementById('journeyNextStep').textContent = lang === 'tl' ? content.next_tl : content.next_en;
+            
+            // Update button text
+            document.getElementById('viewNextStepsBtn').textContent = lang === 'tl' ? 'Tingnan ang Mga Susunod na Hakbang' : 'View Next Steps';
+            
+            // Update progress dots
             stages.forEach((s, i) => {
                 const dot = document.getElementById('dot-' + s);
                 const label = document.getElementById('label-' + s);
@@ -658,8 +730,19 @@
                 }
             });
             
-            document.getElementById('journeyPhaseName').textContent = stageNames[stage];
-            document.getElementById('journeyNextStep').textContent = nextSteps[stage];
+            // Update dot labels based on language
+            const dotLabels = {
+                'seeker': { en: 'On The<br>Journey', tl: 'Nasa<br>Paglalakbay' },
+                'disciple': { en: 'Disciple', tl: 'Alagad' },
+                'disciple-maker': { en: 'Disciple-<br>Maker', tl: 'Tagapag-<br>hubog' },
+                'builder': { en: 'Builder', tl: 'Tagapag-<br>tayo' },
+                'multiplier': { en: 'Multiplier', tl: 'Tagapag-<br>parami' }
+            };
+            
+            stages.forEach(s => {
+                const label = document.getElementById('label-' + s);
+                label.innerHTML = lang === 'tl' ? dotLabels[s].tl : dotLabels[s].en;
+            });
         }
 
         window.loadWeekProgress = async function(uid) {
@@ -797,6 +880,10 @@
                 btn.classList.toggle('active', btn.dataset.lang === lang);
             });
             loadBiblePassage();
+            // Also update Journey card language
+            if (window.currentUserStage) {
+                updateJourneyDisplay(window.currentUserStage);
+            }
         };
 
         // Toggle commentary

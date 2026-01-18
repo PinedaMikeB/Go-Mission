@@ -1,0 +1,52 @@
+{
+  "translation": "ANG_BIBLIYA_1905",
+  "language": "tl",
+  "name": "Ang Bibliya 1905",
+  "books": {
+    "GEN": {
+      "id": "GEN",
+      "name": "Genesis",
+      "chapters": {}
+    },
+    "EXO": {
+      "id": "EXO",
+      "name": "Exodo",
+      "chapters": {}
+    },
+    "LEV": {
+      "id": "LEV",
+      "name": "Levitico",
+      "chapters": {}
+    },
+    "NUM": {
+      "id": "NUM",
+      "name": "Mga Bilang",
+      "chapters": {}
+    },
+    "DEU": {
+      "id": "DEU",
+      "name": "Deuteronomio",
+      "chapters": {}
+    },
+    "JOS": {
+      "id": "JOS",
+      "name": "Josue",
+      "chapters": {}
+    },
+    "JDG": {
+      "id": "JDG",
+      "name": "Mga Hukom",
+      "chapters": {}
+    },
+    "RUT": {
+      "id": "RUT",
+      "name": "Ruth",
+      "chapters": {}
+    },
+    "1SA": {
+      "id": "1SA",
+      "name": "1 Samuel",
+      "chapters": {}
+    }
+  }
+}
