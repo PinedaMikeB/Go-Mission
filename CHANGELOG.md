@@ -10,7 +10,52 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v0.2.1] - 2026-01-18 ⭐ CURRENT
+## [v0.3.0] - 2026-01-19 ⭐ CURRENT
+
+### 🔥 Daily Check-In & Weekly Debrief
+
+**Summary:** Major functionality update with daily tracking and weekly debrief system.
+
+**New Features:**
+1. **Updated Journey Stages**
+   - Changed "LEADER" → "BUILDER"
+   - Final stage remains "MULTIPLIER"
+   - Updated all progress dots and labels
+
+2. **Daily Check-In Card**
+   - Separate card for personal spiritual habits
+   - Checkboxes: Prayer, Word, Share Faith
+   - Saves to Firestore `goMission_dailyCheckins` collection
+   - Weekly summary counts displayed
+
+3. **Weekly Debrief Modal**
+   - Days with God selector (0-7)
+   - Huddle attendance toggle
+   - Bold steps checkboxes (Shared Gospel, Recruited)
+   - Wins/Struggles text area
+   - Submits to `goMission_debriefs` collection
+   - Success toast notification
+
+4. **Improved Mission Group Card**
+   - Removed personal habits (moved to Check-In card)
+   - Cleaner focus on group activities
+
+**New Firestore Collections:**
+- `goMission_dailyCheckins` - Daily habit tracking
+- `goMission_debriefs` - Weekly submissions
+
+**Git Commit:** `ecbc103`
+
+**Rollback:**
+```bash
+git checkout be9cdcc -- index.html
+git commit -m "Rollback to v0.2.1"
+git push origin main
+```
+
+---
+
+## [v0.2.1] - 2026-01-18
 
 ### 🎨 Exact Design System Applied
 
