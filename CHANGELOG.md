@@ -10,7 +10,62 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v0.3.0] - 2026-01-19 ⭐ CURRENT
+## [v0.4.0] - 2026-01-19 ⭐ CURRENT
+
+### 🔥 My Day with the Lord - Bible Devotion Experience
+
+**Summary:** Replaced checkbox-based check-in with relational Bible devotion system.
+
+**New Features:**
+
+1. **"My Day with the Lord" Card**
+   - Replaces "Today's Check-In"
+   - Full Bible reading experience
+   - Journal reflection with single question
+
+2. **Bible Reader**
+   - Tagalog (Ang Bibliya 1905) - default
+   - English (KJV) - toggle
+   - Tap verses to highlight (gold)
+   - "Help me understand" commentary section
+
+3. **Reflection Question System**
+   - ONE question per day (reduced friction)
+   - Rotates weekly by category:
+     - Week 1: Primary (obedience)
+     - Week 2: Love-motivated
+     - Week 3: Mission-focused
+     - Week 4: Simple/accessible
+   - Questions from curated discipleship list
+
+4. **Privacy & Sharing**
+   - Toggle to share with group or keep private
+   - Care message: "This is not a score — it's a way to care for one another"
+
+5. **"Save This Day" Button**
+   - Saves to `goMission_devotions` collection
+   - Tracks highlights, reflection, sharing preference
+
+6. **Week Progress**
+   - 7 dots showing days saved this week
+   - Today highlighted with ring
+
+**New Files:**
+- `js/bible-data.js` - Bible text (John 1), questions, reading plan
+
+**Git Commit:** `0ea9091`
+
+**Rollback:**
+```bash
+git checkout 1009fdd -- index.html
+rm js/bible-data.js
+git commit -m "Rollback to v0.3.0"
+git push origin main
+```
+
+---
+
+## [v0.3.0] - 2026-01-19
 
 ### 🔥 Daily Check-In & Weekly Debrief
 
