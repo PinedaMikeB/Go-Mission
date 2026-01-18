@@ -6,143 +6,163 @@
     <title>Go Mission - Making Disciple-Making Leaders</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        cream: {
-                            50: '#FFFEF9',
-                            100: '#FFF9E8',
-                            200: '#FFF3D1',
-                            300: '#FFEAB8',
-                            400: '#FFE0A0',
-                        },
-                        maroon: {
-                            500: '#8B2942',
-                            600: '#722F37',
-                            700: '#5C252C',
-                            800: '#4A1D23',
-                            900: '#3D181D',
-                            950: '#2D1216',
-                        },
-                        gold: {
-                            300: '#F0D78C',
-                            400: '#D4AF37',
-                            500: '#C5A028',
-                            600: '#B8960B',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-display { font-family: 'Playfair Display', serif; }
-        
-        .bg-main {
-            background: linear-gradient(180deg, #4A1D23 0%, #3D181D 50%, #2D1216 100%);
+        :root {
+            --mission-red-deep: #2a0505;
+            --mission-red-mid: #4a0404;
+            --mission-red-bright: #800000;
+            --mission-gold: #fbbf24;
+            --mission-gold-dim: #92400e;
+            --mission-text: #fdfcf0;
         }
-        
-        .card-glass {
-            background: linear-gradient(145deg, rgba(139, 41, 66, 0.6) 0%, rgba(74, 29, 35, 0.8) 100%);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(212, 175, 55, 0.2);
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--mission-red-deep);
+            color: var(--mission-text);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        .btn-gold {
-            background: linear-gradient(135deg, #F0D78C 0%, #D4AF37 50%, #B8960B 100%);
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+
+        .font-mission {
+            font-family: 'Cinzel', serif;
         }
-        .btn-gold:hover {
-            background: linear-gradient(135deg, #F5E0A0 0%, #E5C048 50%, #C5A028 100%);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
-        }
-        
-        .btn-outline-gold {
-            border: 2px solid #D4AF37;
-            color: #F0D78C;
-        }
-        .btn-outline-gold:hover {
-            background: rgba(212, 175, 55, 0.1);
-        }
-        
-        .gold-text {
-            background: linear-gradient(135deg, #F0D78C 0%, #D4AF37 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .sunset-card {
-            background: linear-gradient(180deg, rgba(139, 41, 66, 0.4) 0%, rgba(74, 29, 35, 0.9) 100%),
-                        url('https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=800&q=80');
+
+        .bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(42, 5, 5, 0.7), rgba(42, 5, 5, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
             background-size: cover;
             background-position: center;
+            background-attachment: fixed;
         }
-        
-        .progress-track {
-            background: rgba(45, 18, 22, 0.8);
+
+        .mission-card {
+            background: linear-gradient(135deg, rgba(74, 4, 4, 0.95) 0%, rgba(30, 2, 2, 0.98) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
         }
-        
-        .checkbox-gold {
-            background: linear-gradient(135deg, #D4AF37 0%, #B8960B 100%);
+
+        .mission-button {
+            background: linear-gradient(to bottom, #800000, #4a0404);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--mission-gold);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .mission-button:active {
+            transform: scale(0.97);
+            filter: brightness(1.1);
+        }
+
+        .mission-button:hover {
+            filter: brightness(1.05);
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--mission-gold);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .checkbox-custom.checked::after {
+            content: '✓';
+            color: var(--mission-gold);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .progress-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--mission-gold);
+            border: 2px solid #fcd34d;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+
+        .progress-dot.inactive {
+            background: var(--mission-red-deep);
+            border: 2px solid var(--mission-gold-dim);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(251, 191, 36, 0.2);
+            border-radius: 10px;
+        }
+
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-up {
+            animation: fade-up 0.4s ease-out forwards;
+        }
+
+        .stat-number {
+            color: var(--mission-gold);
         }
     </style>
 </head>
-<body class="bg-main min-h-screen">
+<body class="bg-mission-sunset min-h-screen">
     
     <!-- Loading State -->
-    <div id="loading" class="fixed inset-0 bg-main flex items-center justify-center z-50">
-        <div class="text-center">
-            <div class="w-16 h-16 border-4 border-gold-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p class="text-cream-200">Loading...</p>
+    <div id="loading" class="fixed inset-0 bg-[#2a0505] flex items-center justify-center z-50">
+        <div class="text-center animate-fade-up">
+            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-amber-200/60 text-xs font-bold uppercase tracking-widest">Loading...</p>
         </div>
     </div>
 
     <!-- Login Screen -->
-    <div id="loginScreen" class="hidden min-h-screen bg-main flex items-center justify-center p-4">
-        <div class="max-w-md w-full">
+    <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
+        <div class="max-w-md w-full animate-fade-up">
             <!-- Logo & Title -->
-            <div class="text-center mb-8">
-                <div class="flex justify-center gap-1 mb-4">
-                    <span class="text-gold-400 text-2xl">✦</span>
-                    <span class="text-gold-300 text-xl">✦</span>
-                    <span class="text-gold-400 text-2xl">✦</span>
+            <div class="text-center mb-12">
+                <h1 class="font-mission text-2xl font-bold text-[#fdfcf0] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
+                <div class="flex justify-center gap-1 text-amber-500 mb-8">
+                    <span>★</span>
+                    <span>★</span>
+                    <span>★</span>
                 </div>
-                <h1 class="font-display text-4xl font-bold text-cream-100 mb-2">GO MISSION</h1>
-                <p class="text-xl text-cream-200 font-light">Making Disciple-<br>Making Leaders</p>
+                <h2 class="text-3xl font-black text-[#fdfcf0] leading-tight drop-shadow-xl">
+                    Making Disciple-<br/>Making Leaders
+                </h2>
             </div>
 
             <!-- Login Card -->
-            <div class="card-glass rounded-2xl p-8">
-                <div class="text-center mb-6">
-                    <p class="text-cream-200 text-sm mb-4">Anong Track ang gusto mo?</p>
-                </div>
+            <div class="space-y-4">
+                <p class="text-amber-200/60 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
 
-                <!-- Mission Group Button -->
-                <button id="googleSignInBtn" class="w-full btn-gold text-maroon-950 font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 mb-4">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <div class="text-left">
-                        <div class="font-bold">MISSION GROUP</div>
-                        <div class="text-xs font-normal opacity-80">Sumali sa Grupo</div>
+                <!-- Google Sign In Button -->
+                <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-amber-500/30 hover:border-amber-500/60 shadow-2xl">
+                    <div class="bg-[#4a0404] p-4 rounded-xl border border-amber-500/40 shadow-inner">
+                        <svg class="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
                     </div>
-                </button>
-
-                <!-- Mission Training Button -->
-                <button class="w-full btn-outline-gold font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                    <div class="text-left">
-                        <div class="font-bold">MISSION TRAINING</div>
-                        <div class="text-xs font-normal opacity-80">Simulan ang Pagsanay</div>
+                    <div>
+                        <p class="font-black text-amber-400 text-lg leading-tight uppercase">JOIN OUR MISSION GROUP</p>
+                        <p class="text-[11px] text-slate-300 font-medium">Simulan ang iyong Journey</p>
                     </div>
                 </button>
 
@@ -151,7 +171,7 @@
             </div>
 
             <!-- Footer -->
-            <p class="text-center text-gold-300/60 text-sm mt-8">
+            <p class="text-center text-[10px] font-bold text-amber-200/40 uppercase tracking-[0.3em] mt-12">
                 Tuklasin ang Misyon Ni God!
             </p>
         </div>
@@ -160,16 +180,16 @@
     <!-- Main App (After Login) -->
     <div id="mainApp" class="hidden">
         <!-- Header -->
-        <header class="bg-maroon-900/80 backdrop-blur-lg sticky top-0 z-40 border-b border-gold-400/20">
-            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <header class="bg-[#1e0202] border-b border-amber-900/20 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <span class="text-gold-400">✦</span>
-                    <span class="font-display font-bold text-cream-100">Go Mission</span>
+                    <span class="text-amber-500">★</span>
+                    <span class="font-mission font-bold text-[#fdfcf0] tracking-widest uppercase">Go Mission</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span id="userName" class="text-sm text-cream-200 hidden sm:block"></span>
-                    <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-gold-400/50" src="" alt="">
-                    <button id="signOutBtn" class="text-cream-300 hover:text-cream-100 transition-colors" title="Sign out">
+                    <span id="userName" class="text-sm text-slate-300 hidden sm:block"></span>
+                    <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-amber-500/30" src="" alt="">
+                    <button id="signOutBtn" class="text-amber-500/60 hover:text-amber-500 transition-colors" title="Sign out">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                         </svg>
@@ -179,61 +199,57 @@
         </header>
 
         <!-- Dashboard Content -->
-        <main class="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+        <main class="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
             
-            <!-- My Journey Card with Sunset Background -->
-            <div class="sunset-card rounded-2xl p-6 mb-6 shadow-2xl border border-gold-400/20">
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="text-gold-400">★</span>
-                    <h2 class="font-display text-xl font-bold text-cream-100">My Journey</h2>
+            <!-- My Journey Card -->
+            <div class="mission-card rounded-2xl p-6 mb-6 animate-fade-up">
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="text-amber-500">★</span>
+                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Journey</h2>
                 </div>
                 
-                <!-- Journey Progress -->
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gold-400 flex items-center justify-center">
-                            <span class="text-maroon-900 text-xs font-bold">👤</span>
+                <!-- Journey Progress Path -->
+                <div class="relative px-2 mb-8">
+                    <!-- Background line -->
+                    <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
+                    <!-- Active line -->
+                    <div class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 25%"></div>
+                    
+                    <div class="flex justify-between relative z-10">
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot active"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-amber-400 text-center">Seeker</span>
                         </div>
-                        <span class="text-cream-200 text-xs">Seeker</span>
-                    </div>
-                    <div class="flex-1 mx-2 h-0.5 bg-gold-400/30 relative">
-                        <div class="absolute left-0 top-0 h-full bg-gold-400" style="width: 25%"></div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gold-400 flex items-center justify-center">
-                            <span class="text-maroon-900 text-xs font-bold">📖</span>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot active"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-amber-400 text-center">Disciple</span>
                         </div>
-                        <span class="text-cream-200 text-xs">Disciple</span>
-                    </div>
-                    <div class="flex-1 mx-2 h-0.5 bg-gold-400/30"></div>
-                    <div class="flex items-center gap-2 opacity-50">
-                        <div class="w-8 h-8 rounded-full bg-maroon-700 border border-gold-400/30 flex items-center justify-center">
-                            <span class="text-cream-400 text-xs">🌱</span>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot inactive"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-slate-600 text-center">Disciple-<br>Maker</span>
                         </div>
-                        <span class="text-cream-400 text-xs">Disciple-<br>Maker</span>
-                    </div>
-                    <div class="flex-1 mx-2 h-0.5 bg-gold-400/30"></div>
-                    <div class="flex items-center gap-2 opacity-50">
-                        <div class="w-8 h-8 rounded-full bg-maroon-700 border border-gold-400/30 flex items-center justify-center">
-                            <span class="text-cream-400 text-xs">👑</span>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot inactive"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-slate-600 text-center">Leader</span>
                         </div>
-                        <span class="text-cream-400 text-xs">Leader</span>
-                    </div>
-                    <div class="flex-1 mx-2 h-0.5 bg-gold-400/30"></div>
-                    <div class="flex items-center gap-2 opacity-50">
-                        <div class="w-8 h-8 rounded-full bg-maroon-700 border border-gold-400/30 flex items-center justify-center">
-                            <span class="text-cream-400 text-xs">✨</span>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot inactive"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-slate-600 text-center">Multiplier</span>
                         </div>
-                        <span class="text-cream-400 text-xs">Multiplier</span>
                     </div>
                 </div>
 
-                <div class="bg-maroon-900/60 rounded-xl p-4 backdrop-blur">
-                    <p class="text-cream-300 text-sm mb-1">Current Stage:</p>
-                    <p class="text-2xl font-bold gold-text" id="journeyPhaseName">DISCIPLE</p>
-                    <p class="text-cream-400 text-sm mt-2">Next: Become a Disciple-Maker</p>
-                    <button class="mt-4 btn-outline-gold text-sm font-semibold py-2 px-4 rounded-lg">
-                        View Next Steps →
+                <!-- Current Stage -->
+                <div class="bg-black/40 rounded-xl p-6 text-center border border-white/5">
+                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.25em] mb-1">CURRENT STAGE</p>
+                    <p class="text-3xl font-black text-white uppercase tracking-tight" id="journeyPhaseName">DISCIPLE</p>
+                    <div class="h-[1px] bg-white/5 w-2/3 mx-auto my-4"></div>
+                    <p class="text-sm text-slate-300 italic">Next: Become a Disciple-Maker</p>
+                    <button class="mission-button w-full mt-6 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        View Next Steps
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -242,150 +258,148 @@
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 
                 <!-- Mission Group Card -->
-                <div class="card-glass rounded-2xl overflow-hidden">
-                    <div class="p-4 border-b border-gold-400/20 flex items-center justify-between">
-                        <h3 class="font-display font-semibold text-cream-100 flex items-center gap-2">
-                            <span class="text-gold-400">👥</span>
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                            <span class="text-amber-500">👥</span>
                             Mission Group
                         </h3>
-                        <button class="text-cream-400">•••</button>
+                        <button class="text-amber-500/60">•••</button>
                     </div>
                     <div class="p-4">
-                        <div class="bg-maroon-800/50 rounded-xl p-3 mb-4 border border-gold-400/20">
-                            <p class="text-cream-400 text-xs mb-1">Weekly Meeting</p>
-                            <p class="text-cream-100 font-bold" id="groupSchedule">Saturday, 7:00 PM</p>
+                        <div class="bg-[#4a0404] p-4 rounded-xl text-center border border-amber-500/20 mb-6 shadow-inner">
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weekly Meeting</p>
+                            <p class="text-amber-400 font-black tracking-widest uppercase">Saturday, 7:00 PM</p>
                         </div>
                         
-                        <div class="space-y-2 mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                                <span class="text-cream-200 text-sm">Bible Study</span>
+                        <div class="space-y-3 mb-6">
+                            <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
+                                <span class="text-sm font-semibold text-slate-200">Bible Study</span>
+                                <div class="checkbox-custom checked"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                                <span class="text-cream-200 text-sm">Share & Pray</span>
+                            <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
+                                <span class="text-sm font-semibold text-slate-200">Share & Pray</span>
+                                <div class="checkbox-custom checked"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                                <span class="text-cream-200 text-sm">Accountability</span>
+                            <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
+                                <span class="text-sm font-semibold text-slate-200">Accountability</span>
+                                <div class="checkbox-custom checked"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                                <span class="text-cream-400 text-sm">Spent Time in Prayer</span>
+                        </div>
+
+                        <div class="space-y-2 pt-4 border-t border-white/5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-400">Spent Time in Prayer</span>
+                                <div class="checkbox-custom scale-75"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                                <span class="text-cream-400 text-sm">Read the Word</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-400">Read the Word</span>
+                                <div class="checkbox-custom scale-75"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                                <span class="text-cream-400 text-sm">Shared My Faith</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-400">Shared My Faith</span>
+                                <div class="checkbox-custom scale-75"></div>
                             </div>
                         </div>
                         
-                        <button class="w-full btn-gold text-maroon-950 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2">
-                            <span>💬</span> Chat with Group →
+                        <button class="mission-button w-full mt-6 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                            💬 Chat with Group
                         </button>
                     </div>
                 </div>
 
                 <!-- Mission Training Card -->
-                <div class="card-glass rounded-2xl overflow-hidden">
-                    <div class="p-4 border-b border-gold-400/20 flex items-center justify-between">
-                        <h3 class="font-display font-semibold text-cream-100 flex items-center gap-2">
-                            <span class="text-gold-400">📚</span>
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                            <span class="text-amber-500">🎯</span>
                             Mission Training
                         </h3>
-                        <button class="text-cream-400">•••</button>
+                        <button class="text-amber-500/60">•••</button>
                     </div>
                     <div class="p-4">
-                        <div class="mb-4">
-                            <p class="text-gold-400 font-bold text-lg">Phase 1: Recruit</p>
+                        <h4 class="text-xl font-black text-amber-400 mb-4 border-b border-amber-500/10 pb-4">Phase 1: Recruit</h4>
+                        
+                        <div class="space-y-1 custom-scrollbar max-h-64 overflow-y-auto pr-2">
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">1.</span>Know Your Commander</span>
+                                <div class="checkbox-custom checked scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">2.</span>Know Your Captain</span>
+                                <div class="checkbox-custom checked scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">3.</span>The Gospel Message</span>
+                                <div class="checkbox-custom checked scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">4.</span>Assurance of Salvation</span>
+                                <div class="checkbox-custom checked scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">5.</span>Power of the Holy Spirit</span>
+                                <div class="checkbox-custom checked scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">6.</span>The Word of God</span>
+                                <div class="checkbox-custom scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-white/5">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">7.</span>Lifeline: Prayer</span>
+                                <div class="checkbox-custom scale-90"></div>
+                            </div>
+                            <div class="flex items-center justify-between py-3">
+                                <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">8.</span>Lead a Disciple</span>
+                                <div class="checkbox-custom scale-90"></div>
+                            </div>
                         </div>
                         
-                        <div class="space-y-2 mb-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">1.</span> Know Your Commander</span>
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">2.</span> Know Your Captain</span>
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">3.</span> The Gospel Message</span>
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">4.</span> Assurance of Salvation</span>
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">5.</span> Power of the Holy Spirit</span>
-                                <span class="w-5 h-5 checkbox-gold rounded flex items-center justify-center text-maroon-900 text-xs">✓</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">6.</span> The Word of God</span>
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">7.</span> Lifeline: Prayer</span>
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-cream-200 text-sm"><span class="text-gold-400 font-bold">8.</span> Lead a Disciple</span>
-                                <span class="w-5 h-5 bg-maroon-700 border border-gold-400/30 rounded flex items-center justify-center text-cream-400 text-xs">☐</span>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-maroon-800/50 rounded-lg p-3 border border-gold-400/20">
-                            <p class="text-gold-300 text-xs font-semibold">REQUIREMENT: Start Discipling 1 Person</p>
+                        <div class="mt-4 p-4 bg-black/60 rounded-xl border border-amber-500/20 shadow-inner">
+                            <p class="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">PHASE REQUIREMENT:</p>
+                            <p class="text-xs text-slate-300 font-medium italic">Start Discipling at least 1 person to graduate.</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Leader Dashboard Card -->
-                <div class="card-glass rounded-2xl overflow-hidden">
-                    <div class="p-4 border-b border-gold-400/20 flex items-center justify-between">
-                        <h3 class="font-display font-semibold text-cream-100 flex items-center gap-2">
-                            <span class="text-gold-400">👑</span>
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                            <span class="text-amber-500">📊</span>
                             Leader Dashboard
                         </h3>
-                        <button class="text-cream-400">✕</button>
+                        <button class="text-amber-500/60">✕</button>
                     </div>
                     <div class="p-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="text-cream-200 text-sm">👤 Admin Mode</span>
+                        <!-- Admin Toggle -->
+                        <div class="flex items-center justify-between bg-black/60 p-4 rounded-xl border border-white/5 mb-6">
+                            <div class="flex items-center gap-3">
+                                <img id="adminPhoto" class="w-10 h-10 rounded-full border border-amber-500/30" src="https://ui-avatars.com/api/?name=Admin&background=4a0404&color=fbbf24" alt="">
+                                <span class="text-xs font-bold text-slate-200">Admin Mode</span>
                             </div>
-                            <div class="w-12 h-6 bg-gold-400 rounded-full relative">
-                                <div class="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 shadow"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-3 mb-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-4xl font-bold gold-text">70</span>
-                                <span class="text-cream-200 text-sm">Mission Groups</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-4xl font-bold gold-text">125</span>
-                                <span class="text-cream-200 text-sm">Active Disciples</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-4xl font-bold gold-text">34</span>
-                                <span class="text-cream-200 text-sm">New Recruits</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-4xl font-bold gold-text">22</span>
-                                <span class="text-cream-200 text-sm">Leaders Developed</span>
+                            <div class="w-12 h-6 bg-amber-500 rounded-full relative cursor-pointer p-1">
+                                <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6"></div>
                             </div>
                         </div>
-                        
-                        <div class="bg-maroon-800/50 rounded-xl p-3 border border-gold-400/20">
-                            <div class="flex items-center justify-center gap-2 text-cream-300 text-xs">
-                                <span>🎯</span>
-                                <span>Mission multiplication in progress</span>
+
+                        <!-- Stats -->
+                        <div class="space-y-6">
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">70</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Mission Groups</span>
+                            </div>
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">125</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Active Disciples</span>
+                            </div>
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">34</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">New Recruits</span>
+                            </div>
+                            <div class="flex items-baseline gap-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">22</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Leaders Developed</span>
                             </div>
                         </div>
                     </div>
@@ -395,27 +409,39 @@
         </main>
 
         <!-- Bottom Navigation (Mobile) -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-maroon-900/95 backdrop-blur-lg border-t border-gold-400/20 md:hidden z-40">
-            <div class="flex justify-around py-3">
-                <button class="flex flex-col items-center p-2 text-gold-400">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/>
-                    </svg>
+        <nav class="fixed bottom-0 left-0 right-0 bg-[#1e0202] border-t border-amber-900/20 md:hidden z-40">
+            <div class="flex justify-around items-center px-4 h-20">
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-500">
+                    <div class="p-1.5 rounded-lg bg-amber-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Journey</span>
                 </button>
-                <button class="flex flex-col items-center p-2 text-cream-400 hover:text-cream-100 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Group</span>
                 </button>
-                <button class="flex flex-col items-center p-2 text-cream-400 hover:text-cream-100 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Training</span>
                 </button>
-                <button class="flex flex-col items-center p-2 text-cream-400 hover:text-cream-100 transition-colors">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/>
-                    </svg>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Dash</span>
                 </button>
             </div>
         </nav>
@@ -455,7 +481,8 @@
                 console.log('User signed in:', user.email);
                 
                 document.getElementById('userName').textContent = user.displayName || user.email;
-                document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4A1D23&color=FFF9E8';
+                document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                document.getElementById('adminPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
                 
                 await ensureUserExists(user);
                 
@@ -528,8 +555,10 @@
                 if (userDoc.exists()) {
                     const data = userDoc.data();
                     const phase = data.training?.currentPhase || 1;
-                    const phaseNames = ['', 'RECRUIT', 'FIELD MISSIONARY', 'MISSION COACH', 'MISSION LEADER'];
-                    document.getElementById('journeyPhaseName').textContent = phaseNames[phase];
+                    const stageNames = ['', 'SEEKER', 'DISCIPLE', 'DISCIPLE-MAKER', 'LEADER', 'MULTIPLIER'];
+                    const stageMap = { 'seeker': 1, 'disciple': 2, 'disciple-maker': 3, 'leader': 4, 'multiplier': 5 };
+                    const stageIndex = stageMap[data.stage] || 1;
+                    document.getElementById('journeyPhaseName').textContent = stageNames[stageIndex];
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
