@@ -26,9 +26,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .font-mission {
-            font-family: 'Cinzel', serif;
-        }
+        .font-mission { font-family: 'Cinzel', serif; }
 
         .bg-mission-sunset {
             background: linear-gradient(to bottom, rgba(42, 5, 5, 0.7), rgba(42, 5, 5, 0.95)), 
@@ -53,132 +51,101 @@
             transition: all 0.2s ease;
         }
 
-        .mission-button:active {
-            transform: scale(0.97);
-            filter: brightness(1.1);
-        }
-
-        .mission-button:hover {
-            filter: brightness(1.05);
-        }
-
-        .mission-button-secondary {
-            background: transparent;
-            border: 1px solid rgba(251, 191, 36, 0.4);
-            color: var(--mission-gold);
-            transition: all 0.2s ease;
-        }
-
-        .mission-button-secondary:hover {
-            background: rgba(251, 191, 36, 0.1);
-        }
-
-        .checkbox-custom {
-            width: 24px;
-            height: 24px;
-            border: 2px solid var(--mission-gold);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .checkbox-custom:hover {
-            background: rgba(251, 191, 36, 0.1);
-        }
-
-        .checkbox-custom.checked {
-            background: rgba(251, 191, 36, 0.2);
-        }
-
-        .checkbox-custom.checked::after {
-            content: '✓';
-            color: var(--mission-gold);
-            font-size: 14px;
-            font-weight: bold;
-        }
+        .mission-button:active { transform: scale(0.97); filter: brightness(1.1); }
+        .mission-button:hover { filter: brightness(1.05); }
+        .mission-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .progress-dot {
-            width: 14px;
-            height: 14px;
+            width: 14px; height: 14px;
             border-radius: 50%;
             transition: all 0.3s ease;
         }
-
         .progress-dot.active {
             background: var(--mission-gold);
             border: 2px solid #fcd34d;
             box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
         }
-
         .progress-dot.inactive {
             background: var(--mission-red-deep);
             border: 2px solid var(--mission-gold-dim);
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
+        /* Bible verse styles */
+        .verse { 
+            padding: 8px 4px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: background 0.2s;
+            line-height: 1.8;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+        .verse:hover { background: rgba(251, 191, 36, 0.1); }
+        .verse.highlighted { background: rgba(251, 191, 36, 0.25); }
+        .verse-num { 
+            font-size: 10px; 
+            color: var(--mission-gold); 
+            font-weight: bold;
+            vertical-align: super;
+            margin-right: 4px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(251, 191, 36, 0.2);
-            border-radius: 10px;
+
+        /* Language toggle */
+        .lang-toggle {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 2px;
         }
+        .lang-btn {
+            padding: 4px 12px;
+            border-radius: 18px;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .lang-btn.active {
+            background: var(--mission-gold);
+            color: var(--mission-red-deep);
+        }
+        .lang-btn:not(.active) {
+            color: var(--mission-gold-dim);
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-switch.active { background: var(--mission-gold); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle-switch.active::after { transform: translateX(20px); }
 
         @keyframes fade-up {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .animate-fade-up { animation: fade-up 0.4s ease-out forwards; }
 
-        .animate-fade-up {
-            animation: fade-up 0.4s ease-out forwards;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.2); border-radius: 10px; }
 
-        .stat-number {
-            color: var(--mission-gold);
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, rgba(74, 4, 4, 0.98) 0%, rgba(30, 2, 2, 0.99) 100%);
-            border: 1px solid rgba(251, 191, 36, 0.2);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
-        }
-
-        /* Day selector */
-        .day-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid var(--mission-gold-dim);
-            background: transparent;
-            color: var(--mission-gold-dim);
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .day-btn.selected {
-            background: var(--mission-gold);
-            border-color: var(--mission-gold);
-            color: var(--mission-red-deep);
-        }
-
-        .day-btn:hover:not(.selected) {
-            border-color: var(--mission-gold);
-            color: var(--mission-gold);
-        }
+        .stat-number { color: var(--mission-gold); }
     </style>
 </head>
 <body class="bg-mission-sunset min-h-screen">
@@ -194,24 +161,17 @@
     <!-- Login Screen -->
     <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
         <div class="max-w-md w-full animate-fade-up">
-            <!-- Logo & Title -->
             <div class="text-center mb-12">
                 <h1 class="font-mission text-2xl font-bold text-[#fdfcf0] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
                 <div class="flex justify-center gap-1 text-amber-500 mb-8">
-                    <span>★</span>
-                    <span>★</span>
-                    <span>★</span>
+                    <span>★</span><span>★</span><span>★</span>
                 </div>
                 <h2 class="text-3xl font-black text-[#fdfcf0] leading-tight drop-shadow-xl">
                     Making Disciple-<br/>Making Leaders
                 </h2>
             </div>
-
-            <!-- Login Card -->
             <div class="space-y-4">
                 <p class="text-amber-200/60 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
-
-                <!-- Google Sign In Button -->
                 <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-amber-500/30 hover:border-amber-500/60 shadow-2xl">
                     <div class="bg-[#4a0404] p-4 rounded-xl border border-amber-500/40 shadow-inner">
                         <svg class="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,19 +183,15 @@
                         <p class="text-[11px] text-slate-300 font-medium">Simulan ang iyong Journey</p>
                     </div>
                 </button>
-
-                <!-- Error Message -->
                 <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
             </div>
-
-            <!-- Footer -->
             <p class="text-center text-[10px] font-bold text-amber-200/40 uppercase tracking-[0.3em] mt-12">
                 Tuklasin ang Misyon Ni God!
             </p>
         </div>
     </div>
 
-    <!-- Main App (After Login) -->
+    <!-- Main App -->
     <div id="mainApp" class="hidden">
         <!-- Header -->
         <header class="bg-[#1e0202] border-b border-amber-900/20 sticky top-0 z-40">
@@ -259,6 +215,80 @@
         <!-- Dashboard Content -->
         <main class="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
             
+            <!-- My Day with the Lord Card -->
+            <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up">
+                <!-- Header -->
+                <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🔥</span>
+                        <div>
+                            <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Day with the Lord</h2>
+                            <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
+                        </div>
+                    </div>
+                    <div class="lang-toggle">
+                        <span class="lang-btn active" data-lang="tl" onclick="setLanguage('tl')">🇵🇭 TL</span>
+                        <span class="lang-btn" data-lang="en" onclick="setLanguage('en')">🇺🇸 EN</span>
+                    </div>
+                </div>
+
+                <!-- Scripture Reading -->
+                <div class="p-4 border-b border-white/10">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" id="passageTitle">📖 Juan 1:1-14</h3>
+                        <span class="text-[10px] text-slate-500">Tap verses to highlight</span>
+                    </div>
+                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                        <!-- Bible verses loaded here -->
+                    </div>
+                    <!-- Commentary Button -->
+                    <button id="commentaryBtn" onclick="toggleCommentary()" class="mt-4 text-xs text-amber-500/70 hover:text-amber-500 flex items-center gap-2 transition-colors">
+                        <span>💡</span>
+                        <span>Help me understand</span>
+                        <svg class="w-3 h-3 transition-transform" id="commentaryArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <!-- Commentary Content (Hidden by default) -->
+                    <div id="commentaryContent" class="hidden mt-3 p-4 bg-black/40 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed">
+                        <!-- Commentary loaded here -->
+                    </div>
+                </div>
+
+                <!-- Reflection Question -->
+                <div class="p-4 border-b border-white/10">
+                    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3">✍️ Reflect</h3>
+                    <p class="text-sm text-slate-200 mb-4 italic" id="reflectionQuestion">"What is one thing God is inviting you to live out today?"</p>
+                    <textarea id="reflectionAnswer" rows="4" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..."></textarea>
+                </div>
+
+                <!-- Share Option & Save -->
+                <div class="p-4">
+                    <!-- Share Toggle -->
+                    <div class="flex items-start gap-3 mb-4 p-3 bg-black/30 rounded-xl border border-white/5">
+                        <div class="toggle-switch" id="shareToggle" onclick="toggleShare()"></div>
+                        <div class="flex-1">
+                            <p class="text-sm text-slate-200 font-medium">Share with my group</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-relaxed">Your Conversation Time reflections help your leader walk with you. This is not a score — it's a way to care for one another.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Save Button -->
+                    <button id="saveDevotionBtn" onclick="saveThisDay()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        <span id="saveBtnText">💾 Save This Day</span>
+                    </button>
+
+                    <!-- Week Progress -->
+                    <div class="mt-4 flex items-center justify-center gap-2">
+                        <span class="text-[10px] text-slate-500">This week:</span>
+                        <div class="flex gap-1" id="weekDots">
+                            <!-- 7 dots for each day -->
+                        </div>
+                        <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- My Journey Card -->
             <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
                 <div class="flex items-center gap-2 mb-6">
@@ -266,11 +296,8 @@
                     <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Journey</h2>
                 </div>
                 
-                <!-- Journey Progress Path - UPDATED STAGES -->
                 <div class="relative px-2 mb-8">
-                    <!-- Background line -->
                     <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
-                    <!-- Active line -->
                     <div id="journeyProgressLine" class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 0%"></div>
                     
                     <div class="flex justify-between relative z-10">
@@ -297,7 +324,6 @@
                     </div>
                 </div>
 
-                <!-- Current Stage -->
                 <div class="bg-black/40 rounded-xl p-6 text-center border border-white/5">
                     <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.25em] mb-1">CURRENT STAGE</p>
                     <p class="text-3xl font-black text-white uppercase tracking-tight" id="journeyPhaseName">SEEKER</p>
@@ -314,68 +340,8 @@
 
             <!-- Cards Grid -->
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                <!-- Daily Check-In Card (NEW) -->
-                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up md:col-span-2 lg:col-span-3">
-                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
-                            <span class="text-amber-500">🔥</span>
-                            Today's Check-In
-                        </h3>
-                        <span id="checkInDate" class="text-xs text-amber-500/60 font-medium"></span>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex flex-wrap gap-3 justify-center md:justify-start">
-                            <!-- Prayer Check -->
-                            <div class="flex items-center gap-3 bg-black/30 rounded-xl p-4 border border-white/5 flex-1 min-w-[200px]" id="checkPrayer" onclick="toggleDailyCheck('prayer')">
-                                <div class="checkbox-custom" id="checkbox-prayer"></div>
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-200">Spent Time in Prayer</p>
-                                    <p class="text-[10px] text-slate-500">Did you pray today?</p>
-                                </div>
-                            </div>
-                            <!-- Word Check -->
-                            <div class="flex items-center gap-3 bg-black/30 rounded-xl p-4 border border-white/5 flex-1 min-w-[200px]" id="checkWord" onclick="toggleDailyCheck('word')">
-                                <div class="checkbox-custom" id="checkbox-word"></div>
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-200">Read the Word</p>
-                                    <p class="text-[10px] text-slate-500">Did you read the Bible?</p>
-                                </div>
-                            </div>
-                            <!-- Share Check -->
-                            <div class="flex items-center gap-3 bg-black/30 rounded-xl p-4 border border-white/5 flex-1 min-w-[200px]" id="checkShare" onclick="toggleDailyCheck('share')">
-                                <div class="checkbox-custom" id="checkbox-share"></div>
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-200">Shared My Faith</p>
-                                    <p class="text-[10px] text-slate-500">Did you share the gospel?</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Weekly Summary -->
-                        <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="text-center">
-                                    <p class="text-2xl font-black text-amber-400" id="weekPrayerCount">0</p>
-                                    <p class="text-[8px] text-slate-500 uppercase">Prayer</p>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-2xl font-black text-amber-400" id="weekWordCount">0</p>
-                                    <p class="text-[8px] text-slate-500 uppercase">Word</p>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-2xl font-black text-amber-400" id="weekShareCount">0</p>
-                                    <p class="text-[8px] text-slate-500 uppercase">Share</p>
-                                </div>
-                                <p class="text-[10px] text-slate-500 ml-2">days this week</p>
-                            </div>
-                            <button onclick="openDebriefModal()" class="mission-button-secondary px-4 py-2 rounded-lg text-xs font-bold uppercase">
-                                Submit Weekly Debrief
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 
-                <!-- Mission Group Card (UPDATED - removed personal habits) -->
+                <!-- Mission Group Card -->
                 <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
                     <div class="p-4 border-b border-white/5 flex items-center justify-between">
                         <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
@@ -393,15 +359,15 @@
                         <div class="space-y-3 mb-6">
                             <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
                                 <span class="text-sm font-semibold text-slate-200">Bible Study</span>
-                                <div class="checkbox-custom checked"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
                                 <span class="text-sm font-semibold text-slate-200">Share & Pray</span>
-                                <div class="checkbox-custom checked"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5">
                                 <span class="text-sm font-semibold text-slate-200">Accountability</span>
-                                <div class="checkbox-custom checked"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                         </div>
                         
@@ -426,35 +392,35 @@
                         <div class="space-y-1 custom-scrollbar max-h-64 overflow-y-auto pr-2">
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">1.</span>Know Your Commander</span>
-                                <div class="checkbox-custom checked scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">2.</span>Know Your Captain</span>
-                                <div class="checkbox-custom checked scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">3.</span>The Gospel Message</span>
-                                <div class="checkbox-custom checked scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">4.</span>Assurance of Salvation</span>
-                                <div class="checkbox-custom checked scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">5.</span>Power of the Holy Spirit</span>
-                                <div class="checkbox-custom checked scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-500 rounded bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs">✓</div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">6.</span>The Word of God</span>
-                                <div class="checkbox-custom scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-900/50 rounded"></div>
                             </div>
                             <div class="flex items-center justify-between py-3 border-b border-white/5">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">7.</span>Lifeline: Prayer</span>
-                                <div class="checkbox-custom scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-900/50 rounded"></div>
                             </div>
                             <div class="flex items-center justify-between py-3">
                                 <span class="text-sm text-slate-200"><span class="text-amber-500 font-black italic mr-2">8.</span>Lead a Disciple</span>
-                                <div class="checkbox-custom scale-90"></div>
+                                <div class="w-5 h-5 border-2 border-amber-900/50 rounded"></div>
                             </div>
                         </div>
                         
@@ -475,7 +441,6 @@
                         <button class="text-amber-500/60">✕</button>
                     </div>
                     <div class="p-4">
-                        <!-- Admin Toggle -->
                         <div class="flex items-center justify-between bg-black/60 p-4 rounded-xl border border-white/5 mb-6">
                             <div class="flex items-center gap-3">
                                 <img id="adminPhoto" class="w-10 h-10 rounded-full border border-amber-500/30" src="https://ui-avatars.com/api/?name=Admin&background=4a0404&color=fbbf24" alt="">
@@ -485,8 +450,6 @@
                                 <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6"></div>
                             </div>
                         </div>
-
-                        <!-- Stats -->
                         <div class="space-y-6">
                             <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
                                 <span class="text-4xl font-black stat-number tracking-tighter">70</span>
@@ -507,11 +470,10 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </main>
 
-        <!-- Bottom Navigation (Mobile) -->
+        <!-- Bottom Navigation -->
         <nav class="fixed bottom-0 left-0 right-0 bg-[#1e0202] border-t border-amber-900/20 md:hidden z-40">
             <div class="flex justify-around items-center px-4 h-20">
                 <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-500">
@@ -550,116 +512,23 @@
         </nav>
     </div>
 
-    <!-- Weekly Debrief Modal -->
-    <div id="debriefModal" class="fixed inset-0 z-50 hidden">
-        <div class="modal-overlay absolute inset-0" onclick="closeDebriefModal()"></div>
-        <div class="relative min-h-screen flex items-center justify-center p-4">
-            <div class="modal-content rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-up">
-                <!-- Modal Header -->
-                <div class="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#4a0404]">
-                    <div>
-                        <h3 class="font-mission text-lg font-bold text-[#fdfcf0] tracking-wide">Weekly Debrief</h3>
-                        <p class="text-xs text-amber-500/60">How was your week, Missionary?</p>
-                    </div>
-                    <button onclick="closeDebriefModal()" class="text-amber-500/60 hover:text-amber-500 p-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Modal Body -->
-                <div class="p-6 space-y-6">
-                    <!-- Quiet Time Days -->
-                    <div>
-                        <label class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 block">
-                            Days with God this week
-                        </label>
-                        <p class="text-[10px] text-slate-400 mb-3">How many days did you have quiet time?</p>
-                        <div class="flex justify-between gap-2" id="quietTimeDays">
-                            <button type="button" class="day-btn" data-day="0">0</button>
-                            <button type="button" class="day-btn" data-day="1">1</button>
-                            <button type="button" class="day-btn" data-day="2">2</button>
-                            <button type="button" class="day-btn" data-day="3">3</button>
-                            <button type="button" class="day-btn" data-day="4">4</button>
-                            <button type="button" class="day-btn" data-day="5">5</button>
-                            <button type="button" class="day-btn" data-day="6">6</button>
-                            <button type="button" class="day-btn selected" data-day="7">7</button>
-                        </div>
-                    </div>
-
-                    <!-- Huddle Attendance -->
-                    <div>
-                        <label class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 block">
-                            Mission Group Huddle
-                        </label>
-                        <p class="text-[10px] text-slate-400 mb-3">Did you attend your weekly huddle?</p>
-                        <div class="flex gap-3">
-                            <button type="button" class="flex-1 py-3 rounded-xl font-bold text-sm border-2 border-amber-500 bg-amber-500/20 text-amber-400 huddle-btn" data-attended="true">
-                                ✓ Yes, I attended
-                            </button>
-                            <button type="button" class="flex-1 py-3 rounded-xl font-bold text-sm border-2 border-amber-900/50 text-slate-500 huddle-btn" data-attended="false">
-                                ✗ I missed it
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Bold Steps -->
-                    <div>
-                        <label class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 block">
-                            Bold Steps This Week
-                        </label>
-                        <p class="text-[10px] text-slate-400 mb-3">Check what applies:</p>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 cursor-pointer" onclick="toggleBoldStep('sharedGospel')">
-                                <div class="checkbox-custom" id="check-sharedGospel"></div>
-                                <span class="text-sm text-slate-200">I shared the gospel with someone</span>
-                            </div>
-                            <div class="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 cursor-pointer" onclick="toggleBoldStep('recruited')">
-                                <div class="checkbox-custom" id="check-recruited"></div>
-                                <span class="text-sm text-slate-200">I invited someone to join a Mission Group</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Wins or Struggles -->
-                    <div>
-                        <label class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 block">
-                            Wins or Struggles
-                        </label>
-                        <p class="text-[10px] text-slate-400 mb-3">Anything you want to share? (optional)</p>
-                        <textarea id="winsStruggles" rows="3" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" placeholder="Share your wins, struggles, or prayer requests..."></textarea>
-                    </div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="p-6 border-t border-white/10 sticky bottom-0 bg-[#3a0303]">
-                    <button onclick="submitDebrief()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
-                        <span id="submitBtnText">Submit Debrief</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
-                    <p class="text-center text-[10px] text-slate-500 mt-3">Your leader will see this report</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Success Toast -->
     <div id="successToast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-900/90 border border-green-500/50 text-green-200 px-6 py-3 rounded-xl shadow-xl z-50 hidden">
         <div class="flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="font-bold text-sm">Debrief submitted!</span>
+            <span class="font-bold text-sm">Day saved! God is pleased.</span>
         </div>
     </div>
+
+    <!-- Bible Data -->
+    <script src="js/bible-data.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         const firebaseConfig = {
@@ -676,49 +545,43 @@
         const auth = getAuth(app);
         const googleProvider = new GoogleAuthProvider();
 
-        // Make db and auth available globally
+        // Make available globally
         window.db = db;
         window.auth = auth;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
         window.addDoc = addDoc;
         window.collection = collection;
-        window.serverTimestamp = serverTimestamp;
-        window.doc = doc;
-        window.setDoc = setDoc;
-        window.getDoc = getDoc;
         window.query = query;
         window.where = where;
         window.getDocs = getDocs;
-        window.Timestamp = Timestamp;
+        window.orderBy = orderBy;
+        window.limit = limit;
+        window.serverTimestamp = serverTimestamp;
+        window.currentUser = null;
 
         const loading = document.getElementById('loading');
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
-        const googleSignInBtn = document.getElementById('googleSignInBtn');
-        const signOutBtn = document.getElementById('signOutBtn');
-        const errorMessage = document.getElementById('errorMessage');
-
-        // Current user
-        window.currentUser = null;
 
         onAuthStateChanged(auth, async (user) => {
             loading.classList.add('hidden');
             
             if (user) {
                 window.currentUser = user;
-                console.log('User signed in:', user.email);
-                
                 document.getElementById('userName').textContent = user.displayName || user.email;
                 document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
                 document.getElementById('adminPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
                 
                 await ensureUserExists(user);
-                
                 loginScreen.classList.add('hidden');
                 mainApp.classList.remove('hidden');
                 
                 await loadUserData(user.uid);
-                await loadDailyCheckIn(user.uid);
-                updateCheckInDate();
+                initializeDevotion();
+                await loadTodaysEntry(user.uid);
+                await loadWeekProgress(user.uid);
             } else {
                 window.currentUser = null;
                 loginScreen.classList.remove('hidden');
@@ -735,45 +598,24 @@
                     id: user.uid,
                     name: user.displayName || '',
                     email: user.email,
-                    phone: '',
-                    messenger: '',
                     photoURL: user.photoURL || '',
-                    location: {
-                        type: 'philippines',
-                        country: 'Philippines',
-                        city: '',
-                        timezone: 'GMT+8'
-                    },
                     stage: 'seeker',
-                    roles: {
-                        isMissionary: true,
-                        isGroupLeader: false,
-                        isTrainer: false,
-                        isShepherd: false,
-                        isWelcomeTeam: false,
-                        isAdmin: false
-                    },
+                    roles: { isMissionary: true, isGroupLeader: false, isTrainer: false, isShepherd: false, isWelcomeTeam: false, isAdmin: false },
                     groupId: null,
-                    groupRole: 'member',
                     discipledBy: null,
                     discipling: [],
-                    generationDepth: 1,
                     training: {
                         currentPhase: 1,
                         phases: {
-                            phase1: { status: 'enrolled', sessionsAttended: [], exitRequirementMet: false },
+                            phase1: { status: 'enrolled', sessionsAttended: [] },
                             phase2: { status: 'locked' },
                             phase3: { status: 'locked' },
                             phase4: { status: 'locked' }
                         }
                     },
-                    joinedAsSeeker: serverTimestamp(),
-                    status: 'active',
                     createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    source: 'google_signin'
+                    updatedAt: serverTimestamp()
                 });
-                console.log('New user created in database');
             }
         }
 
@@ -781,7 +623,6 @@
             try {
                 const userRef = doc(db, 'goMission_members', uid);
                 const userDoc = await getDoc(userRef);
-                
                 if (userDoc.exists()) {
                     const data = userDoc.data();
                     updateJourneyDisplay(data.stage || 'seeker');
@@ -791,35 +632,19 @@
             }
         }
 
-        // Update journey display with new stages
         function updateJourneyDisplay(stage) {
             const stages = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
-            const stageNames = {
-                'seeker': 'SEEKER',
-                'disciple': 'DISCIPLE', 
-                'disciple-maker': 'DISCIPLE-MAKER',
-                'builder': 'BUILDER',
-                'multiplier': 'MULTIPLIER'
-            };
-            const nextSteps = {
-                'seeker': 'Next: Become a Disciple',
-                'disciple': 'Next: Become a Disciple-Maker',
-                'disciple-maker': 'Next: Become a Builder',
-                'builder': 'Next: Become a Multiplier',
-                'multiplier': 'You are making disciple-making leaders!'
-            };
+            const stageNames = { 'seeker': 'SEEKER', 'disciple': 'DISCIPLE', 'disciple-maker': 'DISCIPLE-MAKER', 'builder': 'BUILDER', 'multiplier': 'MULTIPLIER' };
+            const nextSteps = { 'seeker': 'Next: Become a Disciple', 'disciple': 'Next: Become a Disciple-Maker', 'disciple-maker': 'Next: Become a Builder', 'builder': 'Next: Become a Multiplier', 'multiplier': 'You are making disciple-making leaders!' };
             
             const currentIndex = stages.indexOf(stage);
             const progressPercent = (currentIndex / (stages.length - 1)) * 100;
             
-            // Update progress line
             document.getElementById('journeyProgressLine').style.width = progressPercent + '%';
             
-            // Update dots and labels
             stages.forEach((s, i) => {
                 const dot = document.getElementById('dot-' + s);
                 const label = document.getElementById('label-' + s);
-                
                 if (i <= currentIndex) {
                     dot.classList.add('active');
                     dot.classList.remove('inactive');
@@ -833,86 +658,58 @@
                 }
             });
             
-            // Update current stage display
             document.getElementById('journeyPhaseName').textContent = stageNames[stage];
             document.getElementById('journeyNextStep').textContent = nextSteps[stage];
         }
 
-        // Load daily check-in for today
-        async function loadDailyCheckIn(uid) {
-            const today = getTodayString();
-            const checkInRef = doc(db, 'goMission_dailyCheckins', uid + '_' + today);
-            
-            try {
-                const checkInDoc = await getDoc(checkInRef);
-                if (checkInDoc.exists()) {
-                    const data = checkInDoc.data();
-                    if (data.prayer) document.getElementById('checkbox-prayer').classList.add('checked');
-                    if (data.word) document.getElementById('checkbox-word').classList.add('checked');
-                    if (data.share) document.getElementById('checkbox-share').classList.add('checked');
-                }
-            } catch (error) {
-                console.error('Error loading daily check-in:', error);
-            }
-            
-            // Load week summary
-            await loadWeekSummary(uid);
-        }
-
-        // Load week summary
-        async function loadWeekSummary(uid) {
+        window.loadWeekProgress = async function(uid) {
             const weekDates = getWeekDates();
-            let prayerCount = 0, wordCount = 0, shareCount = 0;
+            let savedDays = 0;
+            const dotsHtml = [];
             
             for (const date of weekDates) {
-                const checkInRef = doc(db, 'goMission_dailyCheckins', uid + '_' + date);
+                const entryRef = doc(db, 'goMission_devotions', uid + '_' + date);
                 try {
-                    const checkInDoc = await getDoc(checkInRef);
-                    if (checkInDoc.exists()) {
-                        const data = checkInDoc.data();
-                        if (data.prayer) prayerCount++;
-                        if (data.word) wordCount++;
-                        if (data.share) shareCount++;
-                    }
-                } catch (error) {
-                    // Ignore errors for individual days
+                    const entryDoc = await getDoc(entryRef);
+                    const isSaved = entryDoc.exists();
+                    if (isSaved) savedDays++;
+                    const isToday = date === getTodayString();
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full ${isSaved ? 'bg-amber-500' : 'bg-amber-900/30'} ${isToday ? 'ring-2 ring-amber-500/50' : ''}"></div>`);
+                } catch (e) {
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full bg-amber-900/30"></div>`);
                 }
             }
             
-            document.getElementById('weekPrayerCount').textContent = prayerCount;
-            document.getElementById('weekWordCount').textContent = wordCount;
-            document.getElementById('weekShareCount').textContent = shareCount;
-        }
+            document.getElementById('weekDots').innerHTML = dotsHtml.join('');
+            document.getElementById('weekCount').textContent = savedDays + '/7 days';
+        };
 
-        // Expose loadWeekSummary globally
-        window.loadWeekSummary = loadWeekSummary;
-
-        googleSignInBtn.addEventListener('click', async () => {
+        document.getElementById('googleSignInBtn').addEventListener('click', async () => {
             try {
-                errorMessage.classList.add('hidden');
+                document.getElementById('errorMessage').classList.add('hidden');
                 await signInWithPopup(auth, googleProvider);
             } catch (error) {
-                console.error('Sign in error:', error);
-                errorMessage.textContent = 'Sign in failed. Please try again.';
-                errorMessage.classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = 'Sign in failed. Please try again.';
+                document.getElementById('errorMessage').classList.remove('hidden');
             }
         });
 
-        signOutBtn.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error('Sign out error:', error);
-            }
+        document.getElementById('signOutBtn').addEventListener('click', async () => {
+            await signOut(auth);
         });
     </script>
 
     <!-- App Logic -->
     <script>
-        // Helper functions
+        // State
+        let currentLanguage = 'tl';
+        let highlightedVerses = [];
+        let shareWithGroup = false;
+        let currentReading = null;
+
+        // Helpers
         function getTodayString() {
-            const today = new Date();
-            return today.toISOString().split('T')[0];
+            return new Date().toISOString().split('T')[0];
         }
 
         function getWeekDates() {
@@ -921,7 +718,6 @@
             const dayOfWeek = today.getDay();
             const monday = new Date(today);
             monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            
             for (let i = 0; i < 7; i++) {
                 const date = new Date(monday);
                 date.setDate(monday.getDate() + i);
@@ -930,166 +726,164 @@
             return dates;
         }
 
-        function getWeekOfDate() {
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            return monday.toISOString().split('T')[0];
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
         }
 
-        function updateCheckInDate() {
-            const today = new Date();
-            const options = { weekday: 'long', month: 'short', day: 'numeric' };
-            document.getElementById('checkInDate').textContent = today.toLocaleDateString('en-US', options);
+        // Initialize devotion
+        function initializeDevotion() {
+            document.getElementById('devotionDate').textContent = formatDate(new Date());
+            currentReading = window.getTodaysReading();
+            loadBiblePassage();
+            document.getElementById('reflectionQuestion').textContent = '"' + window.getTodaysQuestion() + '"';
         }
 
-        // Toggle daily check
-        async function toggleDailyCheck(type) {
-            if (!window.currentUser) return;
+        // Load Bible passage
+        function loadBiblePassage() {
+            if (!currentReading) return;
             
-            const checkbox = document.getElementById('checkbox-' + type);
-            const isChecked = checkbox.classList.contains('checked');
+            const book = window.bibleData[currentReading.book];
+            const chapter = book.chapters[currentReading.chapter];
+            const [startVerse, endVerse] = currentReading.verses.split('-').map(Number);
             
-            if (isChecked) {
-                checkbox.classList.remove('checked');
+            // Update title
+            const bookName = currentLanguage === 'tl' ? book.name.tl : book.name.en;
+            document.getElementById('passageTitle').textContent = `📖 ${bookName} ${currentReading.chapter}:${currentReading.verses}`;
+            
+            // Build verses HTML
+            let html = '';
+            for (let v = startVerse; v <= endVerse; v++) {
+                const verse = chapter.verses[v];
+                if (verse) {
+                    const text = currentLanguage === 'tl' ? verse.tl : verse.en;
+                    const isHighlighted = highlightedVerses.includes(v);
+                    html += `<span class="verse ${isHighlighted ? 'highlighted' : ''}" data-verse="${v}" onclick="toggleHighlight(${v})">
+                        <span class="verse-num">${v}</span>${text}
+                    </span> `;
+                }
+            }
+            document.getElementById('bibleText').innerHTML = html;
+            
+            // Load commentary
+            loadCommentary(chapter, currentReading.verses);
+        }
+
+        // Load commentary
+        function loadCommentary(chapter, verseRange) {
+            let commentaryHtml = '';
+            for (const range in chapter.commentary) {
+                const comm = chapter.commentary[range];
+                const text = currentLanguage === 'tl' ? comm.tl : comm.en;
+                commentaryHtml += `<p class="mb-3"><strong class="text-amber-500">v${range}:</strong> ${text}</p>`;
+            }
+            document.getElementById('commentaryContent').innerHTML = commentaryHtml || '<p>No commentary available.</p>';
+        }
+
+        // Toggle verse highlight
+        window.toggleHighlight = function(verseNum) {
+            const index = highlightedVerses.indexOf(verseNum);
+            if (index > -1) {
+                highlightedVerses.splice(index, 1);
             } else {
-                checkbox.classList.add('checked');
+                highlightedVerses.push(verseNum);
             }
-            
-            // Save to Firestore
-            const today = getTodayString();
-            const checkInRef = window.doc(window.db, 'goMission_dailyCheckins', window.currentUser.uid + '_' + today);
-            
-            try {
-                const checkInDoc = await window.getDoc(checkInRef);
-                const existingData = checkInDoc.exists() ? checkInDoc.data() : {};
-                
-                await window.setDoc(checkInRef, {
-                    ...existingData,
-                    oddi: window.currentUser.uid,
-                    date: today,
-                    [type]: !isChecked,
-                    updatedAt: window.serverTimestamp()
-                }, { merge: true });
-                
-                // Update week summary
-                await window.loadWeekSummary(window.currentUser.uid);
-            } catch (error) {
-                console.error('Error saving daily check-in:', error);
-            }
-        }
-
-        // Make toggleDailyCheck global
-        window.toggleDailyCheck = toggleDailyCheck;
-
-        // Debrief Modal State
-        let debriefState = {
-            daysWithGod: 7,
-            attendedHuddle: true,
-            sharedGospel: false,
-            recruited: false
+            loadBiblePassage();
         };
 
-        function openDebriefModal() {
-            document.getElementById('debriefModal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeDebriefModal() {
-            document.getElementById('debriefModal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        // Day selector
-        document.getElementById('quietTimeDays').addEventListener('click', (e) => {
-            if (e.target.classList.contains('day-btn')) {
-                document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected'));
-                e.target.classList.add('selected');
-                debriefState.daysWithGod = parseInt(e.target.dataset.day);
-            }
-        });
-
-        // Huddle attendance
-        document.querySelectorAll('.huddle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.huddle-btn').forEach(b => {
-                    b.classList.remove('border-amber-500', 'bg-amber-500/20', 'text-amber-400');
-                    b.classList.add('border-amber-900/50', 'text-slate-500');
-                });
-                btn.classList.remove('border-amber-900/50', 'text-slate-500');
-                btn.classList.add('border-amber-500', 'bg-amber-500/20', 'text-amber-400');
-                debriefState.attendedHuddle = btn.dataset.attended === 'true';
+        // Set language
+        window.setLanguage = function(lang) {
+            currentLanguage = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
             });
-        });
+            loadBiblePassage();
+        };
 
-        // Bold steps
-        function toggleBoldStep(type) {
-            const checkbox = document.getElementById('check-' + type);
-            checkbox.classList.toggle('checked');
-            debriefState[type] = checkbox.classList.contains('checked');
-        }
+        // Toggle commentary
+        window.toggleCommentary = function() {
+            const content = document.getElementById('commentaryContent');
+            const arrow = document.getElementById('commentaryArrow');
+            content.classList.toggle('hidden');
+            arrow.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        };
 
-        window.toggleBoldStep = toggleBoldStep;
+        // Toggle share
+        window.toggleShare = function() {
+            shareWithGroup = !shareWithGroup;
+            document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
+        };
 
-        // Submit debrief
-        async function submitDebrief() {
-            if (!window.currentUser) return;
-            
-            const submitBtn = document.getElementById('submitBtnText');
-            submitBtn.textContent = 'Submitting...';
+        // Load today's entry if exists
+        window.loadTodaysEntry = async function(uid) {
+            const today = getTodayString();
+            const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
             
             try {
-                const weekOf = getWeekOfDate();
-                const debriefData = {
-                    memberId: window.currentUser.uid,
-                    memberName: window.currentUser.displayName || '',
-                    memberEmail: window.currentUser.email,
-                    weekOf: weekOf,
-                    daysWithGod: debriefState.daysWithGod,
-                    attendedHuddle: debriefState.attendedHuddle,
-                    sharedGospel: debriefState.sharedGospel,
-                    recruited: debriefState.recruited,
-                    winsOrStruggles: document.getElementById('winsStruggles').value || '',
-                    submittedAt: window.serverTimestamp()
-                };
-                
-                await window.addDoc(window.collection(window.db, 'goMission_debriefs'), debriefData);
-                
-                // Show success
-                closeDebriefModal();
-                showSuccessToast();
-                
-                // Reset form
-                document.getElementById('winsStruggles').value = '';
-                debriefState = { daysWithGod: 7, attendedHuddle: true, sharedGospel: false, recruited: false };
-                document.querySelectorAll('.day-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                    if (btn.dataset.day === '7') btn.classList.add('selected');
-                });
-                document.getElementById('check-sharedGospel').classList.remove('checked');
-                document.getElementById('check-recruited').classList.remove('checked');
-                
+                const entryDoc = await window.getDoc(entryRef);
+                if (entryDoc.exists()) {
+                    const data = entryDoc.data();
+                    highlightedVerses = data.highlightedVerses || [];
+                    document.getElementById('reflectionAnswer').value = data.reflection || '';
+                    shareWithGroup = data.sharedWithGroup || false;
+                    document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
+                    loadBiblePassage();
+                    
+                    document.getElementById('saveBtnText').textContent = '✓ Saved - Update';
+                }
             } catch (error) {
-                console.error('Error submitting debrief:', error);
-                alert('Error submitting debrief. Please try again.');
+                console.error('Error loading entry:', error);
+            }
+        };
+
+        // Save this day
+        window.saveThisDay = async function() {
+            if (!window.currentUser) return;
+            
+            const reflection = document.getElementById('reflectionAnswer').value.trim();
+            if (!reflection) {
+                alert('Please write your reflection before saving.');
+                return;
             }
             
-            submitBtn.textContent = 'Submit Debrief';
-        }
-
-        function showSuccessToast() {
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 3000);
-        }
-
-        // Make functions global
-        window.openDebriefModal = openDebriefModal;
-        window.closeDebriefModal = closeDebriefModal;
-        window.submitDebrief = submitDebrief;
+            const btn = document.getElementById('saveDevotionBtn');
+            const btnText = document.getElementById('saveBtnText');
+            btn.disabled = true;
+            btnText.textContent = 'Saving...';
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                await window.setDoc(entryRef, {
+                    oddi: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    passage: currentReading,
+                    highlightedVerses: highlightedVerses,
+                    question: window.getTodaysQuestion(),
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: currentLanguage,
+                    savedAt: window.serverTimestamp()
+                });
+                
+                // Show success
+                document.getElementById('successToast').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('successToast').classList.add('hidden');
+                }, 3000);
+                
+                btnText.textContent = '✓ Saved - Update';
+                await window.loadWeekProgress(window.currentUser.uid);
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Error saving. Please try again.');
+                btnText.textContent = '💾 Save This Day';
+            }
+            
+            btn.disabled = false;
+        };
     </script>
 </body>
 </html>
