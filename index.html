@@ -215,7 +215,56 @@
         <!-- Dashboard Content -->
         <main class="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
             
-            <!-- My Day with the Lord Card -->
+            <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) -->
+            <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="text-amber-500">★</span>
+                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Journey</h2>
+                </div>
+                
+                <div class="relative px-2 mb-8">
+                    <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
+                    <div id="journeyProgressLine" class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 0%"></div>
+                    
+                    <div class="flex justify-between relative z-10">
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-seeker"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">Seeker</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-disciple"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple">Disciple</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-disciple-maker"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple-maker">Disciple-<br>Maker</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-builder"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-builder">Builder</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-multiplier"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-multiplier">Multiplier</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-black/40 rounded-xl p-6 text-center border border-white/5">
+                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.25em] mb-1">CURRENT STAGE</p>
+                    <p class="text-3xl font-black text-white uppercase tracking-tight" id="journeyPhaseName">SEEKER</p>
+                    <div class="h-[1px] bg-white/5 w-2/3 mx-auto my-4"></div>
+                    <p class="text-sm text-slate-300 italic" id="journeyNextStep">Next: Become a Disciple</p>
+                    <button class="mission-button w-full mt-6 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        View Next Steps
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. MY DAY WITH THE LORD CARD (SECOND) -->
             <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up">
                 <!-- Header -->
                 <div class="p-4 border-b border-white/10 flex items-center justify-between">
@@ -286,55 +335,6 @@
                         </div>
                         <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- My Journey Card -->
-            <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
-                <div class="flex items-center gap-2 mb-6">
-                    <span class="text-amber-500">★</span>
-                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Journey</h2>
-                </div>
-                
-                <div class="relative px-2 mb-8">
-                    <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
-                    <div id="journeyProgressLine" class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 0%"></div>
-                    
-                    <div class="flex justify-between relative z-10">
-                        <div class="flex flex-col items-center">
-                            <div class="progress-dot" id="dot-seeker"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">Seeker</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="progress-dot" id="dot-disciple"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple">Disciple</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="progress-dot" id="dot-disciple-maker"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple-maker">Disciple-<br>Maker</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="progress-dot" id="dot-builder"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-builder">Builder</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="progress-dot" id="dot-multiplier"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-multiplier">Multiplier</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-black/40 rounded-xl p-6 text-center border border-white/5">
-                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.25em] mb-1">CURRENT STAGE</p>
-                    <p class="text-3xl font-black text-white uppercase tracking-tight" id="journeyPhaseName">SEEKER</p>
-                    <div class="h-[1px] bg-white/5 w-2/3 mx-auto my-4"></div>
-                    <p class="text-sm text-slate-300 italic" id="journeyNextStep">Next: Become a Disciple</p>
-                    <button class="mission-button w-full mt-6 py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
-                        View Next Steps
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </button>
                 </div>
             </div>
 
