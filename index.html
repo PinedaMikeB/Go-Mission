@@ -931,9 +931,8 @@
         document.addEventListener('languageChanged', function(e) {
             currentLanguage = e.detail.lang;
             loadBiblePassage();
-            if (window.currentUserStage) {
-                updateJourneyDisplay(window.currentUserStage);
-            }
+            // Always update journey display on language change (default to 'seeker' if stage not loaded yet)
+            updateJourneyDisplay(window.currentUserStage || 'seeker');
         });
 
         // Toggle commentary
