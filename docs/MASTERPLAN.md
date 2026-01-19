@@ -321,17 +321,18 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → LEADER → MULTIPLIER
 - [ ] Discussion Guides viewer
 - [ ] Dynamic data loading
 
-### Phase 3.5: Bible & Commentary System ✅ COMPLETE
+### Phase 3.5: Bible & Commentary System 🔄 IN PROGRESS
 - [x] Download Bible data (EN BSB + TL ADB 1905)
 - [x] Download Tyndale Open Study Notes (16,732 notes)
 - [x] Convert Tyndale XML to JSON
-- [x] Build hybrid AI enhancement system (Tyndale + Claude Sonnet)
+- [x] Build hybrid AI enhancement system (Tyndale + Gemini 2.5 Pro)
 - [x] Design 4-section Quick Insights format
 - [x] Test bilingual output (EN + TL)
-- [ ] Generate Quick Insights for John (priority)
+- [x] Cleanup unused commentary (Matthew Henry, John Gill)
+- [~] Generate Quick Insights for John (30% complete)
 - [ ] Generate Quick Insights for all 66 books
 - [ ] Update bible-reader.js to show Quick Insights
-- [ ] Add "Read More" for full Tyndale note
+- [ ] Add "Dig Deeper" button for full Tyndale note
 
 ### Phase 4: Leader Features
 - [ ] Mission Group management
@@ -377,8 +378,11 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → LEADER → MULTIPLIER
 | 2026-01-19 | Use Tyndale Open Study Notes | Modern, accessible, CC licensed (vs Matthew Henry - too old) |
 | 2026-01-19 | Hybrid commentary (Tyndale + AI) | Tyndale for depth, AI for simplification |
 | 2026-01-19 | 4-section Quick Insights | Understanding, Living It Out, See God's Love, Reflection |
-| 2026-01-19 | Option C: On-Demand Tyndale | Simple view default, "Read More" shows full Tyndale |
+| 2026-01-19 | Option C: On-Demand Tyndale | Simple view default, "Dig Deeper" shows full Tyndale |
 | 2026-01-19 | Focus on ACTION | Doers of the Word, not just hearers (James 1:22) |
+| 2026-01-19 | Use Gemini 2.5 Pro | Better quality than GPT-4o-mini, cost-effective |
+| 2026-01-19 | Don't store Tyndale in quick-insights | Use tyndale-json files directly for "Dig Deeper" |
+| 2026-01-19 | Remove Matthew Henry & John Gill | Only Tyndale needed, cleaner data structure |
 
 ---
 

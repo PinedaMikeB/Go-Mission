@@ -10,7 +10,50 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v0.5.0] - 2026-01-19 ⭐ CURRENT
+## [v0.5.1] - 2026-01-19 ⭐ CURRENT
+
+### 🔥 Quick Insights Generation with Gemini 2.5 Pro
+
+**Summary:** Generating Quick Insights for John using Tyndale + Gemini 2.5 Pro hybrid approach.
+
+**Changes:**
+
+1. **Switched to Gemini 2.5 Pro**
+   - Better quality output than GPT-4o-mini
+   - Cost-effective (~$0.50-1.00 for John)
+   - Excellent bilingual (EN + Tagalog) support
+
+2. **Updated 4-Section Format**
+   - Section 1: Understanding This Verse (Unawain ang Talata)
+   - Section 2: Living It Out (Isabuhay Ito)
+   - Section 3: See God's Love (Makita ang Pag-ibig ng Diyos)
+   - Section 4: Reflection Question (Pagnilayan at Gawin)
+
+3. **Cleanup - Removed Unused Commentary**
+   - Deleted `/commentary/matthew-henry/` (66 books)
+   - Deleted `/commentary/matthew-henry-tl/` (12 books)
+   - Deleted `/commentary/john-gill/` (66 books)
+   - Only Tyndale remains (for "Dig Deeper" feature)
+
+4. **Optimized Data Structure**
+   - Tyndale NOT duplicated in quick-insights JSON
+   - "Dig Deeper" will load from tyndale-json directly
+   - Smaller file sizes, no redundancy
+
+**Generation Status:**
+- Book: John (JHN)
+- Progress: ~30% (260/878 verses)
+- Output: `/modules/bible/data/quick-insights/JHN.json`
+
+**Files Changed:**
+- `/scripts/generate-quick-insights.js` - Updated to use Gemini 2.5 Pro
+- `/modules/bible/data/quick-insights/JHN.json` - Being generated
+
+**Git Commit:** TBD
+
+---
+
+## [v0.5.0] - 2026-01-19
 
 ### 🔥 Quick Insights Commentary System (Hybrid Tyndale + AI)
 

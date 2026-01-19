@@ -374,10 +374,16 @@ const i18n = {
    * Update toggle button UI
    */
   updateToggleUI() {
-    // Update all language toggle buttons
-    document.querySelectorAll('.lang-btn').forEach(btn => {
+    // Update all language toggle buttons (including global header toggle)
+    document.querySelectorAll('.lang-btn, .lang-toggle-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.lang === this.currentLang);
     });
+    
+    // Update specific global toggle buttons by ID
+    const tlBtn = document.getElementById('globalLangTL');
+    const enBtn = document.getElementById('globalLangEN');
+    if (tlBtn) tlBtn.classList.toggle('active', this.currentLang === 'tl');
+    if (enBtn) enBtn.classList.toggle('active', this.currentLang === 'en');
     
     // Update checkbox-style toggle
     const toggle = document.getElementById('language-toggle');

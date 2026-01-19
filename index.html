@@ -146,6 +146,22 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.2); border-radius: 10px; }
 
         .stat-number { color: var(--mission-gold); }
+
+        /* Global Language Toggle */
+        .lang-toggle-btn {
+            color: rgba(251, 191, 36, 0.5);
+            background: transparent;
+            cursor: pointer;
+            border: none;
+        }
+        .lang-toggle-btn.active {
+            color: var(--mission-gold);
+            background: rgba(251, 191, 36, 0.15);
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+        }
+        .lang-toggle-btn:hover:not(.active) {
+            color: rgba(251, 191, 36, 0.8);
+        }
     </style>
 </head>
 <body class="bg-mission-sunset min-h-screen">
@@ -201,6 +217,15 @@
                     <span class="font-mission font-bold text-[#fdfcf0] tracking-widest uppercase">Go Mission</span>
                 </div>
                 <div class="flex items-center gap-3">
+                    <!-- Global Language Toggle -->
+                    <div class="flex items-center gap-1 bg-[#2a0505] rounded-full px-1 py-1 border border-amber-900/30">
+                        <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn px-2 py-1 rounded-full text-xs font-medium transition-all" data-lang="tl">
+                            🇵🇭 TL
+                        </button>
+                        <button id="globalLangEN" onclick="i18n.setLang('en')" class="lang-toggle-btn px-2 py-1 rounded-full text-xs font-medium transition-all" data-lang="en">
+                            🇺🇸 EN
+                        </button>
+                    </div>
                     <span id="userName" class="text-sm text-slate-300 hidden sm:block"></span>
                     <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-amber-500/30" src="" alt="">
                     <button id="signOutBtn" class="text-amber-500/60 hover:text-amber-500 transition-colors" title="Sign out">
@@ -277,13 +302,9 @@
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">🔥</span>
                         <div>
-                            <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight">My Day with the Lord</h2>
+                            <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
                             <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
                         </div>
-                    </div>
-                    <div class="lang-toggle">
-                        <span class="lang-btn active" data-lang="tl" onclick="setLanguage('tl')">🇵🇭 TL</span>
-                        <span class="lang-btn" data-lang="en" onclick="setLanguage('en')">🇺🇸 EN</span>
                     </div>
                 </div>
 

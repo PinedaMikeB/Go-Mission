@@ -128,9 +128,8 @@ Based on the Tyndale note above, create a warm 4-section insight:
 
 async function runTest() {
   const testVerses = [
-    { bookId: 'JHN', chapter: '3', verse: '16' },
-    { bookId: 'MAT', chapter: '28', verse: '19' },
-    { bookId: 'JHN', chapter: '1', verse: '1' }
+    { bookId: 'JHN', chapter: '1', verse: '1' },
+    { bookId: 'MAT', chapter: '28', verse: '19' }
   ];
 
   console.log('='.repeat(60));

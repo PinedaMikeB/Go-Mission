@@ -13,30 +13,41 @@
 
 ## Current Session (2026-01-19)
 - **MODULE**: Bible Commentary System (Quick Insights)
-- **STATUS**: ✅ Tyndale downloaded, AI hybrid test successful
+- **STATUS**: ✅ Global Language Toggle complete, 🔄 Quick Insights generation partial (12/21 chapters for John)
 
 ---
 
-## 🎯 Quick Insights System - READY TO BUILD
+## ✅ Completed This Session
 
-### What We Built This Session
+### 1. Global Language Toggle (Header)
+- Added TL/EN toggle buttons to main header
+- Works across all screens
+- Persists to localStorage and Firestore
+- Updated `modules/core/i18n.js` with global toggle support
 
-1. **Downloaded Tyndale Open Study Notes**
-   - Source: https://tyndaleopenresources.com/
-   - License: Creative Commons Attribution-ShareAlike 4.0
-   - Format: Converted from XML → JSON
-   - Location: `/modules/bible/data/commentary/tyndale-json/`
-   - **16,732 study notes** covering all 66 books!
+### 2. Quick Insights System Setup
+- Tyndale + Gemini 2.5 Pro hybrid approach
+- 4-section bilingual format (EN + TL)
+- Generator script ready: `scripts/generate-quick-insights.js`
 
-2. **Tested Hybrid Approach** (Tyndale + AI Enhancement)
-   - Tyndale provides scholarly base
-   - Claude Sonnet transforms into simple 4-section format
-   - Tested on John 3:16, Matthew 28:19, John 1:1
-   - Results: Excellent quality, warm tone, practical application
+### 3. Commentary Cleanup
+- Removed unused commentary folders:
+  - `commentary/matthew-henry/` (66 books)
+  - `commentary/matthew-henry-tl/` (12 books)
+  - `commentary/john-gill/` (66 books)
+- Only Tyndale remains for "Dig Deeper" feature
 
-### The 4-Section Format (Option C - On-Demand)
+---
 
-**Default View (AI-Generated):**
+## 🔄 Quick Insights Generation Status
+
+### Current Progress
+- **Book**: John (JHN)
+- **Model**: Gemini 2.5 Pro
+- **Status**: 12/21 chapters complete (~57%)
+- **Output**: `/modules/bible/data/quick-insights/JHN.json`
+
+### 4-Section Format
 | Section | English | Tagalog |
 |---------|---------|---------|
 | 1 | Understanding This Verse | Unawain ang Talata |
@@ -44,153 +55,70 @@
 | 3 | See God's Love | Makita ang Pag-ibig ng Diyos |
 | 4 | Reflection Question | Pagnilayan at Gawin |
 
-**"Read More" Button → Shows original Tyndale note**
-
-### Key Design Decisions
-- Tyndale is NOT shown directly (too scholarly)
-- AI simplifies Tyndale into Section 1
-- Sections 2-4 are AI-generated for application
-- "Read More" reveals full Tyndale for deep study
-- Uses Claude Sonnet (cost-efficient)
-- Bilingual: English + Tagalog
+### To Resume Generation
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+GEMINI_API_KEY="AIzaSyBHPcItpVuFMrdXfGfscBkRTMKLFSyNLjA" node scripts/generate-quick-insights.js
+```
 
 ---
 
-## 📁 Key Files Created This Session
+## 📁 Key Files
 
 ### Commentary Data
 ```
-/modules/bible/data/commentary/
-├── tyndale/                    # Original XML download
-│   └── Tyndale Open Study Notes/
-│       ├── StudyNotes.xml      # 10MB, 16,732 notes
-│       ├── BookIntros.xml
-│       ├── Profiles.xml
-│       └── ThemeNotes.xml
-├── tyndale-json/               # Converted to JSON
-│   ├── GEN.json
-│   ├── JHN.json
-│   ├── MAT.json
-│   └── ... (66 books)
-└── matthew-henry/              # Previous (not using)
+/modules/bible/data/
+├── commentary/
+│   └── tyndale-json/           # 66 books - Tyndale Study Notes (for "Dig Deeper")
+├── quick-insights/
+│   └── JHN.json                # 🔄 12/21 chapters complete
+├── en/                         # English Bible (BSB) - 66 books
+└── tl/                         # Tagalog Bible (ADB 1905) - 66 books
+```
+
+### Core Files
+```
+/modules/core/
+└── i18n.js                     # ✅ Updated with global toggle support
+
+/index.html                     # ✅ Global language toggle in header
 ```
 
 ### Scripts
 ```
 /scripts/
-├── convert-tyndale-to-json.js  # XML → JSON converter
-├── test-quick-insights.js      # Hybrid test (Tyndale + AI)
-├── generate-quick-insights.js  # Full generation script (needs update)
-└── download-tyndale.js         # Attempted API download (failed, used direct)
+├── generate-quick-insights.js  # Gemini 2.5 Pro generator
+├── test-quick-insights.js      # Test script
+└── convert-tyndale-to-json.js  # XML → JSON converter
 ```
 
 ---
 
-## 🔄 Previous Session Work (Still Active)
+## 📋 Next Steps
 
-### Bible Reader System (v0.4.0)
-- **BiblePicker** (`/modules/bible/bible-picker.js`) - Book/chapter selection
-- **BibleReader** (`/modules/bible/bible-reader.js`) - Chapter display, highlighting
-- **Bible Data** - EN (BSB) + TL (ADB 1905) for all 66 books
-- **Commentary** - Matthew Henry EN (all books), TL translation (5 books)
-
-### User Flow
-```
-1. User opens app → BibleReader loads saved progress
-2. User reads chapter → highlights verses that speak to them
-3. Commentary auto-loads for highlighted verses
-4. User writes reflection → saves devotion
-5. "Read More" → shows full Tyndale note (NEW)
-```
-
----
-
-## 📋 Next Steps (Priority Order)
-
-### Immediate (Next Session)
-1. **Update `generate-quick-insights.js`** to use Tyndale + AI hybrid
-2. **Generate Quick Insights for John** (21 chapters, ~880 verses)
-3. **Update `bible-reader.js`** to show Quick Insights format
-4. **Add "Read More" button** to reveal full Tyndale
+### Immediate
+1. [ ] Resume John generation (chapters 13-21)
+2. [ ] Update `bible-reader.js` to display Quick Insights
+3. [ ] Add "Dig Deeper" button to show Tyndale
 
 ### Then
-5. **Generate for all 66 books** (run in background)
-6. **Translate insights to Tagalog** (already in generation)
-7. **Test full flow** in browser
-8. **Commit and deploy**
+4. [ ] Generate for remaining 65 books
+5. [ ] Test full flow in browser
+6. [ ] Deploy
 
 ---
 
-## 💰 API Costs (Estimated)
+## 💰 API Costs
 
-| Book | Verses | Est. Cost (Sonnet) |
-|------|--------|-------------------|
-| John | ~880 | ~$2-3 |
-| All 66 books | ~31,000 | ~$50-80 |
-
-Using user's Anthropic API key (provided in session).
+| Provider | Model | John (878 verses) | All 66 Books |
+|----------|-------|-------------------|--------------|
+| Gemini | 2.5 Pro | ~$0.50-1.00 | ~$15-30 |
 
 ---
 
-## 🗂️ Data Structure
+## 🔑 API Keys
 
-### Quick Insights JSON Format
-```javascript
-// /modules/bible/data/quick-insights/JHN.json
-{
-  "id": "JHN",
-  "name": "John",
-  "chapters": {
-    "3": {
-      "verses": {
-        "16": {
-          "en": {
-            "understanding": "God's love extends to everyone...",
-            "livingItOut": "You don't have to earn salvation...",
-            "godsLove": "This is the ultimate proof of love...",
-            "reflection": "How has God's unconditional love..."
-          },
-          "tl": {
-            "understanding": "Ang pag-ibig ng Diyos...",
-            "livingItOut": "Hindi mo kailangang...",
-            "godsLove": "Ito ang pinakamatinding patunay...",
-            "reflection": "Paano binago ng walang..."
-          },
-          "tyndale": "The truth that 'God loved the world'..."
-        }
-      }
-    }
-  }
-}
-```
-
-### Firestore Collections
-```javascript
-// User's Bible progress
-goMission_members/{uid}.bibleProgress = {
-  book: "JHN",
-  chapter: 3,
-  lastReadAt: timestamp
-}
-
-// User's devotion entries
-goMission_devotions/{uid}_{date} = {
-  book: "JHN",
-  chapter: 3,
-  highlightedVerses: [16, 17],
-  reflection: "...",
-  sharedWithGroup: true
-}
-```
-
----
-
-## 🔑 API Key
-
-User's Anthropic API key is required for Quick Insights generation.
-Set environment variable: `ANTHROPIC_API_KEY=your-key-here`
-
-⚠️ **Note**: Never commit API keys to git.
+- **Gemini**: `AIzaSyBHPcItpVuFMrdXfGfscBkRTMKLFSyNLjA`
 
 ---
 
@@ -198,17 +126,15 @@ Set environment variable: `ANTHROPIC_API_KEY=your-key-here`
 
 - `/docs/MASTERPLAN.md` - Full project vision and roadmap
 - `/CHANGELOG.md` - Version history and rollback instructions
-- `/modules/bible/README.md` - Bible module API documentation
 
 ---
 
 ## Session End Checklist
 - [x] Update HANDOFF.md ✅
-- [x] Update CHANGELOG.md ✅
-- [x] Update MASTERPLAN.md ✅
-- [ ] Commit with descriptive message
-- [ ] Push to GitHub
+- [x] Commit changes
+- [x] Push to GitHub
+- [ ] Update CHANGELOG.md (if version bump needed)
 
 ---
 
-*Last Updated: January 19, 2026*
+*Last Updated: January 19, 2026 - 8:25 PM PHT*
