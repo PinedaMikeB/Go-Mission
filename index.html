@@ -695,7 +695,7 @@
             }
         }
 
-        function updateJourneyDisplay(stage) {
+        window.updateJourneyDisplay = function(stage) {
             const stages = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
             
             // Stage content in English and Tagalog
@@ -929,10 +929,11 @@
         
         // Listen for language changes from i18n module
         document.addEventListener('languageChanged', function(e) {
+            console.log('[Language Changed]', e.detail.lang, 'Stage:', window.currentUserStage);
             currentLanguage = e.detail.lang;
             loadBiblePassage();
-            // Always update journey display on language change (default to 'seeker' if stage not loaded yet)
-            updateJourneyDisplay(window.currentUserStage || 'seeker');
+            // Always update journey display on language change
+            window.updateJourneyDisplay(window.currentUserStage || 'seeker');
         });
 
         // Toggle commentary
