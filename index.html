@@ -743,7 +743,8 @@
             };
             
             const content = stageContent[stage] || stageContent['seeker'];
-            const lang = currentLanguage || 'tl';
+            // Use i18n.getLang() for reliable language detection
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : (currentLanguage || 'tl');
             
             const currentIndex = stages.indexOf(stage);
             const progressPercent = (currentIndex / (stages.length - 1)) * 100;
