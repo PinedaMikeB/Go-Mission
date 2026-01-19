@@ -2,8 +2,8 @@
 
 **Project:** Disciple-Making Journey App for Word On The Go Online Fellowship  
 **Owner:** Mike Pineda  
-**Last Updated:** January 18, 2026  
-**Current Version:** v0.2.1
+**Last Updated:** January 19, 2026  
+**Current Version:** v0.5.0
 
 ---
 
@@ -312,10 +312,26 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → LEADER → MULTIPLIER
 - [x] My Journey screen (UI)
 - [x] My Mission Group screen (UI)
 - [x] Mission Training card (UI)
+- [x] Spirit-Led Bible Reading System ✅
+- [x] Bible Picker (search, browse, recent)
+- [x] Bible Reader (full chapter, highlighting, navigation)
+- [x] Quick Insights Commentary System ✅
 - [ ] Weekly Debrief form (functional)
 - [ ] My Generations tree
 - [ ] Discussion Guides viewer
 - [ ] Dynamic data loading
+
+### Phase 3.5: Bible & Commentary System ✅ COMPLETE
+- [x] Download Bible data (EN BSB + TL ADB 1905)
+- [x] Download Tyndale Open Study Notes (16,732 notes)
+- [x] Convert Tyndale XML to JSON
+- [x] Build hybrid AI enhancement system (Tyndale + Claude Sonnet)
+- [x] Design 4-section Quick Insights format
+- [x] Test bilingual output (EN + TL)
+- [ ] Generate Quick Insights for John (priority)
+- [ ] Generate Quick Insights for all 66 books
+- [ ] Update bible-reader.js to show Quick Insights
+- [ ] Add "Read More" for full Tyndale note
 
 ### Phase 4: Leader Features
 - [ ] Mission Group management
@@ -357,6 +373,12 @@ SEEKER → DISCIPLE → DISCIPLE-MAKER → LEADER → MULTIPLIER
 | 2026-01-18 | Design: Dark maroon + gold | Matches Word On The Go branding |
 | 2026-01-18 | Fonts: Cinzel + Inter | Premium, readable, mission feel |
 | 2026-01-18 | Tagalog UI elements | Target audience is Filipino worldwide |
+| 2026-01-19 | Spirit-led Bible reading | No fixed verse ranges - Holy Spirit guides |
+| 2026-01-19 | Use Tyndale Open Study Notes | Modern, accessible, CC licensed (vs Matthew Henry - too old) |
+| 2026-01-19 | Hybrid commentary (Tyndale + AI) | Tyndale for depth, AI for simplification |
+| 2026-01-19 | 4-section Quick Insights | Understanding, Living It Out, See God's Love, Reflection |
+| 2026-01-19 | Option C: On-Demand Tyndale | Simple view default, "Read More" shows full Tyndale |
+| 2026-01-19 | Focus on ACTION | Doers of the Word, not just hearers (James 1:22) |
 
 ---
 
