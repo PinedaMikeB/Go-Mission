@@ -1,123 +1,114 @@
-# HANDOFF - GO MISSION
+# Go Mission - AI Handoff Document
 
-**Last Updated:** January 19, 2026 - 12:45 AM  
-**Current Version:** v0.4.0  
-**Site Status:** ✅ LIVE at https://gomission.netlify.app
+> ⚡ READ THIS FIRST - Everything you need in 50 lines
 
----
+## Quick Context
+- **App**: Disciple-making journey for Filipino seekers worldwide
+- **Live**: https://gomission.netlify.app
+- **Repo**: /Volumes/Wotg Drive Mike/GitHub/Go-Mission
+- **Firebase**: shaped-by-grace (Firestore + Auth)
+- **Stack**: HTML/JS + Tailwind CDN + Firebase
 
-## 🔗 QUICK LINKS
+## Current Session
+- **MODULE**: bible
+- **TASK**: Spirit-Led Bible Reading System
+- **STATUS**: ✅ Complete - BiblePicker + BibleReader built
 
-| Resource | URL |
-|----------|-----|
-| Local Repo | `/Volumes/Wotg Drive Mike/GitHub/Go-Mission` |
-| GitHub Repo | https://github.com/PinedaMikeB/Go-Mission |
-| Live Site | https://gomission.netlify.app |
-| Firebase Console | https://console.firebase.google.com/project/shaped-by-grace |
+## Translation Background Process
+- **PID**: 6138
+- **Progress**: 3 books ✅ (1CH, 1CO, 1JN), 1KI 🔄 in progress
+- **Script**: translate-commentary-tagalog.js
 
----
+## Session Accomplishments
 
-## 📍 CURRENT STATE
+### ✅ Bible Picker Module (`/modules/bible/bible-picker.js`)
+- Progressive search (bilingual: EN/TL)
+- Book browser with OT/NT tabs
+- Chapter selector grid
+- Recent readings (last 5)
+- Search aliases for fuzzy matching
 
-### What's Complete in v0.4.0
-- ✅ **"My Day with the Lord"** - Full Bible devotion experience
-- ✅ **Tagalog + English Bible** - Toggle between languages
-- ✅ **Highlight verses** - Tap to highlight (gold)
-- ✅ **Commentary** - "Help me understand" expandable section
-- ✅ **Rotating reflection questions** - Weekly category rotation
-- ✅ **Share toggle** - Option to share with group or keep private
-- ✅ **"Save This Day"** - Saves to Firestore
-- ✅ **Week progress dots** - Shows 7 days, highlights saved days
-- ✅ Journey stages updated: SEEKER → DISCIPLE → DISCIPLE-MAKER → BUILDER → MULTIPLIER
+### ✅ Bible Reader Module (`/modules/bible/bible-reader.js`)
+- Full chapter display (Spirit-led, no verse limits)
+- Tap verses to highlight (multiple allowed)
+- Auto-load commentary for highlighted verses
+- Progress tracking (Chapter X of Y)
+- Prev/Next navigation
+- Resume from last position
+- Firestore + localStorage persistence
 
-### Reflection Question Rotation System
-| Week | Category | Focus |
-|------|----------|-------|
-| Week 1 | 🟢 Primary | Obedience to the Word |
-| Week 2 | 🔵 Love-Motivated | Obedience rooted in love |
-| Week 3 | 🟡 Mission | Multiplication mindset |
-| Week 4 | 🟣 Simple | Low friction, accessible |
+### ✅ Updated index.html
+- New Scripture Reading UI with:
+  - Clickable passage title (opens BiblePicker)
+  - Chapter progress indicator
+  - Prev/Next navigation
+  - Commentary always visible (shows when verses highlighted)
+- Integrated all new modules
+- Updated saveThisDay() to use BibleReader data
 
-### What's Not Yet Built
-- ❌ More Bible chapters (currently only John 1)
-- ❌ Reading plan admin panel
-- ❌ Leader view of disciple devotions
-- ❌ Dynamic group assignment
-- ❌ Mission Training content for all phases
-- ❌ My Generations tree
-
----
-
-## 🔨 WHAT WAS ACCOMPLISHED THIS SESSION
-
-**Session:** January 18-19, 2026
-
-### Major Feature: "My Day with the Lord"
-
-Replaced the old "Today's Check-In" checkbox system with a relational Bible devotion experience:
-
-1. **Bible Reader**
-   - Tagalog (Ang Bibliya 1905) as default
-   - English (KJV) toggle
-   - Tap verses to highlight
-   - "Help me understand" commentary
-
-2. **Single Reflection Question**
-   - Rotates weekly by category
-   - Questions focus on obedience, love, mission
-   - Reduces friction (1 question, not 4)
-
-3. **Privacy Message**
-   - "Your Conversation Time reflections help your leader walk with you. This is not a score — it's a way to care for one another."
-
-4. **Firestore Structure**
-   - Collection: `goMission_devotions`
-   - Document ID: `{userId}_{date}`
-   - Stores: passage, highlights, question, reflection, shared flag
-
----
-
-## 🗂️ KEY FILES
-
-| File | Purpose |
-|------|---------|
-| `index.html` | Main app - 890 lines |
-| `js/bible-data.js` | Tagalog & English Bible data + questions |
-| `MASTERPLAN.md` | Full roadmap |
-| `HANDOFF.md` | This file |
-| `CHANGELOG.md` | Version history |
-
----
-
-## 📋 NEXT STEPS
-
-### Immediate
-1. **Add more Bible chapters** - John 2-21, then other books
-2. **Leader dashboard** - See who saved devotions today
-3. **Reading plan controls** - Admin sets daily passage
-
-### Later
-4. **Mission Training content** - All 4 phases detailed
-5. **My Generations tree** - Multiplication visualization
-6. **Group chat** - Real messaging
-
----
-
-## 🧠 CONTEXT FOR NEW SESSION
-
+## New User Flow
 ```
-Read my dev standards from https://github.com/PinedaMikeB/dev-standards
-
-Then use Desktop Commander to read HANDOFF.md, MASTERPLAN.md, and CHANGELOG.md 
-from /Volumes/Wotg Drive Mike/GitHub/Go-Mission
-
-Current project: Go Mission - Disciple-making journey app
-Live site: https://gomission.netlify.app
-Current version: v0.4.0 (My Day with the Lord - Bible + Journal)
-
-Next task: Add more Bible chapters or build leader dashboard
+1. User opens app → BibleReader loads from saved progress (or JHN 1 for new users)
+2. User taps passage title → BiblePicker opens
+3. User searches/browses → selects book → selects chapter
+4. Full chapter loads → User reads, guided by Holy Spirit
+5. User taps verse(s) that speak to them → verse highlights
+6. Commentary auto-loads for highlighted verse(s)
+7. User writes reflection → saves devotion
+8. Next visit → resumes exactly where they left off
 ```
 
----
+## Data Structure
+```javascript
+// Firestore: goMission_members/{uid}.bibleProgress
+{
+  book: "JHN",
+  chapter: 3,
+  lastReadAt: timestamp,
+  booksProgress: {
+    "JHN": { lastChapter: 3, chaptersRead: [1, 2, 3] }
+  }
+}
 
-*This file is overwritten each session. For history, see CHANGELOG.md.*
+// Firestore: goMission_devotions/{uid}_{date}
+{
+  book: "JHN",
+  chapter: 3,
+  highlightedVerses: [16, 17],
+  reflection: "God reminded me...",
+  sharedWithGroup: true
+}
+```
+
+## Files Created/Modified This Session
+1. `/modules/bible/bible-picker.js` - Created (539 lines)
+2. `/modules/bible/bible-reader.js` - Created (507 lines)
+3. `/index.html` - Updated (new Scripture UI, module integration)
+4. `/HANDOFF.md` - Updated
+
+## Previous Session Files (Still Active)
+- `/modules/core/i18n.js` - Language toggle ✅
+- `/modules/bible/bible-loader.js` - Bible data loader ✅
+- `/js/bible-data.js` - Reading plan data ✅
+
+## Translation Status
+| Book | Status |
+|------|--------|
+| 1CH | ✅ Complete (45 verses) |
+| 1CO | ✅ Complete (45 verses) |
+| 1JN | ✅ Complete (18 verses) |
+| 1KI | 🔄 In Progress |
+| Remaining 61 books | ⏳ Queued |
+
+## Next Steps
+1. 📋 Test the full flow in browser
+2. 📋 Add loading states/spinners
+3. 📋 Handle offline scenarios (IndexedDB)
+4. 📋 Add book progress visualization
+5. 📋 Style refinements
+
+## Session End Checklist
+- [x] Update this HANDOFF.md
+- [ ] Update CHANGELOG.md if version changed
+- [x] Update module README if needed
+- [ ] Commit with descriptive message

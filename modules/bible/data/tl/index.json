@@ -1,0 +1,340 @@
+{
+  "translation": "ANG_DATING_BIBLIA_1905",
+  "name": "Ang Dating Biblia (1905)",
+  "language": "tl",
+  "languageName": "Tagalog",
+  "license": "Public Domain",
+  "source": "GetBible API",
+  "books": [
+    {
+      "id": "GEN",
+      "name": "Genesis",
+      "nameEn": "Genesis"
+    },
+    {
+      "id": "EXO",
+      "name": "Exodo",
+      "nameEn": "Exodus"
+    },
+    {
+      "id": "LEV",
+      "name": "Levitico",
+      "nameEn": "Leviticus"
+    },
+    {
+      "id": "NUM",
+      "name": "Mga Bilang",
+      "nameEn": "Numbers"
+    },
+    {
+      "id": "DEU",
+      "name": "Deuteronomio",
+      "nameEn": "Deuteronomy"
+    },
+    {
+      "id": "JOS",
+      "name": "Josue",
+      "nameEn": "Joshua"
+    },
+    {
+      "id": "JDG",
+      "name": "Mga Hukom",
+      "nameEn": "Judges"
+    },
+    {
+      "id": "RUT",
+      "name": "Ruth",
+      "nameEn": "Ruth"
+    },
+    {
+      "id": "1SA",
+      "name": "1 Samuel",
+      "nameEn": "1 Samuel"
+    },
+    {
+      "id": "2SA",
+      "name": "2 Samuel",
+      "nameEn": "2 Samuel"
+    },
+    {
+      "id": "1KI",
+      "name": "1 Mga Hari",
+      "nameEn": "1 Kings"
+    },
+    {
+      "id": "2KI",
+      "name": "2 Mga Hari",
+      "nameEn": "2 Kings"
+    },
+    {
+      "id": "1CH",
+      "name": "1 Mga Cronica",
+      "nameEn": "1 Chronicles"
+    },
+    {
+      "id": "2CH",
+      "name": "2 Mga Cronica",
+      "nameEn": "2 Chronicles"
+    },
+    {
+      "id": "EZR",
+      "name": "Ezra",
+      "nameEn": "Ezra"
+    },
+    {
+      "id": "NEH",
+      "name": "Nehemias",
+      "nameEn": "Nehemiah"
+    },
+    {
+      "id": "EST",
+      "name": "Ester",
+      "nameEn": "Esther"
+    },
+    {
+      "id": "JOB",
+      "name": "Job",
+      "nameEn": "Job"
+    },
+    {
+      "id": "PSA",
+      "name": "Mga Awit",
+      "nameEn": "Psalms"
+    },
+    {
+      "id": "PRO",
+      "name": "Mga Kawikaan",
+      "nameEn": "Proverbs"
+    },
+    {
+      "id": "ECC",
+      "name": "Mangangaral",
+      "nameEn": "Ecclesiastes"
+    },
+    {
+      "id": "SNG",
+      "name": "Awit ni Solomon",
+      "nameEn": "Song of Solomon"
+    },
+    {
+      "id": "ISA",
+      "name": "Isaias",
+      "nameEn": "Isaiah"
+    },
+    {
+      "id": "JER",
+      "name": "Jeremias",
+      "nameEn": "Jeremiah"
+    },
+    {
+      "id": "LAM",
+      "name": "Mga Panaghoy",
+      "nameEn": "Lamentations"
+    },
+    {
+      "id": "EZK",
+      "name": "Ezekiel",
+      "nameEn": "Ezekiel"
+    },
+    {
+      "id": "DAN",
+      "name": "Daniel",
+      "nameEn": "Daniel"
+    },
+    {
+      "id": "HOS",
+      "name": "Oseas",
+      "nameEn": "Hosea"
+    },
+    {
+      "id": "JOL",
+      "name": "Joel",
+      "nameEn": "Joel"
+    },
+    {
+      "id": "AMO",
+      "name": "Amos",
+      "nameEn": "Amos"
+    },
+    {
+      "id": "OBA",
+      "name": "Obadias",
+      "nameEn": "Obadiah"
+    },
+    {
+      "id": "JON",
+      "name": "Jonas",
+      "nameEn": "Jonah"
+    },
+    {
+      "id": "MIC",
+      "name": "Mikas",
+      "nameEn": "Micah"
+    },
+    {
+      "id": "NAM",
+      "name": "Nahum",
+      "nameEn": "Nahum"
+    },
+    {
+      "id": "HAB",
+      "name": "Habacuc",
+      "nameEn": "Habakkuk"
+    },
+    {
+      "id": "ZEP",
+      "name": "Zefanias",
+      "nameEn": "Zephaniah"
+    },
+    {
+      "id": "HAG",
+      "name": "Hagai",
+      "nameEn": "Haggai"
+    },
+    {
+      "id": "ZEC",
+      "name": "Zacarias",
+      "nameEn": "Zechariah"
+    },
+    {
+      "id": "MAL",
+      "name": "Malachias",
+      "nameEn": "Malachi"
+    },
+    {
+      "id": "MAT",
+      "name": "Mateo",
+      "nameEn": "Matthew"
+    },
+    {
+      "id": "MRK",
+      "name": "Marcos",
+      "nameEn": "Mark"
+    },
+    {
+      "id": "LUK",
+      "name": "Lucas",
+      "nameEn": "Luke"
+    },
+    {
+      "id": "JHN",
+      "name": "Juan",
+      "nameEn": "John"
+    },
+    {
+      "id": "ACT",
+      "name": "Mga Gawa",
+      "nameEn": "Acts"
+    },
+    {
+      "id": "ROM",
+      "name": "Mga Romano",
+      "nameEn": "Romans"
+    },
+    {
+      "id": "1CO",
+      "name": "1 Mga Corinto",
+      "nameEn": "1 Corinthians"
+    },
+    {
+      "id": "2CO",
+      "name": "2 Mga Corinto",
+      "nameEn": "2 Corinthians"
+    },
+    {
+      "id": "GAL",
+      "name": "Mga Taga-Galacia",
+      "nameEn": "Galatians"
+    },
+    {
+      "id": "EPH",
+      "name": "Mga Efeso",
+      "nameEn": "Ephesians"
+    },
+    {
+      "id": "PHP",
+      "name": "Mga Taga-Filipos",
+      "nameEn": "Philippians"
+    },
+    {
+      "id": "COL",
+      "name": "Mga Taga-Colosas",
+      "nameEn": "Colossians"
+    },
+    {
+      "id": "1TH",
+      "name": "1 Mga Taga-Tesalonica",
+      "nameEn": "1 Thessalonians"
+    },
+    {
+      "id": "2TH",
+      "name": "2 Mga Taga-Tesalonica",
+      "nameEn": "2 Thessalonians"
+    },
+    {
+      "id": "1TI",
+      "name": "1 Timoteo",
+      "nameEn": "1 Timothy"
+    },
+    {
+      "id": "2TI",
+      "name": "2 Timoteo",
+      "nameEn": "2 Timothy"
+    },
+    {
+      "id": "TIT",
+      "name": "Tito",
+      "nameEn": "Titus"
+    },
+    {
+      "id": "PHM",
+      "name": "Filemon",
+      "nameEn": "Philemon"
+    },
+    {
+      "id": "HEB",
+      "name": "Mga Hebreo",
+      "nameEn": "Hebrews"
+    },
+    {
+      "id": "JAS",
+      "name": "Santiago",
+      "nameEn": "James"
+    },
+    {
+      "id": "1PE",
+      "name": "1 Pedro",
+      "nameEn": "1 Peter"
+    },
+    {
+      "id": "2PE",
+      "name": "2 Pedro",
+      "nameEn": "2 Peter"
+    },
+    {
+      "id": "1JN",
+      "name": "1 Juan",
+      "nameEn": "1 John"
+    },
+    {
+      "id": "2JN",
+      "name": "2 Juan",
+      "nameEn": "2 John"
+    },
+    {
+      "id": "3JN",
+      "name": "3 Juan",
+      "nameEn": "3 John"
+    },
+    {
+      "id": "JUD",
+      "name": "Judas",
+      "nameEn": "Jude"
+    },
+    {
+      "id": "REV",
+      "name": "Pahayag",
+      "nameEn": "Revelation"
+    }
+  ]
+}

@@ -47,6 +47,291 @@
       "id": "1SA",
       "name": "1 Samuel",
       "chapters": {}
+    },
+    "2SA": {
+      "id": "2SA",
+      "name": "2 Samuel",
+      "chapters": {}
+    },
+    "1KI": {
+      "id": "1KI",
+      "name": "1 Mga Hari",
+      "chapters": {}
+    },
+    "2KI": {
+      "id": "2KI",
+      "name": "2 Mga Hari",
+      "chapters": {}
+    },
+    "1CH": {
+      "id": "1CH",
+      "name": "1 Mga Cronica",
+      "chapters": {}
+    },
+    "2CH": {
+      "id": "2CH",
+      "name": "2 Mga Cronica",
+      "chapters": {}
+    },
+    "EZR": {
+      "id": "EZR",
+      "name": "Ezra",
+      "chapters": {}
+    },
+    "NEH": {
+      "id": "NEH",
+      "name": "Nehemias",
+      "chapters": {}
+    },
+    "EST": {
+      "id": "EST",
+      "name": "Esther",
+      "chapters": {}
+    },
+    "JOB": {
+      "id": "JOB",
+      "name": "Job",
+      "chapters": {}
+    },
+    "PSA": {
+      "id": "PSA",
+      "name": "Mga Awit",
+      "chapters": {}
+    },
+    "PRO": {
+      "id": "PRO",
+      "name": "Mga Kawikaan",
+      "chapters": {}
+    },
+    "ECC": {
+      "id": "ECC",
+      "name": "Eclesiastes",
+      "chapters": {}
+    },
+    "SNG": {
+      "id": "SNG",
+      "name": "Awit ni Solomon",
+      "chapters": {}
+    },
+    "ISA": {
+      "id": "ISA",
+      "name": "Isaias",
+      "chapters": {}
+    },
+    "JER": {
+      "id": "JER",
+      "name": "Jeremias",
+      "chapters": {}
+    },
+    "LAM": {
+      "id": "LAM",
+      "name": "Mga Panaghoy",
+      "chapters": {}
+    },
+    "EZK": {
+      "id": "EZK",
+      "name": "Ezekiel",
+      "chapters": {}
+    },
+    "DAN": {
+      "id": "DAN",
+      "name": "Daniel",
+      "chapters": {}
+    },
+    "HOS": {
+      "id": "HOS",
+      "name": "Oseas",
+      "chapters": {}
+    },
+    "JOL": {
+      "id": "JOL",
+      "name": "Joel",
+      "chapters": {}
+    },
+    "AMO": {
+      "id": "AMO",
+      "name": "Amos",
+      "chapters": {}
+    },
+    "OBA": {
+      "id": "OBA",
+      "name": "Obadias",
+      "chapters": {}
+    },
+    "JON": {
+      "id": "JON",
+      "name": "Jonas",
+      "chapters": {}
+    },
+    "MIC": {
+      "id": "MIC",
+      "name": "Mikas",
+      "chapters": {}
+    },
+    "NAM": {
+      "id": "NAM",
+      "name": "Nahum",
+      "chapters": {}
+    },
+    "HAB": {
+      "id": "HAB",
+      "name": "Habakuk",
+      "chapters": {}
+    },
+    "ZEP": {
+      "id": "ZEP",
+      "name": "Zefanias",
+      "chapters": {}
+    },
+    "HAG": {
+      "id": "HAG",
+      "name": "Hagai",
+      "chapters": {}
+    },
+    "ZEC": {
+      "id": "ZEC",
+      "name": "Zacarias",
+      "chapters": {}
+    },
+    "MAL": {
+      "id": "MAL",
+      "name": "Malakias",
+      "chapters": {}
+    },
+    "MAT": {
+      "id": "MAT",
+      "name": "Mateo",
+      "chapters": {}
+    },
+    "MRK": {
+      "id": "MRK",
+      "name": "Marcos",
+      "chapters": {}
+    },
+    "LUK": {
+      "id": "LUK",
+      "name": "Lucas",
+      "chapters": {}
+    },
+    "JHN": {
+      "id": "JHN",
+      "name": "Juan",
+      "chapters": {}
+    },
+    "ACT": {
+      "id": "ACT",
+      "name": "Mga Gawa",
+      "chapters": {}
+    },
+    "ROM": {
+      "id": "ROM",
+      "name": "Mga Taga-Roma",
+      "chapters": {}
+    },
+    "1CO": {
+      "id": "1CO",
+      "name": "1 Mga Taga-Corinto",
+      "chapters": {}
+    },
+    "2CO": {
+      "id": "2CO",
+      "name": "2 Mga Taga-Corinto",
+      "chapters": {}
+    },
+    "GAL": {
+      "id": "GAL",
+      "name": "Mga Taga-Galacia",
+      "chapters": {}
+    },
+    "EPH": {
+      "id": "EPH",
+      "name": "Mga Taga-Efeso",
+      "chapters": {}
+    },
+    "PHP": {
+      "id": "PHP",
+      "name": "Mga Taga-Filipos",
+      "chapters": {}
+    },
+    "COL": {
+      "id": "COL",
+      "name": "Mga Taga-Colosas",
+      "chapters": {}
+    },
+    "1TH": {
+      "id": "1TH",
+      "name": "1 Mga Taga-Tesalonica",
+      "chapters": {}
+    },
+    "2TH": {
+      "id": "2TH",
+      "name": "2 Mga Taga-Tesalonica",
+      "chapters": {}
+    },
+    "1TI": {
+      "id": "1TI",
+      "name": "1 Timoteo",
+      "chapters": {}
+    },
+    "2TI": {
+      "id": "2TI",
+      "name": "2 Timoteo",
+      "chapters": {}
+    },
+    "TIT": {
+      "id": "TIT",
+      "name": "Tito",
+      "chapters": {}
+    },
+    "PHM": {
+      "id": "PHM",
+      "name": "Filemon",
+      "chapters": {}
+    },
+    "HEB": {
+      "id": "HEB",
+      "name": "Mga Hebreo",
+      "chapters": {}
+    },
+    "JAS": {
+      "id": "JAS",
+      "name": "Santiago",
+      "chapters": {}
+    },
+    "1PE": {
+      "id": "1PE",
+      "name": "1 Pedro",
+      "chapters": {}
+    },
+    "2PE": {
+      "id": "2PE",
+      "name": "2 Pedro",
+      "chapters": {}
+    },
+    "1JN": {
+      "id": "1JN",
+      "name": "1 Juan",
+      "chapters": {}
+    },
+    "2JN": {
+      "id": "2JN",
+      "name": "2 Juan",
+      "chapters": {}
+    },
+    "3JN": {
+      "id": "3JN",
+      "name": "3 Juan",
+      "chapters": {}
+    },
+    "JUD": {
+      "id": "JUD",
+      "name": "Judas",
+      "chapters": {}
+    },
+    "REV": {
+      "id": "REV",
+      "name": "Pahayag",
+      "chapters": {}
     }
   }
 }

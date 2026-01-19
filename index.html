@@ -289,24 +289,53 @@
 
                 <!-- Scripture Reading -->
                 <div class="p-4 border-b border-white/10">
+                    <!-- Passage Header with Progress -->
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" id="passageTitle">📖 Juan 1:1-14</h3>
+                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" id="passageTitle">
+                            <button onclick="BiblePicker.open()" class="flex items-center gap-2 hover:text-amber-400 transition-colors">
+                                <span>📖 Juan 1</span>
+                                <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                        </h3>
+                        <div id="chapterProgress" class="text-[10px] text-slate-500 flex items-center gap-1">
+                            <!-- Progress rendered by BibleReader -->
+                        </div>
+                    </div>
+                    
+                    <!-- Chapter Navigation -->
+                    <div id="chapterNavigation" class="flex justify-between items-center py-2 mb-3 border-y border-white/5">
+                        <button onclick="BibleReader.prevChapter()" class="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                            <span>Prev</span>
+                        </button>
                         <span class="text-[10px] text-slate-500">Tap verses to highlight</span>
+                        <button onclick="BibleReader.nextChapter()" class="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400">
+                            <span>Next</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                        <!-- Bible verses loaded here -->
+                    
+                    <!-- Bible Text -->
+                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed max-h-80 overflow-y-auto custom-scrollbar pr-2">
+                        <!-- Bible verses loaded by BibleReader -->
+                        <p class="text-slate-500 text-center py-8">Loading...</p>
                     </div>
-                    <!-- Commentary Button -->
-                    <button id="commentaryBtn" onclick="toggleCommentary()" class="mt-4 text-xs text-amber-500/70 hover:text-amber-500 flex items-center gap-2 transition-colors">
-                        <span>💡</span>
-                        <span>Help me understand</span>
-                        <svg class="w-3 h-3 transition-transform" id="commentaryArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-                    <!-- Commentary Content (Hidden by default) -->
-                    <div id="commentaryContent" class="hidden mt-3 p-4 bg-black/40 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed">
-                        <!-- Commentary loaded here -->
+                    
+                    <!-- Commentary Section (auto-shows when verses highlighted) -->
+                    <div id="commentarySection" class="mt-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-amber-500">💡</span>
+                            <span class="text-xs font-bold text-amber-500 uppercase tracking-wider">Commentary</span>
+                        </div>
+                        <div id="commentaryContent" class="p-4 bg-black/40 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed">
+                            <p class="text-slate-500 italic">Tap verses above to see commentary</p>
+                        </div>
                     </div>
                 </div>
 
@@ -528,7 +557,13 @@
         </div>
     </div>
 
-    <!-- Bible Data -->
+    <!-- Core Modules -->
+    <script src="modules/core/i18n.js"></script>
+    <script src="modules/bible/bible-loader.js"></script>
+    <script src="modules/bible/bible-picker.js"></script>
+    <script src="modules/bible/bible-reader.js"></script>
+    
+    <!-- Bible Data & Reading Plan -->
     <script src="js/bible-data.js"></script>
 
     <!-- Firebase SDK -->
@@ -784,8 +819,8 @@
 
     <!-- App Logic -->
     <script>
-        // State
-        let currentLanguage = 'tl';
+        // State - use i18n module for language if available
+        let currentLanguage = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
         let highlightedVerses = [];
         let shareWithGroup = false;
         let currentReading = null;
@@ -813,78 +848,71 @@
             return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
         }
 
-        // Initialize devotion
+        // Initialize devotion - now uses BibleReader module
         function initializeDevotion() {
             document.getElementById('devotionDate').textContent = formatDate(new Date());
-            currentReading = window.getTodaysReading();
-            loadBiblePassage();
+            
+            // Set reflection question
             document.getElementById('reflectionQuestion').textContent = '"' + window.getTodaysQuestion() + '"';
+            
+            // BibleReader will auto-initialize and load from saved progress
+            // No need to call loadBiblePassage() - BibleReader handles it
         }
 
-        // Load Bible passage
+        // Legacy loadBiblePassage - now handled by BibleReader module
         function loadBiblePassage() {
-            if (!currentReading) return;
-            
-            const book = window.bibleData[currentReading.book];
-            const chapter = book.chapters[currentReading.chapter];
-            const [startVerse, endVerse] = currentReading.verses.split('-').map(Number);
-            
-            // Update title
-            const bookName = currentLanguage === 'tl' ? book.name.tl : book.name.en;
-            document.getElementById('passageTitle').textContent = `📖 ${bookName} ${currentReading.chapter}:${currentReading.verses}`;
-            
-            // Build verses HTML
-            let html = '';
-            for (let v = startVerse; v <= endVerse; v++) {
-                const verse = chapter.verses[v];
-                if (verse) {
-                    const text = currentLanguage === 'tl' ? verse.tl : verse.en;
-                    const isHighlighted = highlightedVerses.includes(v);
-                    html += `<span class="verse ${isHighlighted ? 'highlighted' : ''}" data-verse="${v}" onclick="toggleHighlight(${v})">
-                        <span class="verse-num">${v}</span>${text}
-                    </span> `;
-                }
+            // This function is now handled by BibleReader.loadChapter()
+            // Keeping for backward compatibility
+            if (typeof BibleReader !== 'undefined' && BibleReader.currentBook) {
+                BibleReader.loadChapter(BibleReader.currentBook, BibleReader.currentChapter);
             }
-            document.getElementById('bibleText').innerHTML = html;
-            
-            // Load commentary
-            loadCommentary(chapter, currentReading.verses);
         }
 
-        // Load commentary
+        // Legacy loadCommentary - now handled by BibleReader module
         function loadCommentary(chapter, verseRange) {
-            let commentaryHtml = '';
-            for (const range in chapter.commentary) {
-                const comm = chapter.commentary[range];
-                const text = currentLanguage === 'tl' ? comm.tl : comm.en;
-                commentaryHtml += `<p class="mb-3"><strong class="text-amber-500">v${range}:</strong> ${text}</p>`;
-            }
-            document.getElementById('commentaryContent').innerHTML = commentaryHtml || '<p>No commentary available.</p>';
+            // This function is now handled by BibleReader.loadCommentary()
+            // Keeping for backward compatibility
         }
 
-        // Toggle verse highlight
+        // Legacy toggleHighlight - now use BibleReader.toggleHighlight()
         window.toggleHighlight = function(verseNum) {
-            const index = highlightedVerses.indexOf(verseNum);
-            if (index > -1) {
-                highlightedVerses.splice(index, 1);
-            } else {
-                highlightedVerses.push(verseNum);
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.toggleHighlight(verseNum);
             }
-            loadBiblePassage();
         };
 
-        // Set language
+        // Legacy toggleCommentary - commentary now always visible
+        window.toggleCommentary = function() {
+            // Commentary is now always visible when verses are highlighted
+            // This function kept for backward compatibility
+        };
+
+        // Set language - use i18n module
         window.setLanguage = function(lang) {
-            currentLanguage = lang;
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
+            // Use i18n module if available
+            if (typeof i18n !== 'undefined') {
+                i18n.setLang(lang);
+            } else {
+                currentLanguage = lang;
+                document.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.lang === lang);
+                });
+            }
             loadBiblePassage();
             // Also update Journey card language
             if (window.currentUserStage) {
                 updateJourneyDisplay(window.currentUserStage);
             }
         };
+        
+        // Listen for language changes from i18n module
+        document.addEventListener('languageChanged', function(e) {
+            currentLanguage = e.detail.lang;
+            loadBiblePassage();
+            if (window.currentUserStage) {
+                updateJourneyDisplay(window.currentUserStage);
+            }
+        });
 
         // Toggle commentary
         window.toggleCommentary = function() {
@@ -941,16 +969,22 @@
                 const today = getTodayString();
                 const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
                 
+                // Get reading info from BibleReader
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
                 await window.setDoc(entryRef, {
                     oddi: window.currentUser.uid,
                     userName: window.currentUser.displayName || '',
                     date: today,
-                    passage: currentReading,
-                    highlightedVerses: highlightedVerses,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
                     question: window.getTodaysQuestion(),
                     reflection: reflection,
                     sharedWithGroup: shareWithGroup,
-                    language: currentLanguage,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
                     savedAt: window.serverTimestamp()
                 });
                 
