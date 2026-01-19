@@ -382,7 +382,7 @@ const BibleReader = {
   },
 
   /**
-   * Render commentary
+   * Render commentary - shows preview with expand option
    */
   renderCommentary() {
     if (!this.elements.commentaryContent) return;
@@ -399,27 +399,57 @@ const BibleReader = {
     
     let html = '';
     
-    // Show chapter introduction if highlighting verse 1
-    if (this.highlightedVerses.includes(1) && this.commentaryData.introduction) {
-      html += `
-        <div class="mb-4 pb-4 border-b border-amber-900/20">
-          <p class="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-2">Chapter Introduction</p>
-          <p class="text-sm text-slate-300 leading-relaxed">${this.commentaryData.introduction}</p>
-        </div>
-      `;
-    }
-    
-    // Show verse commentaries
+    // Show verse commentaries with preview
     for (const [verseRef, text] of Object.entries(this.commentaryData.verses)) {
+      const previewLength = 150; // characters for preview
+      const needsTruncate = text.length > previewLength;
+      const previewText = needsTruncate ? text.substring(0, previewLength).trim() + '...' : text;
+      const uniqueId = `comm-${verseRef.replace(/[^a-z0-9]/gi, '-')}`;
+      
       html += `
         <div class="mb-3">
           <p class="text-amber-500 font-bold text-xs mb-1">v.${verseRef}</p>
-          <p class="text-sm text-slate-300 leading-relaxed">${text}</p>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            <span id="${uniqueId}-preview">${previewText}</span>
+            <span id="${uniqueId}-full" class="hidden">${text}</span>
+            ${needsTruncate ? `
+              <button onclick="BibleReader.toggleCommentaryExpand('${uniqueId}')" 
+                      id="${uniqueId}-btn"
+                      class="text-amber-500 hover:text-amber-400 ml-1 text-xs font-medium">
+                Read more
+              </button>
+            ` : ''}
+          </p>
         </div>
       `;
     }
     
     this.elements.commentaryContent.innerHTML = html;
+  },
+
+  /**
+   * Toggle commentary expand/collapse
+   */
+  toggleCommentaryExpand(uniqueId) {
+    const preview = document.getElementById(`${uniqueId}-preview`);
+    const full = document.getElementById(`${uniqueId}-full`);
+    const btn = document.getElementById(`${uniqueId}-btn`);
+    
+    if (preview && full && btn) {
+      const isExpanded = full.classList.contains('hidden');
+      
+      if (isExpanded) {
+        // Expand
+        preview.classList.add('hidden');
+        full.classList.remove('hidden');
+        btn.textContent = 'Show less';
+      } else {
+        // Collapse
+        preview.classList.remove('hidden');
+        full.classList.add('hidden');
+        btn.textContent = 'Read more';
+      }
+    }
   },
 
   /**
