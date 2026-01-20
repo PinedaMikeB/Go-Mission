@@ -9,21 +9,55 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
+            /* Core brand colors */
             --mission-red-deep: #2a0505;
             --mission-red-mid: #4a0404;
             --mission-red-bright: #800000;
             --mission-gold: #fbbf24;
             --mission-gold-dim: #92400e;
             --mission-text: #fdfcf0;
+            
+            /* Dark Theme (default) */
+            --bg-color: #1a0505;
+            --bg-secondary: #1e0202;
+            --text-color: #fdfcf0;
+            --text-muted: #94a3b8;
+            --card-bg: linear-gradient(135deg, rgba(74, 4, 4, 0.95) 0%, rgba(30, 2, 2, 0.98) 100%);
+            --card-bg-solid: #2a0505;
+            --card-border: rgba(251, 191, 36, 0.15);
+            --nav-bg: #1e0202;
+            --nav-border: rgba(251, 191, 36, 0.1);
+            --nav-inactive: rgba(251, 191, 36, 0.4);
+            --input-bg: rgba(0, 0, 0, 0.4);
+            --input-border: rgba(255, 255, 255, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.6);
+        }
+
+        /* Light Mode Theme */
+        .light-mode {
+            --bg-color: #fcfaf2;
+            --bg-secondary: #ffffff;
+            --text-color: #2a0505;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --card-bg-solid: #ffffff;
+            --card-border: rgba(42, 5, 5, 0.1);
+            --nav-bg: #ffffff;
+            --nav-border: rgba(42, 5, 5, 0.1);
+            --nav-inactive: rgba(42, 5, 5, 0.4);
+            --input-bg: rgba(42, 5, 5, 0.05);
+            --input-border: rgba(42, 5, 5, 0.15);
+            --shadow-color: rgba(42, 5, 5, 0.1);
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--mission-red-deep);
-            color: var(--mission-text);
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .font-mission { font-family: 'Cinzel', serif; }
@@ -35,12 +69,25 @@
             background-position: center;
             background-attachment: fixed;
         }
+        
+        .light-mode .bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(252, 250, 242, 0.85), rgba(252, 250, 242, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
 
         .mission-card {
-            background: linear-gradient(135deg, rgba(74, 4, 4, 0.95) 0%, rgba(30, 2, 2, 0.98) 100%);
-            border: 1px solid rgba(251, 191, 36, 0.15);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 40px var(--shadow-color);
             backdrop-filter: blur(8px);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .light-mode .mission-card {
+            backdrop-filter: none;
         }
 
         .mission-button {
@@ -162,12 +209,42 @@
         .lang-toggle-btn:hover:not(.active) {
             color: rgba(251, 191, 36, 0.8);
         }
+        
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            color: var(--mission-gold);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-btn:hover {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: rgba(251, 191, 36, 0.4);
+        }
+        .theme-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        .light-mode .theme-toggle-btn {
+            background: rgba(42, 5, 5, 0.05);
+            border-color: rgba(42, 5, 5, 0.15);
+            color: var(--mission-red-mid);
+        }
+        .light-mode .theme-toggle-btn:hover {
+            background: rgba(42, 5, 5, 0.1);
+        }
     </style>
 </head>
 <body class="bg-mission-sunset min-h-screen">
     
     <!-- Loading State -->
-    <div id="loading" class="fixed inset-0 bg-[#2a0505] flex items-center justify-center z-50">
+    <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
         <div class="text-center animate-fade-up">
             <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p class="text-amber-200/60 text-xs font-bold uppercase tracking-widest">Loading...</p>
@@ -178,11 +255,11 @@
     <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
         <div class="max-w-md w-full animate-fade-up">
             <div class="text-center mb-12">
-                <h1 class="font-mission text-2xl font-bold text-[#fdfcf0] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
+                <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
                 <div class="flex justify-center gap-1 text-amber-500 mb-8">
                     <span>★</span><span>★</span><span>★</span>
                 </div>
-                <h2 class="text-3xl font-black text-[#fdfcf0] leading-tight drop-shadow-xl">
+                <h2 class="text-3xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
                     Making Disciple-<br/>Making Leaders
                 </h2>
             </div>
@@ -210,15 +287,15 @@
     <!-- Main App -->
     <div id="mainApp" class="hidden">
         <!-- Header -->
-        <header class="bg-[#1e0202] border-b border-amber-900/20 sticky top-0 z-40">
+        <header class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] sticky top-0 z-40 transition-colors duration-300">
             <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="text-amber-500">★</span>
-                    <span class="font-mission font-bold text-[#fdfcf0] tracking-widest uppercase">Go Mission</span>
+                    <span class="font-mission font-bold text-[var(--text-color)] tracking-widest uppercase">Go Mission</span>
                 </div>
                 <div class="flex items-center gap-3">
                     <!-- Global Language Toggle -->
-                    <div class="flex items-center gap-1 bg-[#2a0505] rounded-full px-1 py-1 border border-amber-900/30">
+                    <div class="flex items-center gap-1 bg-[var(--input-bg)] rounded-full px-1 py-1 border border-[var(--card-border)]">
                         <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn px-2 py-1 rounded-full text-xs font-medium transition-all" data-lang="tl">
                             🇵🇭 TL
                         </button>
@@ -226,6 +303,17 @@
                             🇺🇸 EN
                         </button>
                     </div>
+                    <!-- Theme Toggle -->
+                    <button id="themeToggleBtn" onclick="Theme.toggle()" class="theme-toggle-btn" title="Toggle dark/light mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <!-- Moon icon (shown in light mode, hidden by default) -->
+                        <svg class="moon-icon w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
                     <span id="userName" class="text-sm text-slate-300 hidden sm:block"></span>
                     <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-amber-500/30" src="" alt="">
                     <button id="signOutBtn" class="text-amber-500/60 hover:text-amber-500 transition-colors" title="Sign out">
@@ -244,7 +332,7 @@
             <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
                 <div class="flex items-center gap-2 mb-6">
                     <span class="text-amber-500">★</span>
-                    <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight" id="journeyCardTitle">My Journey</h2>
+                    <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
                 </div>
                 
                 <div class="relative px-2 mb-8">
@@ -302,7 +390,7 @@
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">🔥</span>
                         <div>
-                            <h2 class="text-lg font-bold text-[#fdfcf0] tracking-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
+                            <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
                             <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
                         </div>
                     </div>
@@ -420,7 +508,7 @@
                 <!-- Mission Group Card -->
                 <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
                     <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
                             <span class="text-amber-500">👥</span>
                             Mission Group
                             <span id="pendingRequestsBadge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
@@ -438,7 +526,7 @@
                 <!-- Mission Training Card -->
                 <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
                     <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
                             <span class="text-amber-500">🎯</span>
                             Mission Training
                         </h3>
@@ -492,7 +580,7 @@
                 <!-- Leader Dashboard Card -->
                 <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
                     <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[#fdfcf0] flex items-center gap-2">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
                             <span class="text-amber-500">📊</span>
                             Leader Dashboard
                         </h3>
@@ -532,7 +620,7 @@
         </main>
 
         <!-- Bottom Navigation -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-[#1e0202] border-t border-amber-900/20 md:hidden z-40">
+        <nav class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
             <div class="flex justify-around items-center px-4 h-20">
                 <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-500">
                     <div class="p-1.5 rounded-lg bg-amber-500/10">
@@ -572,7 +660,7 @@
 
     <!-- Group Modal (for join/create/requests) -->
     <div id="groupModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-[#2a0505] rounded-2xl border border-amber-500/20 w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-full max-w-md max-h-[80vh] overflow-y-auto transition-colors duration-300">
             <div id="groupModalContent">
                 <!-- Dynamic content -->
             </div>
@@ -582,7 +670,7 @@
     <!-- Chat Modal -->
     <div id="chatModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col">
         <!-- Chat Header -->
-        <div class="bg-[#1e0202] border-b border-amber-900/20 p-4 flex items-center justify-between">
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between transition-colors duration-300">
             <div class="flex items-center gap-3">
                 <button onclick="GroupChat.close()" class="text-amber-500 hover:text-amber-400">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -590,7 +678,7 @@
                     </svg>
                 </button>
                 <div>
-                    <h3 class="font-bold text-[#fdfcf0]" id="chatGroupName">Group Chat</h3>
+                    <h3 class="font-bold text-[var(--text-color)]" id="chatGroupName">Group Chat</h3>
                     <p class="text-xs text-slate-500" id="chatMemberCount">0 members</p>
                 </div>
             </div>
@@ -602,7 +690,7 @@
         </div>
         
         <!-- Chat Input -->
-        <div class="bg-[#1e0202] border-t border-amber-900/20 p-4">
+        <div class="bg-[var(--nav-bg)] border-t border-[var(--nav-border)] p-4 transition-colors duration-300">
             <div class="flex gap-2">
                 <input type="text" id="chatInput" placeholder="Type a message..." 
                        class="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
@@ -627,6 +715,7 @@
     </div>
 
     <!-- Core Modules -->
+    <script src="modules/core/theme.js"></script>
     <script src="modules/core/i18n.js"></script>
     <script src="modules/bible/bible-loader.js"></script>
     <script src="modules/bible/bible-picker.js"></script>
