@@ -11,22 +11,27 @@
 
 ---
 
-## Current Session (2026-01-20)
-- **MODULE**: Notifications System
-- **STATUS**: ✅ Implemented in-app notifications for group chat
-- **NEXT**: Test notifications, then add email notifications via Cloud Functions
+## Current Session (2026-01-21)
+- **MODULE**: Training Module - Light Mode Support
+- **STATUS**: ✅ Fixed training modal to support light/dark themes
+- **NEXT**: Test light mode on training modal, then continue with Training Uploader
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. In-App Notifications for Group Chat
-- Real-time notifications via Firestore onSnapshot
-- Toast popups when new message arrives (chat closed)
-- Sound alert (two-tone beep)
-- Badge count on Group Chat button
-- Vibration on mobile devices
-- New module: `/modules/core/notifications.js`
+### 1. Training Uploader Firebase Fix
+- Fixed Firebase config credentials in `/tools/training-uploader.html`
+- Wrong API key was causing "API key not valid" errors
+- Corrected: apiKey, storageBucket, messagingSenderId, appId
+
+### 2. Training Modal Light Mode Support
+- Added `getThemeClasses()` method to Training module
+- Updated `openDay()` modal with theme-aware Tailwind classes
+- Updated `openGroupProcessing()` (Day 7) modal with theme-aware classes
+- Dynamic class selection based on `light-mode` body class
+
+### Previous Session: In-App Notifications for Group Chat
 
 ### 2. Group Invite Code System (Facebook → App Flow)
 - Removed "Find a Group" / browse groups feature

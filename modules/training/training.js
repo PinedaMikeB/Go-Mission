@@ -331,6 +331,44 @@ const Training = {
   },
   
   /**
+   * Get theme-aware classes
+   */
+  getThemeClasses() {
+    const isLight = document.body.classList.contains('light-mode');
+    return {
+      // Modal backgrounds
+      modalBg: isLight ? 'bg-[#fcfaf2]' : 'bg-black/95',
+      cardBg: isLight ? 'bg-white' : 'bg-black/40',
+      cardBgSubtle: isLight ? 'bg-gray-50' : 'bg-black/20',
+      
+      // Text colors
+      textPrimary: isLight ? 'text-[#2a0505]' : 'text-white',
+      textSecondary: isLight ? 'text-gray-700' : 'text-slate-200',
+      textMuted: isLight ? 'text-gray-500' : 'text-slate-400',
+      textMutedAlt: isLight ? 'text-gray-600' : 'text-slate-300',
+      
+      // Input styling
+      inputBg: isLight ? 'bg-gray-100' : 'bg-black/40',
+      inputText: isLight ? 'text-[#2a0505]' : 'text-white',
+      inputPlaceholder: isLight ? 'placeholder-gray-400' : 'placeholder-slate-500',
+      
+      // Border colors
+      borderSubtle: isLight ? 'border-gray-200' : 'border-white/10',
+      
+      // Accent backgrounds (keeping colored but adjusting opacity)
+      storyBg: isLight ? 'bg-amber-50 border-amber-200' : 'bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20',
+      scriptureBg: isLight ? 'bg-amber-50/50' : 'bg-black/40',
+      conversationBg: isLight ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20',
+      missionBg: isLight ? 'bg-blue-50 border-blue-200' : 'bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20',
+      followThroughBg: isLight ? 'bg-purple-50 border-purple-200' : 'bg-purple-500/10 border-purple-500/30',
+      
+      // Scripture quote
+      scriptureBorder: isLight ? 'border-amber-400' : 'border-amber-500/50',
+      scriptureText: isLight ? 'text-[#2a0505]' : 'text-white',
+    };
+  },
+
+  /**
    * Open a training day
    */
   async openDay(sessionNumber, dayNumber) {
@@ -349,6 +387,7 @@ const Training = {
     
     const lang = window.currentLang || 'en';
     const labels = this.getLabels(lang);
+    const t = this.getThemeClasses();
     
     // Show modal
     const modal = document.getElementById('trainingDayModal');
@@ -357,70 +396,70 @@ const Training = {
     }
     
     document.getElementById('trainingDayModal').innerHTML = `
-      <div class="fixed inset-0 bg-black/95 z-50 overflow-y-auto">
-        <div class="min-h-screen p-4">
+      <div class="fixed inset-0 ${t.modalBg} z-50 overflow-y-auto">
+        <div class="min-h-screen p-4 max-w-2xl mx-auto">
           <!-- Header -->
           <div class="flex items-center justify-between mb-6">
-            <button onclick="Training.closeDay()" class="text-slate-400 hover:text-white p-2">
+            <button onclick="Training.closeDay()" class="${t.textMuted} hover:${t.textPrimary} p-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
               </svg>
             </button>
             <div class="text-center">
-              <div class="text-xs text-amber-400">${labels.session} ${sessionNumber} • ${labels.day} ${dayNumber}</div>
-              <div class="text-white font-bold">${day.dayTitle}</div>
+              <div class="text-xs text-amber-500 font-medium">${labels.session} ${sessionNumber} • ${labels.day} ${dayNumber}</div>
+              <div class="${t.textPrimary} font-bold">${day.dayTitle}</div>
             </div>
             <div class="w-10"></div>
           </div>
           
           <!-- Follow Through (if exists) -->
           ${day.followThrough ? `
-            <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-4">
-              <div class="text-xs text-purple-400 font-bold mb-2">📋 ${labels.followThrough}</div>
-              <p class="text-slate-300 text-sm">${day.followThrough}</p>
+            <div class="${t.followThroughBg} border rounded-xl p-4 mb-4">
+              <div class="text-xs text-purple-500 font-bold mb-2">📋 ${labels.followThrough}</div>
+              <p class="${t.textMutedAlt} text-sm">${day.followThrough}</p>
             </div>
           ` : ''}
           
           <!-- Story/Illustration -->
-          <div class="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 rounded-xl p-4 mb-4">
-            <div class="text-xs text-amber-400 font-bold mb-2">🎯 ${labels.todayStory}</div>
-            <p class="text-slate-200 text-sm leading-relaxed">${day.storyIllustration}</p>
+          <div class="${t.storyBg} border rounded-xl p-4 mb-4">
+            <div class="text-xs text-amber-500 font-bold mb-2">🎯 ${labels.todayStory}</div>
+            <p class="${t.textSecondary} text-sm leading-relaxed">${day.storyIllustration}</p>
           </div>
           
           <!-- Scripture -->
-          <div class="bg-black/40 rounded-xl p-4 mb-4">
-            <div class="text-xs text-amber-400 font-bold mb-2">📜 ${labels.scripture}</div>
-            <div class="text-amber-400 font-bold mb-2">${day.scriptureReference}</div>
-            <p class="text-white italic text-lg leading-relaxed border-l-4 border-amber-500/50 pl-4">"${day.scriptureText}"</p>
+          <div class="${t.scriptureBg} rounded-xl p-4 mb-4">
+            <div class="text-xs text-amber-500 font-bold mb-2">📜 ${labels.scripture}</div>
+            <div class="text-amber-500 font-bold mb-2">${day.scriptureReference}</div>
+            <p class="${t.scriptureText} italic text-lg leading-relaxed border-l-4 ${t.scriptureBorder} pl-4">"${day.scriptureText}"</p>
           </div>
           
           <!-- Explanation -->
-          <div class="bg-black/20 rounded-xl p-4 mb-4">
-            <div class="text-xs text-amber-400 font-bold mb-2">💡 ${labels.understanding}</div>
-            <p class="text-slate-300 text-sm leading-relaxed">${day.scriptureExplanation}</p>
+          <div class="${t.cardBgSubtle} rounded-xl p-4 mb-4">
+            <div class="text-xs text-amber-500 font-bold mb-2">💡 ${labels.understanding}</div>
+            <p class="${t.textMutedAlt} text-sm leading-relaxed">${day.scriptureExplanation}</p>
           </div>
           
           <!-- Conversation with God -->
-          <div class="bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/20 rounded-xl p-4 mb-4">
-            <div class="text-xs text-green-400 font-bold mb-2">🙏 ${labels.conversationWithGod}</div>
-            <p class="text-slate-200 text-sm mb-4">${day.obedienceQuestion}</p>
+          <div class="${t.conversationBg} border rounded-xl p-4 mb-4">
+            <div class="text-xs text-green-600 font-bold mb-2">🙏 ${labels.conversationWithGod}</div>
+            <p class="${t.textSecondary} text-sm mb-4">${day.obedienceQuestion}</p>
             
             <textarea 
               id="obedienceResponse" 
-              class="w-full bg-black/40 border border-green-500/30 rounded-lg p-3 text-white text-sm resize-none focus:outline-none focus:border-green-500"
+              class="w-full ${t.inputBg} border border-green-300 rounded-lg p-3 ${t.inputText} text-sm resize-none focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 ${t.inputPlaceholder}"
               rows="4"
               placeholder="${labels.writeResponse}"
             >${obedienceResponse || ''}</textarea>
           </div>
           
           <!-- Mission -->
-          <div class="bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20 rounded-xl p-4 mb-4">
-            <div class="text-xs text-blue-400 font-bold mb-2">🚀 ${labels.mission}</div>
-            <p class="text-slate-200 text-sm mb-4">${day.missionQuestion}</p>
+          <div class="${t.missionBg} border rounded-xl p-4 mb-4">
+            <div class="text-xs text-blue-600 font-bold mb-2">🚀 ${labels.mission}</div>
+            <p class="${t.textSecondary} text-sm mb-4">${day.missionQuestion}</p>
             
             <textarea 
               id="missionResponse" 
-              class="w-full bg-black/40 border border-blue-500/30 rounded-lg p-3 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+              class="w-full ${t.inputBg} border border-blue-300 rounded-lg p-3 ${t.inputText} text-sm resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${t.inputPlaceholder}"
               rows="3"
               placeholder="${labels.writeMission}"
             >${missionResponse || ''}</textarea>
@@ -495,6 +534,7 @@ const Training = {
     
     const lang = window.currentLang || 'en';
     const labels = this.getLabels(lang);
+    const t = this.getThemeClasses();
     
     // Create modal for group processing
     const modal = document.getElementById('trainingDayModal');
@@ -503,26 +543,26 @@ const Training = {
     }
     
     document.getElementById('trainingDayModal').innerHTML = `
-      <div class="fixed inset-0 bg-black/95 z-50 overflow-y-auto">
-        <div class="min-h-screen p-4">
+      <div class="fixed inset-0 ${t.modalBg} z-50 overflow-y-auto">
+        <div class="min-h-screen p-4 max-w-2xl mx-auto">
           <!-- Header -->
           <div class="flex items-center justify-between mb-6">
-            <button onclick="Training.closeDay()" class="text-slate-400 hover:text-white p-2">
+            <button onclick="Training.closeDay()" class="${t.textMuted} hover:${t.textPrimary} p-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
               </svg>
             </button>
             <div class="text-center">
-              <div class="text-xs text-purple-400">${labels.session} ${sessionNumber}</div>
-              <div class="text-white font-bold">${labels.groupProcessing}</div>
+              <div class="text-xs text-purple-500 font-medium">${labels.session} ${sessionNumber}</div>
+              <div class="${t.textPrimary} font-bold">${labels.groupProcessing}</div>
             </div>
             <div class="w-10"></div>
           </div>
           
           <!-- Instructions -->
-          <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6">
-            <div class="text-purple-400 font-bold mb-2">🎯 ${labels.processingInstructions}</div>
-            <ul class="text-slate-300 text-sm space-y-2">
+          <div class="${t.followThroughBg} border rounded-xl p-4 mb-6">
+            <div class="text-purple-600 font-bold mb-2">🎯 ${labels.processingInstructions}</div>
+            <ul class="${t.textMutedAlt} text-sm space-y-2">
               <li>1. ${labels.instruction1}</li>
               <li>2. ${labels.instruction2}</li>
               <li>3. ${labels.instruction3}</li>
@@ -532,22 +572,22 @@ const Training = {
           
           <!-- Discussion Topics -->
           <div class="space-y-3 mb-6">
-            <div class="text-amber-400 font-bold">${labels.discussionTopics}</div>
+            <div class="text-amber-500 font-bold">${labels.discussionTopics}</div>
             ${session.days.map(day => `
-              <div class="bg-black/40 rounded-xl p-4">
-                <div class="text-xs text-amber-400 mb-1">${labels.day} ${day.dayNumber}: ${day.dayTitle}</div>
-                <div class="text-white text-sm mb-2">${day.scriptureReference}</div>
-                <div class="text-slate-400 text-xs">${day.fruitIndicator || ''}</div>
+              <div class="${t.cardBg} rounded-xl p-4 border ${t.borderSubtle}">
+                <div class="text-xs text-amber-500 mb-1">${labels.day} ${day.dayNumber}: ${day.dayTitle}</div>
+                <div class="${t.textPrimary} text-sm mb-2">${day.scriptureReference}</div>
+                <div class="${t.textMuted} text-xs">${day.fruitIndicator || ''}</div>
               </div>
             `).join('')}
           </div>
           
           <!-- Join Meeting Button -->
-          <button onclick="Training.joinMeeting(${sessionNumber})" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2">
+          <button onclick="Training.joinMeeting(${sessionNumber})" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-purple-700 hover:to-purple-600 transition-all">
             📹 ${labels.joinMeeting}
           </button>
           
-          <p class="text-center text-slate-500 text-xs mt-4">${labels.meetingNote}</p>
+          <p class="text-center ${t.textMuted} text-xs mt-4">${labels.meetingNote}</p>
         </div>
       </div>
     `;
