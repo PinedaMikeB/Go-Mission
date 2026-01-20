@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Mission - Training Content Uploader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a0505 0%, #2a0a0a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; padding: 20px 0 40px; }
+        header h1 { color: #fbbf24; font-size: 28px; margin-bottom: 8px; }
+        header p { color: #94a3b8; font-size: 14px; }
+        .card {
+            background: rgba(42, 5, 5, 0.8);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .card h2 { color: #fbbf24; font-size: 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .upload-zone {
+            border: 2px dashed rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover { border-color: #fbbf24; background: rgba(251, 191, 36, 0.05); }
+        .upload-zone.dragover { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .upload-zone input { display: none; }
+        .upload-zone .icon { font-size: 48px; margin-bottom: 16px; }
+        .upload-zone p { color: #94a3b8; margin-bottom: 8px; }
+        .upload-zone .formats { font-size: 12px; color: #64748b; }
+        .btn {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1a0505;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: transparent; border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24; }
+        .preview-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+        .preview-table th {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+            white-space: nowrap;
+        }
+        .preview-table td {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .preview-table tr:hover td { background: rgba(251, 191, 36, 0.05); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 16px; text-align: center; }
+        .stat-card .number { font-size: 32px; font-weight: bold; color: #fbbf24; }
+        .stat-card .label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .log {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .log-entry.success { color: #4ade80; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.info { color: #60a5fa; }
+        .progress-bar { height: 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; overflow: hidden; margin: 16px 0; }
+        .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.3s; width: 0%; }
+        .actions { display: flex; gap: 12px; margin-top: 20px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .badge-en { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+        .badge-tl { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .firebase-config { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .firebase-config input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        .firebase-config input:focus { outline: none; border-color: #fbbf24; }
+        .firebase-config label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block; }
+        .config-group { margin-bottom: 12px; }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-indicator.connected { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
+        .status-indicator.disconnected { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+        .status-indicator .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .hidden { display: none; }
+        .table-wrapper { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+        .collection-info {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .collection-info h3 { color: #fbbf24; font-size: 14px; margin-bottom: 8px; }
+        .collection-info code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #fbbf24; }
+        .schema-example {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-family: monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⭐ Go Mission Training Uploader</h1>
+            <p>Upload training content Excel files to Firestore</p>
+        </header>
+        
+        <!-- Firebase Configuration -->
+        <div class="card">
+            <h2>🔥 Firebase Configuration</h2>
+            <div class="firebase-config">
+                <div class="config-group">
+                    <label>API Key</label>
+                    <input type="text" id="apiKey" value="AIzaSyA4AQpzE4pKPMD4YZ6vVqFMqCqo9w1R_YE">
+                </div>
+                <div class="config-group">
+                    <label>Auth Domain</label>
+                    <input type="text" id="authDomain" value="shaped-by-grace.firebaseapp.com">
+                </div>
+                <div class="config-group">
+                    <label>Project ID</label>
+                    <input type="text" id="projectId" value="shaped-by-grace">
+                </div>
+                <div class="config-group">
+                    <label>Storage Bucket</label>
+                    <input type="text" id="storageBucket" value="shaped-by-grace.appspot.com">
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="connectFirebase()">Connect to Firebase</button>
+                <span id="connectionStatus" class="status-indicator disconnected">
+                    <span class="dot"></span>
+                    Disconnected
+                </span>
+            </div>
+        </div>
+        
+        <!-- Collection Info -->
+        <div class="card collection-info">
+            <h3>📚 Firestore Collection Schema</h3>
+            <p>Data will be stored in: <code>goMission_trainingContent</code></p>
+            <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                Document ID format: <code>level_{level}_session_{session}_day_{day}_{lang}</code>
+            </p>
+            <div class="schema-example">{
+  "level": 2,
+  "levelName": "Disciple",
+  "sessionNumber": 1,
+  "sessionTitle": "The Way To Heaven",
+  "dayNumber": 1,
+  "dayTitle": "Who Is God?",
+  "language": "en",
+  "storyIllustration": "Imagine a surgeon...",
+  "scriptureReference": "Isaiah 6:3",
+  "scriptureText": "And they were calling...",
+  "scriptureExplanation": "God is the most...",
+  "obedienceQuestion": "When you approach God...",
+  "missionQuestion": "Many people think...",
+  "leaderNote": "Establish the gap...",
+  "fruitIndicator": "A shift from casual...",
+  "followThrough": "Yesterday, we focused on..."
+}</div>
+        </div>
+        
+        <!-- Upload Zone -->
+        <div class="card">
+            <h2>📤 Upload Excel File</h2>
+            <div class="upload-zone" id="uploadZone">
+                <div class="icon">📁</div>
+                <p>Drag & drop your Excel file here</p>
+                <p>or click to browse</p>
+                <p class="formats">Supported: .xlsx, .xls</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+            </div>
+        </div>
+        
+        <!-- Preview -->
+        <div class="card hidden" id="previewCard">
+            <h2>👁️ Data Preview</h2>
+            <div class="stats" id="stats"></div>
+            <div class="table-wrapper">
+                <table class="preview-table" id="previewTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="uploadToFirestore()" id="uploadBtn" disabled>🚀 Upload to Firestore</button>
+                <button class="btn btn-secondary" onclick="clearPreview()">🗑️ Clear</button>
+            </div>
+            <div class="progress-bar hidden" id="progressBar">
+                <div class="fill" id="progressFill"></div>
+            </div>
+        </div>
+        
+        <!-- Upload Log -->
+        <div class="card hidden" id="logCard">
+            <h2>📋 Upload Log</h2>
+            <div class="log" id="uploadLog"></div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore, doc, setDoc, collection } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        
+        let db = null;
+        let parsedData = [];
+        
+        window.connectFirebase = async function() {
+            const config = {
+                apiKey: document.getElementById('apiKey').value,
+                authDomain: document.getElementById('authDomain').value,
+                projectId: document.getElementById('projectId').value,
+                storageBucket: document.getElementById('storageBucket').value
+            };
+            try {
+                const app = initializeApp(config);
+                db = getFirestore(app);
+                document.getElementById('connectionStatus').className = 'status-indicator connected';
+                document.getElementById('connectionStatus').innerHTML = '<span class="dot"></span> Connected';
+                document.getElementById('uploadBtn').disabled = parsedData.length === 0;
+                log('Connected to Firebase successfully!', 'success');
+            } catch (error) {
+                document.getElementById('connectionStatus').className = 'status-indicator disconnected';
+                document.getElementById('connectionStatus').innerHTML = '<span class="dot"></span> Error';
+                log('Failed to connect: ' + error.message, 'error');
+            }
+        };
+        
+        window.uploadToFirestore = async function() {
+            if (!db) { alert('Please connect to Firebase first!'); return; }
+            if (parsedData.length === 0) { alert('No data to upload!'); return; }
+            
+            document.getElementById('logCard').classList.remove('hidden');
+            document.getElementById('progressBar').classList.remove('hidden');
+            document.getElementById('uploadBtn').disabled = true;
+            
+            const total = parsedData.length;
+            let uploaded = 0, errors = 0;
+            
+            for (const row of parsedData) {
+                try {
+                    const docId = `level_${row.level}_session_${row.sessionNumber}_day_${row.dayNumber}_${row.language}`;
+                    const docData = {
+                        level: parseInt(row.level) || 2,
+                        levelName: row.levelName || 'Disciple',
+                        sessionNumber: parseInt(row.sessionNumber) || 1,
+                        sessionTitle: row.sessionTitle || '',
+                        dayNumber: parseInt(row.dayNumber) || 1,
+                        dayTitle: row.dayTitle || '',
+                        language: row.language || 'en',
+                        storyIllustration: row.storyIllustration || '',
+                        scriptureReference: row.scriptureReference || '',
+                        scriptureText: row.scriptureText || '',
+                        scriptureExplanation: row.scriptureExplanation || '',
+                        obedienceQuestion: row.obedienceQuestion || '',
+                        missionQuestion: row.missionQuestion || '',
+                        leaderNote: row.leaderNote || '',
+                        fruitIndicator: row.fruitIndicator || '',
+                        followThrough: row.followThrough || '',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(db, 'goMission_trainingContent', docId), docData);
+                    uploaded++;
+                    log(`✓ Uploaded: ${docId}`, 'success');
+                } catch (error) {
+                    errors++;
+                    log(`✗ Error uploading Day ${row.dayNumber} (${row.language}): ${error.message}`, 'error');
+                }
+                document.getElementById('progressFill').style.width = ((uploaded + errors) / total * 100) + '%';
+            }
+            log(`\n========================================`, 'info');
+            log(`Upload complete: ${uploaded} success, ${errors} errors`, uploaded === total ? 'success' : 'error');
+            document.getElementById('uploadBtn').disabled = false;
+        };
+        
+        window.clearPreview = function() {
+            parsedData = [];
+            document.getElementById('previewCard').classList.add('hidden');
+            document.getElementById('logCard').classList.add('hidden');
+            document.getElementById('previewTable').querySelector('thead').innerHTML = '';
+            document.getElementById('previewTable').querySelector('tbody').innerHTML = '';
+            document.getElementById('stats').innerHTML = '';
+            document.getElementById('uploadLog').innerHTML = '';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressBar').classList.add('hidden');
+        };
+        
+        window.handleFile = function(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    
+                    parsedData = jsonData.map(row => ({
+                        level: row['level'] || row['Level'],
+                        levelName: row['level_name'] || row['levelName'],
+                        sessionNumber: row['session_number'] || row['sessionNumber'],
+                        sessionTitle: row['session_title'] || row['sessionTitle'],
+                        dayNumber: row['day_number'] || row['dayNumber'],
+                        dayTitle: row['day_title'] || row['dayTitle'],
+                        language: row['language'] || row['Language'] || 'en',
+                        storyIllustration: row['story_illustration'] || row['storyIllustration'],
+                        scriptureReference: row['scripture_reference'] || row['scriptureReference'],
+                        scriptureText: row['scripture_text'] || row['scriptureText'],
+                        scriptureExplanation: row['scripture_explanation'] || row['scriptureExplanation'],
+                        obedienceQuestion: row['obedience_question'] || row['obedienceQuestion'],
+                        missionQuestion: row['mission_question'] || row['missionQuestion'],
+                        leaderNote: row['leader_note'] || row['leaderNote'],
+                        fruitIndicator: row['fruit_indicator'] || row['fruitIndicator'],
+                        followThrough: row['follow_through'] || row['followThrough']
+                    }));
+                    
+                    displayPreview();
+                    if (db) document.getElementById('uploadBtn').disabled = false;
+                    log(`Parsed ${parsedData.length} rows from Excel file`, 'info');
+                } catch (error) {
+                    alert('Error parsing Excel file: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
+        
+        function displayPreview() {
+            document.getElementById('previewCard').classList.remove('hidden');
+            const sessions = [...new Set(parsedData.map(r => r.sessionNumber))];
+            const days = [...new Set(parsedData.map(r => r.dayNumber))];
+            const enRows = parsedData.filter(r => r.language === 'en').length;
+            const tlRows = parsedData.filter(r => r.language === 'tl').length;
+            
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card"><div class="number">${parsedData.length}</div><div class="label">Total Rows</div></div>
+                <div class="stat-card"><div class="number">${sessions.length}</div><div class="label">Sessions</div></div>
+                <div class="stat-card"><div class="number">${days.length}</div><div class="label">Days</div></div>
+                <div class="stat-card"><div class="number">${enRows}</div><div class="label">English</div></div>
+                <div class="stat-card"><div class="number">${tlRows}</div><div class="label">Tagalog</div></div>
+            `;
+            
+            const thead = document.getElementById('previewTable').querySelector('thead');
+            const tbody = document.getElementById('previewTable').querySelector('tbody');
+            thead.innerHTML = `<tr><th>Level</th><th>Session</th><th>Day</th><th>Title</th><th>Lang</th><th>Scripture</th><th>Story</th><th>Obedience Q</th></tr>`;
+            tbody.innerHTML = parsedData.map(row => `
+                <tr>
+                    <td>${row.level}</td>
+                    <td>${row.sessionNumber}: ${row.sessionTitle}</td>
+                    <td>${row.dayNumber}</td>
+                    <td>${row.dayTitle}</td>
+                    <td><span class="badge badge-${row.language}">${row.language?.toUpperCase()}</span></td>
+                    <td>${row.scriptureReference}</td>
+                    <td title="${row.storyIllustration}">${(row.storyIllustration || '').substring(0, 50)}...</td>
+                    <td title="${row.obedienceQuestion}">${(row.obedienceQuestion || '').substring(0, 50)}...</td>
+                </tr>
+            `).join('');
+        }
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('uploadLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        window.log = log;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+            uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+            uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+            fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+        });
+    </script>
+</body>
+</html>
