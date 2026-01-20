@@ -573,7 +573,7 @@
                     </div>
                     
                     <!-- Reflection Input -->
-                    <textarea id="reflectionAnswer" rows="4" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..." data-i18n-placeholder="writeReflection"></textarea>
+                    <textarea id="reflectionAnswer" rows="4" autocomplete="off" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..." data-i18n-placeholder="writeReflection"></textarea>
                 </div>
 
                 <!-- Share Option & Save -->
@@ -1200,9 +1200,13 @@
             document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
         };
 
-        // Load today's entry if exists
+        // Load today's entry if exists - ONLY restore highlights, not reflection text
         window.loadTodaysEntry = async function(uid) {
             if (!uid) return;
+            
+            // ALWAYS clear reflection and reset button first
+            document.getElementById('reflectionAnswer').value = '';
+            document.getElementById('saveBtnText').textContent = '💾 Save This Day';
             
             const today = getTodayString();
             const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
@@ -1212,8 +1216,7 @@
                 if (entryDoc.exists()) {
                     const data = entryDoc.data();
                     
-                    // Only restore highlights to BibleReader, NOT the reflection text
-                    // User should start fresh each session
+                    // Only restore highlights to BibleReader
                     if (typeof BibleReader !== 'undefined' && data.highlightedVerses && data.highlightedVerses.length > 0) {
                         BibleReader.highlightedVerses = data.highlightedVerses.map(v => {
                             if (typeof v === 'object' && v.verse) return v;
@@ -1227,9 +1230,7 @@
                         }
                     }
                     
-                    // Don't restore reflection text - user starts fresh
-                    // Don't change button text - keep as "Save This Day"
-                    
+                    // Restore share toggle preference only
                     shareWithGroup = data.sharedWithGroup || false;
                     document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
                 }

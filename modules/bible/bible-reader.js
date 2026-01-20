@@ -939,7 +939,7 @@ const BibleReader = {
     return {
       book: this.currentBook,
       chapter: this.currentChapter,
-      highlightedVerses: this.highlightedVerses.map(h => h.verse) // Return just verse numbers for saving
+      highlightedVerses: this.highlightedVerses // Return full objects with color info
     };
   },
 
