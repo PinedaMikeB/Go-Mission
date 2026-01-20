@@ -54,6 +54,7 @@
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .btn-secondary { background: transparent; border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24; }
+        .btn-google { background: #fff; color: #333; display: flex; align-items: center; gap: 8px; justify-content: center; }
         .preview-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
         .preview-table th {
             background: rgba(251, 191, 36, 0.1);
@@ -91,22 +92,10 @@
         .log-entry.info { color: #60a5fa; }
         .progress-bar { height: 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; overflow: hidden; margin: 16px 0; }
         .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.3s; width: 0%; }
-        .actions { display: flex; gap: 12px; margin-top: 20px; }
+        .actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
         .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
         .badge-en { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
         .badge-tl { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-        .firebase-config { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .firebase-config input {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-            color: #e2e8f0;
-            font-size: 14px;
-        }
-        .firebase-config input:focus { outline: none; border-color: #fbbf24; }
-        .firebase-config label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block; }
-        .config-group { margin-bottom: 12px; }
         .status-indicator {
             display: inline-flex;
             align-items: center;
@@ -140,6 +129,18 @@
             white-space: pre-wrap;
             color: #94a3b8;
         }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(74, 222, 128, 0.1);
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        .user-info img { width: 40px; height: 40px; border-radius: 50%; }
+        .user-info .name { font-weight: 600; color: #4ade80; }
+        .user-info .email { font-size: 12px; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -149,33 +150,21 @@
             <p>Upload training content Excel files to Firestore</p>
         </header>
         
-        <!-- Firebase Configuration -->
-        <div class="card">
-            <h2>🔥 Firebase Configuration</h2>
-            <div class="firebase-config">
-                <div class="config-group">
-                    <label>API Key</label>
-                    <input type="text" id="apiKey" value="AIzaSyA4AQpzE4pKPMD4YZ6vVqFMqCqo9w1R_YE">
+        <!-- Auth Card -->
+        <div class="card" id="authCard">
+            <h2>🔐 Sign In Required</h2>
+            <p style="color: #94a3b8; margin-bottom: 16px;">You must sign in with Google to upload content to Firestore.</p>
+            <button class="btn btn-google" onclick="signInWithGoogle()">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Sign in with Google
+            </button>
+            <div id="userInfo" class="user-info hidden">
+                <img id="userPhoto" src="" alt="">
+                <div>
+                    <div class="name" id="userName"></div>
+                    <div class="email" id="userEmail"></div>
                 </div>
-                <div class="config-group">
-                    <label>Auth Domain</label>
-                    <input type="text" id="authDomain" value="shaped-by-grace.firebaseapp.com">
-                </div>
-                <div class="config-group">
-                    <label>Project ID</label>
-                    <input type="text" id="projectId" value="shaped-by-grace">
-                </div>
-                <div class="config-group">
-                    <label>Storage Bucket</label>
-                    <input type="text" id="storageBucket" value="shaped-by-grace.appspot.com">
-                </div>
-            </div>
-            <div class="actions">
-                <button class="btn" onclick="connectFirebase()">Connect to Firebase</button>
-                <span id="connectionStatus" class="status-indicator disconnected">
-                    <span class="dot"></span>
-                    Disconnected
-                </span>
+                <button class="btn btn-secondary" onclick="signOut()" style="margin-left: auto;">Sign Out</button>
             </div>
         </div>
         
@@ -187,27 +176,19 @@
                 Document ID format: <code>level_{level}_session_{session}_day_{day}_{lang}</code>
             </p>
             <div class="schema-example">{
-  "level": 2,
-  "levelName": "Disciple",
-  "sessionNumber": 1,
-  "sessionTitle": "The Way To Heaven",
-  "dayNumber": 1,
-  "dayTitle": "Who Is God?",
-  "language": "en",
-  "storyIllustration": "Imagine a surgeon...",
-  "scriptureReference": "Isaiah 6:3",
-  "scriptureText": "And they were calling...",
-  "scriptureExplanation": "God is the most...",
-  "obedienceQuestion": "When you approach God...",
-  "missionQuestion": "Many people think...",
-  "leaderNote": "Establish the gap...",
-  "fruitIndicator": "A shift from casual...",
-  "followThrough": "Yesterday, we focused on..."
+  "level": 2, "levelName": "Disciple",
+  "sessionNumber": 1, "sessionTitle": "The Way To Heaven",
+  "dayNumber": 1, "dayTitle": "Who Is God?",
+  "language": "en", "storyIllustration": "...",
+  "scriptureReference": "Isaiah 6:3", "scriptureText": "...",
+  "scriptureExplanation": "...", "obedienceQuestion": "...",
+  "missionQuestion": "...", "leaderNote": "...",
+  "fruitIndicator": "...", "followThrough": "..."
 }</div>
         </div>
         
         <!-- Upload Zone -->
-        <div class="card">
+        <div class="card" id="uploadCard">
             <h2>📤 Upload Excel File</h2>
             <div class="upload-zone" id="uploadZone">
                 <div class="icon">📁</div>
@@ -246,34 +227,73 @@
     
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getFirestore, doc, setDoc, collection } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
         
-        let db = null;
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA4AQpzE4pKPMD4YZ6vVqFMqCqo9w1R_YE",
+            authDomain: "shaped-by-grace.firebaseapp.com",
+            projectId: "shaped-by-grace",
+            storageBucket: "shaped-by-grace.appspot.com",
+            messagingSenderId: "465261102730",
+            appId: "1:465261102730:web:2a3b5c6d7e8f9a0b1c2d3e"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        let currentUser = null;
         let parsedData = [];
         
-        window.connectFirebase = async function() {
-            const config = {
-                apiKey: document.getElementById('apiKey').value,
-                authDomain: document.getElementById('authDomain').value,
-                projectId: document.getElementById('projectId').value,
-                storageBucket: document.getElementById('storageBucket').value
-            };
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            updateAuthUI();
+        });
+        
+        function updateAuthUI() {
+            const userInfo = document.getElementById('userInfo');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const signInBtn = document.querySelector('.btn-google');
+            
+            if (currentUser) {
+                document.getElementById('userPhoto').src = currentUser.photoURL || '';
+                document.getElementById('userName').textContent = currentUser.displayName || 'User';
+                document.getElementById('userEmail').textContent = currentUser.email;
+                userInfo.classList.remove('hidden');
+                signInBtn.classList.add('hidden');
+                if (parsedData.length > 0) uploadBtn.disabled = false;
+                log(`Signed in as ${currentUser.email}`, 'success');
+            } else {
+                userInfo.classList.add('hidden');
+                signInBtn.classList.remove('hidden');
+                uploadBtn.disabled = true;
+            }
+        }
+        
+        window.signInWithGoogle = async function() {
             try {
-                const app = initializeApp(config);
-                db = getFirestore(app);
-                document.getElementById('connectionStatus').className = 'status-indicator connected';
-                document.getElementById('connectionStatus').innerHTML = '<span class="dot"></span> Connected';
-                document.getElementById('uploadBtn').disabled = parsedData.length === 0;
-                log('Connected to Firebase successfully!', 'success');
+                await signInWithPopup(auth, provider);
             } catch (error) {
-                document.getElementById('connectionStatus').className = 'status-indicator disconnected';
-                document.getElementById('connectionStatus').innerHTML = '<span class="dot"></span> Error';
-                log('Failed to connect: ' + error.message, 'error');
+                console.error('Sign in error:', error);
+                log('Sign in failed: ' + error.message, 'error');
+            }
+        };
+        
+        window.signOut = async function() {
+            try {
+                await firebaseSignOut(auth);
+                log('Signed out', 'info');
+            } catch (error) {
+                console.error('Sign out error:', error);
             }
         };
         
         window.uploadToFirestore = async function() {
-            if (!db) { alert('Please connect to Firebase first!'); return; }
+            if (!currentUser) { alert('Please sign in first!'); return; }
             if (parsedData.length === 0) { alert('No data to upload!'); return; }
             
             document.getElementById('logCard').classList.remove('hidden');
@@ -303,6 +323,7 @@
                         leaderNote: row.leaderNote || '',
                         fruitIndicator: row.fruitIndicator || '',
                         followThrough: row.followThrough || '',
+                        uploadedBy: currentUser.email,
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     };
@@ -361,7 +382,7 @@
                     }));
                     
                     displayPreview();
-                    if (db) document.getElementById('uploadBtn').disabled = false;
+                    if (currentUser) document.getElementById('uploadBtn').disabled = false;
                     log(`Parsed ${parsedData.length} rows from Excel file`, 'info');
                 } catch (error) {
                     alert('Error parsing Excel file: ' + error.message);
@@ -404,6 +425,7 @@
         
         function log(message, type = 'info') {
             const logDiv = document.getElementById('uploadLog');
+            if (!logDiv) return;
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
