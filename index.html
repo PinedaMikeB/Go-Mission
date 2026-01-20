@@ -943,7 +943,8 @@
         document.addEventListener('languageChanged', function(e) {
             console.log('[Language Changed]', e.detail.lang, 'Stage:', window.currentUserStage);
             currentLanguage = e.detail.lang;
-            loadBiblePassage();
+            // Don't call loadBiblePassage() - BibleReader handles this via its own listener
+            // which preserves highlighted verses
             // Always update journey display on language change
             window.updateJourneyDisplay(window.currentUserStage || 'seeker');
         });
@@ -986,7 +987,10 @@
 
         // Save this day
         window.saveThisDay = async function() {
-            if (!window.currentUser) return;
+            if (!window.currentUser) {
+                alert('Please sign in to save your devotion.');
+                return;
+            }
             
             const reflection = document.getElementById('reflectionAnswer').value.trim();
             if (!reflection) {
@@ -1008,14 +1012,18 @@
                     ? BibleReader.getCurrentReading() 
                     : { book: 'JHN', chapter: 1, highlightedVerses: [] };
                 
+                // Get the reflection question (AI-generated or default)
+                const reflectionEl = document.getElementById('reflectionQuestion');
+                const question = reflectionEl ? reflectionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
                 await window.setDoc(entryRef, {
-                    oddi: window.currentUser.uid,
+                    uid: window.currentUser.uid,
                     userName: window.currentUser.displayName || '',
                     date: today,
                     book: reading.book,
                     chapter: reading.chapter,
                     highlightedVerses: reading.highlightedVerses,
-                    question: window.getTodaysQuestion(),
+                    question: question,
                     reflection: reflection,
                     sharedWithGroup: shareWithGroup,
                     language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
@@ -1029,12 +1037,14 @@
                 }, 3000);
                 
                 btnText.textContent = '✓ Saved - Update';
+                btn.disabled = false;
                 await window.loadWeekProgress(window.currentUser.uid);
                 
             } catch (error) {
                 console.error('Error saving:', error);
                 alert('Error saving. Please try again.');
                 btnText.textContent = '💾 Save This Day';
+                btn.disabled = false;
             }
             
             btn.disabled = false;
