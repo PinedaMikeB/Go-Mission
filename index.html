@@ -360,11 +360,26 @@
                     </div>
                 </div>
 
-                <!-- Reflection Question -->
-                <div class="p-4 border-b border-white/10">
-                    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest mb-3">✍️ Reflect</h3>
-                    <p class="text-sm text-slate-200 mb-4 italic" id="reflectionQuestion">"What is one thing God is inviting you to live out today?"</p>
-                    <textarea id="reflectionAnswer" rows="4" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..."></textarea>
+                <!-- Reflection Section - Separate Card -->
+                <div id="reflectSection" class="p-4 border-b border-white/10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-amber-500">🔥</span>
+                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" data-i18n="reflect">Reflect</h3>
+                    </div>
+                    
+                    <!-- AI Reflection Question Card (hidden until verse selected) -->
+                    <div id="aiReflectCard" class="hidden mb-4 p-4 bg-black/40 rounded-xl border border-amber-500/20 shadow-lg">
+                        <div class="flex items-start gap-2">
+                            <span class="text-lg">💭</span>
+                            <div>
+                                <p class="text-[10px] text-amber-500/70 font-bold uppercase tracking-wider mb-1">Pagnilayan</p>
+                                <p class="text-sm text-amber-100 leading-relaxed" id="reflectionQuestion">"What is one thing God is inviting you to live out today?"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reflection Input -->
+                    <textarea id="reflectionAnswer" rows="4" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..." data-i18n-placeholder="writeReflection"></textarea>
                 </div>
 
                 <!-- Share Option & Save -->
@@ -874,11 +889,8 @@
         function initializeDevotion() {
             document.getElementById('devotionDate').textContent = formatDate(new Date());
             
-            // Set reflection question
-            document.getElementById('reflectionQuestion').textContent = '"' + window.getTodaysQuestion() + '"';
-            
+            // Default reflection question (will be replaced when verse is highlighted)
             // BibleReader will auto-initialize and load from saved progress
-            // No need to call loadBiblePassage() - BibleReader handles it
         }
 
         // Legacy loadBiblePassage - now handled by BibleReader module

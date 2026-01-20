@@ -47,9 +47,9 @@ const BibleReader = {
     
     // Listen for language changes
     document.addEventListener('languageChanged', () => {
-      // Reload current chapter in new language
+      // Reload current chapter in new language, but KEEP highlighted verses
       if (this.currentBook && this.currentChapter) {
-        this.loadChapter(this.currentBook, this.currentChapter);
+        this.reloadChapterForLanguageChange();
       }
     });
     
@@ -188,6 +188,45 @@ const BibleReader = {
     // Add to recent readings in BiblePicker
     if (typeof BiblePicker !== 'undefined') {
       BiblePicker.addRecentReading(bookId, chapter);
+    }
+  },
+
+  /**
+   * Reload chapter when language changes - preserves highlighted verses
+   */
+  async reloadChapterForLanguageChange() {
+    console.log(`[BibleReader] Reloading for language change, preserving ${this.highlightedVerses.length} highlights`);
+    
+    // Save current highlights
+    const savedHighlights = [...this.highlightedVerses];
+    
+    // Get new language
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Reload chapter data in new language
+    if (typeof BibleLoader !== 'undefined') {
+      this.chapterData = await BibleLoader.getChapter(this.currentBook, this.currentChapter, lang);
+    }
+    
+    if (!this.chapterData) {
+      this.showError('Could not load chapter');
+      return;
+    }
+    
+    // Restore highlights
+    this.highlightedVerses = savedHighlights;
+    
+    // Update UI
+    this.renderPassageTitle();
+    this.renderVerses();
+    this.renderProgress();
+    this.updateNavButtons();
+    
+    // Reload insights in new language if verses are highlighted
+    if (this.highlightedVerses.length > 0) {
+      await this.loadCommentary();
+    } else {
+      this.clearCommentary();
     }
   },
 
@@ -429,13 +468,21 @@ const BibleReader = {
     
     let html = '';
     
+    // Collect reflection questions to update the REFLECT section
+    const reflectionQuestions = [];
+    
     // Show insights for each highlighted verse
     for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
       const tyndaleNote = this.tyndaleData?.verses?.[verseNum];
       const uniqueId = `insight-${verseNum}`;
       
+      // Collect reflection question
+      if (insight.reflection) {
+        reflectionQuestions.push(insight.reflection);
+      }
+      
       html += `
-        <div class="mb-6 pb-4 border-b border-white/10 last:border-0">
+        <div class="mb-5 pb-4 border-b border-white/10 last:border-0 last:pb-0 last:mb-0">
           <p class="text-amber-500 font-bold text-sm mb-3">Verse ${verseNum}</p>
           
           <!-- Understanding -->
@@ -454,12 +501,6 @@ const BibleReader = {
           <div class="mb-3">
             <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.godsLove}</p>
             <p class="text-sm text-slate-300 leading-relaxed">${insight.godsLove || ''}</p>
-          </div>
-          
-          <!-- Reflection Question -->
-          <div class="mb-3 bg-amber-900/20 rounded-lg p-3 border-l-2 border-amber-500">
-            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.reflection}</p>
-            <p class="text-sm text-amber-200 italic leading-relaxed">${insight.reflection || ''}</p>
           </div>
           
           ${tyndaleNote ? `
@@ -481,6 +522,43 @@ const BibleReader = {
     }
     
     this.elements.commentaryContent.innerHTML = html;
+    
+    // Update the REFLECT section with the reflection question(s)
+    this.updateReflectSection(reflectionQuestions);
+  },
+  
+  /**
+   * Update the REFLECT section with AI-generated reflection questions
+   */
+  updateReflectSection(questions) {
+    const reflectSection = document.getElementById('reflectSection');
+    const reflectionEl = document.getElementById('reflectionQuestion');
+    
+    if (!reflectionEl || questions.length === 0) {
+      // Hide the AI reflection card if no questions
+      if (reflectSection) {
+        const aiReflectCard = document.getElementById('aiReflectCard');
+        if (aiReflectCard) aiReflectCard.classList.add('hidden');
+      }
+      return;
+    }
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Show the AI reflection card
+    const aiReflectCard = document.getElementById('aiReflectCard');
+    if (aiReflectCard) aiReflectCard.classList.remove('hidden');
+    
+    // If multiple verses highlighted, combine questions or show first
+    let questionHtml = '';
+    if (questions.length === 1) {
+      questionHtml = questions[0];
+    } else {
+      // Show the first question for multiple verses
+      questionHtml = questions[0];
+    }
+    
+    reflectionEl.innerHTML = `<span class="italic">"${questionHtml}"</span>`;
   },
 
   /**
@@ -545,6 +623,19 @@ const BibleReader = {
     
     this.quickInsightsData = null;
     this.tyndaleData = null;
+    
+    // Hide AI reflection card and reset to default question
+    const aiReflectCard = document.getElementById('aiReflectCard');
+    if (aiReflectCard) aiReflectCard.classList.add('hidden');
+    
+    // Show default reflection question
+    const reflectionEl = document.getElementById('reflectionQuestion');
+    const defaultMsg = lang === 'tl'
+      ? '"Ano ang isang bagay na inaanyayahan ka ng Diyos na isabuhay ngayon?"'
+      : '"What is one thing God is inviting you to live out today?"';
+    if (reflectionEl) {
+      reflectionEl.innerHTML = `<span class="italic">${defaultMsg}</span>`;
+    }
   },
 
   /**
