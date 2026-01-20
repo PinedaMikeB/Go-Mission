@@ -426,13 +426,15 @@ const BibleReader = {
   },
 
   /**
-   * Render Quick Insights - 4-section format with Dig Deeper option
+   * Render Quick Insights - 3-section format with Dig Deeper option
+   * Commentary section is shown but collapsed (user clicks to expand)
    */
   renderCommentary() {
-    if (!this.elements.commentaryContent) return;
+    const commentarySection = document.getElementById('commentarySection');
+    const commentaryContent = document.getElementById('commentaryContent');
+    const commentaryArrow = document.getElementById('commentaryArrow');
     
-    // Show commentary section
-    this.elements.commentaryContent.classList.remove('hidden');
+    if (!commentarySection || !commentaryContent) return;
     
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     
@@ -442,25 +444,30 @@ const BibleReader = {
         understanding: '📖 Understanding This Verse',
         livingItOut: '🚶 Living It Out',
         godsLove: '❤️ See God\'s Love',
-        reflection: '💭 Reflection',
         digDeeper: '📚 Dig Deeper (Tyndale)',
-        noInsights: 'No insights available for selected verses yet.',
+        noInsights: 'No insights available for this verse yet.',
         tapVerses: 'Tap verses above to see insights'
       },
       tl: {
         understanding: '📖 Unawain ang Talata',
         livingItOut: '🚶 Isabuhay Ito',
         godsLove: '❤️ Makita ang Pag-ibig ng Diyos',
-        reflection: '💭 Pagnilayan',
         digDeeper: '📚 Dig Deeper (Tyndale)',
-        noInsights: 'Wala pang insights para sa mga napiling talata.',
+        noInsights: 'Wala pang insights para sa talatang ito.',
         tapVerses: 'I-tap ang mga talata sa itaas para makita ang insights'
       }
     };
     const L = labels[lang] || labels.en;
     
+    // Show the "Help me understand" button when verses are highlighted
+    commentarySection.classList.remove('hidden');
+    
+    // Keep content collapsed by default (don't auto-expand)
+    commentaryContent.classList.add('hidden');
+    if (commentaryArrow) commentaryArrow.style.transform = '';
+    
     if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
-      this.elements.commentaryContent.innerHTML = `
+      commentaryContent.innerHTML = `
         <p class="text-slate-400 italic text-sm">${L.noInsights}</p>
       `;
       return;
@@ -521,7 +528,7 @@ const BibleReader = {
       `;
     }
     
-    this.elements.commentaryContent.innerHTML = html;
+    commentaryContent.innerHTML = html;
     
     // Update the REFLECT section with the reflection question(s)
     this.updateReflectSection(reflectionQuestions);
@@ -607,35 +614,22 @@ const BibleReader = {
   },
 
   /**
-   * Clear commentary/insights
+   * Clear commentary/insights - hide section when no verses highlighted
    */
   clearCommentary() {
-    if (!this.elements.commentaryContent) return;
+    const commentarySection = document.getElementById('commentarySection');
+    const commentaryContent = document.getElementById('commentaryContent');
     
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
-    const msg = lang === 'tl' 
-      ? 'I-tap ang mga talata sa itaas para makita ang insights'
-      : 'Tap verses above to see insights';
-    
-    this.elements.commentaryContent.innerHTML = `
-      <p class="text-slate-500 italic text-sm">${msg}</p>
-    `;
+    // Hide the entire commentary section
+    if (commentarySection) commentarySection.classList.add('hidden');
+    if (commentaryContent) commentaryContent.classList.add('hidden');
     
     this.quickInsightsData = null;
     this.tyndaleData = null;
     
-    // Hide AI reflection card and reset to default question
+    // Hide AI reflection card
     const aiReflectCard = document.getElementById('aiReflectCard');
     if (aiReflectCard) aiReflectCard.classList.add('hidden');
-    
-    // Show default reflection question
-    const reflectionEl = document.getElementById('reflectionQuestion');
-    const defaultMsg = lang === 'tl'
-      ? '"Ano ang isang bagay na inaanyayahan ka ng Diyos na isabuhay ngayon?"'
-      : '"What is one thing God is inviting you to live out today?"';
-    if (reflectionEl) {
-      reflectionEl.innerHTML = `<span class="italic">${defaultMsg}</span>`;
-    }
   },
 
   /**

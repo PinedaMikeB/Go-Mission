@@ -348,14 +348,19 @@
                         <p class="text-slate-500 text-center py-8">Loading...</p>
                     </div>
                     
-                    <!-- Commentary Section (auto-shows when verses highlighted) -->
-                    <div id="commentarySection" class="mt-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-amber-500">💡</span>
-                            <span class="text-xs font-bold text-amber-500 uppercase tracking-wider">Commentary</span>
-                        </div>
-                        <div id="commentaryContent" class="p-4 bg-black/40 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed">
-                            <p class="text-slate-500 italic">Tap verses above to see commentary</p>
+                    <!-- Help Me Understand Section (collapsible, hidden until verses highlighted) -->
+                    <div id="commentarySection" class="mt-4 hidden">
+                        <button id="helpMeUnderstandBtn" onclick="toggleCommentarySection()" class="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/30 transition-all">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">💡</span>
+                                <span class="text-sm font-bold text-amber-400" data-i18n="helpMeUnderstand">Help me understand</span>
+                            </div>
+                            <svg id="commentaryArrow" class="w-5 h-5 text-amber-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="commentaryContent" class="hidden mt-3 p-4 bg-black/40 rounded-xl border border-amber-500/20 text-sm text-slate-300 leading-relaxed shadow-lg">
+                            <p class="text-slate-500 italic">Loading insights...</p>
                         </div>
                     </div>
                 </div>
@@ -949,12 +954,19 @@
             window.updateJourneyDisplay(window.currentUserStage || 'seeker');
         });
 
-        // Toggle commentary
-        window.toggleCommentary = function() {
+        // Toggle commentary section (Help me understand)
+        window.toggleCommentarySection = function() {
             const content = document.getElementById('commentaryContent');
             const arrow = document.getElementById('commentaryArrow');
-            content.classList.toggle('hidden');
-            arrow.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = '';
+            }
         };
 
         // Toggle share
@@ -965,6 +977,8 @@
 
         // Load today's entry if exists
         window.loadTodaysEntry = async function(uid) {
+            if (!uid) return;
+            
             const today = getTodayString();
             const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
             
@@ -972,16 +986,29 @@
                 const entryDoc = await window.getDoc(entryRef);
                 if (entryDoc.exists()) {
                     const data = entryDoc.data();
-                    highlightedVerses = data.highlightedVerses || [];
+                    
+                    // Restore highlighted verses to BibleReader
+                    if (typeof BibleReader !== 'undefined' && data.highlightedVerses) {
+                        BibleReader.highlightedVerses = data.highlightedVerses;
+                    }
+                    
                     document.getElementById('reflectionAnswer').value = data.reflection || '';
                     shareWithGroup = data.sharedWithGroup || false;
                     document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
-                    loadBiblePassage();
+                    
+                    // Re-render to show restored highlights
+                    if (typeof BibleReader !== 'undefined') {
+                        BibleReader.renderVerses();
+                        if (BibleReader.highlightedVerses.length > 0) {
+                            await BibleReader.loadCommentary();
+                        }
+                    }
                     
                     document.getElementById('saveBtnText').textContent = '✓ Saved - Update';
                 }
             } catch (error) {
                 console.error('Error loading entry:', error);
+                // Don't show error to user - just continue with fresh state
             }
         };
 
