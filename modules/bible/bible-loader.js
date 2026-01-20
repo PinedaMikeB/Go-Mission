@@ -1,13 +1,13 @@
 /**
  * Go Mission - Bible Loader Module
- * Loads Bible text and commentary from local JSON files
+ * Loads Bible text, commentary, and Quick Insights from local JSON files
  * Supports both English (BSB) and Tagalog (ADB 1905)
  * 
  * Data locations:
  * - Bible EN: /modules/bible/data/en/{BOOK}.json
  * - Bible TL: /modules/bible/data/tl/{BOOK}.json
- * - Commentary EN: /modules/bible/data/commentary/matthew-henry/{BOOK}.json
- * - Commentary TL: /modules/bible/data/commentary/matthew-henry-tl/{BOOK}.json
+ * - Quick Insights: /modules/bible/data/quick-insights/{BOOK}.json
+ * - Tyndale (Dig Deeper): /modules/bible/data/commentary/tyndale-json/{BOOK}.json
  */
 
 const BibleLoader = {
@@ -15,15 +15,17 @@ const BibleLoader = {
   paths: {
     bibleEn: 'modules/bible/data/en',
     bibleTl: 'modules/bible/data/tl',
-    commentaryEn: 'modules/bible/data/commentary/matthew-henry',
-    commentaryTl: 'modules/bible/data/commentary/matthew-henry-tl'
+    quickInsights: 'modules/bible/data/quick-insights',
+    tyndale: 'modules/bible/data/commentary/tyndale-json'
   },
   
   // Cache for loaded data
   cache: {
-    bible: {},      // { 'en:GEN': {...}, 'tl:GEN': {...} }
-    commentary: {}, // { 'en:GEN': {...}, 'tl:GEN': {...} }
-    index: null     // Book metadata
+    bible: {},         // { 'en:GEN': {...}, 'tl:GEN': {...} }
+    commentary: {},    // Legacy - kept for compatibility
+    quickInsights: {}, // { 'GEN': {...} }
+    tyndale: {},       // { 'GEN': {...} }
+    index: null        // Book metadata
   },
   
   // Book ID mapping (3-letter codes)
@@ -283,6 +285,146 @@ const BibleLoader = {
   },
   
   /**
+   * Load Quick Insights for a book
+   * @param {string} bookId - 3-letter book code
+   * @returns {Promise<object>}
+   */
+  async loadQuickInsights(bookId) {
+    // Return from cache if available
+    if (this.cache.quickInsights[bookId]) {
+      return this.cache.quickInsights[bookId];
+    }
+    
+    const url = `${this.paths.quickInsights}/${bookId}.json`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.log(`[BibleLoader] Quick Insights not available for ${bookId}`);
+        return null;
+      }
+      
+      const data = await response.json();
+      this.cache.quickInsights[bookId] = data;
+      console.log(`[BibleLoader] Loaded Quick Insights for ${bookId}`);
+      return data;
+      
+    } catch (error) {
+      console.error(`[BibleLoader] Error loading Quick Insights ${bookId}:`, error);
+      return null;
+    }
+  },
+  
+  /**
+   * Get Quick Insights for specific verses
+   * @param {string} bookId - 3-letter book code
+   * @param {number} chapter - Chapter number
+   * @param {number[]} verses - Array of verse numbers
+   * @param {string} lang - 'en' or 'tl'
+   * @returns {Promise<object>}
+   */
+  async getQuickInsights(bookId, chapter, verses, lang = null) {
+    const l = lang || (typeof i18n !== 'undefined' ? i18n.getLang() : 'en');
+    const insights = await this.loadQuickInsights(bookId);
+    
+    if (!insights || !insights.chapters) return null;
+    
+    const chapterData = insights.chapters[chapter.toString()];
+    if (!chapterData || !chapterData.verses) return null;
+    
+    const result = {
+      book: bookId,
+      chapter: chapter,
+      verses: {}
+    };
+    
+    for (const verseNum of verses) {
+      const verseInsight = chapterData.verses[verseNum.toString()];
+      if (verseInsight && verseInsight[l]) {
+        result.verses[verseNum] = verseInsight[l];
+      }
+    }
+    
+    return result;
+  },
+  
+  /**
+   * Load Tyndale notes for a book (for "Dig Deeper" feature)
+   * @param {string} bookId - 3-letter book code
+   * @returns {Promise<object>}
+   */
+  async loadTyndale(bookId) {
+    // Return from cache if available
+    if (this.cache.tyndale[bookId]) {
+      return this.cache.tyndale[bookId];
+    }
+    
+    const url = `${this.paths.tyndale}/${bookId}.json`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.log(`[BibleLoader] Tyndale not available for ${bookId}`);
+        return null;
+      }
+      
+      const data = await response.json();
+      this.cache.tyndale[bookId] = data;
+      console.log(`[BibleLoader] Loaded Tyndale for ${bookId}`);
+      return data;
+      
+    } catch (error) {
+      console.error(`[BibleLoader] Error loading Tyndale ${bookId}:`, error);
+      return null;
+    }
+  },
+  
+  /**
+   * Get Tyndale notes for specific verses (for "Dig Deeper")
+   * @param {string} bookId - 3-letter book code
+   * @param {number} chapter - Chapter number
+   * @param {number[]} verses - Array of verse numbers
+   * @returns {Promise<object>}
+   */
+  async getTyndale(bookId, chapter, verses) {
+    const tyndale = await this.loadTyndale(bookId);
+    
+    if (!tyndale || !tyndale.chapters) return null;
+    
+    const chapterData = tyndale.chapters[chapter.toString()];
+    if (!chapterData || !chapterData.verses) return null;
+    
+    const result = {
+      book: bookId,
+      chapter: chapter,
+      verses: {}
+    };
+    
+    for (const verseNum of verses) {
+      const verseNote = chapterData.verses[verseNum.toString()];
+      if (verseNote) {
+        result.verses[verseNum] = verseNote;
+      }
+    }
+    
+    return result;
+  },
+  
+  /**
+   * Check if Quick Insights are available for a book
+   * @param {string} bookId - 3-letter book code
+   * @returns {Promise<boolean>}
+   */
+  async hasQuickInsights(bookId) {
+    try {
+      const response = await fetch(`${this.paths.quickInsights}/${bookId}.json`, { method: 'HEAD' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+  
+  /**
    * Parse a passage reference string
    * @param {string} ref - e.g., "John 3:16", "JHN 3:16-18"
    * @returns {object} {book, chapter, startVerse, endVerse}
@@ -349,6 +491,8 @@ const BibleLoader = {
   clearCache() {
     this.cache.bible = {};
     this.cache.commentary = {};
+    this.cache.quickInsights = {};
+    this.cache.tyndale = {};
     console.log('[BibleLoader] Cache cleared');
   }
 };

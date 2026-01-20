@@ -18,6 +18,8 @@ const BibleReader = {
   highlightedVerses: [],
   chapterData: null,
   commentaryData: null,
+  quickInsightsData: null,
+  tyndaleData: null,
   
   // DOM references
   elements: {},
@@ -357,24 +359,27 @@ const BibleReader = {
   },
 
   /**
-   * Load and display commentary for highlighted verses
+   * Load and display Quick Insights for highlighted verses
    */
   async loadCommentary() {
     if (this.highlightedVerses.length === 0) return;
     
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     
-    // Get commentary using BibleLoader
+    // Get Quick Insights using BibleLoader
     if (typeof BibleLoader !== 'undefined') {
-      const minVerse = Math.min(...this.highlightedVerses);
-      const maxVerse = Math.max(...this.highlightedVerses);
-      
-      this.commentaryData = await BibleLoader.getCommentary(
+      this.quickInsightsData = await BibleLoader.getQuickInsights(
         this.currentBook, 
         this.currentChapter, 
-        minVerse, 
-        maxVerse, 
+        this.highlightedVerses,
         lang
+      );
+      
+      // Also load Tyndale for "Dig Deeper"
+      this.tyndaleData = await BibleLoader.getTyndale(
+        this.currentBook,
+        this.currentChapter,
+        this.highlightedVerses
       );
     }
     
@@ -382,7 +387,7 @@ const BibleReader = {
   },
 
   /**
-   * Render commentary - shows preview with expand option
+   * Render Quick Insights - 4-section format with Dig Deeper option
    */
   renderCommentary() {
     if (!this.elements.commentaryContent) return;
@@ -390,36 +395,87 @@ const BibleReader = {
     // Show commentary section
     this.elements.commentaryContent.classList.remove('hidden');
     
-    if (!this.commentaryData || !this.commentaryData.verses || Object.keys(this.commentaryData.verses).length === 0) {
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Section labels
+    const labels = {
+      en: {
+        understanding: '📖 Understanding This Verse',
+        livingItOut: '🚶 Living It Out',
+        godsLove: '❤️ See God\'s Love',
+        reflection: '💭 Reflection',
+        digDeeper: '📚 Dig Deeper (Tyndale)',
+        noInsights: 'No insights available for selected verses yet.',
+        tapVerses: 'Tap verses above to see insights'
+      },
+      tl: {
+        understanding: '📖 Unawain ang Talata',
+        livingItOut: '🚶 Isabuhay Ito',
+        godsLove: '❤️ Makita ang Pag-ibig ng Diyos',
+        reflection: '💭 Pagnilayan',
+        digDeeper: '📚 Dig Deeper (Tyndale)',
+        noInsights: 'Wala pang insights para sa mga napiling talata.',
+        tapVerses: 'I-tap ang mga talata sa itaas para makita ang insights'
+      }
+    };
+    const L = labels[lang] || labels.en;
+    
+    if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
       this.elements.commentaryContent.innerHTML = `
-        <p class="text-slate-400 italic text-sm">No commentary available for selected verses.</p>
+        <p class="text-slate-400 italic text-sm">${L.noInsights}</p>
       `;
       return;
     }
     
     let html = '';
     
-    // Show verse commentaries with preview
-    for (const [verseRef, text] of Object.entries(this.commentaryData.verses)) {
-      const previewLength = 150; // characters for preview
-      const needsTruncate = text.length > previewLength;
-      const previewText = needsTruncate ? text.substring(0, previewLength).trim() + '...' : text;
-      const uniqueId = `comm-${verseRef.replace(/[^a-z0-9]/gi, '-')}`;
+    // Show insights for each highlighted verse
+    for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
+      const tyndaleNote = this.tyndaleData?.verses?.[verseNum];
+      const uniqueId = `insight-${verseNum}`;
       
       html += `
-        <div class="mb-3">
-          <p class="text-amber-500 font-bold text-xs mb-1">v.${verseRef}</p>
-          <p class="text-sm text-slate-300 leading-relaxed">
-            <span id="${uniqueId}-preview">${previewText}</span>
-            <span id="${uniqueId}-full" class="hidden">${text}</span>
-            ${needsTruncate ? `
-              <button onclick="BibleReader.toggleCommentaryExpand('${uniqueId}')" 
-                      id="${uniqueId}-btn"
-                      class="text-amber-500 hover:text-amber-400 ml-1 text-xs font-medium">
-                Read more
-              </button>
-            ` : ''}
-          </p>
+        <div class="mb-6 pb-4 border-b border-white/10 last:border-0">
+          <p class="text-amber-500 font-bold text-sm mb-3">Verse ${verseNum}</p>
+          
+          <!-- Understanding -->
+          <div class="mb-3">
+            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.understanding}</p>
+            <p class="text-sm text-slate-300 leading-relaxed">${insight.understanding || ''}</p>
+          </div>
+          
+          <!-- Living It Out -->
+          <div class="mb-3">
+            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.livingItOut}</p>
+            <p class="text-sm text-slate-300 leading-relaxed">${insight.livingItOut || ''}</p>
+          </div>
+          
+          <!-- God's Love -->
+          <div class="mb-3">
+            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.godsLove}</p>
+            <p class="text-sm text-slate-300 leading-relaxed">${insight.godsLove || ''}</p>
+          </div>
+          
+          <!-- Reflection Question -->
+          <div class="mb-3 bg-amber-900/20 rounded-lg p-3 border-l-2 border-amber-500">
+            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.reflection}</p>
+            <p class="text-sm text-amber-200 italic leading-relaxed">${insight.reflection || ''}</p>
+          </div>
+          
+          ${tyndaleNote ? `
+          <!-- Dig Deeper Toggle -->
+          <div class="mt-3">
+            <button onclick="BibleReader.toggleDigDeeper('${uniqueId}')" 
+                    id="${uniqueId}-btn"
+                    class="text-xs text-amber-500/70 hover:text-amber-400 flex items-center gap-1 transition-colors">
+              <span id="${uniqueId}-icon">▶</span>
+              <span>${L.digDeeper}</span>
+            </button>
+            <div id="${uniqueId}-content" class="hidden mt-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+              <p class="text-xs text-slate-400 leading-relaxed">${tyndaleNote}</p>
+            </div>
+          </div>
+          ` : ''}
         </div>
       `;
     }
@@ -428,7 +484,27 @@ const BibleReader = {
   },
 
   /**
-   * Toggle commentary expand/collapse
+   * Toggle Dig Deeper section
+   */
+  toggleDigDeeper(uniqueId) {
+    const content = document.getElementById(`${uniqueId}-content`);
+    const icon = document.getElementById(`${uniqueId}-icon`);
+    
+    if (content && icon) {
+      const isHidden = content.classList.contains('hidden');
+      
+      if (isHidden) {
+        content.classList.remove('hidden');
+        icon.textContent = '▼';
+      } else {
+        content.classList.add('hidden');
+        icon.textContent = '▶';
+      }
+    }
+  },
+
+  /**
+   * Toggle commentary expand/collapse (legacy - kept for compatibility)
    */
   toggleCommentaryExpand(uniqueId) {
     const preview = document.getElementById(`${uniqueId}-preview`);
@@ -453,14 +529,22 @@ const BibleReader = {
   },
 
   /**
-   * Clear commentary
+   * Clear commentary/insights
    */
   clearCommentary() {
     if (!this.elements.commentaryContent) return;
     
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const msg = lang === 'tl' 
+      ? 'I-tap ang mga talata sa itaas para makita ang insights'
+      : 'Tap verses above to see insights';
+    
     this.elements.commentaryContent.innerHTML = `
-      <p class="text-slate-500 italic text-sm">Tap verses above to see commentary</p>
+      <p class="text-slate-500 italic text-sm">${msg}</p>
     `;
+    
+    this.quickInsightsData = null;
+    this.tyndaleData = null;
   },
 
   /**

@@ -18,13 +18,14 @@ const fs = require('fs');
 const path = require('path');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
 const CONFIG = {
   bibleDir: path.join(__dirname, '..', 'modules', 'bible', 'data', 'en'),
   tyndaleDir: path.join(__dirname, '..', 'modules', 'bible', 'data', 'commentary', 'tyndale-json'),
   outputDir: path.join(__dirname, '..', 'modules', 'bible', 'data', 'quick-insights'),
-  booksToProcess: ['JHN'],
+  // Accept book from command line argument, default to JHN
+  booksToProcess: process.argv[2] ? [process.argv[2].toUpperCase()] : ['JHN'],
   delayBetweenVerses: 500,
 };
 
