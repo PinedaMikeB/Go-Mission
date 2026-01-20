@@ -15,7 +15,7 @@ const BibleReader = {
   // State
   currentBook: 'JHN',
   currentChapter: 1,
-  highlightedVerses: [],
+  highlightedVerses: [],      // Now stores objects: [{verse: 1, color: 'gold'}, ...]
   chapterData: null,
   commentaryData: null,
   quickInsightsData: null,
@@ -24,7 +24,7 @@ const BibleReader = {
   // Reading preferences
   preferences: {
     fontSize: 16,           // Base font size in pixels
-    highlightColor: 'gold', // Current highlight color
+    highlightColor: 'gold', // Current/active highlight color for new highlights
     isFullscreen: false     // Fullscreen mode
   },
   
@@ -375,14 +375,16 @@ const BibleReader = {
     if (!this.chapterData) return '<p class="text-slate-500">Loading...</p>';
     
     const verses = this.chapterData.verses;
-    const colorConfig = this.highlightColors[this.preferences.highlightColor];
     let html = '';
     
     for (const [verseNum, verseText] of Object.entries(verses)) {
-      const isHighlighted = this.highlightedVerses.includes(parseInt(verseNum));
-      const highlightStyle = isHighlighted 
-        ? `background: ${colorConfig.bg}; border-left: 3px solid ${colorConfig.border}; padding-left: 8px; margin-left: -11px;`
-        : '';
+      const highlighted = this.highlightedVerses.find(h => h.verse === parseInt(verseNum));
+      let highlightStyle = '';
+      
+      if (highlighted) {
+        const colorConfig = this.highlightColors[highlighted.color] || this.highlightColors.gold;
+        highlightStyle = `background: ${colorConfig.bg}; border-left: 3px solid ${colorConfig.border}; padding-left: 8px; margin-left: -11px;`;
+      }
       
       html += `
         <span class="verse inline" 
@@ -633,21 +635,24 @@ const BibleReader = {
   },
 
   /**
-   * Toggle verse highlight
+   * Toggle verse highlight - each verse stores its own color
    */
   async toggleHighlight(verseNum) {
-    const index = this.highlightedVerses.indexOf(verseNum);
+    const existingIndex = this.highlightedVerses.findIndex(h => h.verse === verseNum);
     
-    if (index > -1) {
+    if (existingIndex > -1) {
       // Remove highlight
-      this.highlightedVerses.splice(index, 1);
+      this.highlightedVerses.splice(existingIndex, 1);
     } else {
-      // Add highlight
-      this.highlightedVerses.push(verseNum);
+      // Add highlight with current color
+      this.highlightedVerses.push({
+        verse: verseNum,
+        color: this.preferences.highlightColor
+      });
     }
     
-    // Sort highlighted verses
-    this.highlightedVerses.sort((a, b) => a - b);
+    // Sort highlighted verses by verse number
+    this.highlightedVerses.sort((a, b) => a.verse - b.verse);
     
     // Re-render verses
     this.renderVerses();
@@ -668,12 +673,15 @@ const BibleReader = {
     
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     
+    // Extract just verse numbers from highlighted verses
+    const verseNumbers = this.highlightedVerses.map(h => h.verse);
+    
     // Get Quick Insights using BibleLoader
     if (typeof BibleLoader !== 'undefined') {
       this.quickInsightsData = await BibleLoader.getQuickInsights(
         this.currentBook, 
         this.currentChapter, 
-        this.highlightedVerses,
+        verseNumbers,
         lang
       );
       
@@ -681,7 +689,7 @@ const BibleReader = {
       this.tyndaleData = await BibleLoader.getTyndale(
         this.currentBook,
         this.currentChapter,
-        this.highlightedVerses
+        verseNumbers
       );
     }
     
@@ -931,7 +939,7 @@ const BibleReader = {
     return {
       book: this.currentBook,
       chapter: this.currentChapter,
-      highlightedVerses: this.highlightedVerses
+      highlightedVerses: this.highlightedVerses.map(h => h.verse) // Return just verse numbers for saving
     };
   },
 

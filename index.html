@@ -1213,8 +1213,13 @@
                     const data = entryDoc.data();
                     
                     // Restore highlighted verses to BibleReader
+                    // Convert old format (array of numbers) to new format (array of objects with color)
                     if (typeof BibleReader !== 'undefined' && data.highlightedVerses) {
-                        BibleReader.highlightedVerses = data.highlightedVerses;
+                        BibleReader.highlightedVerses = data.highlightedVerses.map(v => {
+                            // If already an object, use it; otherwise convert number to object
+                            if (typeof v === 'object' && v.verse) return v;
+                            return { verse: v, color: 'gold' };
+                        });
                     }
                     
                     document.getElementById('reflectionAnswer').value = data.reflection || '';
@@ -1302,9 +1307,15 @@
                 const aiReflectCard = document.getElementById('aiReflectCard');
                 if (aiReflectCard) aiReflectCard.classList.add('hidden');
                 
+                // Show saved briefly, then reset to default
                 btnText.textContent = '✓ Saved!';
                 btn.disabled = false;
                 await window.loadWeekProgress(window.currentUser.uid);
+                
+                // Reset button text after 2 seconds
+                setTimeout(() => {
+                    btnText.textContent = '💾 Save This Day';
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error saving:', error);
