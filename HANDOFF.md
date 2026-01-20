@@ -12,50 +12,41 @@
 ---
 
 ## Current Session (2026-01-20)
-- **MODULE**: Theme System (Dark/Light Mode)
-- **STATUS**: ✅ Implemented
-- **NEXT**: Test theme toggle on live site
+- **MODULE**: Bible Reader UI Enhancements
+- **STATUS**: ✅ Implemented highlight colors, font size, fullscreen
+- **NEXT**: Test new features, continue Quick Insights generation
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Dark/Light Mode Theme System
+### 1. Bible Reader UI Enhancements
+- **Highlight Colors**: 6 options (gold, green, blue, purple, pink, orange)
+- **Font Size Controls**: A-/A+ buttons (12px to 28px range)
+- **Fullscreen Mode**: Distraction-free reading with ESC to exit
+- **Reading Toolbar**: Below chapter navigation
+- **Preferences**: Saved to localStorage
+
+### 2. Dark/Light Mode Theme System
 - Created `/modules/core/theme.js` - Theme management module
 - Added CSS variables for both themes in `index.html`
 - Theme toggle button added beside language toggle in header
 - Sun/Moon icons for toggle state
-- localStorage persistence
-- Firestore sync for logged-in users
-- Smooth 0.3s transitions on theme change
+- localStorage persistence and Firestore sync
 
-### 2. Light Mode Color Scheme
-| CSS Variable | Light Mode Value | Description |
-|--------------|------------------|-------------|
-| --bg-color | #fcfaf2 | Warm cream background |
-| --text-color | #2a0505 | Deep maroon text |
-| --text-muted | #64748b | Slate gray secondary |
-| --card-bg | #ffffff | White cards |
-| --nav-bg | #ffffff | White navigation |
-| --shadow-color | rgba(42,5,5,0.1) | Soft maroon shadows |
+### 3. Light Mode Color Scheme (from Gemini design)
+- Background: #fcfaf2 (warm cream)
+- Text: #2a0505 (deep maroon)
+- Cards: #ffffff (white)
+- Mountain image with cream overlay
 
-### 3. Previous: Quick Insights Data Generation
-| Book | Verses | Model | Cost | Status |
-|------|--------|-------|------|--------|
-| John | 878 | Gemini 2.5 Pro | $41.91 | ✅ Complete |
-| Matthew | 1,068 | Gemini 2.0 Flash | ~$8.84 | ✅ Complete |
-| Mark | 673 | GPT-4o-mini | $0.08 | ✅ Complete |
-| Luke | 1,149 | GPT-4o-mini | ~$0.12 | 🔄 Generating |
-
-### 4. Previous: Quick Insights UI Updates
-- Moved reflection question from Commentary to REFLECT section
-- Added styled `aiReflectCard` with drop shadow
-- Card shows only when verse with insights is highlighted
-- Commentary now shows: Understanding, Living It Out, God's Love, Dig Deeper
-
-### 5. API Cost Discovery
-- **GPT-4o-mini**: Best value (~$0.08-0.15 per book)
-- Can generate all 66 books for ~$8-12 total
+### 4. Quick Insights Generation (In Progress)
+| Book | Verses | Expected | Status |
+|------|--------|----------|--------|
+| John | 878 | 878 | ✅ Complete |
+| Matthew | 1,068 | 1,071 | ✅ Complete |
+| Mark | ~237 | 678 | 🔄 Re-running |
+| Luke | ~570 | 1,151 | 🔄 Re-running |
 
 ---
 
