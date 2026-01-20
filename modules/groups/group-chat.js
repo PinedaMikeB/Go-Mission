@@ -71,28 +71,65 @@ const GroupChat = {
    * Load recent messages
    */
   async loadMessages() {
-    if (!Groups.currentGroup || !window.db) return;
+    if (!Groups.currentGroup || !window.db) {
+      console.log('[GroupChat] No group or db available');
+      return;
+    }
+    
+    console.log('[GroupChat] Loading messages for group:', Groups.currentGroup.id);
     
     try {
       const chatRef = window.collection(window.db, 'goMission_chats');
+      
+      // Simple query first - just filter by groupId
       const q = window.query(
         chatRef,
         window.where('groupId', '==', Groups.currentGroup.id),
-        window.orderBy('createdAt', 'desc'),
         window.limit(50)
       );
       
       const snapshot = await window.getDocs(q);
       
+      console.log('[GroupChat] Found messages:', snapshot.size);
+      
       this.messages = [];
       snapshot.forEach(doc => {
-        this.messages.unshift({ id: doc.id, ...doc.data() });
+        this.messages.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort by createdAt client-side to avoid index requirement
+      this.messages.sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
+        const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
+        return aTime - bTime;
       });
       
       this.renderMessages();
+      this.updateMemberCount();
       
     } catch (error) {
       console.error('[GroupChat] Error loading messages:', error);
+      // Show error in chat area
+      const container = document.getElementById('chatMessages');
+      if (container) {
+        container.innerHTML = `
+          <div class="text-center py-8">
+            <p class="text-red-400 text-sm">Error loading messages</p>
+            <p class="text-slate-600 text-xs mt-1">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+  },
+  
+  /**
+   * Update member count in header
+   */
+  updateMemberCount() {
+    const memberCount = document.getElementById('chatMemberCount');
+    if (memberCount && Groups.currentGroup) {
+      const count = Groups.currentGroup.members?.length || Groups.currentGroup.currentCount || 0;
+      memberCount.textContent = `${count} member${count !== 1 ? 's' : ''}`;
     }
   },
   
