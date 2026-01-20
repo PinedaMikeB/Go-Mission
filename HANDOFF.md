@@ -12,24 +12,27 @@
 ---
 
 ## Current Session (2026-01-21)
-- **MODULE**: Training Module - Light Mode Support
-- **STATUS**: ✅ Fixed training modal to support light/dark themes
-- **NEXT**: Test light mode on training modal, then continue with Training Uploader
+- **MODULE**: Training Module - Language Support
+- **STATUS**: ✅ Training module now responds to global language toggle
+- **NEXT**: Test language switching, upload Tagalog content via Training Uploader
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Training Uploader Firebase Fix
-- Fixed Firebase config credentials in `/tools/training-uploader.html`
-- Wrong API key was causing "API key not valid" errors
-- Corrected: apiKey, storageBucket, messagingSenderId, appId
+### 1. Training Module Language Switching
+- Added `setupLanguageListener()` to listen for `languageChanged` events
+- Training content reloads automatically when language is toggled
+- Uses i18n.currentLang for language detection
+- Re-renders training UI after language change
 
 ### 2. Training Modal Light Mode Support
 - Added `getThemeClasses()` method to Training module
 - Updated `openDay()` modal with theme-aware Tailwind classes
 - Updated `openGroupProcessing()` (Day 7) modal with theme-aware classes
-- Dynamic class selection based on `light-mode` body class
+
+### 3. Training Uploader Firebase Fix
+- Fixed Firebase config credentials in `/tools/training-uploader.html`
 
 ### Previous Session: In-App Notifications for Group Chat
 

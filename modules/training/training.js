@@ -34,7 +34,32 @@ const Training = {
     // Load available sessions
     await this.loadSessions();
     
+    // Listen for language changes
+    this.setupLanguageListener();
+    
     console.log('[Training] Ready');
+  },
+  
+  /**
+   * Setup listener for language changes
+   */
+  setupLanguageListener() {
+    // Remove existing listener if any
+    if (this._languageHandler) {
+      document.removeEventListener('languageChanged', this._languageHandler);
+    }
+    
+    // Create and store handler
+    this._languageHandler = async (e) => {
+      console.log('[Training] Language changed to:', e.detail.lang);
+      // Reload sessions with new language
+      await this.loadSessions();
+      // Re-render the UI
+      this.render();
+    };
+    
+    // Add listener
+    document.addEventListener('languageChanged', this._languageHandler);
   },
   
   /**
@@ -73,7 +98,10 @@ const Training = {
     if (!window.db) return;
     
     try {
-      const lang = window.currentLang || 'en';
+      // Get language from i18n module or global variable
+      const lang = (typeof i18n !== 'undefined' && i18n.currentLang) || window.currentLang || 'en';
+      console.log('[Training] Loading sessions for language:', lang);
+      
       const contentRef = window.collection(window.db, 'goMission_trainingContent');
       const q = window.query(
         contentRef,
@@ -105,7 +133,7 @@ const Training = {
         session.days.sort((a, b) => a.dayNumber - b.dayNumber);
       });
       
-      console.log('[Training] Loaded sessions:', this.sessions.length);
+      console.log('[Training] Loaded sessions:', this.sessions.length, 'for lang:', lang);
       
     } catch (error) {
       console.error('[Training] Error loading sessions:', error);
