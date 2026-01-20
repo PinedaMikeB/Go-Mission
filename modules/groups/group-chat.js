@@ -38,6 +38,11 @@ const GroupChat = {
       modal.classList.remove('hidden');
     }
     
+    // Mark notifications as read
+    if (typeof Notifications !== 'undefined') {
+      Notifications.markAsRead();
+    }
+    
     // Load messages
     await this.loadMessages();
     

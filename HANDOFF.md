@@ -12,15 +12,23 @@
 ---
 
 ## Current Session (2026-01-20)
-- **MODULE**: Groups - Invite Code System
-- **STATUS**: ✅ Implemented invite code flow (Facebook → App)
-- **NEXT**: Deploy and test invite code generation
+- **MODULE**: Notifications System
+- **STATUS**: ✅ Implemented in-app notifications for group chat
+- **NEXT**: Test notifications, then add email notifications via Cloud Functions
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Group Invite Code System (Facebook → App Flow)
+### 1. In-App Notifications for Group Chat
+- Real-time notifications via Firestore onSnapshot
+- Toast popups when new message arrives (chat closed)
+- Sound alert (two-tone beep)
+- Badge count on Group Chat button
+- Vibration on mobile devices
+- New module: `/modules/core/notifications.js`
+
+### 2. Group Invite Code System (Facebook → App Flow)
 - Removed "Find a Group" / browse groups feature
 - Added "Join with Code" for seekers
 - Leaders generate 6-char invite codes (e.g., ABC123)
@@ -141,4 +149,4 @@ Book codes: GEN, EXO, MAT, MRK, LUK, JHN, ACT, ROM, etc.
 
 ---
 
-*Last Updated: January 20, 2026 - 11:30 PM PHT*
+*Last Updated: January 20, 2026 - 11:45 PM PHT*

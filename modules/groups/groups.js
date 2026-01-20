@@ -783,10 +783,11 @@ const Groups = {
       `;
     }
     
-    // Chat button
+    // Chat button with notification badge
     html += `
-      <button onclick="GroupChat.open()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 mb-3">
+      <button onclick="GroupChat.open(); Notifications?.markAsRead();" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 mb-3 relative">
         💬 Group Chat
+        <span id="chatNotificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
       </button>
     `;
     

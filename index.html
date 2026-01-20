@@ -823,6 +823,7 @@
     <script src="modules/bible/bible-reader.js"></script>
     <script src="modules/groups/groups.js"></script>
     <script src="modules/groups/group-chat.js"></script>
+    <script src="modules/core/notifications.js"></script>
     
     <!-- Bible Data & Reading Plan -->
     <script src="js/bible-data.js"></script>
@@ -830,7 +831,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         const firebaseConfig = {
@@ -860,6 +861,7 @@
         window.getDocs = getDocs;
         window.orderBy = orderBy;
         window.limit = limit;
+        window.onSnapshot = onSnapshot;
         window.serverTimestamp = serverTimestamp;
         window.currentUser = null;
 
@@ -888,6 +890,11 @@
                 // Initialize Groups module
                 if (typeof Groups !== 'undefined') {
                     await Groups.init();
+                    
+                    // Initialize Notifications after Groups
+                    if (typeof Notifications !== 'undefined') {
+                        await Notifications.init();
+                    }
                     
                     // Check for join code in URL (?join=CODE)
                     const urlParams = new URLSearchParams(window.location.search);
