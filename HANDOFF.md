@@ -12,15 +12,35 @@
 ---
 
 ## Current Session (2026-01-20)
-- **MODULE**: Bible Reader UI Enhancements
-- **STATUS**: ✅ Implemented highlight colors, font size, fullscreen
-- **NEXT**: Test new features, continue Quick Insights generation
+- **MODULE**: Groups - Invite Code System
+- **STATUS**: ✅ Implemented invite code flow (Facebook → App)
+- **NEXT**: Deploy and test invite code generation
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Bible Reader UI Enhancements
+### 1. Group Invite Code System (Facebook → App Flow)
+- Removed "Find a Group" / browse groups feature
+- Added "Join with Code" for seekers
+- Leaders generate 6-char invite codes (e.g., ABC123)
+- URL deep-link support: `gomission.netlify.app/?join=ABC123`
+- Codes have expiration and optional usage limits
+
+### 2. Disciple-First Group Creation Rule
+- Users must be a disciple (group member) before creating a group
+- Admin (michael.marga@gmail.com) can bypass this rule
+- Endorsement code system for authorized group creation
+- Leaders/Admin can generate codes for new disciple-makers
+
+### 2. Endorsement Code System
+- New Firestore collection: `goMission_endorsementCodes`
+- Codes are 8-character alphanumeric (e.g., ABC12345)
+- Optional: restrict code to specific email
+- Configurable expiration (default 30 days)
+- Tracks: who created, who used, which group created
+
+### 3. Bible Reader UI Enhancements
 - **Highlight Colors**: 6 options (gold, green, blue, purple, pink, orange)
 - **Font Size Controls**: A-/A+ buttons (12px to 28px range)
 - **Fullscreen Mode**: Distraction-free reading with ESC to exit
@@ -45,8 +65,8 @@
 |------|--------|----------|--------|
 | John | 878 | 878 | ✅ Complete |
 | Matthew | 1,068 | 1,071 | ✅ Complete |
-| Mark | ~237 | 678 | 🔄 Re-running |
-| Luke | ~570 | 1,151 | 🔄 Re-running |
+| Mark | 678 | 678 | ✅ Complete |
+| Luke | ~570 | 1,149 | 🔄 Running (PID 44808) |
 
 ---
 
@@ -121,4 +141,4 @@ Book codes: GEN, EXO, MAT, MRK, LUK, JHN, ACT, ROM, etc.
 
 ---
 
-*Last Updated: January 20, 2026 - 9:30 PM PHT*
+*Last Updated: January 20, 2026 - 11:30 PM PHT*

@@ -888,6 +888,22 @@
                 // Initialize Groups module
                 if (typeof Groups !== 'undefined') {
                     await Groups.init();
+                    
+                    // Check for join code in URL (?join=CODE)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const joinCode = urlParams.get('join');
+                    if (joinCode && !Groups.currentGroup) {
+                        // Clear the URL parameter
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        // Show join modal with pre-filled code
+                        Groups.showJoinWithCodeModal();
+                        setTimeout(() => {
+                            const codeInput = document.getElementById('groupInviteCode');
+                            if (codeInput) {
+                                codeInput.value = joinCode.toUpperCase();
+                            }
+                        }, 200);
+                    }
                 }
             } else {
                 window.currentUser = null;

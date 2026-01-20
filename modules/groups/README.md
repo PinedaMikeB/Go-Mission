@@ -5,11 +5,19 @@ Mission Groups - weekly discipleship gatherings with membership management and g
 
 ## Status: ✅ Core Implementation Complete
 
+## Philosophy: Disciple First, Then Disciple-Maker
+> "You must be a disciple before you become a disciple-maker"
+
+Users cannot create their own group unless:
+1. They are/were a member of a group (disciple history), OR
+2. They have an endorsement code from admin/leader, OR
+3. They are the admin (michael.marga@gmail.com)
+
 ## Files
 ```
 modules/groups/
 ├── README.md       # This file
-├── groups.js       # Group management, membership, join/leave
+├── groups.js       # Group management, membership, join/leave, endorsement codes
 └── group-chat.js   # Real-time group chat
 ```
 
@@ -26,7 +34,32 @@ modules/groups/
 - Create new group
 - Accept/reject join requests
 - View member list
+- **Generate endorsement codes** (to authorize new leaders)
 - Group chat
+
+### For Admin (michael.marga@gmail.com)
+- All leader features
+- Can create groups without being a disciple first
+- Can generate endorsement codes
+
+## User Flow (Facebook → App)
+
+```
+1. FACEBOOK: Seeker comments "Join" on a post
+2. MESSENGER: Welcome team chats with seeker, asks preferred schedule
+3. ASSIGNMENT: Mission Group Manager assigns seeker to fitting group
+4. INVITE: Leader generates invite code, shares with seeker:
+   - Code: ABC123
+   - Link: https://gomission.netlify.app/?join=ABC123
+5. APP: Seeker opens link → Login with Google → Auto-joins group
+```
+
+## Two Types of Codes
+
+| Code Type | Purpose | Who Can Generate | Collection |
+|-----------|---------|------------------|------------|
+| **Group Invite Code** | Join an existing group as member | Group Leaders | goMission_groupInviteCodes |
+| **Endorsement Code** | Create your own group (bypass disciple rule) | Admin, Leaders | goMission_endorsementCodes |
 
 ## Usage
 
@@ -34,14 +67,14 @@ modules/groups/
 // Initialize (called automatically on login)
 await Groups.init();
 
-// Search for groups
-const groups = await Groups.searchGroups('Manila');
+// Join with invite code
+await Groups.joinWithInviteCode('ABC123');
 
-// Request to join
-await Groups.requestJoinGroup('group_123');
+// For leaders - generate invite code
+const code = await Groups.generateGroupInviteCode(7, null); // 7 days, unlimited uses
 
-// For leaders - accept request
-await Groups.acceptRequest('user_uid');
+// For leaders - generate endorsement code (to authorize new leaders)
+const endorseCode = await Groups.generateEndorsementCode();
 
 // Open chat
 GroupChat.open();
@@ -112,6 +145,38 @@ GroupChat.open();
 }
 ```
 
+### goMission_groupInviteCodes
+```json
+{
+  "code": "ABC123",
+  "groupId": "group_1234567890",
+  "groupName": "Taytay Youth Group",
+  "createdBy": "leader_uid",
+  "createdByName": "Mike Pineda",
+  "createdAt": "2026-01-20T12:00:00Z",
+  "expiresAt": "2026-01-27T12:00:00Z",
+  "maxUses": null,
+  "usedCount": 3
+}
+```
+
+### goMission_endorsementCodes
+```json
+{
+  "code": "ABC12345",
+  "createdBy": "admin_uid",
+  "createdByName": "Mike Marga",
+  "createdByEmail": "michael.marga@gmail.com",
+  "createdAt": "2026-01-20T12:00:00Z",
+  "expiresAt": "2026-02-20T12:00:00Z",
+  "forEmail": null,
+  "used": false,
+  "usedBy": null,
+  "usedAt": null,
+  "groupCreated": null
+}
+```
+
 ## Firestore Rules Required
 
 Add to your Firestore rules:
@@ -119,6 +184,19 @@ Add to your Firestore rules:
 match /goMission_chats/{docId} {
   allow read: if request.auth != null;
   allow write: if request.auth != null;
+}
+
+match /goMission_groupInviteCodes/{code} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null;
+}
+
+match /goMission_endorsementCodes/{code} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null 
+    && (request.auth.token.email == 'michael.marga@gmail.com' 
+        || resource == null 
+        || resource.data.createdBy == request.auth.uid);
 }
 ```
 

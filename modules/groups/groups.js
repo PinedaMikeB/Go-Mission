@@ -19,6 +19,284 @@ const Groups = {
   // Available groups (for joining)
   availableGroups: [],
   
+  // Admin email (can bypass disciple-first rule)
+  ADMIN_EMAIL: 'michael.marga@gmail.com',
+  
+  // Check if current user is admin
+  isAdmin() {
+    return window.currentUser?.email === this.ADMIN_EMAIL;
+  },
+  
+  // Check if user has been a group member (disciple) before
+  async hasBeenDisciple() {
+    if (!window.currentUser || !window.db) return false;
+    
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        // User is/was a disciple if they have groupId or discipleHistory
+        return !!(userData.groupId || userData.discipleHistory?.length > 0);
+      }
+      return false;
+    } catch (error) {
+      console.error('[Groups] Error checking disciple status:', error);
+      return false;
+    }
+  },
+  
+  // Check if user can create a group
+  async canCreateGroup() {
+    // Admin can always create
+    if (this.isAdmin()) return { allowed: true, reason: 'admin' };
+    
+    // Check if user has been a disciple
+    const wasDisciple = await this.hasBeenDisciple();
+    if (wasDisciple) return { allowed: true, reason: 'disciple' };
+    
+    // Otherwise, need endorsement code
+    return { allowed: false, reason: 'not_disciple' };
+  },
+  
+  // Validate endorsement code
+  async validateEndorsementCode(code) {
+    if (!window.db || !code) return { valid: false, message: 'Invalid code' };
+    
+    try {
+      // Check goMission_endorsementCodes collection
+      const codeRef = window.doc(window.db, 'goMission_endorsementCodes', code.toUpperCase());
+      const codeDoc = await window.getDoc(codeRef);
+      
+      if (!codeDoc.exists()) {
+        return { valid: false, message: 'Code not found' };
+      }
+      
+      const codeData = codeDoc.data();
+      
+      // Check if code is still valid
+      if (codeData.used) {
+        return { valid: false, message: 'Code has already been used' };
+      }
+      
+      if (codeData.expiresAt && new Date(codeData.expiresAt) < new Date()) {
+        return { valid: false, message: 'Code has expired' };
+      }
+      
+      // Check if code is for this user (if restricted)
+      if (codeData.forEmail && codeData.forEmail !== window.currentUser?.email) {
+        return { valid: false, message: 'Code is not valid for your account' };
+      }
+      
+      return { 
+        valid: true, 
+        message: 'Code verified',
+        endorsedBy: codeData.createdBy,
+        endorserName: codeData.createdByName
+      };
+    } catch (error) {
+      console.error('[Groups] Error validating endorsement code:', error);
+      return { valid: false, message: 'Error validating code' };
+    }
+  },
+  
+  // Validate group invite code (for joining a group)
+  async validateGroupInviteCode(code) {
+    if (!window.db || !code) return { valid: false, message: 'Invalid code' };
+    
+    try {
+      // Check goMission_groupInviteCodes collection
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code.toUpperCase());
+      const codeDoc = await window.getDoc(codeRef);
+      
+      if (!codeDoc.exists()) {
+        return { valid: false, message: 'Invalid invite code' };
+      }
+      
+      const codeData = codeDoc.data();
+      
+      // Check if code is still valid
+      if (codeData.expiresAt && new Date(codeData.expiresAt) < new Date()) {
+        return { valid: false, message: 'This invite code has expired' };
+      }
+      
+      // Check usage limit
+      if (codeData.maxUses && codeData.usedCount >= codeData.maxUses) {
+        return { valid: false, message: 'This invite code has reached its usage limit' };
+      }
+      
+      // Get group info
+      const groupRef = window.doc(window.db, 'goMission_groups', codeData.groupId);
+      const groupDoc = await window.getDoc(groupRef);
+      
+      if (!groupDoc.exists()) {
+        return { valid: false, message: 'Group not found' };
+      }
+      
+      const groupData = groupDoc.data();
+      
+      // Check if group is full
+      if (groupData.currentCount >= groupData.capacity) {
+        return { valid: false, message: 'This group is already full' };
+      }
+      
+      // Check if user is already a member
+      if (groupData.members?.includes(window.currentUser?.uid)) {
+        return { valid: false, message: 'You are already a member of this group' };
+      }
+      
+      return { 
+        valid: true, 
+        message: 'Code verified',
+        groupId: codeData.groupId,
+        groupName: groupData.name,
+        groupData: groupData,
+        codeData: codeData
+      };
+    } catch (error) {
+      console.error('[Groups] Error validating invite code:', error);
+      return { valid: false, message: 'Error validating code' };
+    }
+  },
+  
+  // Join group using invite code
+  async joinWithInviteCode(code) {
+    if (!window.currentUser || !window.db) {
+      alert('Please sign in first');
+      return false;
+    }
+    
+    const validation = await this.validateGroupInviteCode(code);
+    
+    if (!validation.valid) {
+      alert(validation.message);
+      return false;
+    }
+    
+    try {
+      const groupRef = window.doc(window.db, 'goMission_groups', validation.groupId);
+      const groupData = validation.groupData;
+      
+      // Add user to members
+      const members = groupData.members || [];
+      if (!members.includes(window.currentUser.uid)) {
+        members.push(window.currentUser.uid);
+      }
+      
+      // Update group
+      await window.setDoc(groupRef, {
+        members: members,
+        currentCount: members.length
+      }, { merge: true });
+      
+      // Update user's profile
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      await window.setDoc(userRef, {
+        groupId: validation.groupId,
+        groupRole: 'member',
+        joinedGroupAt: new Date().toISOString(),
+        joinedVia: 'invite_code',
+        // Track disciple history
+        discipleHistory: window.arrayUnion ? window.arrayUnion({
+          groupId: validation.groupId,
+          groupName: validation.groupName,
+          joinedAt: new Date().toISOString()
+        }) : [{
+          groupId: validation.groupId,
+          groupName: validation.groupName,
+          joinedAt: new Date().toISOString()
+        }]
+      }, { merge: true });
+      
+      // Increment code usage count
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code.toUpperCase());
+      await window.setDoc(codeRef, {
+        usedCount: (validation.codeData.usedCount || 0) + 1,
+        lastUsedAt: new Date().toISOString(),
+        lastUsedBy: window.currentUser.uid
+      }, { merge: true });
+      
+      // Refresh local data
+      await this.loadUserGroup();
+      this.updateUI();
+      
+      alert(`Welcome to ${validation.groupName}! 🎉`);
+      return true;
+      
+    } catch (error) {
+      console.error('[Groups] Error joining group:', error);
+      alert('Error joining group. Please try again.');
+      return false;
+    }
+  },
+  
+  // Generate group invite code (for leaders)
+  async generateGroupInviteCode(expiresInDays = 30, maxUses = null) {
+    if (!window.currentUser || !window.db) {
+      alert('Please sign in first');
+      return null;
+    }
+    
+    if (!this.isLeader && !this.isAdmin()) {
+      alert('Only group leaders can generate invite codes');
+      return null;
+    }
+    
+    if (!this.currentGroup) {
+      alert('You must be in a group to generate invite codes');
+      return null;
+    }
+    
+    try {
+      // Generate random 6-character code (shorter for easy sharing)
+      const code = this.generateRandomCode(6);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+      
+      const codeData = {
+        code: code,
+        groupId: this.currentGroup.id,
+        groupName: this.currentGroup.name,
+        createdBy: window.currentUser.uid,
+        createdByName: window.currentUser.displayName || window.currentUser.email,
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        maxUses: maxUses, // null = unlimited
+        usedCount: 0
+      };
+      
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code);
+      await window.setDoc(codeRef, codeData);
+      
+      console.log('[Groups] Generated group invite code:', code);
+      return code;
+      
+    } catch (error) {
+      console.error('[Groups] Error generating invite code:', error);
+      alert('Error generating code. Please try again.');
+      return null;
+    }
+  },
+  
+  // Mark endorsement code as used (for creating groups)
+  async markCodeUsed(code, groupId) {
+    if (!window.db || !code) return;
+    
+    try {
+      const codeRef = window.doc(window.db, 'goMission_endorsementCodes', code.toUpperCase());
+      await window.setDoc(codeRef, {
+        used: true,
+        usedBy: window.currentUser?.uid,
+        usedByEmail: window.currentUser?.email,
+        usedAt: new Date().toISOString(),
+        groupCreated: groupId
+      }, { merge: true });
+    } catch (error) {
+      console.error('[Groups] Error marking code as used:', error);
+    }
+  },
+  
   /**
    * Initialize the groups module
    */
@@ -356,11 +634,30 @@ const Groups = {
   
   /**
    * Create a new group (for leaders)
+   * Requires: user was a disciple OR has valid endorsement code OR is admin
    */
-  async createGroup(groupData) {
+  async createGroup(groupData, endorsementCode = null) {
     if (!window.currentUser || !window.db) {
       alert('Please sign in first');
       return null;
+    }
+    
+    // Check if user can create a group
+    const canCreate = await this.canCreateGroup();
+    
+    if (!canCreate.allowed) {
+      // Need endorsement code
+      if (!endorsementCode) {
+        alert('You need an endorsement code to create a group. Please join a group first to become a disciple, or enter an endorsement code from your leader.');
+        return null;
+      }
+      
+      // Validate the code
+      const validation = await this.validateEndorsementCode(endorsementCode);
+      if (!validation.valid) {
+        alert(validation.message);
+        return null;
+      }
     }
     
     try {
@@ -384,7 +681,10 @@ const Groups = {
         currentCount: 1,
         capacity: 12,
         status: 'active',
-        createdAt: window.serverTimestamp()
+        createdAt: window.serverTimestamp(),
+        // Track how group was created
+        createdVia: endorsementCode ? 'endorsement' : (this.isAdmin() ? 'admin' : 'disciple'),
+        endorsementCode: endorsementCode || null
       };
       
       // Create group
@@ -396,8 +696,15 @@ const Groups = {
       await window.setDoc(userRef, {
         groupId: groupId,
         groupRole: 'leader',
-        'roles.isGroupLeader': true
+        'roles.isGroupLeader': true,
+        // Track that user became a disciple-maker
+        becameLeaderAt: new Date().toISOString()
       }, { merge: true });
+      
+      // Mark endorsement code as used
+      if (endorsementCode) {
+        await this.markCodeUsed(endorsementCode, groupId);
+      }
       
       // Refresh local data
       await this.loadUserGroup();
@@ -427,7 +734,7 @@ const Groups = {
   /**
    * Render the group card content
    */
-  renderGroupCard() {
+  async renderGroupCard() {
     const container = document.getElementById('groupCardContent');
     if (!container) return;
     
@@ -436,7 +743,7 @@ const Groups = {
       container.innerHTML = this.renderGroupInfo();
     } else {
       // Show join/create options
-      container.innerHTML = this.renderJoinOptions();
+      container.innerHTML = await this.renderJoinOptions();
     }
   },
   
@@ -483,6 +790,20 @@ const Groups = {
       </button>
     `;
     
+    // Leader tools
+    if (this.isLeader || this.isAdmin()) {
+      html += `
+        <div class="space-y-2 mb-3">
+          <button onclick="Groups.showGroupInviteCodeModal()" class="w-full py-3 border border-green-500/30 rounded-xl text-green-400 text-sm font-bold hover:bg-green-500/10 transition-colors flex items-center justify-center gap-2">
+            🔑 Invite Members
+          </button>
+          <button onclick="Groups.showEndorsementCodeModal()" class="w-full py-2 border border-amber-500/20 rounded-xl text-amber-400/70 text-xs hover:bg-amber-500/10 transition-colors">
+            🎫 Endorse New Leader
+          </button>
+        </div>
+      `;
+    }
+    
     // Leave group button (for non-leaders)
     if (!this.isLeader) {
       html += `
@@ -498,18 +819,40 @@ const Groups = {
   /**
    * Render join/create options for users without a group
    */
-  renderJoinOptions() {
-    return `
-      <div class="text-center py-6">
-        <p class="text-slate-400 text-sm mb-4">You're not in a Mission Group yet</p>
-        
-        <button onclick="Groups.showJoinModal()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 mb-3">
-          🔍 Find a Group
-        </button>
-        
+  async renderJoinOptions() {
+    const canCreate = await this.canCreateGroup();
+    
+    let createButtonHtml = '';
+    
+    if (canCreate.allowed) {
+      // User can create directly (admin or former disciple)
+      createButtonHtml = `
         <button onclick="Groups.showCreateModal()" class="w-full py-3 border border-amber-500/30 rounded-xl text-amber-500 text-sm font-bold hover:bg-amber-500/10 transition-colors">
           ➕ Create New Group
         </button>
+      `;
+    } else {
+      // User needs endorsement code or must join first
+      createButtonHtml = `
+        <button onclick="Groups.showCreateModal(true)" class="w-full py-3 border border-slate-600/30 rounded-xl text-slate-400 text-sm font-bold hover:bg-slate-500/10 transition-colors">
+          ➕ Create Group (Need Code)
+        </button>
+        <p class="text-[10px] text-slate-500 text-center mt-2">
+          Join a group first to become a disciple, or use an endorsement code from your leader
+        </p>
+      `;
+    }
+    
+    return `
+      <div class="text-center py-6">
+        <p class="text-slate-400 text-sm mb-2">You're not in a Mission Group yet</p>
+        <p class="text-slate-500 text-xs mb-4">Ask your leader for an invite code</p>
+        
+        <button onclick="Groups.showJoinWithCodeModal()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 mb-3">
+          🔑 Join with Code
+        </button>
+        
+        ${createButtonHtml}
       </div>
     `;
   },
@@ -530,7 +873,179 @@ const Groups = {
   },
   
   /**
-   * Show modal to find and join groups
+   * Show modal to join with invite code
+   */
+  showJoinWithCodeModal() {
+    const modal = document.getElementById('groupModal');
+    const content = document.getElementById('groupModalContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = `
+      <div class="p-4">
+        <h3 class="text-lg font-bold text-amber-400 mb-4">Join with Invite Code</h3>
+        
+        <p class="text-slate-400 text-sm mb-4">
+          Enter the invite code given by your Mission Group leader.
+        </p>
+        
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 mb-1">Invite Code</label>
+          <input type="text" id="groupInviteCode" placeholder="Enter 6-character code" 
+                 class="w-full bg-black/40 border border-amber-500/30 rounded-xl p-4 text-xl text-amber-400 placeholder-slate-500 uppercase tracking-widest text-center font-bold"
+                 style="text-transform: uppercase;" maxlength="6"
+                 oninput="this.value = this.value.toUpperCase()">
+        </div>
+        
+        <div id="inviteCodePreview" class="hidden mb-4 p-3 bg-green-500/10 rounded-xl border border-green-500/30">
+          <!-- Will show group info after validation -->
+        </div>
+        
+        <div class="flex gap-3">
+          <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
+            Cancel
+          </button>
+          <button onclick="Groups.submitJoinWithCode()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400">
+            Join Group
+          </button>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    
+    // Focus on input
+    setTimeout(() => {
+      document.getElementById('groupInviteCode')?.focus();
+    }, 100);
+  },
+  
+  /**
+   * Submit join with code
+   */
+  async submitJoinWithCode() {
+    const code = document.getElementById('groupInviteCode')?.value?.trim()?.toUpperCase();
+    
+    if (!code || code.length < 4) {
+      alert('Please enter a valid invite code');
+      return;
+    }
+    
+    const success = await this.joinWithInviteCode(code);
+    
+    if (success) {
+      this.closeModal();
+    }
+  },
+  
+  /**
+   * Show modal to generate group invite code (for leaders)
+   */
+  showGroupInviteCodeModal() {
+    if (!this.isLeader && !this.isAdmin()) {
+      alert('Only group leaders can generate invite codes');
+      return;
+    }
+    
+    const modal = document.getElementById('groupModal');
+    const content = document.getElementById('groupModalContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = `
+      <div class="p-4">
+        <h3 class="text-lg font-bold text-amber-400 mb-4">Generate Invite Code</h3>
+        
+        <p class="text-slate-400 text-sm mb-4">
+          Create a code to invite seekers to join <strong class="text-amber-400">${this.currentGroup?.name || 'your group'}</strong>.
+        </p>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Expires In (days)</label>
+            <input type="number" id="inviteExpiresDays" value="7" min="1" max="90"
+                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200">
+          </div>
+          
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Max Uses (optional)</label>
+            <input type="number" id="inviteMaxUses" placeholder="Leave blank for unlimited" min="1" max="100"
+                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500">
+          </div>
+        </div>
+        
+        <div class="flex gap-3 mt-6">
+          <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
+            Cancel
+          </button>
+          <button onclick="Groups.submitGenerateInviteCode()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400">
+            Generate Code
+          </button>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+  },
+  
+  /**
+   * Submit generate invite code
+   */
+  async submitGenerateInviteCode() {
+    const expiresDays = parseInt(document.getElementById('inviteExpiresDays')?.value) || 7;
+    const maxUses = document.getElementById('inviteMaxUses')?.value ? parseInt(document.getElementById('inviteMaxUses').value) : null;
+    
+    const code = await this.generateGroupInviteCode(expiresDays, maxUses);
+    
+    if (code) {
+      // Show the generated code
+      const content = document.getElementById('groupModalContent');
+      const appLink = `https://gomission.netlify.app/?join=${code}`;
+      
+      content.innerHTML = `
+        <div class="p-4 text-center">
+          <h3 class="text-lg font-bold text-green-400 mb-4">✅ Invite Code Ready!</h3>
+          
+          <div class="bg-black/40 border border-amber-500/30 rounded-xl p-4 mb-4">
+            <p class="text-[10px] text-slate-500 uppercase mb-2">Invite Code</p>
+            <p class="text-3xl font-black text-amber-400 tracking-widest">${code}</p>
+          </div>
+          
+          <p class="text-slate-400 text-sm mb-4">
+            Share this code with seekers to join <strong class="text-amber-400">${this.currentGroup?.name}</strong>
+          </p>
+          
+          <div class="bg-black/30 rounded-xl p-3 mb-4">
+            <p class="text-[10px] text-slate-500 uppercase mb-1">Or share this link</p>
+            <p class="text-xs text-amber-400 break-all">${appLink}</p>
+          </div>
+          
+          <button onclick="Groups.copyInvite('${code}', '${appLink}')" class="w-full py-3 bg-amber-500/20 text-amber-400 rounded-xl text-sm font-bold hover:bg-amber-500/30 mb-3">
+            📋 Copy Code & Link
+          </button>
+          
+          <button onclick="Groups.closeModal()" class="w-full py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
+            Done
+          </button>
+        </div>
+      `;
+    }
+  },
+  
+  /**
+   * Copy invite code and link
+   */
+  copyInvite(code, link) {
+    const text = `Join my Mission Group! 🙏\n\nCode: ${code}\nLink: ${link}`;
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(() => {
+      alert(`Code: ${code}\nLink: ${link}`);
+    });
+  },
+
+  /**
+   * Show modal to find and join groups (DEPRECATED - kept for backwards compatibility)
    */
   async showJoinModal() {
     // Search for available groups
@@ -626,16 +1141,39 @@ const Groups = {
   
   /**
    * Show modal to create a new group
+   * @param {boolean} requireCode - If true, show endorsement code field
    */
-  showCreateModal() {
+  async showCreateModal(requireCode = false) {
     const modal = document.getElementById('groupModal');
     const content = document.getElementById('groupModalContent');
     
     if (!modal || !content) return;
     
+    // Check if user can create without code
+    const canCreate = await this.canCreateGroup();
+    const needsCode = requireCode || !canCreate.allowed;
+    
+    let endorsementCodeHtml = '';
+    if (needsCode) {
+      endorsementCodeHtml = `
+        <div class="mb-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30">
+          <p class="text-amber-400 text-xs mb-2">⚠️ You need an endorsement code to create a group</p>
+          <p class="text-slate-400 text-[10px]">Ask your Mission Group leader or admin for a code, or join a group first to become a disciple.</p>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 mb-1">Endorsement Code *</label>
+          <input type="text" id="endorsementCode" placeholder="Enter code from your leader" 
+                 class="w-full bg-black/40 border border-amber-500/30 rounded-xl p-3 text-sm text-amber-400 placeholder-slate-500 uppercase tracking-wider"
+                 style="text-transform: uppercase;">
+        </div>
+      `;
+    }
+    
     content.innerHTML = `
       <div class="p-4">
         <h3 class="text-lg font-bold text-amber-400 mb-4">Create Mission Group</h3>
+        
+        ${endorsementCodeHtml}
         
         <div class="space-y-4">
           <div>
@@ -693,6 +1231,7 @@ const Groups = {
     const day = document.getElementById('newGroupDay')?.value;
     const time = document.getElementById('newGroupTime')?.value;
     const link = document.getElementById('newGroupLink')?.value?.trim();
+    const endorsementCode = document.getElementById('endorsementCode')?.value?.trim()?.toUpperCase() || null;
     
     if (!name) {
       alert('Please enter a group name');
@@ -704,7 +1243,7 @@ const Groups = {
       meetingDay: day,
       meetingTime: time,
       meetingLink: link
-    });
+    }, endorsementCode);
     
     if (groupId) {
       this.closeModal();
@@ -769,6 +1308,165 @@ const Groups = {
     modal.classList.remove('hidden');
   },
   
+  /**
+   * Generate an endorsement code (admin or group leaders only)
+   */
+  async generateEndorsementCode(forEmail = null, expiresInDays = 30) {
+    if (!window.currentUser || !window.db) {
+      alert('Please sign in first');
+      return null;
+    }
+    
+    // Only admin or group leaders can generate codes
+    if (!this.isAdmin() && !this.isLeader) {
+      alert('Only admins or group leaders can generate endorsement codes');
+      return null;
+    }
+    
+    try {
+      // Generate random 8-character code
+      const code = this.generateRandomCode(8);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+      
+      const codeData = {
+        code: code,
+        createdBy: window.currentUser.uid,
+        createdByName: window.currentUser.displayName || window.currentUser.email,
+        createdByEmail: window.currentUser.email,
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        forEmail: forEmail || null, // If set, only this email can use the code
+        used: false,
+        usedBy: null,
+        usedAt: null,
+        groupCreated: null
+      };
+      
+      const codeRef = window.doc(window.db, 'goMission_endorsementCodes', code);
+      await window.setDoc(codeRef, codeData);
+      
+      console.log('[Groups] Generated endorsement code:', code);
+      return code;
+      
+    } catch (error) {
+      console.error('[Groups] Error generating endorsement code:', error);
+      alert('Error generating code. Please try again.');
+      return null;
+    }
+  },
+  
+  /**
+   * Generate random alphanumeric code
+   */
+  generateRandomCode(length) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded confusing chars: I, O, 0, 1
+    let code = '';
+    for (let i = 0; i < length; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  },
+  
+  /**
+   * Show endorsement code generator modal (for admin/leaders)
+   */
+  showEndorsementCodeModal() {
+    if (!this.isAdmin() && !this.isLeader) {
+      alert('Only admins or group leaders can generate endorsement codes');
+      return;
+    }
+    
+    const modal = document.getElementById('groupModal');
+    const content = document.getElementById('groupModalContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = `
+      <div class="p-4">
+        <h3 class="text-lg font-bold text-amber-400 mb-4">Generate Endorsement Code</h3>
+        
+        <p class="text-slate-400 text-sm mb-4">
+          Create a code to endorse someone to start their own Mission Group.
+        </p>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">For Email (optional)</label>
+            <input type="email" id="codeForEmail" placeholder="Leave blank for anyone to use" 
+                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500">
+            <p class="text-[10px] text-slate-500 mt-1">If set, only this email can use the code</p>
+          </div>
+          
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Expires In (days)</label>
+            <input type="number" id="codeExpiresDays" value="30" min="1" max="365"
+                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200">
+          </div>
+        </div>
+        
+        <div class="flex gap-3 mt-6">
+          <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
+            Cancel
+          </button>
+          <button onclick="Groups.submitGenerateCode()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400">
+            Generate Code
+          </button>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+  },
+  
+  /**
+   * Submit generate code form
+   */
+  async submitGenerateCode() {
+    const forEmail = document.getElementById('codeForEmail')?.value?.trim() || null;
+    const expiresDays = parseInt(document.getElementById('codeExpiresDays')?.value) || 30;
+    
+    const code = await this.generateEndorsementCode(forEmail, expiresDays);
+    
+    if (code) {
+      // Show the generated code
+      const content = document.getElementById('groupModalContent');
+      content.innerHTML = `
+        <div class="p-4 text-center">
+          <h3 class="text-lg font-bold text-green-400 mb-4">✅ Code Generated!</h3>
+          
+          <div class="bg-black/40 border border-amber-500/30 rounded-xl p-4 mb-4">
+            <p class="text-[10px] text-slate-500 uppercase mb-2">Endorsement Code</p>
+            <p class="text-2xl font-black text-amber-400 tracking-widest">${code}</p>
+          </div>
+          
+          <p class="text-slate-400 text-sm mb-4">
+            Share this code with the person you want to endorse to create their own Mission Group.
+          </p>
+          
+          <button onclick="Groups.copyCode('${code}')" class="w-full py-3 bg-amber-500/20 text-amber-400 rounded-xl text-sm font-bold hover:bg-amber-500/30 mb-3">
+            📋 Copy Code
+          </button>
+          
+          <button onclick="Groups.closeModal()" class="w-full py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
+            Done
+          </button>
+        </div>
+      `;
+    }
+  },
+  
+  /**
+   * Copy code to clipboard
+   */
+  copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+      alert('Code copied to clipboard!');
+    }).catch(() => {
+      alert('Copy this code: ' + code);
+    });
+  },
+
   /**
    * Close modal
    */
