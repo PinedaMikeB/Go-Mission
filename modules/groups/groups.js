@@ -960,21 +960,18 @@ const Groups = {
           Create a code to invite seekers to join <strong class="text-amber-400">${this.currentGroup?.name || 'your group'}</strong>.
         </p>
         
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Expires In (days)</label>
-            <input type="number" id="inviteExpiresDays" value="7" min="1" max="90"
-                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200">
-          </div>
-          
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Max Uses (optional)</label>
-            <input type="number" id="inviteMaxUses" placeholder="Leave blank for unlimited" min="1" max="100"
-                   class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500">
-          </div>
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 mb-1">Code valid for</label>
+          <select id="inviteExpiresDays" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200">
+            <option value="1">1 day</option>
+            <option value="3">3 days</option>
+            <option value="7" selected>7 days</option>
+            <option value="14">14 days</option>
+            <option value="30">30 days</option>
+          </select>
         </div>
         
-        <div class="flex gap-3 mt-6">
+        <div class="flex gap-3">
           <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
             Cancel
           </button>
@@ -993,9 +990,8 @@ const Groups = {
    */
   async submitGenerateInviteCode() {
     const expiresDays = parseInt(document.getElementById('inviteExpiresDays')?.value) || 7;
-    const maxUses = document.getElementById('inviteMaxUses')?.value ? parseInt(document.getElementById('inviteMaxUses').value) : null;
     
-    const code = await this.generateGroupInviteCode(expiresDays, maxUses);
+    const code = await this.generateGroupInviteCode(expiresDays);
     
     if (code) {
       // Show the generated code
