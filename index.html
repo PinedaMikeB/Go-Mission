@@ -33,7 +33,7 @@
             --shadow-color: rgba(0, 0, 0, 0.6);
         }
 
-        /* Light Mode Theme */
+        /* Light Mode Theme - Copied from Gemini Design */
         .light-mode {
             --bg-color: #fcfaf2;
             --bg-secondary: #ffffff;
@@ -48,6 +48,7 @@
             --input-bg: rgba(42, 5, 5, 0.05);
             --input-border: rgba(42, 5, 5, 0.15);
             --shadow-color: rgba(42, 5, 5, 0.1);
+            --progress-bg: rgba(42, 5, 5, 0.05);
         }
 
         body {
@@ -88,6 +89,46 @@
         
         .light-mode .mission-card {
             backdrop-filter: none;
+        }
+        
+        .light-mode .checkbox-custom {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        /* Light mode overrides for hardcoded dark colors */
+        .light-mode .bg-black\/40,
+        .light-mode .bg-black\/30,
+        .light-mode .bg-black\/60 {
+            background: rgba(42, 5, 5, 0.05) !important;
+        }
+        
+        .light-mode .border-white\/5,
+        .light-mode .border-white\/10 {
+            border-color: rgba(42, 5, 5, 0.08) !important;
+        }
+        
+        .light-mode .text-white {
+            color: #2a0505 !important;
+        }
+        
+        .light-mode .text-slate-200,
+        .light-mode .text-slate-300 {
+            color: #475569 !important;
+        }
+        
+        .light-mode .text-slate-400,
+        .light-mode .text-slate-500,
+        .light-mode .text-slate-600 {
+            color: #64748b !important;
+        }
+        
+        .light-mode .progress-dot.inactive {
+            background: var(--bg-color);
+            border-color: rgba(42, 5, 5, 0.2);
+        }
+        
+        .light-mode .toggle-switch {
+            background: rgba(42, 5, 5, 0.15);
         }
 
         .mission-button {
