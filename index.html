@@ -1212,33 +1212,29 @@
                 if (entryDoc.exists()) {
                     const data = entryDoc.data();
                     
-                    // Restore highlighted verses to BibleReader
-                    // Convert old format (array of numbers) to new format (array of objects with color)
-                    if (typeof BibleReader !== 'undefined' && data.highlightedVerses) {
+                    // Only restore highlights to BibleReader, NOT the reflection text
+                    // User should start fresh each session
+                    if (typeof BibleReader !== 'undefined' && data.highlightedVerses && data.highlightedVerses.length > 0) {
                         BibleReader.highlightedVerses = data.highlightedVerses.map(v => {
-                            // If already an object, use it; otherwise convert number to object
                             if (typeof v === 'object' && v.verse) return v;
                             return { verse: v, color: 'gold' };
                         });
-                    }
-                    
-                    document.getElementById('reflectionAnswer').value = data.reflection || '';
-                    shareWithGroup = data.sharedWithGroup || false;
-                    document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
-                    
-                    // Re-render to show restored highlights
-                    if (typeof BibleReader !== 'undefined') {
+                        
+                        // Re-render to show restored highlights
                         BibleReader.renderVerses();
                         if (BibleReader.highlightedVerses.length > 0) {
                             await BibleReader.loadCommentary();
                         }
                     }
                     
-                    document.getElementById('saveBtnText').textContent = '✓ Saved - Update';
+                    // Don't restore reflection text - user starts fresh
+                    // Don't change button text - keep as "Save This Day"
+                    
+                    shareWithGroup = data.sharedWithGroup || false;
+                    document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
                 }
             } catch (error) {
                 console.error('Error loading entry:', error);
-                // Don't show error to user - just continue with fresh state
             }
         };
 
