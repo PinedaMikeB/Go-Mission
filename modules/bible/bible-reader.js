@@ -21,6 +21,23 @@ const BibleReader = {
   quickInsightsData: null,
   tyndaleData: null,
   
+  // Reading preferences
+  preferences: {
+    fontSize: 16,           // Base font size in pixels
+    highlightColor: 'gold', // Current highlight color
+    isFullscreen: false     // Fullscreen mode
+  },
+  
+  // Available highlight colors
+  highlightColors: {
+    gold: { bg: 'rgba(251, 191, 36, 0.25)', border: 'rgba(251, 191, 36, 0.5)', name: 'Gold' },
+    green: { bg: 'rgba(34, 197, 94, 0.25)', border: 'rgba(34, 197, 94, 0.5)', name: 'Green' },
+    blue: { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(59, 130, 246, 0.5)', name: 'Blue' },
+    purple: { bg: 'rgba(168, 85, 247, 0.25)', border: 'rgba(168, 85, 247, 0.5)', name: 'Purple' },
+    pink: { bg: 'rgba(236, 72, 153, 0.25)', border: 'rgba(236, 72, 153, 0.5)', name: 'Pink' },
+    orange: { bg: 'rgba(249, 115, 22, 0.25)', border: 'rgba(249, 115, 22, 0.5)', name: 'Orange' }
+  },
+  
   // DOM references
   elements: {},
   
@@ -37,8 +54,9 @@ const BibleReader = {
   async init() {
     console.log('[BibleReader] Initializing...');
     
-    // Load saved progress
+    // Load saved progress and preferences
     await this.loadProgress();
+    this.loadPreferences();
     
     // Listen for passage selection from BiblePicker
     document.addEventListener('biblePassageSelected', (e) => {
@@ -50,6 +68,13 @@ const BibleReader = {
       // Reload current chapter in new language, but KEEP highlighted verses
       if (this.currentBook && this.currentChapter) {
         this.reloadChapterForLanguageChange();
+      }
+    });
+    
+    // Listen for ESC key to exit fullscreen
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.preferences.isFullscreen) {
+        this.exitFullscreen();
       }
     });
     
@@ -147,6 +172,248 @@ const BibleReader = {
       }
     } catch (e) {
       console.log('[BibleReader] Could not save to Firestore:', e.message);
+    }
+  },
+
+  /**
+   * Load reading preferences from localStorage
+   */
+  loadPreferences() {
+    try {
+      const saved = localStorage.getItem('goMission_biblePreferences');
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        this.preferences = { ...this.preferences, ...prefs };
+      }
+    } catch (e) {
+      console.log('[BibleReader] No saved preferences');
+    }
+    
+    // Apply saved preferences
+    this.applyFontSize();
+  },
+
+  /**
+   * Save reading preferences
+   */
+  savePreferences() {
+    localStorage.setItem('goMission_biblePreferences', JSON.stringify(this.preferences));
+  },
+
+  /**
+   * Set highlight color
+   */
+  setHighlightColor(color) {
+    if (this.highlightColors[color]) {
+      this.preferences.highlightColor = color;
+      this.savePreferences();
+      this.renderVerses();
+      this.updateColorPickerUI();
+    }
+  },
+
+  /**
+   * Increase font size
+   */
+  increaseFontSize() {
+    if (this.preferences.fontSize < 28) {
+      this.preferences.fontSize += 2;
+      this.savePreferences();
+      this.applyFontSize();
+    }
+  },
+
+  /**
+   * Decrease font size
+   */
+  decreaseFontSize() {
+    if (this.preferences.fontSize > 12) {
+      this.preferences.fontSize -= 2;
+      this.savePreferences();
+      this.applyFontSize();
+    }
+  },
+
+  /**
+   * Apply font size to Bible text
+   */
+  applyFontSize() {
+    const bibleText = document.getElementById('bibleText');
+    if (bibleText) {
+      bibleText.style.fontSize = `${this.preferences.fontSize}px`;
+    }
+  },
+
+  /**
+   * Enter fullscreen mode
+   */
+  enterFullscreen() {
+    this.preferences.isFullscreen = true;
+    
+    // Create fullscreen overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'bibleFullscreenOverlay';
+    overlay.className = 'fixed inset-0 z-50 bg-[var(--bg-color)] flex flex-col transition-all duration-300';
+    
+    const bookName = this.chapterData?.bookName || this.currentBook;
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    overlay.innerHTML = `
+      <!-- Fullscreen Header -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
+        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          <span class="text-sm font-medium">Close</span>
+        </button>
+        
+        <h2 class="text-lg font-bold text-[var(--text-color)]">📖 ${bookName} ${this.currentChapter}</h2>
+        
+        <div class="flex items-center gap-2">
+          <!-- Font Size Controls -->
+          <button onclick="BibleReader.decreaseFontSize()" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+            <span class="text-lg font-bold">A-</span>
+          </button>
+          <button onclick="BibleReader.increaseFontSize()" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+            <span class="text-lg font-bold">A+</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Color Picker Bar -->
+      <div class="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+        <span class="text-xs text-[var(--text-muted)] mr-2">Highlight:</span>
+        ${Object.entries(this.highlightColors).map(([key, color]) => `
+          <button onclick="BibleReader.setHighlightColor('${key}')" 
+                  class="w-6 h-6 rounded-full border-2 transition-all ${this.preferences.highlightColor === key ? 'border-white scale-110' : 'border-transparent'}"
+                  style="background: ${color.bg}; box-shadow: inset 0 0 0 2px ${color.border};"
+                  title="${color.name}">
+          </button>
+        `).join('')}
+      </div>
+      
+      <!-- Chapter Navigation -->
+      <div class="flex items-center justify-between px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+        <button onclick="BibleReader.prevChapter(); BibleReader.updateFullscreenContent();" 
+                class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400 ${this.currentChapter <= 1 ? 'opacity-30 pointer-events-none' : ''}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Prev
+        </button>
+        
+        <span class="text-sm text-[var(--text-muted)]">Chapter ${this.currentChapter}</span>
+        
+        <button onclick="BibleReader.nextChapter(); BibleReader.updateFullscreenContent();" 
+                class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400">
+          Next
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Bible Text -->
+      <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
+        ${this.generateVersesHTML()}
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+    });
+  },
+
+  /**
+   * Exit fullscreen mode
+   */
+  exitFullscreen() {
+    this.preferences.isFullscreen = false;
+    
+    const overlay = document.getElementById('bibleFullscreenOverlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.remove();
+        document.body.style.overflow = '';
+      }, 200);
+    }
+    
+    // Re-render main view to sync highlights
+    this.renderVerses();
+  },
+
+  /**
+   * Update fullscreen content after navigation
+   */
+  updateFullscreenContent() {
+    setTimeout(() => {
+      const fullscreenText = document.getElementById('fullscreenBibleText');
+      const headerTitle = document.querySelector('#bibleFullscreenOverlay h2');
+      
+      if (fullscreenText) {
+        fullscreenText.innerHTML = this.generateVersesHTML();
+        fullscreenText.style.fontSize = `${this.preferences.fontSize}px`;
+      }
+      
+      if (headerTitle) {
+        const bookName = this.chapterData?.bookName || this.currentBook;
+        headerTitle.textContent = `📖 ${bookName} ${this.currentChapter}`;
+      }
+    }, 200);
+  },
+
+  /**
+   * Generate HTML for verses (used by both normal and fullscreen views)
+   */
+  generateVersesHTML() {
+    if (!this.chapterData) return '<p class="text-slate-500">Loading...</p>';
+    
+    const verses = this.chapterData.verses;
+    const colorConfig = this.highlightColors[this.preferences.highlightColor];
+    let html = '';
+    
+    for (const [verseNum, verseText] of Object.entries(verses)) {
+      const isHighlighted = this.highlightedVerses.includes(parseInt(verseNum));
+      const highlightStyle = isHighlighted 
+        ? `background: ${colorConfig.bg}; border-left: 3px solid ${colorConfig.border}; padding-left: 8px; margin-left: -11px;`
+        : '';
+      
+      html += `
+        <span class="verse inline" 
+              data-verse="${verseNum}" 
+              onclick="BibleReader.toggleHighlight(${verseNum})"
+              style="${highlightStyle}">
+          <span class="verse-num">${verseNum}</span>${verseText}
+        </span> `;
+    }
+    
+    return html;
+  },
+
+  /**
+   * Update color picker UI in fullscreen
+   */
+  updateColorPickerUI() {
+    const buttons = document.querySelectorAll('#bibleFullscreenOverlay [onclick^="BibleReader.setHighlightColor"]');
+    buttons.forEach(btn => {
+      const color = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+      if (color) {
+        btn.classList.toggle('border-white', this.preferences.highlightColor === color);
+        btn.classList.toggle('scale-110', this.preferences.highlightColor === color);
+        btn.classList.toggle('border-transparent', this.preferences.highlightColor !== color);
+      }
+    });
+    
+    // Re-render verses with new color
+    const fullscreenText = document.getElementById('fullscreenBibleText');
+    if (fullscreenText) {
+      fullscreenText.innerHTML = this.generateVersesHTML();
     }
   },
 
@@ -254,20 +521,16 @@ const BibleReader = {
   renderVerses() {
     if (!this.elements.bibleText || !this.chapterData) return;
     
-    const verses = this.chapterData.verses;
-    let html = '';
+    this.elements.bibleText.innerHTML = this.generateVersesHTML();
+    this.applyFontSize();
     
-    for (const [verseNum, verseText] of Object.entries(verses)) {
-      const isHighlighted = this.highlightedVerses.includes(parseInt(verseNum));
-      html += `
-        <span class="verse ${isHighlighted ? 'highlighted' : ''}" 
-              data-verse="${verseNum}" 
-              onclick="BibleReader.toggleHighlight(${verseNum})">
-          <span class="verse-num">${verseNum}</span>${verseText}
-        </span> `;
+    // Also update fullscreen if open
+    if (this.preferences.isFullscreen) {
+      const fullscreenText = document.getElementById('fullscreenBibleText');
+      if (fullscreenText) {
+        fullscreenText.innerHTML = this.generateVersesHTML();
+      }
     }
-    
-    this.elements.bibleText.innerHTML = html;
   },
 
   /**

@@ -142,6 +142,26 @@
         .light-mode #reflectionQuestion {
             color: #374151 !important;
         }
+        
+        /* Light mode - Reading toolbar */
+        .light-mode #readingToolbar {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        .light-mode #readingToolbar button {
+            background: rgba(42, 5, 5, 0.08);
+            color: #475569;
+        }
+        
+        .light-mode #readingToolbar button:hover {
+            background: rgba(251, 191, 36, 0.2);
+            color: #d97706;
+        }
+        
+        /* Fullscreen overlay light mode */
+        .light-mode #bibleFullscreenOverlay {
+            background: var(--bg-color);
+        }
 
         .mission-button {
             background: linear-gradient(to bottom, #800000, #4a0404);
@@ -481,6 +501,34 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
                         </button>
+                    </div>
+                    
+                    <!-- Reading Toolbar -->
+                    <div id="readingToolbar" class="flex items-center justify-between py-2 mb-3 px-2 bg-black/20 rounded-lg">
+                        <!-- Highlight Colors -->
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-slate-500 mr-1">Color:</span>
+                            <button onclick="BibleReader.setHighlightColor('gold')" class="w-5 h-5 rounded-full bg-amber-500/30 border-2 border-amber-500/50 hover:scale-110 transition-transform" title="Gold"></button>
+                            <button onclick="BibleReader.setHighlightColor('green')" class="w-5 h-5 rounded-full bg-green-500/30 border-2 border-green-500/50 hover:scale-110 transition-transform" title="Green"></button>
+                            <button onclick="BibleReader.setHighlightColor('blue')" class="w-5 h-5 rounded-full bg-blue-500/30 border-2 border-blue-500/50 hover:scale-110 transition-transform" title="Blue"></button>
+                            <button onclick="BibleReader.setHighlightColor('purple')" class="w-5 h-5 rounded-full bg-purple-500/30 border-2 border-purple-500/50 hover:scale-110 transition-transform" title="Purple"></button>
+                            <button onclick="BibleReader.setHighlightColor('pink')" class="w-5 h-5 rounded-full bg-pink-500/30 border-2 border-pink-500/50 hover:scale-110 transition-transform" title="Pink"></button>
+                        </div>
+                        
+                        <!-- Font Size & Fullscreen -->
+                        <div class="flex items-center gap-2">
+                            <button onclick="BibleReader.decreaseFontSize()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Decrease font size">
+                                <span class="text-xs font-bold">A-</span>
+                            </button>
+                            <button onclick="BibleReader.increaseFontSize()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Increase font size">
+                                <span class="text-xs font-bold">A+</span>
+                            </button>
+                            <button onclick="BibleReader.enterFullscreen()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Fullscreen mode">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Bible Text -->

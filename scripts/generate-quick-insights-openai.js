@@ -101,7 +101,9 @@ const BOOK_NAMES = {
 async function generateInsight(bookId, chapter, verse, verseText, tyndaleNote) {
   const bookName = BOOK_NAMES[bookId] || bookId;
   
-  const prompt = `
+  let prompt;
+  if (tyndaleNote) {
+    prompt = `
 VERSE: ${bookName} ${chapter}:${verse}
 "${verseText}"
 
@@ -109,6 +111,16 @@ TYNDALE NOTE:
 ${tyndaleNote}
 
 Generate the 4-section insight in JSON format:`;
+  } else {
+    // No Tyndale note - generate from verse text alone
+    prompt = `
+VERSE: ${bookName} ${chapter}:${verse}
+"${verseText}"
+
+(No scholarly commentary available - create insight based on the verse itself)
+
+Generate the 4-section insight in JSON format:`;
+  }
 
   try {
     const response = await openai.chat.completions.create({
@@ -195,10 +207,9 @@ async function processBook(bookId) {
       output.chapters[chapter] = { verses: {} };
     }
     
-    const tyndaleChapter = tyndale.chapters[chapter];
+    const tyndaleChapter = tyndale.chapters?.[chapter] || null;
     if (!tyndaleChapter) {
-      process.stdout.write(`  ⚠️ No Tyndale data for chapter ${chapter}\n`);
-      continue;
+      process.stdout.write(`  ⚠️ No Tyndale data for chapter ${chapter} - using verse text only\n`);
     }
     
     for (const [verse, verseText] of Object.entries(chapterData.verses)) {
@@ -208,12 +219,7 @@ async function processBook(bookId) {
         continue;
       }
       
-      const tyndaleNote = tyndaleChapter.verses?.[verse];
-      if (!tyndaleNote) {
-        process.stdout.write('○');
-        skipped++;
-        continue;
-      }
+      const tyndaleNote = tyndaleChapter?.verses?.[verse] || null;
       
       const result = await generateInsight(bookId, chapter, verse, verseText, tyndaleNote);
       
