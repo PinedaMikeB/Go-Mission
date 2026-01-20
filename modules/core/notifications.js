@@ -46,8 +46,13 @@ const Notifications = {
     // Create notification container if not exists
     this.createNotificationContainer();
     
-    // Start listening for new messages if user is in a group
+    // Show header chat button if user is in a group
     if (Groups?.currentGroup) {
+      const headerBtn = document.getElementById('headerChatBadge');
+      if (headerBtn) {
+        headerBtn.classList.remove('hidden');
+      }
+      // Start listening for new messages
       this.subscribeToGroupMessages();
     }
     
@@ -98,29 +103,64 @@ const Notifications = {
     
     try {
       const chatRef = window.collection(window.db, 'goMission_chats');
+      
+      // Simple query - just filter by groupId (no orderBy to avoid index requirement)
       const q = window.query(
         chatRef,
-        window.where('groupId', '==', Groups.currentGroup.id),
-        window.orderBy('createdAt', 'desc'),
-        window.limit(1)
+        window.where('groupId', '==', Groups.currentGroup.id)
       );
       
       // Use onSnapshot for real-time updates
       if (window.onSnapshot) {
         this.unsubscribe = window.onSnapshot(q, (snapshot) => {
+          console.log('[Notifications] Snapshot received, changes:', snapshot.docChanges().length);
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const message = { id: change.doc.id, ...change.doc.data() };
+              console.log('[Notifications] New message detected:', message.senderName);
               this.handleNewMessage(message);
             }
           });
         }, (error) => {
           console.error('[Notifications] Snapshot error:', error);
         });
+        console.log('[Notifications] Subscribed successfully');
+      } else {
+        console.warn('[Notifications] onSnapshot not available, falling back to polling');
+        // Fallback to polling
+        this.startPolling();
       }
     } catch (error) {
       console.error('[Notifications] Error subscribing:', error);
     }
+  },
+  
+  /**
+   * Fallback polling for notifications
+   */
+  startPolling() {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+    
+    this.pollInterval = setInterval(async () => {
+      if (!Groups?.currentGroup || GroupChat?.isOpen) return;
+      
+      try {
+        const chatRef = window.collection(window.db, 'goMission_chats');
+        const q = window.query(
+          chatRef,
+          window.where('groupId', '==', Groups.currentGroup.id),
+          window.limit(10)
+        );
+        
+        const snapshot = await window.getDocs(q);
+        snapshot.forEach(doc => {
+          const message = { id: doc.id, ...doc.data() };
+          this.handleNewMessage(message);
+        });
+      } catch (e) {
+        console.error('[Notifications] Polling error:', e);
+      }
+    }, 5000);
   },
   
   /**
@@ -236,11 +276,31 @@ const Notifications = {
    * Update badge count on UI elements
    */
   updateBadge() {
+    const count = this.unreadCount;
+    const badgeText = count > 99 ? '99+' : count.toString();
+    
+    // Update header notification badge (next to language toggle)
+    const headerBadge = document.getElementById('headerNotificationBadge');
+    const headerBtn = document.getElementById('headerChatBadge');
+    if (headerBadge && headerBtn) {
+      if (count > 0) {
+        headerBadge.textContent = badgeText;
+        headerBadge.classList.remove('hidden');
+        headerBtn.classList.remove('hidden');
+      } else {
+        headerBadge.classList.add('hidden');
+        // Keep button visible if user is in a group
+        if (Groups?.currentGroup) {
+          headerBtn.classList.remove('hidden');
+        }
+      }
+    }
+    
     // Update chat badge in Mission Group card
     const chatBadge = document.getElementById('chatNotificationBadge');
     if (chatBadge) {
-      if (this.unreadCount > 0) {
-        chatBadge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
+      if (count > 0) {
+        chatBadge.textContent = badgeText;
         chatBadge.classList.remove('hidden');
       } else {
         chatBadge.classList.add('hidden');
@@ -250,12 +310,19 @@ const Notifications = {
     // Update group card badge
     const groupBadge = document.getElementById('groupNotificationBadge');
     if (groupBadge) {
-      if (this.unreadCount > 0) {
-        groupBadge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
+      if (count > 0) {
+        groupBadge.textContent = badgeText;
         groupBadge.classList.remove('hidden');
       } else {
         groupBadge.classList.add('hidden');
       }
+    }
+    
+    // Update page title with unread count
+    if (count > 0) {
+      document.title = `(${count}) Go Mission`;
+    } else {
+      document.title = 'Go Mission - Making Disciple-Makers';
     }
   },
   
