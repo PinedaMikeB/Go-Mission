@@ -1063,7 +1063,21 @@
                     document.getElementById('successToast').classList.add('hidden');
                 }, 3000);
                 
-                btnText.textContent = '✓ Saved - Update';
+                // Clear the reflection textarea after successful save
+                document.getElementById('reflectionAnswer').value = '';
+                
+                // Reset highlights and commentary
+                if (typeof BibleReader !== 'undefined') {
+                    BibleReader.highlightedVerses = [];
+                    BibleReader.renderVerses();
+                    BibleReader.clearCommentary();
+                }
+                
+                // Hide the AI reflection card
+                const aiReflectCard = document.getElementById('aiReflectCard');
+                if (aiReflectCard) aiReflectCard.classList.add('hidden');
+                
+                btnText.textContent = '✓ Saved!';
                 btn.disabled = false;
                 await window.loadWeekProgress(window.currentUser.uid);
                 
