@@ -524,6 +524,7 @@
                     <div id="aiReflectCard"><p id="reflectionQuestion"></p></div>
                     <textarea id="reflectionAnswer"></textarea>
                     <div id="shareToggle"></div>
+                    <button id="saveDevotionBtn"><span id="saveBtnText">💾 Save This Day</span></button>
                 </div>
             </div>
             
@@ -1268,9 +1269,11 @@
         window.loadTodaysEntry = async function(uid) {
             if (!uid) return;
             
-            // ALWAYS clear reflection and reset button first
-            document.getElementById('reflectionAnswer').value = '';
-            document.getElementById('saveBtnText').textContent = '💾 Save This Day';
+            // Clear reflection if element exists
+            const reflectionAnswer = document.getElementById('reflectionAnswer');
+            const saveBtnText = document.getElementById('saveBtnText');
+            if (reflectionAnswer) reflectionAnswer.value = '';
+            if (saveBtnText) saveBtnText.textContent = '💾 Save This Day';
             
             const today = getTodayString();
             const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
@@ -1296,7 +1299,8 @@
                     
                     // Restore share toggle preference only
                     shareWithGroup = data.sharedWithGroup || false;
-                    document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
+                    const shareToggle = document.getElementById('shareToggle');
+                    if (shareToggle) shareToggle.classList.toggle('active', shareWithGroup);
                 }
             } catch (error) {
                 console.error('Error loading entry:', error);
