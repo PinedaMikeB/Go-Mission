@@ -12,27 +12,44 @@
 ---
 
 ## Current Session (2026-01-21)
-- **MODULE**: Training Module - Language Support
-- **STATUS**: ✅ Training module now responds to global language toggle
-- **NEXT**: Test language switching, upload Tagalog content via Training Uploader
+- **MODULE**: Bible Reader & UI Improvements
+- **STATUS**: ✅ Multiple UI improvements completed
+- **NEXT**: Test all changes, upload Tagalog training content
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Training Module Language Switching
-- Added `setupLanguageListener()` to listen for `languageChanged` events
+### 1. Bible Fullscreen Mode Improvements
+- Added **Insights button** in fullscreen mode (💡)
+- Insights panel slides in from right when clicked
+- **Font size controls** (A-/A+) now work in fullscreen
+- Commentary panel shows verse insights in fullscreen
+
+### 2. Font Size Applies to All Sections
+- `applyFontSize()` now affects:
+  - Main Bible text
+  - Fullscreen Bible text
+  - Commentary/Insights section ("Tulungan akong maintindihan")
+  - Reflect section ("Pagnilayan")
+  - Reflection textarea
+
+### 3. Language Toggle Simplified
+- Removed "TL" and "EN" text labels
+- Now shows **flags only** (🇵🇭 🇺🇸)
+- Cleaner, less cramped appearance
+
+### 4. Leader Dashboard Visibility
+- Dashboard now **hidden by default**
+- Only shows for users with roles:
+  - `isAdmin` or email = michael.marga@gmail.com
+  - `isGroupLeader`
+  - `isTrainer`
+  - `isShepherd`
+- Regular members/seekers don't see it
+
+### 5. Training Module Language Switching
 - Training content reloads automatically when language is toggled
-- Uses i18n.currentLang for language detection
-- Re-renders training UI after language change
-
-### 2. Training Modal Light Mode Support
-- Added `getThemeClasses()` method to Training module
-- Updated `openDay()` modal with theme-aware Tailwind classes
-- Updated `openGroupProcessing()` (Day 7) modal with theme-aware classes
-
-### 3. Training Uploader Firebase Fix
-- Fixed Firebase config credentials in `/tools/training-uploader.html`
 
 ### Previous Session: In-App Notifications for Group Chat
 

@@ -367,13 +367,13 @@
                     <span class="font-mission font-bold text-[var(--text-color)] tracking-widest uppercase">Go Mission</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <!-- Global Language Toggle -->
-                    <div class="flex items-center gap-1 bg-[var(--input-bg)] rounded-full px-1 py-1 border border-[var(--card-border)]">
-                        <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn px-2 py-1 rounded-full text-xs font-medium transition-all" data-lang="tl">
-                            🇵🇭 TL
+                    <!-- Global Language Toggle - Flags Only -->
+                    <div class="flex items-center bg-[var(--input-bg)] rounded-full px-1 py-1 border border-[var(--card-border)]">
+                        <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="tl" title="Tagalog">
+                            🇵🇭
                         </button>
-                        <button id="globalLangEN" onclick="i18n.setLang('en')" class="lang-toggle-btn px-2 py-1 rounded-full text-xs font-medium transition-all" data-lang="en">
-                            🇺🇸 EN
+                        <button id="globalLangEN" onclick="i18n.setLang('en')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="en" title="English">
+                            🇺🇸
                         </button>
                     </div>
                     <!-- Chat Notification Badge -->
@@ -648,8 +648,8 @@
                     </div>
                 </div>
 
-                <!-- Leader Dashboard Card -->
-                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
+                <!-- Leader Dashboard Card - Only visible for leaders/admins -->
+                <div id="leaderDashboardCard" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden">
                     <div class="p-4 border-b border-white/5 flex items-center justify-between">
                         <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
                             <span class="text-amber-500">📊</span>
@@ -936,7 +936,24 @@
                 if (userDoc.exists()) {
                     const data = userDoc.data();
                     window.currentUserStage = data.stage || 'seeker';
+                    window.currentUserRoles = data.roles || {};
                     updateJourneyDisplay(window.currentUserStage);
+                    
+                    // Show/hide leader dashboard based on roles
+                    const leaderDashboard = document.getElementById('leaderDashboardCard');
+                    if (leaderDashboard) {
+                        const isAdmin = data.roles?.isAdmin || data.email === 'michael.marga@gmail.com';
+                        const isGroupLeader = data.roles?.isGroupLeader;
+                        const isTrainer = data.roles?.isTrainer;
+                        const isShepherd = data.roles?.isShepherd;
+                        
+                        // Only show dashboard for leaders, trainers, shepherds, or admins
+                        if (isAdmin || isGroupLeader || isTrainer || isShepherd) {
+                            leaderDashboard.classList.remove('hidden');
+                        } else {
+                            leaderDashboard.classList.add('hidden');
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);

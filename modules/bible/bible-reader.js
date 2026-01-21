@@ -235,13 +235,35 @@ const BibleReader = {
   },
 
   /**
-   * Apply font size to Bible text
+   * Apply font size to Bible text and related sections
    */
   applyFontSize() {
     const bibleText = document.getElementById('bibleText');
-    if (bibleText) {
-      bibleText.style.fontSize = `${this.preferences.fontSize}px`;
-    }
+    const fullscreenText = document.getElementById('fullscreenBibleText');
+    const commentaryContent = document.getElementById('commentaryContent');
+    const reflectSection = document.getElementById('reflectSection');
+    const reflectionTextarea = document.getElementById('reflectionTextarea');
+    const fullscreenCommentary = document.getElementById('fullscreenCommentaryContent');
+    
+    const fontSize = `${this.preferences.fontSize}px`;
+    
+    // Apply to main Bible text
+    if (bibleText) bibleText.style.fontSize = fontSize;
+    
+    // Apply to fullscreen Bible text
+    if (fullscreenText) fullscreenText.style.fontSize = fontSize;
+    
+    // Apply to commentary section
+    if (commentaryContent) commentaryContent.style.fontSize = fontSize;
+    
+    // Apply to fullscreen commentary
+    if (fullscreenCommentary) fullscreenCommentary.style.fontSize = fontSize;
+    
+    // Apply to reflect section (adjust slightly smaller)
+    if (reflectSection) reflectSection.style.fontSize = fontSize;
+    
+    // Apply to reflection textarea
+    if (reflectionTextarea) reflectionTextarea.style.fontSize = fontSize;
   },
 
   /**
@@ -257,6 +279,7 @@ const BibleReader = {
     
     const bookName = this.chapterData?.bookName || this.currentBook;
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const hasHighlights = this.highlightedVerses.length > 0;
     
     overlay.innerHTML = `
       <!-- Fullscreen Header -->
@@ -272,10 +295,10 @@ const BibleReader = {
         
         <div class="flex items-center gap-2">
           <!-- Font Size Controls -->
-          <button onclick="BibleReader.decreaseFontSize()" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
             <span class="text-lg font-bold">A-</span>
           </button>
-          <button onclick="BibleReader.increaseFontSize()" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
             <span class="text-lg font-bold">A+</span>
           </button>
         </div>
@@ -291,6 +314,18 @@ const BibleReader = {
                   title="${color.name}">
           </button>
         `).join('')}
+        
+        <!-- Commentary Toggle Button -->
+        <div class="ml-4 pl-4 border-l border-[var(--card-border)]">
+          <button onclick="BibleReader.toggleFullscreenCommentary()" 
+                  id="fullscreenCommentaryBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                  ${!hasHighlights ? 'disabled' : ''}>
+            <span>💡</span>
+            <span>${lang === 'tl' ? 'Insights' : 'Insights'}</span>
+            <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
+          </button>
+        </div>
       </div>
       
       <!-- Chapter Navigation -->
@@ -314,9 +349,29 @@ const BibleReader = {
         </button>
       </div>
       
-      <!-- Bible Text -->
-      <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
-        ${this.generateVersesHTML()}
+      <!-- Main Content Area - Split View -->
+      <div class="flex-1 flex overflow-hidden">
+        <!-- Bible Text -->
+        <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
+          ${this.generateVersesHTML()}
+        </div>
+        
+        <!-- Commentary Panel (Hidden by default) -->
+        <div id="fullscreenCommentaryPanel" class="hidden w-80 border-l border-[var(--card-border)] bg-[var(--nav-bg)] overflow-y-auto">
+          <div class="p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-amber-500 font-bold text-sm">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
+              <button onclick="BibleReader.toggleFullscreenCommentary()" class="text-[var(--text-muted)] hover:text-amber-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div id="fullscreenCommentaryContent" class="text-sm" style="font-size: ${this.preferences.fontSize}px;">
+              ${this.generateCommentaryHTML()}
+            </div>
+          </div>
+        </div>
       </div>
     `;
     
@@ -327,6 +382,58 @@ const BibleReader = {
     requestAnimationFrame(() => {
       overlay.style.opacity = '1';
     });
+  },
+
+  /**
+   * Toggle fullscreen commentary panel
+   */
+  toggleFullscreenCommentary() {
+    const panel = document.getElementById('fullscreenCommentaryPanel');
+    const btn = document.getElementById('fullscreenCommentaryBtn');
+    
+    if (!panel || this.highlightedVerses.length === 0) return;
+    
+    const isHidden = panel.classList.contains('hidden');
+    
+    if (isHidden) {
+      panel.classList.remove('hidden');
+      btn?.classList.add('bg-amber-500/40');
+    } else {
+      panel.classList.add('hidden');
+      btn?.classList.remove('bg-amber-500/40');
+    }
+  },
+
+  /**
+   * Generate commentary HTML for fullscreen panel
+   */
+  generateCommentaryHTML() {
+    if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
+      const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+      return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'I-tap ang mga talata para makita ang insights' : 'Tap verses to see insights'}</p>`;
+    }
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const labels = {
+      en: { understanding: '📖 Understanding', livingItOut: '🚶 Living It Out', godsLove: '❤️ God\'s Love' },
+      tl: { understanding: '📖 Pag-unawa', livingItOut: '🚶 Isabuhay', godsLove: '❤️ Pag-ibig ng Diyos' }
+    };
+    const L = labels[lang] || labels.en;
+    
+    let html = '';
+    for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
+      html += `
+        <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
+          <p class="text-amber-500 font-bold mb-2">Verse ${verseNum}</p>
+          <div class="space-y-2 text-[var(--text-color)]">
+            <div><span class="text-amber-400/70 text-xs">${L.understanding}</span><p class="text-sm">${insight.understanding || ''}</p></div>
+            <div><span class="text-amber-400/70 text-xs">${L.livingItOut}</span><p class="text-sm">${insight.livingItOut || ''}</p></div>
+            <div><span class="text-amber-400/70 text-xs">${L.godsLove}</span><p class="text-sm">${insight.godsLove || ''}</p></div>
+          </div>
+        </div>
+      `;
+    }
+    return html;
   },
 
   /**
@@ -349,12 +456,15 @@ const BibleReader = {
   },
 
   /**
-   * Update fullscreen content after navigation
+   * Update fullscreen content after navigation or highlight change
    */
   updateFullscreenContent() {
     setTimeout(() => {
       const fullscreenText = document.getElementById('fullscreenBibleText');
       const headerTitle = document.querySelector('#bibleFullscreenOverlay h2');
+      const commentaryContent = document.getElementById('fullscreenCommentaryContent');
+      const commentaryBtn = document.getElementById('fullscreenCommentaryBtn');
+      const commentaryCount = document.getElementById('fullscreenCommentaryCount');
       
       if (fullscreenText) {
         fullscreenText.innerHTML = this.generateVersesHTML();
@@ -364,6 +474,31 @@ const BibleReader = {
       if (headerTitle) {
         const bookName = this.chapterData?.bookName || this.currentBook;
         headerTitle.textContent = `📖 ${bookName} ${this.currentChapter}`;
+      }
+      
+      // Update commentary panel
+      if (commentaryContent) {
+        commentaryContent.innerHTML = this.generateCommentaryHTML();
+        commentaryContent.style.fontSize = `${this.preferences.fontSize}px`;
+      }
+      
+      // Update commentary button state
+      const hasHighlights = this.highlightedVerses.length > 0;
+      if (commentaryBtn) {
+        if (hasHighlights) {
+          commentaryBtn.classList.remove('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
+          commentaryBtn.classList.add('bg-amber-500/20', 'text-amber-400', 'hover:bg-amber-500/30');
+          commentaryBtn.disabled = false;
+        } else {
+          commentaryBtn.classList.add('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
+          commentaryBtn.classList.remove('bg-amber-500/20', 'text-amber-400', 'hover:bg-amber-500/30');
+          commentaryBtn.disabled = true;
+        }
+      }
+      
+      if (commentaryCount) {
+        commentaryCount.textContent = `(${this.highlightedVerses.length})`;
+        commentaryCount.classList.toggle('hidden', !hasHighlights);
       }
     }, 200);
   },
