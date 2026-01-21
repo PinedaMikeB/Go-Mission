@@ -245,10 +245,7 @@ const InstallModal = {
             // Go Mission logo
             iconHtml = `
                 <div class="app-icon-preview">
-                    <svg viewBox="0 0 512 512" width="100" height="100">
-                        <rect width="512" height="512" rx="96" fill="#8B4513"/>
-                        <text x="256" y="320" text-anchor="middle" font-size="280" font-weight="bold" fill="#f59e0b">G</text>
-                    </svg>
+                    <img src="/icons/icon-192.png" alt="Go Mission" width="100" height="100" style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
                     <span class="app-name">Go Mission</span>
                 </div>
             `;
