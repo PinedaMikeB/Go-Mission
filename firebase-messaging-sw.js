@@ -1,148 +1,195 @@
 /**
- * Go Mission - Firebase Messaging Service Worker
- * Handles push notifications when app is in background or closed
+ * Go Mission - Combined Service Worker
+ * Handles: Push Notifications, Caching, Auto-Updates
  */
 
-// Import Firebase scripts
+// ============================================
+// PWA CACHING & AUTO-UPDATE
+// ============================================
+
+const CACHE_NAME = 'go-mission-v1.0.2';
+
+// Files to cache
+const STATIC_CACHE = [
+    '/',
+    '/index.html',
+    '/manifest.json',
+    '/offline.html',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png'
+];
+
+// Install - cache static assets & skip waiting
+self.addEventListener('install', (event) => {
+    console.log('[SW] Installing:', CACHE_NAME);
+    self.skipWaiting();
+    
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(STATIC_CACHE).catch(err => {
+                console.log('[SW] Cache addAll error:', err);
+            });
+        })
+    );
+});
+
+// Activate - clean old caches & claim clients
+self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating:', CACHE_NAME);
+    
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((name) => {
+                    if (name !== CACHE_NAME && name.startsWith('go-mission-')) {
+                        console.log('[SW] Deleting old cache:', name);
+                        return caches.delete(name);
+                    }
+                })
+            );
+        }).then(() => {
+            return self.clients.claim();
+        }).then(() => {
+            // Notify clients about update
+            return self.clients.matchAll().then((clients) => {
+                clients.forEach((client) => {
+                    client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+                });
+            });
+        })
+    );
+});
+
+// Fetch - Network First for HTML/JS/CSS, Cache First for assets
+self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+    
+    // Skip non-GET and cross-origin
+    if (event.request.method !== 'GET') return;
+    if (url.origin !== location.origin) return;
+    
+    // HTML pages - Network First
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request).then(r => r || caches.match('/offline.html')))
+        );
+        return;
+    }
+    
+    // JS/CSS - Network First
+    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+    
+    // Other assets - Cache First
+    event.respondWith(
+        caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            return fetch(event.request).then((response) => {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                return response;
+            });
+        })
+    );
+});
+
+// Message handler
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
+
+// ============================================
+// FIREBASE PUSH NOTIFICATIONS
+// ============================================
+
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
 
-// Firebase configuration (same as in app)
-const firebaseConfig = {
-  apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
-  authDomain: "shaped-by-grace.firebaseapp.com",
-  projectId: "shaped-by-grace",
-  storageBucket: "shaped-by-grace.firebasestorage.app",
-  messagingSenderId: "421948043828",
-  appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
-};
+firebase.initializeApp({
+    apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
+    authDomain: "shaped-by-grace.firebaseapp.com",
+    projectId: "shaped-by-grace",
+    storageBucket: "shaped-by-grace.firebasestorage.app",
+    messagingSenderId: "421948043828",
+    appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
+});
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-
-// Get messaging instance
 const messaging = firebase.messaging();
 
-// Handle background messages
+// Background push notifications
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Received background message:', payload);
-  
-  const notificationTitle = payload.notification?.title || 'Go Mission';
-  const notificationOptions = {
-    body: payload.notification?.body || 'You have a new notification',
-    icon: payload.notification?.icon || '/icons/icon-192.png',
-    badge: '/icons/badge-72.png',
-    tag: payload.data?.type || 'default',
-    data: payload.data,
-    vibrate: [100, 50, 100],
-    actions: getActionsForType(payload.data?.type)
-  };
-
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+    console.log('[SW] Background message:', payload);
+    
+    const title = payload.notification?.title || 'Go Mission';
+    const options = {
+        body: payload.notification?.body || 'You have a new notification',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: payload.data?.type || 'default',
+        data: payload.data,
+        vibrate: [100, 50, 100],
+        actions: getNotificationActions(payload.data?.type)
+    };
+    
+    return self.registration.showNotification(title, options);
 });
 
-// Get notification actions based on type
-function getActionsForType(type) {
-  switch (type) {
-    case 'chat':
-      return [
-        { action: 'open', title: 'Open Chat' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ];
-    case 'devotion':
-      return [
-        { action: 'open', title: 'View' },
-        { action: 'dismiss', title: 'Later' }
-      ];
-    case 'join_request':
-      return [
-        { action: 'approve', title: 'Approve' },
-        { action: 'open', title: 'Review' }
-      ];
-    default:
-      return [
-        { action: 'open', title: 'Open' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ];
-  }
+function getNotificationActions(type) {
+    switch (type) {
+        case 'chat':
+            return [{ action: 'open', title: 'Open Chat' }];
+        case 'devotion':
+            return [{ action: 'open', title: 'View' }];
+        default:
+            return [{ action: 'open', title: 'Open' }];
+    }
 }
 
-// Handle notification click
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification click:', event.action);
-  
-  event.notification.close();
-  
-  const data = event.notification.data || {};
-  let url = '/';
-  
-  // Determine URL based on notification type
-  switch (data.click_action || data.type) {
-    case 'OPEN_CHAT':
-    case 'chat':
-      url = '/?tab=group&openChat=true';
-      break;
-    case 'OPEN_GROUP':
-    case 'join_request':
-      url = '/?tab=group';
-      break;
-    case 'OPEN_DEVOTION':
-    case 'devotion':
-    case 'daily_reminder':
-      url = '/?tab=journey';
-      break;
-    case 'OPEN_TRAINING':
-    case 'training_reminder':
-      url = '/?tab=training';
-      break;
-  }
-  
-  // Handle action buttons
-  if (event.action === 'dismiss') {
-    return;
-  }
-  
-  // Open or focus the app
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Check if app is already open
-        for (const client of clientList) {
-          if (client.url.includes('gomission.netlify.app') && 'focus' in client) {
-            client.postMessage({ type: 'NOTIFICATION_CLICK', data });
-            return client.focus();
-          }
-        }
-        // Open new window if not
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-  );
-});
-
-// Handle push event (fallback)
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push event received');
-  
-  if (event.data) {
-    try {
-      const payload = event.data.json();
-      console.log('[SW] Push payload:', payload);
-    } catch (e) {
-      console.log('[SW] Push data:', event.data.text());
+    event.notification.close();
+    
+    const data = event.notification.data || {};
+    let url = '/';
+    
+    if (data.type === 'chat' && data.groupId) {
+        url = '/?openChat=' + data.groupId;
+    } else if (data.type === 'devotion') {
+        url = '/?openDevotion=true';
     }
-  }
-});
-
-// Service worker install
-self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installed');
-  self.skipWaiting();
-});
-
-// Service worker activate
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker activated');
-  event.waitUntil(clients.claim());
+    
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // Focus existing window
+            for (const client of windowClients) {
+                if (client.url.includes('gomission') && 'focus' in client) {
+                    client.navigate(url);
+                    return client.focus();
+                }
+            }
+            // Open new window
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
+    );
 });

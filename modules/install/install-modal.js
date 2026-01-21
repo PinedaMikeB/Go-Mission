@@ -326,10 +326,10 @@ const InstallModal = {
     getStepIcon(icon) {
         if (icon === 'share') {
             return `
-                <svg class="share-icon" viewBox="0 0 50 50" width="40" height="40">
-                    <rect x="8" y="22" width="34" height="24" rx="4" fill="none" stroke="#007AFF" stroke-width="3"/>
-                    <line x1="25" y1="6" x2="25" y2="30" stroke="#007AFF" stroke-width="3" stroke-linecap="round"/>
-                    <polyline points="16,15 25,6 34,15" fill="none" stroke="#007AFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <polyline points="16 6 12 2 8 6"/>
+                    <line x1="12" y1="2" x2="12" y2="15"/>
                 </svg>
             `;
         } else if (icon === 'logo') {
