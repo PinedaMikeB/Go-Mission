@@ -12,164 +12,140 @@
 ---
 
 ## Current Session (2026-01-21)
-- **MODULE**: Bible Reader UX Overhaul
-- **STATUS**: ✅ Major UX improvements - collapsed Bible card, reflection popup, menu
-- **NEXT**: Test new flow on mobile, refine as needed
+- **MODULE**: Push Notifications System
+- **STATUS**: 🔄 In Progress - Core setup complete, needs Firebase Console setup
+- **NEXT**: Generate VAPID key, deploy Cloud Functions, create app icons
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Collapsed Bible Card (Mobile-First)
-- Bible card now shows **3-line preview** only (not scrollable)
-- Tap "Read & Reflect" to open fullscreen
-- Cleaner mobile experience - no endless scrolling
+### 1. Push Notifications Infrastructure
+Created complete push notification system:
 
-### 2. Fullscreen Mode - Two Action Buttons
-- **💡 Insights** - Opens commentary panel (existing)
-- **📝 Reflect** - Opens reflection modal (NEW)
-- Both buttons enable when verse is highlighted
+**Frontend:**
+- `/modules/core/push-notifications.js` - FCM token management, permission prompts
+- `/firebase-messaging-sw.js` - Service Worker for background notifications
+- `/manifest.json` - PWA manifest for installable app
 
-### 3. Reflection Popup Modal
-- Shows when **exiting fullscreen** (if verses highlighted)
-- Shows reflection question from AI
-- Two main actions:
-  - "📖 Save & Continue Reading" - Saves and reopens fullscreen
-  - "🏠 Save & Go to Menu" - Saves and closes
-- "Skip for now" option available
+**Backend (Cloud Functions):**
+- `/functions/index.js` - Firebase Cloud Functions for sending notifications
+- Auto-notifications on: new chat messages, join requests, shared devotions
+- Manual notifications: custom announcements, training reminders
+- Scheduled: daily devotion reminders (6 AM Manila time)
 
-### 4. Hamburger Menu (☰) on Bible Card
-- **📖 My Journal** - List of past devotions
-- **🔍 Choose Passage** - Opens Bible picker
-- **📅 Reading Plan** - Coming soon
-- **📊 Reading Stats** - Coming soon
+### 2. Notification Types Supported
+| Type | Trigger | Recipients |
+|------|---------|------------|
+| Chat message | New message in group | All group members (except sender) |
+| Join request | Someone requests to join | Group leader |
+| Shared devotion | User shares reflection | Group members |
+| Daily reminder | 6 AM scheduled | Users with reminder enabled |
+| Training reminder | Manual trigger | Group members |
+| Custom announcement | Leader sends | User or group |
 
-### 5. Journal Modal
-- Shows last 30 devotion entries
-- Displays: date, passage, reflection question, answer
-- Indicates if shared with group
+### 3. PWA Setup
+- Added manifest.json for "Add to Home Screen"
+- App icon placeholders in /icons/
+- Service worker registration
 
-### Previous: Mobile fullscreen insights, language switching
-
-### 2. Group Invite Code System (Facebook → App Flow)
-- Removed "Find a Group" / browse groups feature
-- Added "Join with Code" for seekers
-- Leaders generate 6-char invite codes (e.g., ABC123)
-- URL deep-link support: `gomission.netlify.app/?join=ABC123`
-- Codes have expiration and optional usage limits
-
-### 2. Disciple-First Group Creation Rule
-- Users must be a disciple (group member) before creating a group
-- Admin (michael.marga@gmail.com) can bypass this rule
-- Endorsement code system for authorized group creation
-- Leaders/Admin can generate codes for new disciple-makers
-
-### 2. Endorsement Code System
-- New Firestore collection: `goMission_endorsementCodes`
-- Codes are 8-character alphanumeric (e.g., ABC12345)
-- Optional: restrict code to specific email
-- Configurable expiration (default 30 days)
-- Tracks: who created, who used, which group created
-
-### 3. Bible Reader UI Enhancements
-- **Highlight Colors**: 6 options (gold, green, blue, purple, pink, orange)
-- **Font Size Controls**: A-/A+ buttons (12px to 28px range)
-- **Fullscreen Mode**: Distraction-free reading with ESC to exit
-- **Reading Toolbar**: Below chapter navigation
-- **Preferences**: Saved to localStorage
-
-### 2. Dark/Light Mode Theme System
-- Created `/modules/core/theme.js` - Theme management module
-- Added CSS variables for both themes in `index.html`
-- Theme toggle button added beside language toggle in header
-- Sun/Moon icons for toggle state
-- localStorage persistence and Firestore sync
-
-### 3. Light Mode Color Scheme (from Gemini design)
-- Background: #fcfaf2 (warm cream)
-- Text: #2a0505 (deep maroon)
-- Cards: #ffffff (white)
-- Mountain image with cream overlay
-
-### 4. Quick Insights Generation (In Progress)
-| Book | Verses | Expected | Status |
-|------|--------|----------|--------|
-| John | 878 | 878 | ✅ Complete |
-| Matthew | 1,068 | 1,071 | ✅ Complete |
-| Mark | 678 | 678 | ✅ Complete |
-| Luke | ~570 | 1,149 | 🔄 Running (PID 44808) |
+### 4. Previous: Bible UX overhaul, light/dark theme for all modals
 
 ---
 
-## 📁 Key Files
+## 🔧 SETUP REQUIRED (Manual Steps)
 
-### Theme System
-```
-/modules/core/
-├── theme.js               # ✅ Dark/Light mode management
-└── i18n.js                # ✅ Language switching (EN/TL)
-```
+### Step 1: Firebase Console - Get VAPID Key
+1. Go to Firebase Console → Project Settings → Cloud Messaging
+2. Under "Web Push certificates", click "Generate key pair"
+3. Copy the VAPID key
+4. Add to index.html: `window.FIREBASE_VAPID_KEY = 'your-key-here';`
 
-### Quick Insights System
-```
-/modules/bible/
-├── bible-loader.js         # ✅ Loads Quick Insights & Tyndale
-├── bible-reader.js         # ✅ Updated - 3 sections + Dig Deeper
-└── data/
-    ├── quick-insights/
-    │   ├── JHN.json        # ✅ Complete
-    │   ├── MAT.json        # ✅ Complete
-    │   ├── MRK.json        # ✅ Complete
-    │   └── LUK.json        # 🔄 Generating
-    └── commentary/
-        └── tyndale-json/   # 66 books - for "Dig Deeper"
-```
-
-### Generator Scripts
-```
-/scripts/
-├── generate-quick-insights-openai.js  # GPT-4o-mini (RECOMMENDED)
-└── generate-quick-insights.js         # Gemini (expensive)
-```
-
----
-
-## 🔑 Generate a Book
-
+### Step 2: Deploy Cloud Functions
 ```bash
-cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
-OPENAI_API_KEY="your-key-here" node scripts/generate-quick-insights-openai.js BOOK_CODE
+cd functions
+npm install
+firebase login
+firebase deploy --only functions
 ```
 
-Book codes: GEN, EXO, MAT, MRK, LUK, JHN, ACT, ROM, etc.
+### Step 3: Create App Icons
+Need PNG icons at these sizes: 72, 96, 128, 144, 152, 192, 384, 512
+Place in `/icons/icon-{size}.png`
+
+### Step 4: Test
+1. Open app, allow notifications
+2. Send chat message from another account
+3. Should receive push notification
 
 ---
 
-## 📋 Next Steps
+## Key Files Reference
 
-### Immediate
-1. [x] ~~Implement dark/light mode toggle~~ ✅
-2. [ ] Test theme toggle on live site
-3. [ ] Test Quick Insights UI on live site
-4. [ ] Verify REFLECT section shows AI question
+### Core Modules
+| File | Purpose |
+|------|---------|
+| `/index.html` | Main app, all screens |
+| `/modules/core/theme.js` | Light/dark mode |
+| `/modules/core/i18n.js` | Language switching |
+| `/modules/core/push-notifications.js` | FCM token management |
+| `/modules/bible/bible-reader.js` | Scripture reading |
+| `/modules/groups/groups.js` | Group management |
+| `/modules/groups/group-chat.js` | Chat functionality |
+| `/modules/training/training.js` | Training sessions |
 
-### Then
-5. [ ] Wait for Luke to complete
-6. [ ] Generate remaining NT books
-7. [ ] Generate OT books (batch overnight)
-
----
-
-## 📚 Quick Insights Format
-
-| # | Section | Shows In |
-|---|---------|----------|
-| 1 | Understanding This Verse | Commentary |
-| 2 | Living It Out | Commentary |
-| 3 | See God's Love | Commentary |
-| 4 | Reflection Question | **REFLECT section** |
-| 5 | Dig Deeper (Tyndale) | Commentary (toggle) |
+### Firebase Collections
+| Collection | Purpose |
+|------------|---------|
+| `goMission_members` | User profiles, FCM tokens |
+| `goMission_groups` | Mission groups |
+| `goMission_chats` | Group chat messages |
+| `goMission_devotions` | Saved devotions |
+| `goMission_trainingContent` | Training materials |
 
 ---
 
-*Last Updated: January 20, 2026 - 11:45 PM PHT*
+## App Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    GO MISSION APP                        │
+├─────────────────────────────────────────────────────────┤
+│  Journey Tab    │  Group Tab    │ Training │   Dash    │
+│  - Bible Reader │  - Group Info │ - Sessions│ - Stats  │
+│  - Reflection   │  - Chat       │ - Progress│ - Admin  │
+│  - Journal      │  - Members    │           │          │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                   FIREBASE BACKEND                       │
+│  Firestore │ Auth │ Cloud Functions │ Cloud Messaging   │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Development Notes
+
+### Theme Variables
+```css
+--bg-color         /* Main background */
+--card-bg          /* Card background */
+--text-color       /* Primary text */
+--text-muted       /* Secondary text */
+--card-border      /* Border colors */
+--input-bg         /* Input backgrounds */
+```
+
+### Adding New Notifications
+In `/functions/index.js`, use the helper functions:
+```javascript
+// Single user
+await sendToUser(userId, { title, body, data });
+
+// Group members
+await sendToGroup(groupId, notification, excludeUserId);
+
+// Multiple users
+await sendToUsers(userIds, notification);
+```

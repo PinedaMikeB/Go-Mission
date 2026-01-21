@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Go Mission - Making Disciple-Making Leaders</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Go Mission">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -842,6 +851,7 @@
     <script src="modules/groups/groups.js"></script>
     <script src="modules/groups/group-chat.js"></script>
     <script src="modules/core/notifications.js"></script>
+    <script src="modules/core/push-notifications.js"></script>
     <script src="modules/training/training.js"></script>
     
     <!-- Bible Data & Reading Plan -->
@@ -850,8 +860,9 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
@@ -882,7 +893,21 @@
         window.limit = limit;
         window.onSnapshot = onSnapshot;
         window.serverTimestamp = serverTimestamp;
+        window.arrayUnion = arrayUnion;
+        window.arrayRemove = arrayRemove;
         window.currentUser = null;
+        
+        // Initialize Firebase Messaging
+        let messaging = null;
+        try {
+            messaging = getMessaging(app);
+            window.firebaseMessaging = messaging;
+            window.getMessagingToken = getToken;
+            window.onMessagingMessage = onMessage;
+            console.log('[Firebase] Messaging initialized');
+        } catch (e) {
+            console.log('[Firebase] Messaging not available:', e.message);
+        }
 
         const loading = document.getElementById('loading');
         const loginScreen = document.getElementById('loginScreen');
@@ -935,6 +960,17 @@
                                 codeInput.value = joinCode.toUpperCase();
                             }
                         }, 200);
+                    }
+                    
+                    // Initialize Push Notifications and show prompt if needed
+                    if (typeof PushNotifications !== 'undefined') {
+                        await PushNotifications.init();
+                        // Show permission prompt after a short delay
+                        setTimeout(() => {
+                            if (PushNotifications.shouldShowPrompt()) {
+                                PushNotifications.showPermissionPrompt();
+                            }
+                        }, 3000);
                     }
                 }
             } else {
