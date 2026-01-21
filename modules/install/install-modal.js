@@ -1,34 +1,34 @@
 /**
- * Go Mission - Install Instructions Modal (Step-by-Step Wizard)
- * Shows ONE step at a time with large visuals
+ * Go Mission - Install Instructions Modal
+ * Flow: Device Selection → Read Instructions Notice → All Steps (Scrollable)
  */
 
 const InstallModal = {
     currentDevice: null,
-    currentStep: 0,
+    currentScreen: 'device', // 'device', 'notice', 'steps'
     currentLang: 'en',
     isInstalled: false,
     
     steps: {
         android: [
-            { key: 'and1', icon: '⋮', iconSize: '80px' },
-            { key: 'and2', icon: '➕', iconSize: '60px' },
-            { key: 'and3', icon: '✓', iconSize: '60px' },
-            { key: 'and4', icon: '🔥', iconSize: '80px' },
-            { key: 'and5', icon: '🔔', iconSize: '80px' }
+            { key: 'and1', icon: '⋮' },
+            { key: 'and2', icon: '➕' },
+            { key: 'and3', icon: '✓' },
+            { key: 'and4', icon: 'logo' },
+            { key: 'and5', icon: '🔔' }
         ],
         iphone: [
-            { key: 'iph1', icon: 'share', iconSize: '80px' },
-            { key: 'iph2', icon: '➕', iconSize: '60px' },
-            { key: 'iph3', icon: '✓', iconSize: '60px' },
-            { key: 'iph4', icon: '🔥', iconSize: '80px' },
-            { key: 'iph5', icon: '🔔', iconSize: '80px' }
+            { key: 'iph1', icon: 'share' },
+            { key: 'iph2', icon: '➕' },
+            { key: 'iph3', icon: '✓' },
+            { key: 'iph4', icon: 'logo' },
+            { key: 'iph5', icon: '🔔' }
         ],
         windows: [
-            { key: 'win1', icon: '⊕', iconSize: '80px' },
-            { key: 'win2', icon: '✓', iconSize: '60px' },
-            { key: 'win3', icon: '🔥', iconSize: '80px' },
-            { key: 'win4', icon: '🔔', iconSize: '80px' }
+            { key: 'win1', icon: '⊕' },
+            { key: 'win2', icon: '✓' },
+            { key: 'win3', icon: 'logo' },
+            { key: 'win4', icon: '🔔' }
         ]
     },
     
@@ -38,94 +38,116 @@ const InstallModal = {
             windows: 'Windows / Mac',
             android: 'Android',
             iphone: 'iPhone',
-            next: 'Next',
-            back: 'Back',
-            done: 'Done! Open App',
             skip: 'Skip for now',
-            step: 'Step',
-            of: 'of',
             langToggle: '🇵🇭 Tagalog',
             
+            // Notice screen
+            noticeTitle: '📖 Before Installing',
+            noticeText: 'Please READ ALL the instructions first before you begin. This will help you install the app correctly.',
+            noticeTip: 'Tip: You can scroll down to see all the steps.',
+            proceed: 'I Understand, Show Steps',
+            
+            // Steps screen
+            stepsTitle: 'Installation Steps',
+            beginTitle: '✅ Ready to Install?',
+            beginText: 'You have read all the steps. Now tap the Share button below to begin!',
+            beginBtn: '📤 Tap Share Button to Begin',
+            beginBtnAndroid: '⋮ Tap Menu Button to Begin',
+            beginBtnWindows: '⊕ Click Install Icon to Begin',
+            backToSteps: '← Back to Instructions',
+            
             // Android steps
-            and1_title: 'Tap the menu button',
-            and1_desc: 'Look for the 3 dots at the top right corner of Chrome',
+            and1_title: 'Tap the Menu Button',
+            and1_desc: 'Look for the 3 dots (⋮) at the top right corner of Chrome',
             and2_title: 'Tap "Add to Home Screen"',
-            and2_desc: 'Or "Install App" if you see it in the menu',
+            and2_desc: 'Or tap "Install App" if you see it in the menu',
             and3_title: 'Tap "Install" or "Add"',
             and3_desc: 'Confirm to add the app to your home screen',
             and4_title: 'Open from Home Screen',
-            and4_desc: 'Find the Go Mission icon and tap it to open',
+            and4_desc: 'Find the Go Mission icon on your home screen and tap it',
             and5_title: 'Enable Notifications',
-            and5_desc: 'Tap "Enable" to receive updates from your group',
+            and5_desc: 'Tap "Enable" when prompted to receive updates from your group',
             
             // iPhone steps  
-            iph1_title: 'Tap the Share button',
-            iph1_desc: 'Look for this icon at the bottom of Safari',
+            iph1_title: 'Tap the Share Button',
+            iph1_desc: 'Look for this icon (📤) at the bottom of Safari',
             iph2_title: 'Tap "Add to Home Screen"',
-            iph2_desc: 'Scroll down in the menu to find it',
+            iph2_desc: 'Scroll down in the share menu to find this option',
             iph3_title: 'Tap "Add"',
-            iph3_desc: 'Located at the top right corner',
+            iph3_desc: 'Located at the top right corner of the screen',
             iph4_title: 'Open from Home Screen',
-            iph4_desc: 'Find the Go Mission icon and tap it to open',
+            iph4_desc: 'Find the Go Mission icon on your home screen and tap it',
             iph5_title: 'Enable Notifications',
-            iph5_desc: 'Tap "Enable" to receive updates from your group',
+            iph5_desc: 'Tap "Enable" when prompted to receive updates from your group',
+            iphNote: '📱 Requires iOS 16.4 or newer for notifications',
             
             // Windows steps
-            win1_title: 'Click the Install icon',
-            win1_desc: 'Look for this icon in the address bar (right side)',
+            win1_title: 'Click the Install Icon',
+            win1_desc: 'Look for this icon (⊕) in the address bar on the right side',
             win2_title: 'Click "Install"',
-            win2_desc: 'Confirm the installation popup',
+            win2_desc: 'Confirm the installation when the popup appears',
             win3_title: 'Open the App',
-            win3_desc: 'Find Go Mission in your apps or desktop',
+            win3_desc: 'Find Go Mission in your apps, taskbar, or desktop',
             win4_title: 'Enable Notifications',
-            win4_desc: 'Click "Enable" to receive updates from your group'
+            win4_desc: 'Click "Enable" when prompted to receive updates from your group'
         },
         tl: {
             chooseDevice: 'Piliin ang iyong device:',
             windows: 'Windows / Mac',
             android: 'Android',
             iphone: 'iPhone',
-            next: 'Susunod',
-            back: 'Bumalik',
-            done: 'Tapos na! Buksan',
             skip: 'Laktawan muna',
-            step: 'Hakbang',
-            of: 'ng',
             langToggle: '🇺🇸 English',
             
+            // Notice screen
+            noticeTitle: '📖 Bago Mag-install',
+            noticeText: 'Mangyaring BASAHIN MUNA ANG LAHAT ng instructions bago ka magsimula. Makakatulong ito para ma-install ng tama ang app.',
+            noticeTip: 'Tip: Pwede kang mag-scroll pababa para makita lahat ng steps.',
+            proceed: 'Naintindihan Ko, Ipakita ang Steps',
+            
+            // Steps screen
+            stepsTitle: 'Mga Hakbang sa Pag-install',
+            beginTitle: '✅ Handa Ka Na?',
+            beginText: 'Nabasa mo na lahat ng steps. Pindutin na ang Share button sa baba para magsimula!',
+            beginBtn: '📤 Pindutin ang Share Button para Magsimula',
+            beginBtnAndroid: '⋮ Pindutin ang Menu para Magsimula',
+            beginBtnWindows: '⊕ I-click ang Install Icon para Magsimula',
+            backToSteps: '← Bumalik sa Instructions',
+            
             // Android steps
-            and1_title: 'Pindutin ang menu button',
-            and1_desc: 'Hanapin ang 3 tuldok sa itaas na kanan ng Chrome',
+            and1_title: 'Pindutin ang Menu Button',
+            and1_desc: 'Hanapin ang 3 tuldok (⋮) sa itaas na kanang bahagi ng Chrome',
             and2_title: 'Pindutin "Add to Home Screen"',
-            and2_desc: 'O "Install App" kung nakikita mo',
+            and2_desc: 'O pindutin "Install App" kung nakikita mo sa menu',
             and3_title: 'Pindutin "Install" o "Add"',
-            and3_desc: 'Kumpirmahin para idagdag sa home screen',
+            and3_desc: 'Kumpirmahin para idagdag ang app sa home screen',
             and4_title: 'Buksan mula sa Home Screen',
-            and4_desc: 'Hanapin ang Go Mission icon at pindutin',
+            and4_desc: 'Hanapin ang Go Mission icon sa home screen at pindutin',
             and5_title: 'I-enable ang Notifications',
-            and5_desc: 'Pindutin "Enable" para makatanggap ng updates',
+            and5_desc: 'Pindutin "Enable" kapag lumabas para makatanggap ng updates',
             
             // iPhone steps
-            iph1_title: 'Pindutin ang Share button',
-            iph1_desc: 'Hanapin ang icon na ito sa ibaba ng Safari',
+            iph1_title: 'Pindutin ang Share Button',
+            iph1_desc: 'Hanapin ang icon na ito (📤) sa ibaba ng Safari',
             iph2_title: 'Pindutin "Add to Home Screen"',
-            iph2_desc: 'Mag-scroll pababa sa menu para makita',
+            iph2_desc: 'Mag-scroll pababa sa share menu para makita ito',
             iph3_title: 'Pindutin "Add"',
-            iph3_desc: 'Nasa itaas na kanang bahagi',
+            iph3_desc: 'Nasa itaas na kanang bahagi ng screen',
             iph4_title: 'Buksan mula sa Home Screen',
-            iph4_desc: 'Hanapin ang Go Mission icon at pindutin',
+            iph4_desc: 'Hanapin ang Go Mission icon sa home screen at pindutin',
             iph5_title: 'I-enable ang Notifications',
-            iph5_desc: 'Pindutin "Enable" para makatanggap ng updates',
+            iph5_desc: 'Pindutin "Enable" kapag lumabas para makatanggap ng updates',
+            iphNote: '📱 Kailangan iOS 16.4 o mas bago para sa notifications',
             
             // Windows steps
-            win1_title: 'I-click ang Install icon',
-            win1_desc: 'Hanapin ang icon na ito sa address bar (kanan)',
+            win1_title: 'I-click ang Install Icon',
+            win1_desc: 'Hanapin ang icon na ito (⊕) sa address bar sa kanang bahagi',
             win2_title: 'I-click "Install"',
-            win2_desc: 'Kumpirmahin ang installation popup',
+            win2_desc: 'Kumpirmahin kapag lumabas ang popup',
             win3_title: 'Buksan ang App',
-            win3_desc: 'Hanapin ang Go Mission sa apps o desktop',
+            win3_desc: 'Hanapin ang Go Mission sa apps, taskbar, o desktop',
             win4_title: 'I-enable ang Notifications',
-            win4_desc: 'I-click "Enable" para makatanggap ng updates'
+            win4_desc: 'I-click "Enable" kapag lumabas para makatanggap ng updates'
         }
     },
     
@@ -158,7 +180,7 @@ const InstallModal = {
     
     show() {
         this.currentDevice = null;
-        this.currentStep = 0;
+        this.currentScreen = 'device';
         this.render();
     },
     
@@ -169,10 +191,12 @@ const InstallModal = {
         const modal = document.createElement('div');
         modal.id = 'installModal';
         
-        if (!this.currentDevice) {
+        if (this.currentScreen === 'device') {
             modal.innerHTML = this.renderDeviceSelection();
-        } else {
-            modal.innerHTML = this.renderStep();
+        } else if (this.currentScreen === 'notice') {
+            modal.innerHTML = this.renderNotice();
+        } else if (this.currentScreen === 'steps') {
+            modal.innerHTML = this.renderAllSteps();
         }
         
         this.addStyles();
@@ -222,100 +246,114 @@ const InstallModal = {
         `;
     },
     
-    renderStep() {
+    renderNotice() {
+        return `
+            <div class="install-overlay"></div>
+            <div class="install-content notice-content">
+                <div class="notice-icon">📖</div>
+                <h2 class="notice-title">${this.t('noticeTitle')}</h2>
+                <p class="notice-text">${this.t('noticeText')}</p>
+                <p class="notice-tip">💡 ${this.t('noticeTip')}</p>
+                
+                <button class="primary-btn" onclick="InstallModal.showSteps()">
+                    ${this.t('proceed')} →
+                </button>
+                
+                <button class="back-link" onclick="InstallModal.backToDevice()">
+                    ← Back
+                </button>
+            </div>
+        `;
+    },
+    
+    renderAllSteps() {
         const deviceSteps = this.steps[this.currentDevice];
-        const step = deviceSteps[this.currentStep];
-        const totalSteps = deviceSteps.length;
-        const isLastStep = this.currentStep === totalSteps - 1;
         
-        const title = this.t(step.key + '_title');
-        const desc = this.t(step.key + '_desc');
-        
-        let iconHtml = '';
-        if (step.icon === 'share') {
-            // iOS Share icon SVG
-            iconHtml = `
-                <svg class="share-icon" viewBox="0 0 50 50" width="80" height="80">
-                    <rect x="5" y="20" width="40" height="28" rx="5" fill="none" stroke="#007AFF" stroke-width="3"/>
-                    <line x1="25" y1="5" x2="25" y2="32" stroke="#007AFF" stroke-width="3" stroke-linecap="round"/>
-                    <polyline points="15,15 25,5 35,15" fill="none" stroke="#007AFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
-        } else if (step.icon === '🔥') {
-            // Go Mission logo
-            iconHtml = `
-                <div class="app-icon-preview">
-                    <img src="/icons/icon-192.png" alt="Go Mission" width="100" height="100" style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <span class="app-name">Go Mission</span>
+        let stepsHtml = deviceSteps.map((step, index) => {
+            const title = this.t(step.key + '_title');
+            const desc = this.t(step.key + '_desc');
+            const iconHtml = this.getStepIcon(step.icon);
+            
+            return `
+                <div class="step-card">
+                    <div class="step-num">${index + 1}</div>
+                    <div class="step-body">
+                        <div class="step-icon-container">${iconHtml}</div>
+                        <div class="step-text">
+                            <h4>${title}</h4>
+                            <p>${desc}</p>
+                        </div>
+                    </div>
                 </div>
             `;
-        } else {
-            iconHtml = `<span class="step-icon-large" style="font-size: ${step.iconSize}">${step.icon}</span>`;
+        }).join('');
+        
+        // iOS note
+        if (this.currentDevice === 'iphone') {
+            stepsHtml += `<div class="ios-note">${this.t('iphNote')}</div>`;
         }
+        
+        // Begin button text based on device
+        let beginBtn = this.t('beginBtn');
+        if (this.currentDevice === 'android') beginBtn = this.t('beginBtnAndroid');
+        if (this.currentDevice === 'windows') beginBtn = this.t('beginBtnWindows');
         
         return `
             <div class="install-overlay"></div>
-            <div class="install-content step-view">
-                <div class="step-header">
-                    <button class="back-btn" onclick="InstallModal.prevStep()">← ${this.t('back')}</button>
-                    <span class="step-counter">${this.t('step')} ${this.currentStep + 1} ${this.t('of')} ${totalSteps}</span>
+            <div class="install-content steps-content">
+                <div class="steps-header">
+                    <button class="back-btn" onclick="InstallModal.backToDevice()">← Back</button>
+                    <h2>${this.t('stepsTitle')}</h2>
                     <button class="lang-toggle-small" onclick="InstallModal.toggleLang()">${this.currentLang === 'en' ? '🇵🇭' : '🇺🇸'}</button>
                 </div>
                 
-                <div class="step-progress">
-                    ${Array.from({length: totalSteps}, (_, i) => `
-                        <div class="progress-dot ${i <= this.currentStep ? 'active' : ''}"></div>
-                    `).join('')}
-                </div>
-                
-                <div class="step-visual">
-                    ${iconHtml}
-                </div>
-                
-                <h2 class="step-title">${title}</h2>
-                <p class="step-desc">${desc}</p>
-                
-                <div class="step-actions">
-                    ${isLastStep ? `
-                        <button class="primary-btn" onclick="InstallModal.complete()">
-                            🎉 ${this.t('done')}
+                <div class="steps-scroll">
+                    ${stepsHtml}
+                    
+                    <div class="begin-section">
+                        <div class="begin-icon">🚀</div>
+                        <h3>${this.t('beginTitle')}</h3>
+                        <p>${this.t('beginText')}</p>
+                        <button class="begin-btn" onclick="InstallModal.close()">
+                            ${beginBtn}
                         </button>
-                    ` : `
-                        <button class="primary-btn" onclick="InstallModal.nextStep()">
-                            ${this.t('next')} →
-                        </button>
-                    `}
+                    </div>
                 </div>
             </div>
         `;
     },
     
+    getStepIcon(icon) {
+        if (icon === 'share') {
+            return `
+                <svg class="share-icon" viewBox="0 0 50 50" width="40" height="40">
+                    <rect x="8" y="22" width="34" height="24" rx="4" fill="none" stroke="#007AFF" stroke-width="3"/>
+                    <line x1="25" y1="6" x2="25" y2="30" stroke="#007AFF" stroke-width="3" stroke-linecap="round"/>
+                    <polyline points="16,15 25,6 34,15" fill="none" stroke="#007AFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+        } else if (icon === 'logo') {
+            return `<img src="/icons/icon-192.png" alt="Go Mission" class="step-logo">`;
+        } else {
+            return `<span class="step-icon-text">${icon}</span>`;
+        }
+    },
+    
     selectDevice(device) {
         this.currentDevice = device;
-        this.currentStep = 0;
+        this.currentScreen = 'notice';
         this.render();
     },
     
-    nextStep() {
-        const deviceSteps = this.steps[this.currentDevice];
-        if (this.currentStep < deviceSteps.length - 1) {
-            this.currentStep++;
-            this.render();
-        }
+    showSteps() {
+        this.currentScreen = 'steps';
+        this.render();
     },
     
-    prevStep() {
-        if (this.currentStep > 0) {
-            this.currentStep--;
-            this.render();
-        } else {
-            this.currentDevice = null;
-            this.render();
-        }
-    },
-    
-    complete() {
-        window.location.reload();
+    backToDevice() {
+        this.currentDevice = null;
+        this.currentScreen = 'device';
+        this.render();
     },
     
     skip() {
@@ -348,7 +386,7 @@ const InstallModal = {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 16px;
+                padding: 12px;
             }
             #installModal .install-overlay {
                 position: absolute;
@@ -361,11 +399,13 @@ const InstallModal = {
                 border: 1px solid rgba(251, 191, 36, 0.3);
                 border-radius: 24px;
                 padding: 24px;
-                max-width: 400px;
+                max-width: 420px;
                 width: 100%;
                 color: #fff;
                 text-align: center;
             }
+            
+            /* Device Selection Screen */
             #installModal .install-header {
                 display: flex;
                 align-items: center;
@@ -389,14 +429,14 @@ const InstallModal = {
             }
             #installModal .install-subtitle {
                 color: #94a3b8;
-                margin-bottom: 24px;
+                margin-bottom: 20px;
                 font-size: 16px;
             }
             #installModal .device-buttons {
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
-                margin-bottom: 24px;
+                margin-bottom: 20px;
             }
             #installModal .device-btn {
                 display: flex;
@@ -417,7 +457,6 @@ const InstallModal = {
             }
             #installModal .device-btn:hover {
                 border-color: #f59e0b;
-                background: rgba(251, 191, 36, 0.15);
             }
             #installModal .device-icon {
                 font-size: 32px;
@@ -434,95 +473,33 @@ const InstallModal = {
                 padding: 12px;
             }
             
-            /* Step View */
-            #installModal .step-view {
-                padding: 20px;
+            /* Notice Screen */
+            #installModal .notice-content {
+                padding: 32px 24px;
             }
-            #installModal .step-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
+            #installModal .notice-icon {
+                font-size: 64px;
                 margin-bottom: 16px;
             }
-            #installModal .back-btn {
-                background: transparent;
-                border: none;
-                color: #f59e0b;
-                font-size: 14px;
-                cursor: pointer;
-                padding: 8px;
-            }
-            #installModal .step-counter {
-                color: #94a3b8;
-                font-size: 14px;
-            }
-            #installModal .lang-toggle-small {
-                background: transparent;
-                border: none;
-                font-size: 20px;
-                cursor: pointer;
-                padding: 4px;
-            }
-            #installModal .step-progress {
-                display: flex;
-                justify-content: center;
-                gap: 8px;
-                margin-bottom: 32px;
-            }
-            #installModal .progress-dot {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background: rgba(255,255,255,0.2);
-                transition: all 0.3s;
-            }
-            #installModal .progress-dot.active {
-                background: #f59e0b;
-            }
-            #installModal .step-visual {
-                height: 140px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-bottom: 24px;
-            }
-            #installModal .step-icon-large {
-                display: block;
-                color: #f59e0b;
-            }
-            #installModal .share-icon {
-                filter: drop-shadow(0 0 10px rgba(0, 122, 255, 0.3));
-            }
-            #installModal .app-icon-preview {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-            }
-            #installModal .app-icon-preview svg {
-                border-radius: 22px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            }
-            #installModal .app-name {
-                color: #94a3b8;
-                font-size: 14px;
-            }
-            #installModal .step-title {
+            #installModal .notice-title {
                 font-size: 24px;
                 font-weight: 800;
-                color: #fff;
-                margin: 0 0 12px 0;
+                color: #f59e0b;
+                margin: 0 0 16px 0;
             }
-            #installModal .step-desc {
-                color: #94a3b8;
+            #installModal .notice-text {
+                color: #e2e8f0;
                 font-size: 16px;
-                line-height: 1.5;
-                margin: 0 0 32px 0;
+                line-height: 1.6;
+                margin: 0 0 16px 0;
             }
-            #installModal .step-actions {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
+            #installModal .notice-tip {
+                color: #94a3b8;
+                font-size: 14px;
+                margin: 0 0 24px 0;
+                padding: 12px;
+                background: rgba(251, 191, 36, 0.1);
+                border-radius: 12px;
             }
             #installModal .primary-btn {
                 width: 100%;
@@ -531,13 +508,170 @@ const InstallModal = {
                 border: none;
                 border-radius: 14px;
                 color: #1a0505;
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 700;
                 cursor: pointer;
-                transition: transform 0.2s;
+                margin-bottom: 12px;
             }
-            #installModal .primary-btn:active {
-                transform: scale(0.98);
+            #installModal .back-link {
+                background: transparent;
+                border: none;
+                color: #64748b;
+                font-size: 14px;
+                cursor: pointer;
+            }
+            
+            /* Steps Screen */
+            #installModal .steps-content {
+                padding: 16px;
+                max-height: 90vh;
+                display: flex;
+                flex-direction: column;
+            }
+            #installModal .steps-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                margin-bottom: 12px;
+                flex-shrink: 0;
+            }
+            #installModal .steps-header h2 {
+                font-size: 16px;
+                font-weight: 700;
+                color: #f59e0b;
+                margin: 0;
+            }
+            #installModal .back-btn {
+                background: transparent;
+                border: none;
+                color: #f59e0b;
+                font-size: 14px;
+                cursor: pointer;
+                padding: 4px;
+            }
+            #installModal .lang-toggle-small {
+                background: transparent;
+                border: none;
+                font-size: 20px;
+                cursor: pointer;
+            }
+            #installModal .steps-scroll {
+                overflow-y: auto;
+                flex: 1;
+                padding-right: 4px;
+            }
+            #installModal .step-card {
+                display: flex;
+                gap: 12px;
+                padding: 16px;
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 16px;
+                margin-bottom: 12px;
+                text-align: left;
+            }
+            #installModal .step-num {
+                width: 32px;
+                height: 32px;
+                background: #f59e0b;
+                color: #1a0505;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                font-size: 16px;
+                flex-shrink: 0;
+            }
+            #installModal .step-body {
+                flex: 1;
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            #installModal .step-icon-container {
+                flex-shrink: 0;
+                width: 50px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255,255,255,0.05);
+                border-radius: 12px;
+            }
+            #installModal .step-icon-text {
+                font-size: 28px;
+            }
+            #installModal .step-logo {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+            }
+            #installModal .share-icon {
+                width: 36px;
+                height: 36px;
+            }
+            #installModal .step-text {
+                flex: 1;
+            }
+            #installModal .step-text h4 {
+                font-size: 15px;
+                font-weight: 700;
+                color: #fff;
+                margin: 0 0 4px 0;
+            }
+            #installModal .step-text p {
+                font-size: 13px;
+                color: #94a3b8;
+                margin: 0;
+                line-height: 1.4;
+            }
+            #installModal .ios-note {
+                background: rgba(234, 179, 8, 0.15);
+                border: 1px solid rgba(234, 179, 8, 0.3);
+                padding: 12px;
+                border-radius: 12px;
+                text-align: center;
+                color: #fcd34d;
+                font-size: 13px;
+                margin-bottom: 16px;
+            }
+            #installModal .begin-section {
+                background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
+                border: 2px solid rgba(34, 197, 94, 0.3);
+                border-radius: 20px;
+                padding: 24px 20px;
+                text-align: center;
+                margin-top: 8px;
+            }
+            #installModal .begin-icon {
+                font-size: 48px;
+                margin-bottom: 12px;
+            }
+            #installModal .begin-section h3 {
+                font-size: 20px;
+                font-weight: 800;
+                color: #4ade80;
+                margin: 0 0 8px 0;
+            }
+            #installModal .begin-section p {
+                font-size: 14px;
+                color: #94a3b8;
+                margin: 0 0 20px 0;
+                line-height: 1.5;
+            }
+            #installModal .begin-btn {
+                width: 100%;
+                padding: 16px;
+                background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+                border: none;
+                border-radius: 14px;
+                color: #fff;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
             }
         `;
         
