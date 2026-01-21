@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate App Icons</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #1a0505; color: #fff; }
+        h1 { color: #f59e0b; }
+        .icon-container { margin: 20px 0; display: inline-block; text-align: center; margin-right: 30px; }
+        canvas { border-radius: 20%; display: block; margin-bottom: 10px; }
+        a { color: #f59e0b; display: block; margin-top: 10px; }
+        .instructions { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <h1>🔥 Go Mission - App Icon Generator</h1>
+    
+    <div class="instructions">
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Right-click each icon and select "Save image as..."</li>
+            <li>Save to the <code>/icons/</code> folder with the correct filename</li>
+            <li>The apple-touch-icon.png (180x180) is the most important for iOS</li>
+        </ol>
+    </div>
+    
+    <div id="icons"></div>
+    
+    <script>
+        const sizes = [
+            { size: 180, name: 'apple-touch-icon.png' },
+            { size: 192, name: 'icon-192.png' },
+            { size: 512, name: 'icon-512.png' }
+        ];
+        
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const s = size; // shorthand
+            
+            // Background with rounded corners (simulated by fill)
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            const r = s * 0.2; // corner radius
+            ctx.moveTo(r, 0);
+            ctx.lineTo(s - r, 0);
+            ctx.quadraticCurveTo(s, 0, s, r);
+            ctx.lineTo(s, s - r);
+            ctx.quadraticCurveTo(s, s, s - r, s);
+            ctx.lineTo(r, s);
+            ctx.quadraticCurveTo(0, s, 0, s - r);
+            ctx.lineTo(0, r);
+            ctx.quadraticCurveTo(0, 0, r, 0);
+            ctx.closePath();
+            ctx.fill();
+            
+            const cx = s / 2;
+            
+            // Flame outer
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(cx, s * 0.32);
+            ctx.bezierCurveTo(cx - s*0.15, s * 0.5, cx - s*0.24, s * 0.65, cx - s*0.24, s * 0.72);
+            ctx.bezierCurveTo(cx - s*0.24, s * 0.85, cx - s*0.14, s * 0.92, cx, s * 0.92);
+            ctx.bezierCurveTo(cx + s*0.14, s * 0.92, cx + s*0.24, s * 0.85, cx + s*0.24, s * 0.72);
+            ctx.bezierCurveTo(cx + s*0.24, s * 0.65, cx + s*0.15, s * 0.5, cx, s * 0.32);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Flame inner
+            ctx.fillStyle = '#fcd34d';
+            ctx.beginPath();
+            ctx.moveTo(cx, s * 0.45);
+            ctx.bezierCurveTo(cx - s*0.1, s * 0.58, cx - s*0.16, s * 0.68, cx - s*0.16, s * 0.74);
+            ctx.bezierCurveTo(cx - s*0.16, s * 0.84, cx - s*0.09, s * 0.88, cx, s * 0.88);
+            ctx.bezierCurveTo(cx + s*0.09, s * 0.88, cx + s*0.16, s * 0.84, cx + s*0.16, s * 0.74);
+            ctx.bezierCurveTo(cx + s*0.16, s * 0.68, cx + s*0.1, s * 0.58, cx, s * 0.45);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cross vertical
+            ctx.fillStyle = '#8B4513';
+            const crossW = s * 0.05;
+            const crossH = s * 0.18;
+            ctx.fillRect(cx - crossW/2, s * 0.62, crossW, crossH);
+            
+            // Cross horizontal
+            const crossHW = s * 0.14;
+            const crossHH = s * 0.04;
+            ctx.fillRect(cx - crossHW/2, s * 0.68, crossHW, crossHH);
+            
+            // Star at top
+            ctx.fillStyle = '#f59e0b';
+            const starCx = cx;
+            const starCy = s * 0.18;
+            const starR = s * 0.08;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                const x = starCx + starR * Math.cos(angle);
+                const y = starCy + starR * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        const container = document.getElementById('icons');
+        
+        sizes.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'icon-container';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = item.size;
+            canvas.height = item.size;
+            drawIcon(canvas, item.size);
+            
+            const label = document.createElement('div');
+            label.textContent = `${item.size}x${item.size}`;
+            
+            const filename = document.createElement('div');
+            filename.textContent = item.name;
+            filename.style.color = '#f59e0b';
+            filename.style.fontSize = '12px';
+            
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = item.name;
+            link.textContent = '⬇️ Download';
+            
+            div.appendChild(canvas);
+            div.appendChild(label);
+            div.appendChild(filename);
+            div.appendChild(link);
+            container.appendChild(div);
+        });
+    </script>
+</body>
+</html>
