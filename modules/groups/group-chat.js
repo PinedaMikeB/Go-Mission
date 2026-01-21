@@ -233,8 +233,8 @@ const GroupChat = {
     if (this.messages.length === 0) {
       container.innerHTML = `
         <div class="text-center py-8">
-          <p class="text-slate-500 text-sm">No messages yet</p>
-          <p class="text-slate-600 text-xs mt-1">Start the conversation!</p>
+          <p class="text-[var(--text-muted)] text-sm">No messages yet</p>
+          <p class="text-[var(--text-muted)] text-xs mt-1 opacity-60">Start the conversation!</p>
         </div>
       `;
       return;
@@ -253,7 +253,7 @@ const GroupChat = {
       if (dateStr !== lastDate) {
         html += `
           <div class="text-center my-4">
-            <span class="text-[10px] text-slate-600 bg-slate-800/50 px-3 py-1 rounded-full">${dateStr}</span>
+            <span class="text-[10px] text-[var(--text-muted)] bg-[var(--card-bg)] px-3 py-1 rounded-full">${dateStr}</span>
           </div>
         `;
         lastDate = dateStr;
@@ -266,13 +266,13 @@ const GroupChat = {
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
-              <div class="${isMe ? 'bg-amber-500/20' : 'bg-black/40'} rounded-xl p-3 max-w-[85%]">
-                <p class="text-[10px] text-slate-500 mb-1">${isMe ? 'You' : msg.senderName}</p>
+              <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
+                <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 <div class="border-l-2 border-amber-500/50 pl-2 mb-2">
-                  <p class="text-xs text-amber-400 font-bold">${msg.devotion.book} ${msg.devotion.chapter}:${msg.devotion.verses?.join(',') || ''}</p>
-                  <p class="text-xs text-slate-400 italic mt-1">"${msg.devotion.reflection}"</p>
+                  <p class="text-xs text-amber-500 font-bold">${msg.devotion.book} ${msg.devotion.chapter}:${msg.devotion.verses?.join(',') || ''}</p>
+                  <p class="text-xs text-[var(--text-muted)] italic mt-1">"${msg.devotion.reflection}"</p>
                 </div>
-                <p class="text-[10px] text-slate-600">${timeStr}</p>
+                <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}</p>
               </div>
             </div>
           </div>
@@ -284,10 +284,10 @@ const GroupChat = {
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
-              <div class="${isMe ? 'bg-amber-500/20' : 'bg-black/40'} rounded-xl p-3 max-w-[85%]">
-                <p class="text-[10px] text-slate-500 mb-1">${isMe ? 'You' : msg.senderName}</p>
-                <p class="text-sm text-slate-200">${this.escapeHtml(msg.text)}</p>
-                <p class="text-[10px] text-slate-600 mt-1">${timeStr}</p>
+              <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
+                <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
+                <p class="text-sm text-[var(--text-color)]">${this.escapeHtml(msg.text)}</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
               </div>
             </div>
           </div>
