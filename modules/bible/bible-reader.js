@@ -280,56 +280,56 @@ const BibleReader = {
     const bookName = this.chapterData?.bookName || this.currentBook;
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     const hasHighlights = this.highlightedVerses.length > 0;
+    const isMobile = window.innerWidth < 768;
     
     overlay.innerHTML = `
       <!-- Fullscreen Header -->
-      <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
-        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-2 text-amber-500 hover:text-amber-400">
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
+        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-1 md:gap-2 text-amber-500 hover:text-amber-400">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
-          <span class="text-sm font-medium">Close</span>
+          <span class="text-sm font-medium hidden md:inline">Close</span>
         </button>
         
-        <h2 class="text-lg font-bold text-[var(--text-color)]">📖 ${bookName} ${this.currentChapter}</h2>
+        <h2 class="text-base md:text-lg font-bold text-[var(--text-color)]">📖 ${bookName} ${this.currentChapter}</h2>
         
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 md:gap-2">
           <!-- Font Size Controls -->
-          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
-            <span class="text-lg font-bold">A-</span>
+          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+            <span class="text-base md:text-lg font-bold">A-</span>
           </button>
-          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-8 h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
-            <span class="text-lg font-bold">A+</span>
+          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+            <span class="text-base md:text-lg font-bold">A+</span>
           </button>
         </div>
       </div>
       
-      <!-- Color Picker Bar -->
-      <div class="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
-        <span class="text-xs text-[var(--text-muted)] mr-2">Highlight:</span>
-        ${Object.entries(this.highlightColors).map(([key, color]) => `
-          <button onclick="BibleReader.setHighlightColor('${key}')" 
-                  class="w-6 h-6 rounded-full border-2 transition-all ${this.preferences.highlightColor === key ? 'border-white scale-110' : 'border-transparent'}"
-                  style="background: ${color.bg}; box-shadow: inset 0 0 0 2px ${color.border};"
-                  title="${color.name}">
-          </button>
-        `).join('')}
-        
-        <!-- Commentary Toggle Button -->
-        <div class="ml-4 pl-4 border-l border-[var(--card-border)]">
-          <button onclick="BibleReader.toggleFullscreenCommentary()" 
-                  id="fullscreenCommentaryBtn"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
-                  ${!hasHighlights ? 'disabled' : ''}>
-            <span>💡</span>
-            <span>${lang === 'tl' ? 'Insights' : 'Insights'}</span>
-            <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
-          </button>
+      <!-- Color Picker & Insights Bar -->
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+        <div class="flex items-center gap-1 md:gap-2">
+          ${Object.entries(this.highlightColors).map(([key, color]) => `
+            <button onclick="BibleReader.setHighlightColor('${key}')" 
+                    class="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 transition-all ${this.preferences.highlightColor === key ? 'border-white scale-110' : 'border-transparent'}"
+                    style="background: ${color.bg}; box-shadow: inset 0 0 0 2px ${color.border};"
+                    title="${color.name}">
+            </button>
+          `).join('')}
         </div>
+        
+        <!-- Insights Button -->
+        <button onclick="BibleReader.toggleFullscreenCommentary()" 
+                id="fullscreenCommentaryBtn"
+                class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                ${!hasHighlights ? 'disabled' : ''}>
+          <span>💡</span>
+          <span>Insights</span>
+          <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
+        </button>
       </div>
       
       <!-- Chapter Navigation -->
-      <div class="flex items-center justify-between px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
         <button onclick="BibleReader.prevChapter(); BibleReader.updateFullscreenContent();" 
                 class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400 ${this.currentChapter <= 1 ? 'opacity-30 pointer-events-none' : ''}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,27 +349,31 @@ const BibleReader = {
         </button>
       </div>
       
-      <!-- Main Content Area - Split View -->
-      <div class="flex-1 flex overflow-hidden">
+      <!-- Main Content Area -->
+      <div class="flex-1 flex overflow-hidden relative">
         <!-- Bible Text -->
-        <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
+        <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
           ${this.generateVersesHTML()}
         </div>
         
-        <!-- Commentary Panel (Hidden by default) -->
-        <div id="fullscreenCommentaryPanel" class="hidden w-80 border-l border-[var(--card-border)] bg-[var(--nav-bg)] overflow-y-auto">
-          <div class="p-4">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-amber-500 font-bold text-sm">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
-              <button onclick="BibleReader.toggleFullscreenCommentary()" class="text-[var(--text-muted)] hover:text-amber-500">
+        <!-- Commentary Panel - Full overlay on mobile, side panel on desktop -->
+        <div id="fullscreenCommentaryPanel" class="hidden absolute inset-0 md:relative md:inset-auto md:w-80 md:border-l border-[var(--card-border)] bg-[var(--bg-color)] md:bg-[var(--nav-bg)] overflow-y-auto z-20">
+          <div class="p-4 h-full flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-3 border-b border-[var(--card-border)]">
+              <h3 class="text-amber-500 font-bold">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
+              <button onclick="BibleReader.toggleFullscreenCommentary()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-amber-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
             </div>
-            <div id="fullscreenCommentaryContent" class="text-sm" style="font-size: ${this.preferences.fontSize}px;">
+            <div id="fullscreenCommentaryContent" class="flex-1 overflow-y-auto" style="font-size: ${this.preferences.fontSize}px;">
               ${this.generateCommentaryHTML()}
             </div>
+            <!-- Back to Bible button on mobile -->
+            <button onclick="BibleReader.toggleFullscreenCommentary()" class="md:hidden mt-4 w-full py-3 bg-amber-500 text-white font-bold rounded-xl">
+              ← ${lang === 'tl' ? 'Bumalik sa Bibliya' : 'Back to Bible'}
+            </button>
           </div>
         </div>
       </div>
@@ -425,10 +429,10 @@ const BibleReader = {
       html += `
         <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
           <p class="text-amber-500 font-bold mb-2">Verse ${verseNum}</p>
-          <div class="space-y-2 text-[var(--text-color)]">
-            <div><span class="text-amber-400/70 text-xs">${L.understanding}</span><p class="text-sm">${insight.understanding || ''}</p></div>
-            <div><span class="text-amber-400/70 text-xs">${L.livingItOut}</span><p class="text-sm">${insight.livingItOut || ''}</p></div>
-            <div><span class="text-amber-400/70 text-xs">${L.godsLove}</span><p class="text-sm">${insight.godsLove || ''}</p></div>
+          <div class="space-y-3 text-[var(--text-color)]">
+            <div><span class="text-amber-400/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
+            <div><span class="text-amber-400/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
+            <div><span class="text-amber-400/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
           </div>
         </div>
       `;
@@ -797,6 +801,11 @@ const BibleReader = {
       await this.loadCommentary();
     } else {
       this.clearCommentary();
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
     }
   },
 
