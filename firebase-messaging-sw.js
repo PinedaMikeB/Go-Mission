@@ -1,15 +1,23 @@
 /**
  * Go Mission - Combined Service Worker
  * Handles: Push Notifications, Caching, Auto-Updates
+ * 
+ * UPDATE FLOW:
+ * 1. Change CACHE_VERSION below
+ * 2. Deploy to Netlify
+ * 3. User opens app → new SW installs
+ * 4. SW sends 'SW_UPDATED' message
+ * 5. AppUpdater shows lock screen
+ * 6. User clicks Update → hard reload
  */
 
 // ============================================
-// PWA CACHING & AUTO-UPDATE
+// 🔥 CHANGE THIS VERSION TO FORCE UPDATE
 // ============================================
+const CACHE_VERSION = 'v1.0.3';
+const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
 
-const CACHE_NAME = 'go-mission-v1.0.2';
-
-// Files to cache
+// Files to cache for offline
 const STATIC_CACHE = [
     '/',
     '/index.html',
@@ -19,71 +27,108 @@ const STATIC_CACHE = [
     '/icons/icon-512.png'
 ];
 
-// Install - cache static assets & skip waiting
+
+// ============================================
+// INSTALL - Cache static assets
+// ============================================
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing:', CACHE_NAME);
-    self.skipWaiting();
     
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_CACHE).catch(err => {
-                console.log('[SW] Cache addAll error:', err);
-            });
-        })
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[SW] Caching static assets');
+                return cache.addAll(STATIC_CACHE).catch(err => {
+                    console.log('[SW] Cache addAll error (non-fatal):', err);
+                });
+            })
+            .then(() => {
+                // Skip waiting - activate immediately
+                console.log('[SW] Skipping wait, activating immediately');
+                return self.skipWaiting();
+            })
     );
 });
 
-// Activate - clean old caches & claim clients
+
+// ============================================
+// ACTIVATE - Clean old caches & notify clients
+// ============================================
 self.addEventListener('activate', (event) => {
     console.log('[SW] Activating:', CACHE_NAME);
     
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((name) => {
-                    if (name !== CACHE_NAME && name.startsWith('go-mission-')) {
-                        console.log('[SW] Deleting old cache:', name);
-                        return caches.delete(name);
-                    }
-                })
-            );
-        }).then(() => {
-            return self.clients.claim();
-        }).then(() => {
-            // Notify clients about update
-            return self.clients.matchAll().then((clients) => {
+        // 1. Delete old caches
+        caches.keys()
+            .then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((name) => {
+                        if (name !== CACHE_NAME && name.startsWith('go-mission-')) {
+                            console.log('[SW] Deleting old cache:', name);
+                            return caches.delete(name);
+                        }
+                    })
+                );
+            })
+            // 2. Take control of all clients
+            .then(() => {
+                console.log('[SW] Claiming clients');
+                return self.clients.claim();
+            })
+            // 3. Notify all clients about the update
+            .then(() => {
+                return self.clients.matchAll({ type: 'window' });
+            })
+            .then((clients) => {
+                console.log('[SW] Notifying', clients.length, 'clients about update');
                 clients.forEach((client) => {
-                    client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+                    client.postMessage({ 
+                        type: 'SW_UPDATED', 
+                        version: CACHE_NAME,
+                        timestamp: Date.now()
+                    });
                 });
-            });
-        })
+            })
     );
 });
 
-// Fetch - Network First for HTML/JS/CSS, Cache First for assets
+
+// ============================================
+// FETCH - Network First for code, Cache First for assets
+// ============================================
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     
-    // Skip non-GET and cross-origin
+    // Skip non-GET requests
     if (event.request.method !== 'GET') return;
+    
+    // Skip cross-origin requests
     if (url.origin !== location.origin) return;
     
-    // HTML pages - Network First
-    if (event.request.mode === 'navigate') {
+    // Skip API calls and Firebase
+    if (url.pathname.includes('/api/') || url.hostname.includes('firebase')) return;
+    
+    // HTML pages - ALWAYS Network First (get latest)
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
+                    // Clone and cache for offline
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request).then(r => r || caches.match('/offline.html')))
+                .catch(() => {
+                    // Offline - try cache, then offline page
+                    return caches.match(event.request)
+                        .then(cached => cached || caches.match('/offline.html'));
+                })
         );
         return;
     }
     
-    // JS/CSS - Network First
-    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    // JS files - ALWAYS Network First (critical for updates!)
+    if (url.pathname.endsWith('.js')) {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
@@ -96,23 +141,52 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // Other assets - Cache First
+    // CSS files - Network First
+    if (url.pathname.endsWith('.css')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+    
+    // Images and other assets - Cache First (for performance)
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                return response;
-            });
-        })
+        caches.match(event.request)
+            .then((cached) => {
+                if (cached) return cached;
+                
+                return fetch(event.request).then((response) => {
+                    // Only cache successful responses
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                });
+            })
     );
 });
 
-// Message handler
+
+// ============================================
+// MESSAGE - Handle commands from app
+// ============================================
 self.addEventListener('message', (event) => {
+    console.log('[SW] Message received:', event.data);
+    
     if (event.data?.type === 'SKIP_WAITING') {
+        console.log('[SW] Skip waiting requested');
         self.skipWaiting();
+    }
+    
+    if (event.data?.type === 'GET_VERSION') {
+        event.ports[0]?.postMessage({ version: CACHE_NAME });
     }
 });
 

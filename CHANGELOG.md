@@ -10,7 +10,46 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v0.5.1] - 2026-01-19 ⭐ CURRENT
+## [v1.0.3] - 2026-01-22 ⭐ CURRENT
+
+### 🔒 Force Update System
+
+**Summary:** PWA now shows a lock screen when updates are available, preventing users from using outdated cached UI.
+
+**Problem Solved:**
+- Silent updates weren't working reliably
+- Users were stuck on old cached UI
+- Cache was hard to clear on mobile
+
+**Solution:**
+- Full-screen "Update Available" lock screen
+- Cannot be dismissed - user MUST update
+- Clears ALL caches before reload
+- Checks for updates every 5 minutes + on app focus
+
+**How to Push Updates:**
+1. Change `CACHE_VERSION` in `firebase-messaging-sw.js`
+2. Deploy to Netlify
+3. Users see force update screen on next app open
+
+**Files Changed:**
+- `/firebase-messaging-sw.js` - Bumped to v1.0.3, improved update signaling
+- `/modules/core/pwa-updater.js` - Force update lock screen (replaces toast notification)
+
+**Testing:**
+```javascript
+// In browser console, test the update screen:
+PWAUpdater.testForceUpdate();
+
+// Force clear cache manually:
+PWAUpdater.forceRefresh();
+```
+
+**Git Commit:** TBD
+
+---
+
+## [v0.5.1] - 2026-01-19
 
 ### 🔥 Global Language Toggle + Quick Insights System
 
