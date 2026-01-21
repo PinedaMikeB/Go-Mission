@@ -12,46 +12,44 @@
 ---
 
 ## Current Session (2026-01-21)
-- **MODULE**: Bible Reader & UI Improvements
-- **STATUS**: ✅ Multiple UI improvements completed
-- **NEXT**: Test all changes, upload Tagalog training content
+- **MODULE**: Bible Reader UX Overhaul
+- **STATUS**: ✅ Major UX improvements - collapsed Bible card, reflection popup, menu
+- **NEXT**: Test new flow on mobile, refine as needed
 
 ---
 
 ## ✅ Completed This Session
 
-### 1. Bible Fullscreen Mode Improvements
-- Added **Insights button** in fullscreen mode (💡)
-- Insights panel slides in from right when clicked
-- **Font size controls** (A-/A+) now work in fullscreen
-- Commentary panel shows verse insights in fullscreen
+### 1. Collapsed Bible Card (Mobile-First)
+- Bible card now shows **3-line preview** only (not scrollable)
+- Tap "Read & Reflect" to open fullscreen
+- Cleaner mobile experience - no endless scrolling
 
-### 2. Font Size Applies to All Sections
-- `applyFontSize()` now affects:
-  - Main Bible text
-  - Fullscreen Bible text
-  - Commentary/Insights section ("Tulungan akong maintindihan")
-  - Reflect section ("Pagnilayan")
-  - Reflection textarea
+### 2. Fullscreen Mode - Two Action Buttons
+- **💡 Insights** - Opens commentary panel (existing)
+- **📝 Reflect** - Opens reflection modal (NEW)
+- Both buttons enable when verse is highlighted
 
-### 3. Language Toggle Simplified
-- Removed "TL" and "EN" text labels
-- Now shows **flags only** (🇵🇭 🇺🇸)
-- Cleaner, less cramped appearance
+### 3. Reflection Popup Modal
+- Shows when **exiting fullscreen** (if verses highlighted)
+- Shows reflection question from AI
+- Two main actions:
+  - "📖 Save & Continue Reading" - Saves and reopens fullscreen
+  - "🏠 Save & Go to Menu" - Saves and closes
+- "Skip for now" option available
 
-### 4. Leader Dashboard Visibility
-- Dashboard now **hidden by default**
-- Only shows for users with roles:
-  - `isAdmin` or email = michael.marga@gmail.com
-  - `isGroupLeader`
-  - `isTrainer`
-  - `isShepherd`
-- Regular members/seekers don't see it
+### 4. Hamburger Menu (☰) on Bible Card
+- **📖 My Journal** - List of past devotions
+- **🔍 Choose Passage** - Opens Bible picker
+- **📅 Reading Plan** - Coming soon
+- **📊 Reading Stats** - Coming soon
 
-### 5. Training Module Language Switching
-- Training content reloads automatically when language is toggled
+### 5. Journal Modal
+- Shows last 30 devotion entries
+- Displays: date, passage, reflection question, answer
+- Indicates if shared with group
 
-### Previous Session: In-App Notifications for Group Chat
+### Previous: Mobile fullscreen insights, language switching
 
 ### 2. Group Invite Code System (Facebook → App Flow)
 - Removed "Find a Group" / browse groups feature

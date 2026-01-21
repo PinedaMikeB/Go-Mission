@@ -463,9 +463,9 @@
                 </div>
             </div>
 
-            <!-- 2. MY DAY WITH THE LORD CARD (SECOND) -->
-            <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up">
-                <!-- Header -->
+            <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
+            <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
+                <!-- Header with Menu -->
                 <div class="p-4 border-b border-white/10 flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">🔥</span>
@@ -474,138 +474,182 @@
                             <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
                         </div>
                     </div>
+                    <!-- Hamburger Menu Button -->
+                    <button onclick="toggleDevotionMenu()" class="p-2 rounded-lg hover:bg-amber-500/10 transition-colors" title="Menu">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 </div>
 
-                <!-- Scripture Reading -->
-                <div class="p-4 border-b border-white/10">
-                    <!-- Passage Header with Progress -->
+                <!-- Collapsed Bible Preview - TAP TO OPEN FULLSCREEN -->
+                <div class="p-4 cursor-pointer hover:bg-amber-500/5 transition-colors" onclick="BibleReader.enterFullscreen()">
+                    <!-- Passage Header -->
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" id="passageTitle">
-                            <button onclick="BiblePicker.open()" class="flex items-center gap-2 hover:text-amber-400 transition-colors">
-                                <span>📖 Juan 1</span>
-                                <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
+                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest flex items-center gap-2" id="passageTitle">
+                            <span>📖 Juan 1</span>
                         </h3>
-                        <div id="chapterProgress" class="text-[10px] text-slate-500 flex items-center gap-1">
-                            <!-- Progress rendered by BibleReader -->
-                        </div>
+                        <div id="chapterProgress" class="text-[10px] text-slate-500 flex items-center gap-1"></div>
                     </div>
                     
-                    <!-- Chapter Navigation -->
-                    <div id="chapterNavigation" class="flex justify-between items-center py-2 mb-3 border-y border-white/5">
-                        <button onclick="BibleReader.prevChapter()" class="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                            </svg>
-                            <span>Prev</span>
-                        </button>
-                        <span class="text-[10px] text-slate-500">Tap verses to highlight</span>
-                        <button onclick="BibleReader.nextChapter()" class="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400">
-                            <span>Next</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </button>
+                    <!-- Single Verse Preview (3 lines max) -->
+                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed line-clamp-3 mb-4">
+                        <p class="text-slate-500 text-center py-4">Loading...</p>
                     </div>
                     
-                    <!-- Reading Toolbar -->
-                    <div id="readingToolbar" class="flex items-center justify-between py-2 mb-3 px-2 bg-black/20 rounded-lg">
-                        <!-- Highlight Colors -->
-                        <div class="flex items-center gap-1">
-                            <span class="text-[10px] text-slate-500 mr-1">Color:</span>
-                            <button onclick="BibleReader.setHighlightColor('gold')" class="w-5 h-5 rounded-full bg-amber-500/30 border-2 border-amber-500/50 hover:scale-110 transition-transform" title="Gold"></button>
-                            <button onclick="BibleReader.setHighlightColor('green')" class="w-5 h-5 rounded-full bg-green-500/30 border-2 border-green-500/50 hover:scale-110 transition-transform" title="Green"></button>
-                            <button onclick="BibleReader.setHighlightColor('blue')" class="w-5 h-5 rounded-full bg-blue-500/30 border-2 border-blue-500/50 hover:scale-110 transition-transform" title="Blue"></button>
-                            <button onclick="BibleReader.setHighlightColor('purple')" class="w-5 h-5 rounded-full bg-purple-500/30 border-2 border-purple-500/50 hover:scale-110 transition-transform" title="Purple"></button>
-                            <button onclick="BibleReader.setHighlightColor('pink')" class="w-5 h-5 rounded-full bg-pink-500/30 border-2 border-pink-500/50 hover:scale-110 transition-transform" title="Pink"></button>
-                        </div>
-                        
-                        <!-- Font Size & Fullscreen -->
-                        <div class="flex items-center gap-2">
-                            <button onclick="BibleReader.decreaseFontSize()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Decrease font size">
-                                <span class="text-xs font-bold">A-</span>
-                            </button>
-                            <button onclick="BibleReader.increaseFontSize()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Increase font size">
-                                <span class="text-xs font-bold">A+</span>
-                            </button>
-                            <button onclick="BibleReader.enterFullscreen()" class="w-7 h-7 rounded-full bg-black/30 text-slate-300 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-500 transition-colors" title="Fullscreen mode">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Bible Text -->
-                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                        <!-- Bible verses loaded by BibleReader -->
-                        <p class="text-slate-500 text-center py-8">Loading...</p>
-                    </div>
-                    
-                    <!-- Help Me Understand Section (collapsible, hidden until verses highlighted) -->
-                    <div id="commentarySection" class="mt-4 hidden">
-                        <button id="helpMeUnderstandBtn" onclick="toggleCommentarySection()" class="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/30 transition-all">
-                            <div class="flex items-center gap-2">
-                                <span class="text-lg">💡</span>
-                                <span class="text-sm font-bold text-amber-400" data-i18n="helpMeUnderstand">Help me understand</span>
-                            </div>
-                            <svg id="commentaryArrow" class="w-5 h-5 text-amber-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        <div id="commentaryContent" class="hidden mt-3 p-4 bg-black/40 rounded-xl border border-amber-500/20 text-sm text-slate-300 leading-relaxed shadow-lg">
-                            <p class="text-slate-500 italic">Loading insights...</p>
-                        </div>
+                    <!-- Tap to Read Button -->
+                    <div class="flex items-center justify-center gap-2 py-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <span class="text-sm font-bold text-amber-500">Tap to Read & Reflect</span>
                     </div>
                 </div>
-
-                <!-- Reflection Section - Separate Card -->
-                <div id="reflectSection" class="p-4 border-b border-white/10">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-amber-500">🔥</span>
-                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest" data-i18n="reflect">Reflect</h3>
+                
+                <!-- Week Progress -->
+                <div class="px-4 pb-4">
+                    <div class="flex items-center justify-center gap-2 pt-3 border-t border-white/5">
+                        <span class="text-[10px] text-slate-500">This week:</span>
+                        <div class="flex gap-1" id="weekDots"></div>
+                        <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
+                    </div>
+                </div>
+                
+                <!-- Hidden elements needed by BibleReader -->
+                <div class="hidden">
+                    <div id="chapterNavigation"></div>
+                    <div id="readingToolbar"></div>
+                    <div id="commentarySection"><div id="commentaryContent"></div></div>
+                    <div id="reflectSection"></div>
+                    <div id="aiReflectCard"><p id="reflectionQuestion"></p></div>
+                    <textarea id="reflectionAnswer"></textarea>
+                    <div id="shareToggle"></div>
+                </div>
+            </div>
+            
+            <!-- DEVOTION MENU MODAL (Journal, Settings, etc) -->
+            <div id="devotionMenuModal" class="fixed inset-0 z-[55] bg-black/90 hidden">
+                <div class="flex flex-col h-full">
+                    <!-- Menu Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-white/10">
+                        <h2 class="text-lg font-bold text-amber-500">📋 Menu</h2>
+                        <button onclick="toggleDevotionMenu()" class="p-2 text-slate-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
                     
-                    <!-- AI Reflection Question Card (hidden until verse selected) -->
-                    <div id="aiReflectCard" class="hidden mb-4 p-4 bg-black/40 rounded-xl border border-amber-500/20 shadow-lg">
-                        <div class="flex items-start gap-2">
-                            <span class="text-lg">💭</span>
+                    <!-- Menu Items -->
+                    <div class="flex-1 p-4 space-y-3">
+                        <button onclick="openJournal()" class="w-full flex items-center gap-3 p-4 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 transition-colors">
+                            <span class="text-2xl">📖</span>
+                            <div class="text-left">
+                                <p class="font-bold text-amber-400">My Journal</p>
+                                <p class="text-xs text-slate-400">Review past devotions</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="BiblePicker.open(); toggleDevotionMenu();" class="w-full flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors">
+                            <span class="text-2xl">🔍</span>
+                            <div class="text-left">
+                                <p class="font-bold text-white">Choose Passage</p>
+                                <p class="text-xs text-slate-400">Select a book and chapter</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingPlan()" class="w-full flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors">
+                            <span class="text-2xl">📅</span>
+                            <div class="text-left">
+                                <p class="font-bold text-white">Reading Plan</p>
+                                <p class="text-xs text-slate-400">Follow a guided reading plan</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingStats()" class="w-full flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors">
+                            <span class="text-2xl">📊</span>
+                            <div class="text-left">
+                                <p class="font-bold text-white">Reading Stats</p>
+                                <p class="text-xs text-slate-400">Your reading progress</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- REFLECTION POPUP MODAL (shown after exiting fullscreen) -->
+            <div id="reflectionPopupModal" class="fixed inset-0 z-[60] bg-black/95 hidden flex flex-col">
+                <div class="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full overflow-y-auto">
+                    <!-- Header -->
+                    <div class="flex items-center gap-2 mb-4 pt-4">
+                        <span class="text-2xl">🔥</span>
+                        <h2 class="text-xl font-bold text-amber-500 uppercase tracking-wide" id="reflectPopupTitle">PAGNILAYAN</h2>
+                    </div>
+                    
+                    <!-- AI Reflection Question Card -->
+                    <div class="mb-4 p-4 bg-black/60 rounded-xl border border-amber-500/30">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl">💭</span>
                             <div>
-                                <p class="text-[10px] text-amber-500/70 font-bold uppercase tracking-wider mb-1">Pagnilayan</p>
-                                <p class="text-sm text-amber-100 leading-relaxed" id="reflectionQuestion">"What is one thing God is inviting you to live out today?"</p>
+                                <p class="text-[10px] text-amber-500/70 font-bold uppercase tracking-wider mb-2">PAGNILAYAN</p>
+                                <p class="text-base text-amber-100 leading-relaxed italic" id="reflectPopupQuestion">"What is one thing God is inviting you to live out today?"</p>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Previous Reflections (if any) -->
+                    <div id="previousReflectionsContainer" class="mb-4 hidden">
+                        <p class="text-xs text-slate-500 mb-2">Previous reflections this session:</p>
+                        <div id="previousReflectionsList" class="space-y-2 max-h-32 overflow-y-auto"></div>
                     </div>
                     
                     <!-- Reflection Input -->
-                    <textarea id="reflectionAnswer" rows="4" autocomplete="off" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none" placeholder="Write your reflection here..." data-i18n-placeholder="writeReflection"></textarea>
-                </div>
-
-                <!-- Share Option & Save -->
-                <div class="p-4">
+                    <textarea id="reflectionPopupAnswer" rows="4" autocomplete="off" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-base text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none mb-4" placeholder="Write your reflection here..."></textarea>
+                    
                     <!-- Share Toggle -->
                     <div class="flex items-start gap-3 mb-4 p-3 bg-black/30 rounded-xl border border-white/5">
-                        <div class="toggle-switch" id="shareToggle" onclick="toggleShare()"></div>
+                        <div class="toggle-switch" id="sharePopupToggle" onclick="togglePopupShare()"></div>
                         <div class="flex-1">
                             <p class="text-sm text-slate-200 font-medium">Share with my group</p>
-                            <p class="text-[10px] text-slate-500 mt-1 leading-relaxed">Your Conversation Time reflections help your leader walk with you. This is not a score — it's a way to care for one another.</p>
+                            <p class="text-[10px] text-slate-500 mt-1">Help your leader walk with you</p>
                         </div>
                     </div>
                     
-                    <!-- Save Button -->
-                    <button id="saveDevotionBtn" onclick="saveThisDay()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
-                        <span id="saveBtnText">💾 Save This Day</span>
-                    </button>
-
-                    <!-- Week Progress -->
-                    <div class="mt-4 flex items-center justify-center gap-2">
-                        <span class="text-[10px] text-slate-500">This week:</span>
-                        <div class="flex gap-1" id="weekDots">
-                            <!-- 7 dots for each day -->
-                        </div>
-                        <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
+                    <!-- Action Buttons -->
+                    <div class="space-y-3 pb-4">
+                        <button onclick="saveAndContinueReading()" class="w-full py-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl font-bold text-amber-400 flex items-center justify-center gap-2 transition-colors">
+                            <span>📖</span> Save & Continue Reading
+                        </button>
+                        
+                        <button onclick="saveAndGoHome()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                            <span>🏠</span> Save & Go to Menu
+                        </button>
+                        
+                        <button onclick="skipReflection()" class="w-full py-3 text-slate-500 hover:text-slate-400 text-sm">
+                            Skip for now
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- JOURNAL MODAL (List of past devotions) -->
+            <div id="journalModal" class="fixed inset-0 z-[55] bg-black/95 hidden flex flex-col">
+                <div class="flex-1 flex flex-col max-w-lg mx-auto w-full">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-white/10">
+                        <h2 class="text-lg font-bold text-amber-500 flex items-center gap-2">
+                            <span>📖</span> My Journal
+                        </h2>
+                        <button onclick="closeJournal()" class="p-2 text-slate-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Journal Entries -->
+                    <div class="flex-1 p-4 overflow-y-auto" id="journalEntriesList">
+                        <p class="text-slate-500 text-center py-8">Loading journal...</p>
                     </div>
                 </div>
             </div>
@@ -1342,6 +1386,198 @@
             }
             
             btn.disabled = false;
+        };
+        
+        // ====== NEW: Devotion Menu Functions ======
+        
+        // Toggle devotion menu
+        window.toggleDevotionMenu = function() {
+            const modal = document.getElementById('devotionMenuModal');
+            modal.classList.toggle('hidden');
+        };
+        
+        // Toggle popup share
+        window.togglePopupShare = function() {
+            const toggle = document.getElementById('sharePopupToggle');
+            toggle.classList.toggle('active');
+        };
+        
+        // Show reflection popup (called when exiting fullscreen)
+        window.showReflectionPopup = function() {
+            const modal = document.getElementById('reflectionPopupModal');
+            
+            // Get the current reflection question from BibleReader
+            const questionEl = document.getElementById('reflectionQuestion');
+            const popupQuestionEl = document.getElementById('reflectPopupQuestion');
+            if (questionEl && popupQuestionEl) {
+                popupQuestionEl.textContent = questionEl.textContent || '"What is one thing God is inviting you to live out today?"';
+            }
+            
+            // Update language labels
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+            document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+            
+            modal.classList.remove('hidden');
+        };
+        
+        // Save and continue reading
+        window.saveAndContinueReading = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup and go back to fullscreen
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reopen fullscreen
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.enterFullscreen();
+            }
+        };
+        
+        // Save and go home
+        window.saveAndGoHome = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reset highlights for next session
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.highlightedVerses = [];
+                BibleReader.renderVerses();
+            }
+            
+            // Reload week progress
+            if (window.currentUser) {
+                await window.loadWeekProgress(window.currentUser.uid);
+            }
+        };
+        
+        // Skip reflection
+        window.skipReflection = function() {
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+        };
+        
+        // Save reflection from popup
+        async function saveReflectionFromPopup(reflection) {
+            if (!window.currentUser || !reflection) return;
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
+                const questionEl = document.getElementById('reflectPopupQuestion');
+                const question = questionEl ? questionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
+                const shareToggle = document.getElementById('sharePopupToggle');
+                const shareWithGroup = shareToggle?.classList.contains('active') || false;
+                
+                await window.setDoc(entryRef, {
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
+                    question: question,
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    savedAt: window.serverTimestamp()
+                });
+                
+                console.log('[Devotion] Saved reflection from popup');
+            } catch (error) {
+                console.error('Error saving reflection:', error);
+            }
+        }
+        
+        // Open journal
+        window.openJournal = async function() {
+            toggleDevotionMenu(); // Close menu
+            const modal = document.getElementById('journalModal');
+            const list = document.getElementById('journalEntriesList');
+            
+            modal.classList.remove('hidden');
+            list.innerHTML = '<p class="text-slate-500 text-center py-8">Loading...</p>';
+            
+            if (!window.currentUser) {
+                list.innerHTML = '<p class="text-slate-500 text-center py-8">Please sign in to view your journal.</p>';
+                return;
+            }
+            
+            try {
+                const devotionsRef = window.collection(window.db, 'goMission_devotions');
+                const q = window.query(
+                    devotionsRef,
+                    window.where('uid', '==', window.currentUser.uid),
+                    window.orderBy('savedAt', 'desc'),
+                    window.limit(30)
+                );
+                
+                const snapshot = await window.getDocs(q);
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-slate-500 text-center py-8">No journal entries yet. Start your first devotion!</p>';
+                    return;
+                }
+                
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = new Date(data.date);
+                    const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const bookName = (typeof BibleLoader !== 'undefined') ? BibleLoader.getBookName(data.book, 'en') : data.book;
+                    
+                    html += `
+                        <div class="p-4 bg-black/40 rounded-xl border border-white/10 mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-amber-500 font-bold">${formattedDate}</span>
+                                <span class="text-xs text-slate-500">${bookName} ${data.chapter}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 italic mb-2">"${data.question || ''}"</p>
+                            <p class="text-sm text-slate-200">${data.reflection || ''}</p>
+                            ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading journal:', error);
+                list.innerHTML = '<p class="text-red-400 text-center py-8">Error loading journal. Please try again.</p>';
+            }
+        };
+        
+        // Close journal
+        window.closeJournal = function() {
+            document.getElementById('journalModal').classList.add('hidden');
+        };
+        
+        // Placeholder functions for future features
+        window.openReadingPlan = function() {
+            alert('Reading Plan feature coming soon!');
+            toggleDevotionMenu();
+        };
+        
+        window.openReadingStats = function() {
+            alert('Reading Stats feature coming soon!');
+            toggleDevotionMenu();
         };
     </script>
 </body>

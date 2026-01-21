@@ -317,15 +317,25 @@ const BibleReader = {
           `).join('')}
         </div>
         
-        <!-- Insights Button -->
-        <button onclick="BibleReader.toggleFullscreenCommentary()" 
-                id="fullscreenCommentaryBtn"
-                class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
-                ${!hasHighlights ? 'disabled' : ''}>
-          <span>💡</span>
-          <span>Insights</span>
-          <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
-        </button>
+        <!-- Insights & Reflect Buttons -->
+        <div class="flex items-center gap-2">
+          <button onclick="BibleReader.toggleFullscreenCommentary()" 
+                  id="fullscreenCommentaryBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                  ${!hasHighlights ? 'disabled' : ''}>
+            <span>💡</span>
+            <span>Insights</span>
+            <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
+          </button>
+          
+          <button onclick="BibleReader.openReflectModal()" 
+                  id="fullscreenReflectBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                  ${!hasHighlights ? 'disabled' : ''}>
+            <span>📝</span>
+            <span>Reflect</span>
+          </button>
+        </div>
       </div>
       
       <!-- Chapter Navigation -->
@@ -409,6 +419,18 @@ const BibleReader = {
   },
 
   /**
+   * Open reflect modal from fullscreen (without exiting)
+   */
+  openReflectModal() {
+    if (this.highlightedVerses.length === 0) return;
+    
+    // Show the reflection popup
+    if (typeof window.showReflectionPopup === 'function') {
+      window.showReflectionPopup();
+    }
+  },
+
+  /**
    * Generate commentary HTML for fullscreen panel
    */
   generateCommentaryHTML() {
@@ -457,6 +479,13 @@ const BibleReader = {
     
     // Re-render main view to sync highlights
     this.renderVerses();
+    
+    // Show reflection popup if user has highlighted verses
+    if (this.highlightedVerses.length > 0 && typeof window.showReflectionPopup === 'function') {
+      setTimeout(() => {
+        window.showReflectionPopup();
+      }, 300);
+    }
   },
 
   /**
@@ -503,6 +532,20 @@ const BibleReader = {
       if (commentaryCount) {
         commentaryCount.textContent = `(${this.highlightedVerses.length})`;
         commentaryCount.classList.toggle('hidden', !hasHighlights);
+      }
+      
+      // Update reflect button state
+      const reflectBtn = document.getElementById('fullscreenReflectBtn');
+      if (reflectBtn) {
+        if (hasHighlights) {
+          reflectBtn.classList.remove('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
+          reflectBtn.classList.add('bg-green-500/20', 'text-green-400', 'hover:bg-green-500/30');
+          reflectBtn.disabled = false;
+        } else {
+          reflectBtn.classList.add('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
+          reflectBtn.classList.remove('bg-green-500/20', 'text-green-400', 'hover:bg-green-500/30');
+          reflectBtn.disabled = true;
+        }
       }
     }, 200);
   },
