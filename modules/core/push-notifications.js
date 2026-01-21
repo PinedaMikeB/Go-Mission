@@ -115,6 +115,12 @@ const PushNotifications = {
     }
     
     try {
+      // First, try to get existing subscription and unsubscribe if problematic
+      const existingSub = await this.swRegistration.pushManager.getSubscription();
+      if (existingSub) {
+        console.log('[PushNotifications] Found existing subscription, keeping it');
+      }
+      
       const token = await window.getMessagingToken(window.firebaseMessaging, {
         vapidKey: window.FIREBASE_VAPID_KEY,
         serviceWorkerRegistration: this.swRegistration
@@ -133,8 +139,49 @@ const PushNotifications = {
         return null;
       }
     } catch (error) {
-      console.error('[PushNotifications] Token error:', error);
+      console.error('[PushNotifications] Token error:', error.name, error.message);
+      
+      // If subscription error, try to reset
+      if (error.name === 'AbortError' || error.message.includes('push subscription')) {
+        console.log('[PushNotifications] Attempting to reset subscription...');
+        await this.resetSubscription();
+      }
+      
       return null;
+    }
+  },
+  
+  /**
+   * Reset push subscription (for fixing broken subscriptions)
+   */
+  async resetSubscription() {
+    try {
+      if (this.swRegistration) {
+        const subscription = await this.swRegistration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+          console.log('[PushNotifications] Old subscription removed');
+        }
+      }
+      
+      // Try getting token again after short delay
+      setTimeout(async () => {
+        try {
+          const token = await window.getMessagingToken(window.firebaseMessaging, {
+            vapidKey: window.FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: this.swRegistration
+          });
+          if (token) {
+            console.log('[PushNotifications] Token obtained after reset:', token.substring(0, 20) + '...');
+            this.token = token;
+            await this.registerTokenWithBackend(token);
+          }
+        } catch (e) {
+          console.error('[PushNotifications] Still failed after reset:', e.message);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('[PushNotifications] Reset error:', error);
     }
   },
   
