@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Install Go Mission App</title>
     <meta name="theme-color" content="#f59e0b">
-    <link rel="icon" href="/favicon.ico">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -45,6 +44,8 @@
             font-weight: 800;
             text-decoration: none;
             border-radius: 16px;
+            border: none;
+            cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
         }
@@ -52,8 +53,10 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 30px rgba(245, 158, 11, 0.4);
         }
-        .install-btn:active {
-            transform: translateY(0);
+        .note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #64748b;
         }
     </style>
 </head>
@@ -62,9 +65,70 @@
         <div class="icon">🔥</div>
         <h1>GO MISSION</h1>
         <p>Making Disciple-Makers</p>
-        <a href="/?install=true" class="install-btn">
+        <button class="install-btn" onclick="openInBrowser()">
             📱 Install Go Mission App
-        </a>
+        </button>
+        <p class="note" id="note"></p>
     </div>
+
+    <script>
+        const appUrl = 'https://gomission.netlify.app/?install=true';
+        
+        function openInBrowser() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            
+            // Detect in-app browsers (Messenger, Facebook, Instagram, etc.)
+            const isInAppBrowser = /FBAN|FBAV|Instagram|Messenger|Line|Twitter|MicroMessenger|WeChat/i.test(ua);
+            const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isAndroid = /Android/i.test(ua);
+            
+            if (isInAppBrowser) {
+                if (isIOS) {
+                    // iOS: Try to open in Safari using a workaround
+                    // Method 1: Use window.open with _system
+                    window.open(appUrl, '_system');
+                    
+                    // Method 2: Show manual instruction after delay
+                    setTimeout(() => {
+                        document.getElementById('note').innerHTML = 
+                            '👆 If the app didn\'t open in Safari:<br><br>' +
+                            '1. Tap the <b>⋯</b> button at the bottom right<br>' +
+                            '2. Select <b>"Open in Safari"</b> or <b>"Open in Browser"</b>';
+                    }, 1000);
+                } else if (isAndroid) {
+                    // Android: Use intent to open in Chrome
+                    const intentUrl = 'intent://' + appUrl.replace('https://', '') + 
+                        '#Intent;scheme=https;package=com.android.chrome;end';
+                    window.location.href = intentUrl;
+                    
+                    // Fallback: try regular open
+                    setTimeout(() => {
+                        window.open(appUrl, '_blank');
+                    }, 500);
+                    
+                    // Show manual instruction
+                    setTimeout(() => {
+                        document.getElementById('note').innerHTML = 
+                            '👆 If the app didn\'t open in Chrome:<br><br>' +
+                            '1. Tap the <b>⋮</b> menu at top right<br>' +
+                            '2. Select <b>"Open in Chrome"</b> or <b>"Open in Browser"</b>';
+                    }, 1000);
+                }
+            } else {
+                // Already in a real browser, just navigate
+                window.location.href = appUrl;
+            }
+        }
+        
+        // Auto-detect and show appropriate message
+        (function() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isInAppBrowser = /FBAN|FBAV|Instagram|Messenger|Line|Twitter|MicroMessenger|WeChat/i.test(ua);
+            
+            if (isInAppBrowser) {
+                document.getElementById('note').textContent = 'Tap the button to open in your browser';
+            }
+        })();
+    </script>
 </body>
 </html>

@@ -1,15 +1,15 @@
 /**
  * Go Mission - Install Instructions Modal
- * Shows step-by-step install instructions based on device type
+ * Shows step-by-step install instructions and LOCKS the app until installed
  * 
- * Usage:
- * - Add ?install=true to URL to show modal automatically
- * - Or call InstallModal.show() manually
+ * The modal checks if the app is running as a PWA (installed).
+ * If not installed, it shows the modal and prevents using the app.
  */
 
 const InstallModal = {
     currentDevice: 'android',
     currentLang: 'en',
+    isInstalled: false,
     
     translations: {
         en: {
@@ -20,43 +20,44 @@ const InstallModal = {
             iphone: 'iPhone',
             step: 'Step',
             done: 'Done!',
-            doneMsg: 'You can now receive notifications from your group!',
-            close: 'Close',
+            doneMsg: 'After installing, open the app from your home screen to continue.',
+            refresh: 'I\'ve Installed - Open App',
+            skip: 'Continue in Browser',
+            skipNote: '(Notifications may not work)',
             langToggle: '🇵🇭 Tagalog',
             // Windows steps
-            win1: 'Open Chrome browser',
-            win1sub: 'Go to:',
-            win2: 'Click the install icon',
-            win2sub: 'Look for this icon in the address bar (right side)',
-            win3: 'Click "Install"',
-            win3sub: 'A popup will appear, click Install',
+            win1: 'Look for the install icon',
+            win1sub: 'In the address bar (right side), click this icon:',
+            win2: 'Click "Install"',
+            win2sub: 'A popup will appear, click Install',
+            win3: 'Open from desktop',
+            win3sub: 'The app icon will appear on your desktop or taskbar',
             win4: 'Enable notifications',
-            win4sub: 'Click "Enable" when the prompt appears after signing in',
+            win4sub: 'Click "Enable" when the prompt appears',
             // Android steps
-            and1: 'Open Chrome browser',
-            and1sub: 'Go to:',
-            and2: 'Tap the 3 dots menu',
-            and2sub: 'Located at the top right corner',
-            and3: 'Tap "Add to Home Screen"',
-            and3sub: 'Scroll down if you don\'t see it',
-            and4: 'Tap "Install"',
-            and4sub: 'The app will be added to your home screen',
+            and1: 'Tap the menu',
+            and1sub: 'Tap the 3 dots at the top right corner',
+            and2: 'Tap "Add to Home Screen"',
+            and2sub: 'Or "Install App" if you see it',
+            and3: 'Tap "Install"',
+            and3sub: 'The app will be added to your home screen',
+            and4: 'Open from home screen',
+            and4sub: 'Find the Go Mission icon and tap it',
             and5: 'Enable notifications',
-            and5sub: 'Open the app and tap "Enable" when prompted',
+            and5sub: 'Tap "Enable" when prompted',
             // iPhone steps
-            iph1: 'Open Safari browser',
-            iph1sub: 'Important: Use Safari, not Chrome!',
-            iph2: 'Tap the Share button',
-            iph2sub: 'The square icon with arrow at the bottom',
-            iph3: 'Tap "Add to Home Screen"',
-            iph3sub: 'Scroll down to find it',
-            iph4: 'Tap "Add"',
-            iph4sub: 'Located at the top right',
-            iph5: 'Open from Home Screen',
-            iph5sub: 'Important: Don\'t open in Safari! Use the app icon',
-            iph6: 'Enable notifications',
-            iph6sub: 'Sign in and tap "Enable" when prompted',
-            iphNote: 'Requires iOS 16.4 or newer'
+            iph1: 'Tap the Share button',
+            iph1sub: 'The square icon with arrow at the bottom',
+            iph2: 'Scroll down and tap "Add to Home Screen"',
+            iph2sub: 'You may need to scroll to find it',
+            iph3: 'Tap "Add"',
+            iph3sub: 'Located at the top right',
+            iph4: 'Open from Home Screen',
+            iph4sub: 'Important: Don\'t use Safari! Use the app icon',
+            iph5: 'Enable notifications',
+            iph5sub: 'Tap "Enable" when prompted',
+            iphNote: 'Requires iOS 16.4 or newer for notifications',
+            safariNote: 'You must use Safari browser to install on iPhone'
         },
         tl: {
             title: 'I-install ang Go Mission',
@@ -66,43 +67,44 @@ const InstallModal = {
             iphone: 'iPhone',
             step: 'Hakbang',
             done: 'Tapos na!',
-            doneMsg: 'Makakatanggap ka na ng notifications mula sa iyong grupo!',
-            close: 'Isara',
+            doneMsg: 'Pagkatapos mag-install, buksan ang app mula sa home screen.',
+            refresh: 'Naka-install na - Buksan',
+            skip: 'Magpatuloy sa Browser',
+            skipNote: '(Maaaring hindi gumana ang notifications)',
             langToggle: '🇺🇸 English',
             // Windows steps
-            win1: 'Buksan ang Chrome browser',
-            win1sub: 'Pumunta sa:',
-            win2: 'I-click ang install icon',
-            win2sub: 'Hanapin ito sa address bar (kanang bahagi)',
-            win3: 'I-click ang "Install"',
-            win3sub: 'May lalabas na popup, i-click ang Install',
+            win1: 'Hanapin ang install icon',
+            win1sub: 'Sa address bar (kanang bahagi), i-click ito:',
+            win2: 'I-click ang "Install"',
+            win2sub: 'May lalabas na popup, i-click ang Install',
+            win3: 'Buksan mula sa desktop',
+            win3sub: 'Lalabas ang app icon sa desktop o taskbar',
             win4: 'I-enable ang notifications',
-            win4sub: 'I-click ang "Enable" pagkatapos mag-sign in',
+            win4sub: 'I-click ang "Enable" kapag lumabas ang prompt',
             // Android steps
-            and1: 'Buksan ang Chrome browser',
-            and1sub: 'Pumunta sa:',
-            and2: 'Pindutin ang 3 tuldok',
-            and2sub: 'Nasa itaas na kanang bahagi',
-            and3: 'Pindutin ang "Add to Home Screen"',
-            and3sub: 'Mag-scroll pababa kung hindi mo makita',
-            and4: 'Pindutin ang "Install"',
-            and4sub: 'Madadagdag ang app sa home screen mo',
+            and1: 'Pindutin ang menu',
+            and1sub: 'Pindutin ang 3 tuldok sa itaas na kanan',
+            and2: 'Pindutin ang "Add to Home Screen"',
+            and2sub: 'O "Install App" kung nakikita mo',
+            and3: 'Pindutin ang "Install"',
+            and3sub: 'Madadagdag ang app sa home screen mo',
+            and4: 'Buksan mula sa home screen',
+            and4sub: 'Hanapin ang Go Mission icon at pindutin',
             and5: 'I-enable ang notifications',
-            and5sub: 'Buksan ang app at pindutin ang "Enable"',
+            and5sub: 'Pindutin ang "Enable" kapag lumabas',
             // iPhone steps
-            iph1: 'Buksan ang Safari browser',
-            iph1sub: 'Importante: Safari lang, hindi Chrome!',
-            iph2: 'Pindutin ang Share button',
-            iph2sub: 'Yung icon na box na may arrow sa ibaba',
-            iph3: 'Pindutin ang "Add to Home Screen"',
-            iph3sub: 'Mag-scroll pababa para makita',
-            iph4: 'Pindutin ang "Add"',
-            iph4sub: 'Nasa itaas na kanan',
-            iph5: 'Buksan mula sa Home Screen',
-            iph5sub: 'Importante: Huwag buksan sa Safari! Gamitin ang app icon',
-            iph6: 'I-enable ang notifications',
-            iph6sub: 'Mag-sign in at pindutin ang "Enable"',
-            iphNote: 'Kailangan iOS 16.4 o mas bago'
+            iph1: 'Pindutin ang Share button',
+            iph1sub: 'Yung icon na box na may arrow sa ibaba',
+            iph2: 'Mag-scroll pababa at pindutin "Add to Home Screen"',
+            iph2sub: 'Maaaring kailangang mag-scroll para makita',
+            iph3: 'Pindutin ang "Add"',
+            iph3sub: 'Nasa itaas na kanan',
+            iph4: 'Buksan mula sa Home Screen',
+            iph4sub: 'Importante: Huwag gamitin ang Safari! Gamitin ang app icon',
+            iph5: 'I-enable ang notifications',
+            iph5sub: 'Pindutin ang "Enable" kapag lumabas',
+            iphNote: 'Kailangan iOS 16.4 o mas bago para sa notifications',
+            safariNote: 'Kailangan Safari browser para mag-install sa iPhone'
         }
     },
     
@@ -110,6 +112,55 @@ const InstallModal = {
         return this.translations[this.currentLang][key] || key;
     },
     
+    /**
+     * Check if app is installed as PWA
+     */
+    checkIfInstalled() {
+        // Check display-mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            return true;
+        }
+        // iOS Safari standalone
+        if (window.navigator.standalone === true) {
+            return true;
+        }
+        // Check if launched from home screen (Android)
+        if (document.referrer.includes('android-app://')) {
+            return true;
+        }
+        return false;
+    },
+    
+    /**
+     * Initialize - check if should show install modal
+     */
+    init() {
+        this.isInstalled = this.checkIfInstalled();
+        
+        // Check URL params
+        const params = new URLSearchParams(window.location.search);
+        const forceInstall = params.has('install');
+        
+        // Check if user has skipped before (stored in localStorage)
+        const hasSkipped = localStorage.getItem('installSkipped') === 'true';
+        
+        // Show modal if: has ?install param OR (not installed AND not skipped)
+        if (forceInstall || (!this.isInstalled && !hasSkipped)) {
+            // Wait for page to load
+            setTimeout(() => this.show(), 500);
+        }
+        
+        // Remove ?install from URL
+        if (forceInstall) {
+            const url = new URL(window.location);
+            url.searchParams.delete('install');
+            window.history.replaceState({}, '', url);
+        }
+    },
+    
+    /**
+     * Show the install modal
+     */
     show() {
         // Detect device
         const ua = navigator.userAgent;
@@ -133,24 +184,29 @@ const InstallModal = {
         modal.id = 'installModal';
         modal.innerHTML = this.getModalHTML();
         
-        // Add styles
         this.addStyles();
         document.body.appendChild(modal);
         
-        // Remove ?install=true from URL
-        const url = new URL(window.location);
-        url.searchParams.delete('install');
-        window.history.replaceState({}, '', url);
+        // Prevent scrolling on body
+        document.body.style.overflow = 'hidden';
     },
     
     getModalHTML() {
+        const showSafariWarning = this.currentDevice === 'iphone' && !/Safari/i.test(navigator.userAgent);
+        
         return `
-            <div class="install-overlay" onclick="InstallModal.close()"></div>
+            <div class="install-overlay"></div>
             <div class="install-content">
                 <div class="install-header">
                     <h2>📱 ${this.t('title')}</h2>
                     <button class="lang-toggle" onclick="InstallModal.toggleLang()">${this.t('langToggle')}</button>
                 </div>
+                
+                ${showSafariWarning ? `
+                    <div class="safari-warning">
+                        ⚠️ ${this.t('safariNote')}
+                    </div>
+                ` : ''}
                 
                 <p class="install-subtitle">${this.t('subtitle')}</p>
                 
@@ -176,16 +232,19 @@ const InstallModal = {
                     <p>${this.t('doneMsg')}</p>
                 </div>
                 
-                <button class="close-btn" onclick="InstallModal.close()">
-                    ${this.t('close')}
+                <button class="primary-btn" onclick="InstallModal.refresh()">
+                    ${this.t('refresh')}
+                </button>
+                
+                <button class="skip-btn" onclick="InstallModal.skip()">
+                    ${this.t('skip')}<br>
+                    <span class="skip-note">${this.t('skipNote')}</span>
                 </button>
             </div>
         `;
     },
     
     renderSteps() {
-        const url = 'gomission.netlify.app';
-        
         if (this.currentDevice === 'windows') {
             return `
                 <div class="step-item">
@@ -193,7 +252,7 @@ const InstallModal = {
                     <div class="step-content">
                         <h4>${this.t('win1')}</h4>
                         <p>${this.t('win1sub')}</p>
-                        <span class="step-highlight">${url}</span>
+                        <div class="step-icon">⊕</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -201,7 +260,6 @@ const InstallModal = {
                     <div class="step-content">
                         <h4>${this.t('win2')}</h4>
                         <p>${this.t('win2sub')}</p>
-                        <div class="step-icon">⊕</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -226,7 +284,7 @@ const InstallModal = {
                     <div class="step-content">
                         <h4>${this.t('and1')}</h4>
                         <p>${this.t('and1sub')}</p>
-                        <span class="step-highlight">${url}</span>
+                        <div class="step-icon">⋮</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -234,7 +292,6 @@ const InstallModal = {
                     <div class="step-content">
                         <h4>${this.t('and2')}</h4>
                         <p>${this.t('and2sub')}</p>
-                        <div class="step-icon">⋮</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -265,8 +322,8 @@ const InstallModal = {
                     <div class="step-num">1</div>
                     <div class="step-content">
                         <h4>${this.t('iph1')}</h4>
-                        <p class="step-warning">${this.t('iph1sub')}</p>
-                        <span class="step-highlight">${url}</span>
+                        <p>${this.t('iph1sub')}</p>
+                        <div class="step-icon">📤</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -274,7 +331,6 @@ const InstallModal = {
                     <div class="step-content">
                         <h4>${this.t('iph2')}</h4>
                         <p>${this.t('iph2sub')}</p>
-                        <div class="step-icon">📤</div>
                     </div>
                 </div>
                 <div class="step-item">
@@ -288,22 +344,15 @@ const InstallModal = {
                     <div class="step-num">4</div>
                     <div class="step-content">
                         <h4>${this.t('iph4')}</h4>
-                        <p>${this.t('iph4sub')}</p>
+                        <p class="step-warning">${this.t('iph4sub')}</p>
+                        <div class="step-icon">🔥</div>
                     </div>
                 </div>
                 <div class="step-item">
                     <div class="step-num">5</div>
                     <div class="step-content">
                         <h4>${this.t('iph5')}</h4>
-                        <p class="step-warning">${this.t('iph5sub')}</p>
-                        <div class="step-icon">🔥</div>
-                    </div>
-                </div>
-                <div class="step-item">
-                    <div class="step-num">6</div>
-                    <div class="step-content">
-                        <h4>${this.t('iph6')}</h4>
-                        <p>${this.t('iph6sub')}</p>
+                        <p>${this.t('iph5sub')}</p>
                     </div>
                 </div>
                 <div class="ios-note">
@@ -314,7 +363,6 @@ const InstallModal = {
     },
     
     addStyles() {
-        // Remove old styles
         const oldStyle = document.getElementById('installModalStyles');
         if (oldStyle) oldStyle.remove();
         
@@ -324,7 +372,7 @@ const InstallModal = {
             #installModal {
                 position: fixed;
                 inset: 0;
-                z-index: 9999;
+                z-index: 99999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -333,26 +381,25 @@ const InstallModal = {
             #installModal .install-overlay {
                 position: absolute;
                 inset: 0;
-                background: rgba(0,0,0,0.85);
-                backdrop-filter: blur(4px);
+                background: rgba(0,0,0,0.95);
             }
             #installModal .install-content {
                 position: relative;
-                background: var(--card-bg-solid, #1a0505);
+                background: #1a0505;
                 border: 1px solid rgba(251, 191, 36, 0.3);
                 border-radius: 20px;
                 padding: 24px;
                 max-width: 500px;
                 width: 100%;
-                max-height: 85vh;
+                max-height: 90vh;
                 overflow-y: auto;
-                color: var(--text-color, #fff);
+                color: #fff;
             }
             #installModal .install-header {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                margin-bottom: 8px;
+                margin-bottom: 12px;
             }
             #installModal .install-header h2 {
                 font-size: 22px;
@@ -368,10 +415,16 @@ const InstallModal = {
                 border-radius: 20px;
                 font-size: 12px;
                 cursor: pointer;
-                transition: all 0.2s;
             }
-            #installModal .lang-toggle:hover {
-                background: rgba(251, 191, 36, 0.1);
+            #installModal .safari-warning {
+                background: rgba(239, 68, 68, 0.2);
+                border: 1px solid rgba(239, 68, 68, 0.5);
+                color: #fca5a5;
+                padding: 12px;
+                border-radius: 10px;
+                margin-bottom: 16px;
+                font-size: 14px;
+                text-align: center;
             }
             #installModal .install-subtitle {
                 color: #94a3b8;
@@ -429,22 +482,12 @@ const InstallModal = {
                 font-size: 15px;
                 font-weight: 700;
                 margin: 0 0 4px 0;
-                color: var(--text-color, #fff);
+                color: #fff;
             }
             #installModal .step-content p {
                 font-size: 13px;
                 color: #94a3b8;
                 margin: 0;
-            }
-            #installModal .step-highlight {
-                display: inline-block;
-                background: rgba(251, 191, 36, 0.2);
-                color: #fcd34d;
-                padding: 4px 10px;
-                border-radius: 6px;
-                font-family: monospace;
-                font-size: 13px;
-                margin-top: 8px;
             }
             #installModal .step-icon {
                 font-size: 28px;
@@ -475,9 +518,9 @@ const InstallModal = {
                 font-size: 14px;
                 margin: 0;
             }
-            #installModal .close-btn {
+            #installModal .primary-btn {
                 width: 100%;
-                padding: 14px;
+                padding: 16px;
                 margin-top: 16px;
                 background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                 border: none;
@@ -486,10 +529,21 @@ const InstallModal = {
                 font-size: 16px;
                 font-weight: 700;
                 cursor: pointer;
-                transition: all 0.2s;
             }
-            #installModal .close-btn:hover {
-                transform: translateY(-1px);
+            #installModal .skip-btn {
+                width: 100%;
+                padding: 12px;
+                margin-top: 12px;
+                background: transparent;
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 12px;
+                color: #64748b;
+                font-size: 14px;
+                cursor: pointer;
+            }
+            #installModal .skip-note {
+                font-size: 11px;
+                color: #475569;
             }
             #installModal .ios-note {
                 background: rgba(234, 179, 8, 0.15);
@@ -516,25 +570,33 @@ const InstallModal = {
         this.render();
     },
     
+    /**
+     * User clicked "I've Installed" - refresh to check
+     */
+    refresh() {
+        window.location.reload();
+    },
+    
+    /**
+     * User clicked "Skip" - allow using in browser
+     */
+    skip() {
+        localStorage.setItem('installSkipped', 'true');
+        this.close();
+    },
+    
     close() {
         const modal = document.getElementById('installModal');
         if (modal) modal.remove();
         const style = document.getElementById('installModalStyles');
         if (style) style.remove();
-    },
-    
-    // Check URL on page load
-    checkUrl() {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('install')) {
-            setTimeout(() => this.show(), 300);
-        }
+        document.body.style.overflow = '';
     }
 };
 
-// Auto-check URL when script loads
+// Initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => InstallModal.checkUrl());
+    document.addEventListener('DOMContentLoaded', () => InstallModal.init());
 } else {
-    InstallModal.checkUrl();
+    InstallModal.init();
 }
