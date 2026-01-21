@@ -11,9 +11,9 @@
 const PushNotifications = {
   // State
   token: null,
-  messaging: null,
   isSupported: false,
-  permissionStatus: 'default', // 'default', 'granted', 'denied'
+  permissionStatus: 'default',
+  swRegistration: null,
   
   /**
    * Initialize push notifications
@@ -37,24 +37,20 @@ const PushNotifications = {
     
     // Register service worker
     try {
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('[PushNotifications] Service Worker registered:', registration.scope);
+      this.swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('[PushNotifications] Service Worker registered:', this.swRegistration.scope);
       
-      // Initialize Firebase Messaging
-      if (typeof firebase !== 'undefined' && firebase.messaging) {
-        this.messaging = firebase.messaging();
-        
-        // Handle foreground messages
-        this.messaging.onMessage((payload) => {
-          console.log('[PushNotifications] Foreground message:', payload);
-          this.showForegroundNotification(payload);
-        });
-      }
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
+      console.log('[PushNotifications] Service Worker ready');
       
       // If already granted, get token
       if (this.permissionStatus === 'granted') {
         await this.getToken();
       }
+      
+      // Set up foreground message handler
+      this.setupForegroundHandler();
       
       console.log('[PushNotifications] Ready. Permission:', this.permissionStatus);
       return true;
@@ -62,6 +58,18 @@ const PushNotifications = {
     } catch (error) {
       console.error('[PushNotifications] Init error:', error);
       return false;
+    }
+  },
+  
+  /**
+   * Setup foreground message handler using the modular SDK
+   */
+  setupForegroundHandler() {
+    if (window.firebaseMessaging && window.onMessagingMessage) {
+      window.onMessagingMessage(window.firebaseMessaging, (payload) => {
+        console.log('[PushNotifications] Foreground message:', payload);
+        this.showForegroundNotification(payload);
+      });
     }
   },
   
@@ -96,21 +104,24 @@ const PushNotifications = {
    * Get FCM token and register with backend
    */
   async getToken() {
-    if (!this.messaging) {
-      console.log('[PushNotifications] Messaging not initialized');
+    if (!window.firebaseMessaging || !window.getMessagingToken) {
+      console.log('[PushNotifications] Firebase Messaging not initialized');
+      return null;
+    }
+    
+    if (!this.swRegistration) {
+      console.log('[PushNotifications] Service Worker not registered');
       return null;
     }
     
     try {
-      // Get the VAPID key from Firebase Console > Project Settings > Cloud Messaging
-      // For now, we'll use the default method
-      const token = await this.messaging.getToken({
-        vapidKey: window.FIREBASE_VAPID_KEY || undefined,
-        serviceWorkerRegistration: await navigator.serviceWorker.ready
+      const token = await window.getMessagingToken(window.firebaseMessaging, {
+        vapidKey: window.FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: this.swRegistration
       });
       
       if (token) {
-        console.log('[PushNotifications] Token:', token.substring(0, 20) + '...');
+        console.log('[PushNotifications] Token obtained:', token.substring(0, 20) + '...');
         this.token = token;
         
         // Register token with backend
@@ -132,18 +143,19 @@ const PushNotifications = {
    */
   async registerTokenWithBackend(token) {
     if (!window.currentUser || !window.db) {
-      console.log('[PushNotifications] User not logged in');
+      console.log('[PushNotifications] User not logged in, will register later');
       return;
     }
     
     try {
       // Add token to user's document
-      await window.setDoc(window.doc(window.db, 'goMission_members', window.currentUser.uid), {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      await window.setDoc(userRef, {
         fcmTokens: window.arrayUnion(token),
         lastTokenUpdate: window.serverTimestamp()
       }, { merge: true });
       
-      console.log('[PushNotifications] Token registered with backend');
+      console.log('[PushNotifications] Token registered with backend for user:', window.currentUser.uid);
     } catch (error) {
       console.error('[PushNotifications] Backend registration error:', error);
     }
@@ -156,7 +168,8 @@ const PushNotifications = {
     if (!this.token || !window.currentUser || !window.db) return;
     
     try {
-      await window.setDoc(window.doc(window.db, 'goMission_members', window.currentUser.uid), {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      await window.setDoc(userRef, {
         fcmTokens: window.arrayRemove(this.token)
       }, { merge: true });
       
@@ -176,15 +189,15 @@ const PushNotifications = {
     // Update in-app notification badge
     if (typeof Notifications !== 'undefined') {
       Notifications.addNotification({
-        title: notification.title,
-        body: notification.body,
+        title: notification?.title || 'New notification',
+        body: notification?.body || '',
         type: data?.type || 'general',
         data: data
       });
     }
     
     // Show toast notification
-    this.showToast(notification.title, notification.body);
+    this.showToast(notification?.title || 'New notification', notification?.body || '');
   },
   
   /**
@@ -193,15 +206,16 @@ const PushNotifications = {
   showToast(title, body) {
     // Create toast element
     const toast = document.createElement('div');
-    toast.className = 'fixed top-4 right-4 z-[100] bg-[var(--card-bg)] border border-amber-500/30 rounded-xl p-4 shadow-xl max-w-sm animate-slide-in';
+    toast.className = 'fixed top-4 right-4 left-4 md:left-auto md:right-4 md:max-w-sm z-[100] bg-[var(--card-bg-solid)] border border-amber-500/30 rounded-xl p-4 shadow-xl animate-slide-in';
+    toast.style.animation = 'slideIn 0.3s ease-out';
     toast.innerHTML = `
       <div class="flex items-start gap-3">
         <span class="text-2xl">🔔</span>
-        <div class="flex-1">
-          <p class="font-bold text-[var(--text-color)] text-sm">${title}</p>
-          <p class="text-[var(--text-muted)] text-xs mt-1">${body}</p>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-[var(--text-color)] text-sm truncate">${title}</p>
+          <p class="text-[var(--text-muted)] text-xs mt-1 line-clamp-2">${body}</p>
         </div>
-        <button onclick="this.parentElement.parentElement.remove()" class="text-[var(--text-muted)] hover:text-[var(--text-color)]">
+        <button onclick="this.parentElement.parentElement.remove()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] flex-shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -215,6 +229,7 @@ const PushNotifications = {
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease-out';
       setTimeout(() => toast.remove(), 300);
     }, 5000);
   },
@@ -227,7 +242,7 @@ const PushNotifications = {
     
     const prompt = document.createElement('div');
     prompt.id = 'notificationPrompt';
-    prompt.className = 'fixed bottom-20 left-4 right-4 z-[100] bg-[var(--card-bg)] border border-amber-500/30 rounded-xl p-4 shadow-xl md:left-auto md:right-4 md:max-w-sm';
+    prompt.className = 'fixed bottom-20 left-4 right-4 z-[100] bg-[var(--card-bg-solid)] border border-amber-500/30 rounded-xl p-4 shadow-xl md:left-auto md:right-4 md:max-w-sm';
     prompt.innerHTML = `
       <div class="flex items-start gap-3">
         <span class="text-2xl">🔔</span>
@@ -260,6 +275,8 @@ const PushNotifications = {
       const granted = await this.requestPermission();
       if (granted) {
         this.showToast('Notifications Enabled! 🎉', 'You\'ll now receive updates from your group.');
+      } else {
+        this.showToast('Notifications Blocked', 'You can enable them later in your browser settings.');
       }
     } else {
       // Remember that user dismissed (don't show again for a while)
@@ -282,19 +299,49 @@ const PushNotifications = {
     }
     
     return true;
+  },
+  
+  /**
+   * Debug: Check current status
+   */
+  debug() {
+    console.log('[PushNotifications] Debug Info:');
+    console.log('  - Supported:', this.isSupported);
+    console.log('  - Permission:', this.permissionStatus);
+    console.log('  - Token:', this.token ? this.token.substring(0, 20) + '...' : 'none');
+    console.log('  - SW Registration:', this.swRegistration ? 'yes' : 'no');
+    console.log('  - Firebase Messaging:', window.firebaseMessaging ? 'yes' : 'no');
+    console.log('  - VAPID Key:', window.FIREBASE_VAPID_KEY ? 'set' : 'missing');
+    return {
+      supported: this.isSupported,
+      permission: this.permissionStatus,
+      hasToken: !!this.token,
+      hasSW: !!this.swRegistration
+    };
   }
 };
+
+// Add CSS for toast animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+`;
+document.head.appendChild(style);
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => PushNotifications.init(), 1000);
+    setTimeout(() => PushNotifications.init(), 2000);
   });
 } else {
-  setTimeout(() => PushNotifications.init(), 1000);
-}
-
-// Export
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = PushNotifications;
+  setTimeout(() => PushNotifications.init(), 2000);
 }
