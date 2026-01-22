@@ -340,9 +340,11 @@ const Groups = {
             this.currentGroup = { id: groupId, ...groupDoc.data() };
             this.isLeader = this.currentGroup.leaderId === window.currentUser.uid;
             
-            // If leader, load pending requests
+            // If leader, load pending requests and sync member groupIds
             if (this.isLeader) {
               await this.loadPendingRequests();
+              // Auto-fix any members who don't have groupId set
+              await this.syncMemberGroupIds();
             }
             
             // Load members
@@ -629,6 +631,91 @@ const Groups = {
       console.error('[Groups] Error leaving group:', error);
       alert('Error leaving group. Please try again.');
       return false;
+    }
+  },
+  
+  /**
+   * Remove a member from the group (leader only)
+   */
+  async removeMember(memberId, memberName) {
+    if (!this.isLeader || !this.currentGroup) {
+      alert('Only leaders can remove members');
+      return false;
+    }
+    
+    if (!confirm(`Remove ${memberName} from the group?`)) {
+      return false;
+    }
+    
+    try {
+      const groupRef = window.doc(window.db, 'goMission_groups', this.currentGroup.id);
+      const groupDoc = await window.getDoc(groupRef);
+      const groupData = groupDoc.data();
+      
+      let members = groupData.members || [];
+      members = members.filter(m => m !== memberId);
+      
+      // Update group
+      await window.setDoc(groupRef, {
+        members: members,
+        currentCount: members.length
+      }, { merge: true });
+      
+      // Clear member's groupId
+      const memberRef = window.doc(window.db, 'goMission_members', memberId);
+      await window.setDoc(memberRef, {
+        groupId: null,
+        groupRole: null
+      }, { merge: true });
+      
+      // Refresh local data
+      await this.loadUserGroup();
+      this.updateUI();
+      
+      // Close members modal if open
+      const modal = document.getElementById('membersModal');
+      if (modal) modal.remove();
+      
+      alert(`${memberName} has been removed from the group`);
+      return true;
+      
+    } catch (error) {
+      console.error('[Groups] Error removing member:', error);
+      alert('Error removing member. Please try again.');
+      return false;
+    }
+  },
+  
+  /**
+   * Sync groupId for all members in the group's members array
+   * Fixes inconsistency where member is in group but doesn't have groupId set
+   */
+  async syncMemberGroupIds() {
+    if (!this.currentGroup || !window.db) return;
+    
+    const groupId = this.currentGroup.id;
+    const memberIds = this.currentGroup.members || [];
+    
+    console.log('[Groups] Syncing groupId for', memberIds.length, 'members');
+    
+    for (const memberId of memberIds) {
+      try {
+        const memberRef = window.doc(window.db, 'goMission_members', memberId);
+        const memberDoc = await window.getDoc(memberRef);
+        
+        if (memberDoc.exists()) {
+          const memberData = memberDoc.data();
+          if (memberData.groupId !== groupId) {
+            console.log('[Groups] Fixing groupId for member:', memberId);
+            await window.setDoc(memberRef, {
+              groupId: groupId,
+              groupRole: memberId === this.currentGroup.leaderId ? 'leader' : 'member'
+            }, { merge: true });
+          }
+        }
+      } catch (error) {
+        console.error('[Groups] Error syncing member:', memberId, error);
+      }
     }
   },
   

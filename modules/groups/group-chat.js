@@ -335,6 +335,80 @@ const GroupChat = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  },
+  
+  /**
+   * Show members list modal
+   */
+  showMembers() {
+    if (!Groups.currentGroup || !Groups.members) {
+      alert('Unable to load members');
+      return;
+    }
+    
+    const group = Groups.currentGroup;
+    const members = Groups.members;
+    const isLeader = Groups.isLeader;
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'membersModal';
+    modal.className = 'fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4';
+    
+    let membersHtml = '';
+    for (const member of members) {
+      const isCurrentUser = member.odId === window.currentUser?.uid;
+      const isMemberLeader = member.odId === group.leaderId;
+      
+      membersHtml += `
+        <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5 ${isCurrentUser ? 'border-amber-500/30' : ''}">
+          <div class="flex items-center gap-3">
+            <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'User')}&background=4a0404&color=fbbf24`}" 
+                 class="w-10 h-10 rounded-full border ${isMemberLeader ? 'border-amber-500' : 'border-white/10'}" 
+                 alt="${member.displayName}">
+            <div>
+              <p class="text-[var(--text-color)] font-bold text-sm">
+                ${member.displayName || 'Unknown'}
+                ${isCurrentUser ? '<span class="text-amber-500 text-xs">(You)</span>' : ''}
+              </p>
+              <p class="text-xs ${isMemberLeader ? 'text-amber-500' : 'text-[var(--text-muted)]'}">
+                ${isMemberLeader ? '👑 Leader' : 'Member'}
+              </p>
+            </div>
+          </div>
+          ${isLeader && !isMemberLeader && !isCurrentUser ? `
+            <button onclick="Groups.removeMember('${member.odId}', '${member.displayName?.replace(/'/g, "\\'")}')" 
+                    class="text-xs text-red-400 hover:text-red-300 px-2 py-1">
+              Remove
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    modal.innerHTML = `
+      <div class="bg-[var(--card-bg)] rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border border-[var(--card-border)]">
+        <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+          <h3 class="font-bold text-[var(--text-color)]">👥 Group Members (${members.length})</h3>
+          <button onclick="document.getElementById('membersModal').remove()" 
+                  class="text-[var(--text-muted)] hover:text-[var(--text-color)]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="p-4 overflow-y-auto max-h-[60vh] space-y-2">
+          ${membersHtml || '<p class="text-[var(--text-muted)] text-center py-4">No members yet</p>'}
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
   }
 };
 
