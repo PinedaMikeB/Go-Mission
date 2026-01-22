@@ -752,16 +752,25 @@ const Groups = {
    */
   renderGroupInfo() {
     const group = this.currentGroup;
-    const schedule = group.schedule || {};
-    const meetingTime = `${this.capitalizeFirst(schedule.day || 'Saturday')}, ${this.formatTime(schedule.time || '19:00')}`;
     
-    let html = `
-      <div class="bg-[#4a0404] p-4 rounded-xl text-center border border-amber-500/20 mb-4 shadow-inner">
-        <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weekly Meeting</p>
-        <p class="text-amber-400 font-black tracking-widest uppercase">${meetingTime}</p>
-        <p class="text-[10px] text-slate-500 mt-1">${group.name}</p>
-      </div>
-    `;
+    // Use GroupMeeting module for meeting section
+    let html = '';
+    if (typeof GroupMeeting !== 'undefined') {
+      html += GroupMeeting.renderMeetingSection(group, this.isLeader);
+    } else {
+      // Fallback if GroupMeeting not loaded
+      const schedule = group.schedule || {};
+      const meetingTime = `${this.capitalizeFirst(schedule.day || 'Saturday')}, ${this.formatTime(schedule.time || '19:00')}`;
+      html += `
+        <div class="bg-[#4a0404] p-4 rounded-xl text-center border border-amber-500/20 mb-4 shadow-inner">
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weekly Meeting</p>
+          <p class="text-amber-400 font-black tracking-widest uppercase">${meetingTime}</p>
+          <p class="text-[10px] text-slate-500 mt-1">${group.name}</p>
+        </div>
+      `;
+    }
+    
+    html += '<div class="mt-4">';  // Spacing after meeting section
     
     // Show members count
     html += `
@@ -813,6 +822,8 @@ const Groups = {
         </button>
       `;
     }
+    
+    html += '</div>';  // Close wrapper div
     
     return html;
   },

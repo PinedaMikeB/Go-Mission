@@ -3,7 +3,7 @@
 ## Purpose
 Spirit-led Bible reading with verse highlighting, auto-commentary, and progress tracking.
 
-## Status: ✅ Core Complete | 🔄 Quick Insights In Progress
+## Status: ✅ Core Complete | 🔄 Quick Insights 17/66 Books
 
 ## Philosophy
 > "Let the Holy Spirit speak - stop where prompted, highlight it, read commentary, then reflect."
@@ -25,8 +25,24 @@ modules/bible/
     ├── tl/                # Tagalog ADB 1905 (66 books) ✅
     ├── commentary/
     │   └── tyndale-json/  # Tyndale Study Notes (66 books) ✅
-    └── quick-insights/
-        └── JHN.json       # Quick Insights (12/21 chapters) 🔄
+    └── quick-insights/    # AI-generated insights (17 books) 🔄
+        ├── GEN.json       # Genesis (50 chapters) ✅
+        ├── MAT.json       # Matthew (28 chapters) ✅
+        ├── MRK.json       # Mark (16 chapters) ✅
+        ├── LUK.json       # Luke (24 chapters) ✅
+        ├── JHN.json       # John (21 chapters) ✅
+        ├── ACT.json       # Acts (28 chapters) ✅
+        ├── ROM.json       # Romans (16 chapters) ✅
+        ├── 1CO.json       # 1 Corinthians (16 chapters) ✅
+        ├── 2CO.json       # 2 Corinthians (13 chapters) ✅
+        ├── GAL.json       # Galatians (6 chapters) ✅
+        ├── EPH.json       # Ephesians (6 chapters) ✅
+        ├── PHP.json       # Philippians (4 chapters) ✅
+        ├── COL.json       # Colossians (4 chapters) ✅
+        ├── 1TI.json       # 1 Timothy (6 chapters) ✅
+        ├── 2TI.json       # 2 Timothy (4 chapters) ✅
+        ├── PSA.json       # Psalms (150 chapters) ✅
+        └── PRO.json       # Proverbs (31 chapters) ✅
 ```
 
 ## Data Sources
@@ -35,7 +51,18 @@ modules/bible/
 | English Bible (BSB) | HelloAO API | ✅ 66/66 |
 | Tagalog Bible (ADB 1905) | GetBible API | ✅ 66/66 |
 | Tyndale Study Notes | tyndaleopenresources.com | ✅ 66/66 |
-| Quick Insights (EN+TL) | Gemini 2.5 Pro + Tyndale | 🔄 1/66 (John partial) |
+| Quick Insights (EN+TL) | GPT-4o-mini + Tyndale | 🔄 17/66 books |
+
+### Quick Insights Progress (Generated via GPT-4o-mini)
+**✅ Complete (17 books):**
+- OT: Genesis, Psalms, Proverbs
+- Gospels: Matthew, Mark, Luke, John
+- Acts
+- Paul's Letters: Romans, 1 & 2 Corinthians, Galatians, Ephesians, Philippians, Colossians, 1 & 2 Timothy
+
+**❌ Failed (missing Tyndale mapping):** 1 Thessalonians, 2 Thessalonians
+
+**📋 Remaining:** 47 books
 
 ## Quick Insights System
 

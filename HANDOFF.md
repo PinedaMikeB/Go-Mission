@@ -11,10 +11,119 @@
 
 ---
 
-## Current Session (2026-01-22)
-- **MODULE**: PWA Force Update System
-- **STATUS**: ✅ Complete - Force update lock screen implemented
-- **NEXT**: Test by deploying and changing CACHE_VERSION
+## Current Session (2026-01-23)
+- **MODULE**: Jitsi Video Meeting Integration
+- **STATUS**: ✅ Module created, integrated into Groups
+- **BACKGROUND**: Quick Insights generation running (11 NT books)
+
+---
+
+## ✅ Completed This Session
+
+### 1. Jitsi Video Meeting Integration (NEW)
+Embedded Jitsi Meet for in-app group video meetings.
+
+**Features:**
+- Full-screen Jitsi embed (no leaving app)
+- Weekly meeting schedule (day + time) per group
+- "Join Meeting" button appears when it's meeting time
+- Leaders can start meeting anytime
+- Meeting attendance tracked in Firestore
+
+**Files:**
+- `/modules/groups/group-meeting.js` - Jitsi integration module
+- `/modules/groups/groups.js` - Updated to use new meeting section
+
+**Firestore Collection:**
+```javascript
+// goMission_meetings/{groupId}_{date}
+{
+  groupId: "abc123",
+  date: "2026-01-23",
+  startedAt: timestamp,
+  attendees: [
+    { odId: "user1", name: "Mike", joinedAt: "...", leftAt: "...", durationMinutes: 45 }
+  ],
+  lastActivity: timestamp
+}
+
+// goMission_groups/{groupId}.meetingSchedule
+{
+  day: "Saturday",      // Day of week
+  time: "19:00",        // 24h format
+  updatedAt: timestamp
+}
+```
+
+**Usage:**
+- Members see "Join Now" button during meeting window (15 min before to 2 hours after)
+- Leaders see "Start Meeting" button anytime
+- Leaders can set/edit schedule via modal
+
+---
+
+## 🔄 Background: Quick Insights Generation
+
+### Currently Generating (11 NT books via GPT-4o-mini)
+| Book | Code | Verses | Status |
+|------|------|--------|--------|
+| Titus | TIT | 46/46 | ✅ Complete |
+| Philemon | PHM | 25/25 | ✅ Complete |
+| 2 John | 2JN | 13/13 | ✅ Complete |
+| 3 John | 3JN | 14/14 | ✅ Complete |
+| Jude | JUD | 25/25 | ✅ Complete |
+| 2 Peter | 2PE | 61/61 | ✅ Complete |
+| James | JAS | 78/108 | 🔄 In Progress |
+| 1 Peter | 1PE | 78/105 | 🔄 In Progress |
+| 1 John | 1JN | 77/105 | 🔄 In Progress |
+| Hebrews | HEB | 75/303 | 🔄 In Progress |
+| Revelation | REV | 76/404 | 🔄 In Progress |
+
+**Monitor:** `tail -f scripts/logs/*.log`
+
+---
+
+## Quick Insights Generation Status
+
+### ✅ Completed Books (17 + 6 = 23 books)
+| Book | Chapters | File |
+|------|----------|------|
+| Genesis (GEN) | 50 | ✅ |
+| Matthew (MAT) | 28 | ✅ |
+| Mark (MRK) | 16 | ✅ |
+| Luke (LUK) | 24 | ✅ |
+| John (JHN) | 21 | ✅ |
+| Acts (ACT) | 28 | ✅ |
+| Romans (ROM) | 16 | ✅ |
+| 1 Corinthians (1CO) | 16 | ✅ |
+| 2 Corinthians (2CO) | 13 | ✅ |
+| Galatians (GAL) | 6 | ✅ |
+| Ephesians (EPH) | 6 | ✅ |
+| Philippians (PHP) | 4 | ✅ |
+| Colossians (COL) | 4 | ✅ |
+| 1 Timothy (1TI) | 6 | ✅ |
+| 2 Timothy (2TI) | 4 | ✅ |
+| Psalms (PSA) | 150 | ✅ |
+| Proverbs (PRO) | 31 | ✅ |
+| Titus (TIT) | 3 | ✅ NEW |
+| Philemon (PHM) | 1 | ✅ NEW |
+| 2 John (2JN) | 1 | ✅ NEW |
+| 3 John (3JN) | 1 | ✅ NEW |
+| Jude (JUD) | 1 | ✅ NEW |
+| 2 Peter (2PE) | 3 | ✅ NEW |
+
+### 🔄 In Progress (5 books)
+- James (JAS) - 5 chapters
+- 1 Peter (1PE) - 5 chapters  
+- 1 John (1JN) - 5 chapters
+- Hebrews (HEB) - 13 chapters
+- Revelation (REV) - 22 chapters
+
+### ❌ Failed - Missing Tyndale Source
+| Book | Issue |
+|------|-------|
+| 1 Thessalonians (1TH) | Tyndale file not found |
+| 2 Thessalonians (2TH) | Tyndale file not found |
 
 ---
 

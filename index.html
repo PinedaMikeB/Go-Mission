@@ -851,6 +851,7 @@
     <script src="modules/bible/bible-reader.js"></script>
     <script src="modules/groups/groups.js"></script>
     <script src="modules/groups/group-chat.js"></script>
+    <script src="modules/groups/group-meeting.js"></script>
     <script src="modules/core/notifications.js"></script>
     <script src="modules/core/push-notifications.js"></script>
     <script src="modules/core/pwa-updater.js"></script>
@@ -936,6 +937,11 @@
                 initializeDevotion();
                 await loadTodaysEntry(user.uid);
                 await loadWeekProgress(user.uid);
+                
+                // Clear app badge when user opens app
+                if (typeof PushNotifications !== 'undefined') {
+                    PushNotifications.clearBadge();
+                }
                 
                 // Initialize Groups module
                 if (typeof Groups !== 'undefined') {

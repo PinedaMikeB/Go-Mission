@@ -349,6 +349,46 @@ const PushNotifications = {
   },
   
   /**
+   * Clear app badge (call when user opens app)
+   */
+  async clearBadge() {
+    try {
+      // Clear badge via Navigator API (Android PWA)
+      if ('setAppBadge' in navigator) {
+        await navigator.clearAppBadge();
+        console.log('[PushNotifications] Badge cleared via Navigator API');
+      }
+      
+      // Clear badge count in Firestore (for next push to have correct count)
+      if (window.currentUser && window.httpsCallable) {
+        const clearBadgeFn = window.httpsCallable(window.functions, 'clearBadge');
+        await clearBadgeFn();
+        console.log('[PushNotifications] Badge count cleared in Firestore');
+      }
+    } catch (error) {
+      console.log('[PushNotifications] Clear badge error:', error);
+    }
+  },
+  
+  /**
+   * Set app badge number (Android PWA)
+   */
+  async setBadge(count) {
+    try {
+      if ('setAppBadge' in navigator) {
+        if (count > 0) {
+          await navigator.setAppBadge(count);
+        } else {
+          await navigator.clearAppBadge();
+        }
+        console.log('[PushNotifications] Badge set to:', count);
+      }
+    } catch (error) {
+      console.log('[PushNotifications] Set badge error:', error);
+    }
+  },
+  
+  /**
    * Debug: Check current status
    */
   debug() {
@@ -359,11 +399,13 @@ const PushNotifications = {
     console.log('  - SW Registration:', this.swRegistration ? 'yes' : 'no');
     console.log('  - Firebase Messaging:', window.firebaseMessaging ? 'yes' : 'no');
     console.log('  - VAPID Key:', window.FIREBASE_VAPID_KEY ? 'set' : 'missing');
+    console.log('  - Badge API:', 'setAppBadge' in navigator ? 'supported' : 'not supported');
     return {
       supported: this.isSupported,
       permission: this.permissionStatus,
       hasToken: !!this.token,
-      hasSW: !!this.swRegistration
+      hasSW: !!this.swRegistration,
+      badgeSupported: 'setAppBadge' in navigator
     };
   }
 };
