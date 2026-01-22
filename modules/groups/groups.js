@@ -382,7 +382,9 @@ const Groups = {
         const memberDoc = await window.getDoc(memberRef);
         
         if (memberDoc.exists()) {
-          this.members.push({ id: memberId, ...memberDoc.data() });
+          const memberData = memberDoc.data();
+          console.log('[Groups] Member data:', memberId, memberData);
+          this.members.push({ id: memberId, ...memberData });
         }
       }
       

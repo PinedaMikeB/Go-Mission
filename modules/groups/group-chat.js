@@ -357,18 +357,24 @@ const GroupChat = {
     
     let membersHtml = '';
     for (const member of members) {
-      const isCurrentUser = member.odId === window.currentUser?.uid;
-      const isMemberLeader = member.odId === group.leaderId;
+      // Support both 'id' and 'odId' field names
+      const memberId = member.id || member.odId;
+      // Support both 'displayName' and 'name' field names
+      const memberName = member.displayName || member.name || 'Unknown';
+      const memberPhoto = member.photoURL || member.photo;
+      
+      const isCurrentUser = memberId === window.currentUser?.uid;
+      const isMemberLeader = memberId === group.leaderId;
       
       membersHtml += `
         <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5 ${isCurrentUser ? 'border-amber-500/30' : ''}">
           <div class="flex items-center gap-3">
-            <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'User')}&background=4a0404&color=fbbf24`}" 
+            <img src="${memberPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=4a0404&color=fbbf24`}" 
                  class="w-10 h-10 rounded-full border ${isMemberLeader ? 'border-amber-500' : 'border-white/10'}" 
-                 alt="${member.displayName}">
+                 alt="${memberName}">
             <div>
               <p class="text-[var(--text-color)] font-bold text-sm">
-                ${member.displayName || 'Unknown'}
+                ${memberName}
                 ${isCurrentUser ? '<span class="text-amber-500 text-xs">(You)</span>' : ''}
               </p>
               <p class="text-xs ${isMemberLeader ? 'text-amber-500' : 'text-[var(--text-muted)]'}">
@@ -377,7 +383,7 @@ const GroupChat = {
             </div>
           </div>
           ${isLeader && !isMemberLeader && !isCurrentUser ? `
-            <button onclick="Groups.removeMember('${member.odId}', '${member.displayName?.replace(/'/g, "\\'")}')" 
+            <button onclick="Groups.removeMember('${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
                     class="text-xs text-red-400 hover:text-red-300 px-2 py-1">
               Remove
             </button>
