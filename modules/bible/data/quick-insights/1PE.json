@@ -2,7 +2,7 @@
   "id": "1PE",
   "name": "1 Peter",
   "type": "quick-insights-openai-gpt4omini",
-  "generatedAt": "2026-01-22T16:40:34.797Z",
+  "generatedAt": "2026-01-22T17:00:33.388Z",
   "chapters": {
     "1": {
       "verses": {
@@ -1136,6 +1136,360 @@
             "livingItOut": "Sa araw-araw mong buhay, sanayin ang sarili na mahalin ang iba sa pamamagitan ng pagpapatawad at pag-unawa, lalo na kung may nasaktan sa iyo. Magsimula ka sa pakikipag-ugnayan sa isang kaibigan o kapamilya na may nagawa sa iyo at ipakita sa kanila ang kabaitan sa halip na magtanim ng sama ng loob.",
             "godsLove": "Ang pagmamahal ng Diyos ay napakalalim na hinihikayat tayong mahalin ang iba sa kabila ng kanilang mga pagkukulang. Nakikita Niya ang ating mga pagkakamali ngunit pinipili pa rin tayong patawarin, katulad ng gusto Niyang ipakita natin sa iba. Ang magandang siklo ng pagmamahal na ito ay nagpapakita kung gaano Siya nagmamalasakit sa atin.",
             "reflection": "Sino ang isang tao sa buhay mo na maaari mong mahalin, kahit na may ginawa silang masama sa iyo?"
+          }
+        },
+        "9": {
+          "en": {
+            "understanding": "This verse reminds us to be welcoming and generous to others, especially in our homes and communities. It encourages us to offer kindness and support without grumbling or expecting anything in return.",
+            "livingItOut": "To live this out, you can invite a friend or neighbor over for a meal or coffee, or even offer help to someone in need without hesitation. Small acts of kindness can create a warm community and show God’s love in action.",
+            "godsLove": "God's love is reflected in how we treat each other. When we show hospitality, we are sharing the love He has shown us, making others feel valued and accepted.",
+            "reflection": "How can you show hospitality to someone in your life this week?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay paalala sa atin na maging magiliw at mapagbigay sa iba, lalo na sa ating mga tahanan at komunidad. Inaanyayahan tayong magbigay ng kabaitan at suporta nang walang pagd complaining o inaasahang kapalit.",
+            "livingItOut": "Para maisakatuparan ito, maaari kang mag-imbita ng kaibigan o kapitbahay sa iyong tahanan para sa isang pagkain o kape, o kaya'y tumulong sa isang tao na nangangailangan nang walang pag-aatubili. Ang maliliit na kilos ng kabaitan ay makakalikha ng isang mainit na komunidad at ipapakita ang pag-ibig ng Diyos sa gawa.",
+            "godsLove": "Ang pag-ibig ng Diyos ay makikita sa paraan ng ating pakikitungo sa isa’t isa. Kapag tayo ay nagpapakita ng hospitality, ibinabahagi natin ang pag-ibig na ipinakita Niya sa atin, na nagpaparamdam sa ibang tao na sila ay mahalaga at tinatanggap.",
+            "reflection": "Paano mo maisasakatuparan ang hospitality sa isang tao sa iyong buhay ngayong linggo?"
+          }
+        },
+        "10": {
+          "en": {
+            "understanding": "In this verse, we learn that God has given each of us unique gifts to serve others. Just like a manager takes care of what belongs to someone else, we are called to use our gifts wisely for the benefit of our community.",
+            "livingItOut": "Think about what gifts or talents you have—maybe it's cooking, teaching, or encouraging others. Look for opportunities in your daily life where you can share these gifts, whether at home, in your neighborhood, or at church.",
+            "godsLove": "This verse shows us that God loves us deeply by giving us special abilities to help one another. He trusts us to use these gifts not just for ourselves, but to spread His love and kindness to those around us.",
+            "reflection": "What gift has God given you that you can use to bless someone else today?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, natutunan natin na may kanya-kanyang regalo ang Diyos sa atin para sa pagtulong sa iba. Parang isang manager, may responsibilidad tayong gamitin ang mga regalong ito nang mabuti para sa ikabubuti ng ating komunidad.",
+            "livingItOut": "Isipin mo kung ano ang mga talento o kakayahan mo—maaaring ito ay sa pagluluto, pagtuturo, o pag-encourage sa ibang tao. Hanapin ang mga pagkakataon sa araw-araw na maaari mong ibahagi ang mga regalong ito, kahit sa bahay, sa barangay, o sa simbahan.",
+            "godsLove": "Ipinapakita ng talatang ito na mahal tayo ng Diyos dahil binigyan Niya tayo ng mga espesyal na kakayahan para makatulong sa isa't isa. Tinutukoy Niya tayo na gamitin ang mga regalong ito hindi lang para sa ating sarili, kundi para ipakalat ang Kanyang pagmamahal at kabutihan sa paligid natin.",
+            "reflection": "Anong regalo ang ibinigay sa'yo ng Diyos na maaari mong gamitin para pagpalain ang ibang tao ngayon?"
+          }
+        },
+        "11": {
+          "en": {
+            "understanding": "In this verse, Peter emphasizes the importance of speaking and serving in a way that reflects God's truth and strength. He reminds us that when we do these things, it should always be for God's glory, showing that everything we do is connected to our faith in Jesus.",
+            "livingItOut": "Make it a habit to speak positively and truthfully to those around you. Whether you're helping a friend or serving your community, do it with joy and the strength that God gives you, knowing that your actions can reflect His love and light to others.",
+            "godsLove": "This verse shows us that God wants to empower us in our speaking and serving. He cares about our efforts and provides us the strength to do good, reminding us that we are part of something greater when we live out our faith through Jesus.",
+            "reflection": "How can you use your words and actions today to bring glory to God?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, binibigyang-diin ni Pedro ang kahalagahan ng pagsasalita at paglilingkod na nagrereplekta sa katotohanan at lakas ng Diyos. Pinapaalala niya sa atin na ang lahat ng ginagawa natin ay dapat para sa kaluwalhatian ng Diyos, na nagpapakita na ang lahat ng ating ginagawa ay konektado sa ating pananampalataya kay Jesus.",
+            "livingItOut": "Gawing ugali na magsalita ng positibo at totoo sa mga tao sa paligid mo. Kahit na tumutulong ka sa isang kaibigan o naglilingkod sa komunidad, gawin ito nang may kagalakan at lakas na ibinibigay ng Diyos, alam na ang iyong mga aksyon ay maaaring mag-reflect ng Kanyang pagmamahal at liwanag sa iba.",
+            "godsLove": "Ipinapakita ng talatang ito na nais ng Diyos na bigyan tayo ng lakas sa ating pagsasalita at paglilingkod. Pinahahalagahan Niya ang ating mga pagsisikap at nagbibigay sa atin ng lakas para gumawa ng mabuti, na nagpapakita na bahagi tayo ng isang mas malaking layunin kapag isinasabuhay natin ang ating pananampalataya kay Jesus.",
+            "reflection": "Paano mo magagamit ang iyong mga salita at gawa ngayon upang magdala ng kaluwalhatian sa Diyos?"
+          }
+        },
+        "12": {
+          "en": {
+            "understanding": "This verse reminds us that as Christians, we shouldn't be shocked when we face difficulties or challenges in life. It's a normal part of our journey, especially when we're trying to live according to God's ways in a world that often opposes those values.",
+            "livingItOut": "When you encounter tough times, try to view them as opportunities to grow in your faith. Whether it's through prayer, talking with fellow believers, or reading the Bible, find ways to strengthen your spirit during these challenges.",
+            "godsLove": "God loves us deeply, and even in our struggles, He is with us. This verse assures us that we are not alone; God understands our pain and is there to help us through every fiery trial we face.",
+            "reflection": "How can you shift your perspective on your current challenges to see them as opportunities for growth in your faith?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay paalala na bilang mga Kristiyano, hindi tayo dapat magulat kapag may mga paghihirap o pagsubok tayong dinaranas. Normal lang ito sa ating paglalakbay, lalo na kung sinusubukan nating mamuhay ayon sa mga kalooban ng Diyos sa mundong kadalasang laban dito.",
+            "livingItOut": "Kapag nakakaranas ka ng mga pagsubok, subukan mong tingnan ito bilang pagkakataon para lumago sa iyong pananampalataya. Maaaring magdasal, makipagkwentuhan sa mga kapwa mananampalataya, o magbasa ng Bibliya para palakasin ang iyong espiritu sa panahon ng mga hamon.",
+            "godsLove": "Mahal tayo ng Diyos ng labis, at kahit sa ating mga pagsubok, kasama natin Siya. Ang talatang ito ay nagbibigay katiyakan na hindi tayo nag-iisa; naiintindihan ng Diyos ang ating sakit at andiyan Siya para tulungan tayo sa bawat pagsubok na ating dinaranas.",
+            "reflection": "Paano mo maiaangkop ang iyong pananaw sa mga kasalukuyang pagsubok mo upang makita ito bilang pagkakataon para sa paglago sa iyong pananampalataya?"
+          }
+        },
+        "13": {
+          "en": {
+            "understanding": "This verse encourages us to find joy even in our suffering because it connects us to Jesus. By sharing in His sufferings, we can also share in His glory when He is revealed.",
+            "livingItOut": "In your daily life, when you face challenges or pain, try to remember that these moments can bring you closer to God. Look for ways to support others who are suffering, showing them love and compassion as Jesus would.",
+            "godsLove": "God cares deeply for us, and He understands our struggles. When we suffer for our faith or endure hardships, it means we are walking alongside Jesus, who loves us and promises to reveal His glory to us.",
+            "reflection": "How can you find joy in your current struggles and use them to grow closer to God?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagtuturo sa atin na dapat tayong magalak kahit na nasa gitna ng pagsubok, dahil ito ay nag-uugnay sa atin kay Jesus. Sa pagdanas natin ng Kanyang mga pagsubok, makikibahagi din tayo sa Kanyang kaluwalhatian sa darating na panahon.",
+            "livingItOut": "Sa araw-araw mong buhay, kapag may mga pagsubok o sakit, subukan mong alalahanin na ang mga sandaling ito ay maaaring magpalapit sa iyo sa Diyos. Maghanap ng mga pagkakataon na makatulong sa iba na nagdurusa, ipakita ang pagmamahal at malasakit tulad ng ginawa ni Jesus.",
+            "godsLove": "Mahal na mahal tayo ng Diyos, at nauunawaan Niya ang ating mga laban. Kapag tayo ay nagdurusa dahil sa ating pananampalataya o sa mga pagsubok sa buhay, ito ay nagpapakita na kasama tayo ni Jesus, na nagmamahal sa atin at nangangako na ipakikita ang Kanyang kaluwalhatian.",
+            "reflection": "Paano mo mahahanap ang kagalakan sa iyong mga kasalukuyang pagsubok at gamitin ito para lumapit sa Diyos?"
+          }
+        },
+        "14": {
+          "en": {
+            "understanding": "This verse teaches us that when people insult or criticize us because we follow Christ, we should feel blessed. It's a reminder that our faith connects us to something greater and that we share in the glory of God.",
+            "livingItOut": "In our daily lives, we can stand firm in our faith even when others don’t understand us. Try to respond to insults with kindness and patience, showing others the love of Christ in your actions.",
+            "godsLove": "God loves us so much that He assures us we are blessed even in tough times. When we face insults for our faith, it’s like God is wrapping us in His glory, reminding us that we are never alone.",
+            "reflection": "How can you respond to negativity in your life in a way that reflects your faith in Christ?"
+          },
+          "tl": {
+            "understanding": "Sinasabi ng talatang ito na kapag may nang-insulto sa atin dahil sa pananampalataya natin kay Cristo, dapat tayong makaramdam ng pagpapala. Ito ay paalala na ang ating pananampalataya ay konektado sa isang mas mataas na bagay at nakikibahagi tayo sa kaluwalhatian ng Diyos.",
+            "livingItOut": "Sa araw-araw na buhay, maaari tayong manatiling matatag sa ating pananampalataya kahit na hindi naiintindihan ng iba. Subukan mong tumugon sa mga pang-insulto ng may kabaitan at pasensya, ipakita ang pagmamahal ni Cristo sa iyong mga aksyon.",
+            "godsLove": "Sobrang mahal tayo ng Diyos kaya't sinisiguro niyang tayo ay pinagpapala kahit sa mga mahihirap na pagkakataon. Kapag tayo ay nahaharap sa mga insulto dahil sa ating pananampalataya, parang niyayakap tayo ng Diyos sa Kanyang kaluwalhatian, pinapaalalahanan tayong hindi tayo nag-iisa.",
+            "reflection": "Paano mo maaring tugunan ang negatibong karanasan sa buhay sa paraang nagpapakita ng iyong pananampalataya kay Cristo?"
+          }
+        },
+        "15": {
+          "en": {
+            "understanding": "This verse reminds us that our suffering should not come from wrongdoing or harmful actions. It's important to assess our behavior and ensure that we are not causing harm to others, which can lead to negative consequences.",
+            "livingItOut": "In your daily life, focus on kindness and honesty. Avoid situations where you might be tempted to do something wrong, and instead, seek ways to help others and build positive relationships.",
+            "godsLove": "God cares deeply about how we treat each other. When we choose to live righteously and avoid wrongdoing, we reflect His love and peace, showing that we value the lives of those around us.",
+            "reflection": "What steps can you take today to ensure your actions reflect love and integrity towards others?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na ang ating pagdurusa ay hindi dapat mula sa mga maling gawain o masamang kilos. Mahalaga na suriin ang ating mga asal at siguraduhin na hindi tayo nagdudulot ng pinsala sa iba, na nagiging sanhi ng masamang resulta.",
+            "livingItOut": "Sa araw-araw mong buhay, magpakatino at maging tapat. Iwasan ang mga sitwasyon na maaaring mag-udyok sa'yo na gumawa ng masama, at sa halip, humanap ng mga paraan upang makatulong sa iba at magbuo ng magagandang relasyon.",
+            "godsLove": "Mahalaga sa Diyos kung paano natin tinatrato ang isa't isa. Kapag pinili nating mamuhay ng matuwid at umiwas sa maling gawain, naipapakita natin ang Kanyang pag-ibig at kapayapaan, na nagpapakita na pinahahalagahan natin ang buhay ng mga tao sa paligid natin.",
+            "reflection": "Anong mga hakbang ang maaari mong gawin ngayon upang matiyak na ang iyong mga kilos ay nagpapakita ng pagmamahal at integridad sa iba?"
+          }
+        },
+        "16": {
+          "en": {
+            "understanding": "This verse reminds us that being called a Christian might bring suffering, but we shouldn't feel embarrassed about it. Instead, we should take pride in our identity as followers of Christ and honor God for it.",
+            "livingItOut": "In your daily life, find ways to show your faith boldly, even when it’s challenging. Whether it’s standing up for what’s right at work or sharing your beliefs with friends, let your actions reflect your identity as a Christian.",
+            "godsLove": "God loves you deeply, and being known as a Christian is a beautiful thing. Even in tough times, He stands by you, and your faith brings glory to Him, showing how much He cares for you.",
+            "reflection": "How can you celebrate your identity as a Christian this week, even if it brings some challenges?"
+          },
+          "tl": {
+            "understanding": "Sinasabi sa talatang ito na ang pagiging Kristiyano ay maaaring magdala ng pagdurusa, pero hindi tayo dapat mahiyang ipakita ito. Sa halip, dapat tayong maging proud sa ating pagkakakilanlan bilang mga tagasunod ni Cristo at parangalan ang Diyos dahil dito.",
+            "livingItOut": "Sa araw-araw, humanap ng mga paraan para ipakita ang iyong pananampalataya kahit na mahirap. Maaaring ito ay sa pagtayo para sa tama sa trabaho o pagbabahagi ng iyong pananaw sa mga kaibigan, ipakita mo na Kristiyano ka sa iyong mga gawa.",
+            "godsLove": "Mahalaga ka sa Diyos, at ang pagiging kilalang Kristiyano ay isang napakagandang bagay. Kahit sa mga pagsubok, nandiyan Siya para sa iyo, at ang iyong pananampalataya ay nagdadala ng kaluwalhatian sa Kanya, na nagpapakita ng Kanyang pagm caring sayo.",
+            "reflection": "Paano mo maipagdiriwang ang iyong pagkakakilanlan bilang Kristiyano sa linggong ito, kahit na may mga hamon?"
+          }
+        },
+        "17": {
+          "en": {
+            "understanding": "This verse reminds us that God starts His judgment with His own people, the family of God. It's a way for Him to purify and refine us, just like how gold is tested by fire.",
+            "livingItOut": "Let's take this message to heart by examining our own lives and actions. We can start by being honest with ourselves about any areas where we may not be following God's ways, and make a conscious effort to align ourselves with His teachings.",
+            "godsLove": "God's judgment is an act of love because it aims to make us better and closer to Him. He cares enough to help us grow and remove anything that hinders our relationship with Him.",
+            "reflection": "In what area of your life is God calling you to make a change or seek purification?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na nagsisimula ang hatol ng Diyos sa Kanyang mga tao, ang pamilya ng Diyos. Ito ay para linisin at patibayin tayo, parang kung paano sinusubok ang ginto sa apoy.",
+            "livingItOut": "Isapuso natin ang mensaheng ito sa pamamagitan ng pagsusuri sa ating mga buhay at mga aksyon. Magsimula tayo sa pagiging tapat sa ating sarili tungkol sa mga aspeto kung saan hindi tayo sumusunod sa mga daan ng Diyos, at gawin ang mga hakbang para umayon sa Kanyang mga turo.",
+            "godsLove": "Ang hatol ng Diyos ay isang kilos ng pag-ibig dahil layunin nitong gawing mas mabuti at mas malapit tayo sa Kanya. Pinahahalagahan Niya tayo at tinutulungan tayong lumago at alisin ang anumang hadlang sa ating relasyon sa Kanya.",
+            "reflection": "Sa anong bahagi ng iyong buhay ka tinatawag ng Diyos na gumawa ng pagbabago o hanapin ang paglilinis?"
+          }
+        },
+        "18": {
+          "en": {
+            "understanding": "This verse reminds us that if even the righteous face challenges, what will happen to those who do not follow God? It's a call to reflect on our lives and the choices we make in our faith journey.",
+            "livingItOut": "In your daily life, think about how you can stand firm in your faith, even when things get tough. Maybe you can spend time in prayer, join a Bible study group, or encourage a friend who is struggling.",
+            "godsLove": "God cares deeply for each of us, and He wants us to understand that even in difficult times, He is with us. This verse shows us that we are not alone in our struggles; God walks with us every step of the way.",
+            "reflection": "How can you strengthen your faith during challenging times in your life?"
+          },
+          "tl": {
+            "understanding": "Sinasabi ng talatang ito na kung ang mga matuwid ay may mga pagsubok, ano na lang ang mangyayari sa mga hindi sumusunod sa Diyos? Para itong paalala na pag-isipan natin ang ating buhay at mga desisyon sa ating pananampalataya.",
+            "livingItOut": "Sa araw-araw na buhay, isipin mo kung paano ka mananatiling matatag sa iyong pananampalataya kahit na mahirap ang sitwasyon. Maaaring maglaan ka ng oras para sa panalangin, sumali sa Bible study group, o mag-encourage ng kaibigan na nahihirapan.",
+            "godsLove": "Sobrang mahalaga tayo sa Diyos, at gusto Niya tayong maintindihan na kahit sa mga mahihirap na panahon, kasama natin Siya. Ipinapakita ng talatang ito na hindi tayo nag-iisa sa ating mga pagsubok; kasama natin ang Diyos sa bawat hakbang.",
+            "reflection": "Paano mo mapapalakas ang iyong pananampalataya sa mga hamon sa buhay?"
+          }
+        },
+        "19": {
+          "en": {
+            "understanding": "This verse reminds us that when we face suffering that aligns with God's plan, we can trust our lives to Him. It encourages us to keep doing good, even in tough times.",
+            "livingItOut": "In your daily life, look for ways to help others even when you're facing your own challenges. It could be as simple as offering a listening ear to a friend or volunteering in your community.",
+            "godsLove": "God cares deeply for us, especially during our struggles. By entrusting our souls to Him, we experience His faithfulness and love, knowing that He is always with us.",
+            "reflection": "How can you trust God more in your current struggles and continue to do good for others?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na kapag tayo ay dumaranas ng paghihirap na ayon sa kalooban ng Diyos, maari tayong magtiwala sa Kanya. Hinikayat tayo nito na ipagpatuloy ang paggawa ng mabuti kahit sa mga mahihirap na panahon.",
+            "livingItOut": "Sa araw-araw, maghanap ka ng mga paraan para tumulong sa iba kahit na nahaharap ka sa sarili mong mga pagsubok. Maari itong maging kasing simple ng pakikinig sa kaibigan o pag-volunteer sa inyong komunidad.",
+            "godsLove": "Mahalaga sa Diyos ang bawat isa sa atin, lalo na sa ating mga pagsubok. Sa pagtitiwala natin sa Kanya, nararanasan natin ang Kanyang katapatan at pagmamahal, at nalalaman natin na lagi Siyang nandiyan para sa atin.",
+            "reflection": "Paano mo maaring mas mapagkatiwalaan ang Diyos sa iyong mga kasalukuyang pagsubok at patuloy na gumawa ng kabutihan para sa iba?"
+          }
+        }
+      }
+    },
+    "5": {
+      "verses": {
+        "1": {
+          "en": {
+            "understanding": "In this verse, Peter is speaking to the leaders of the church, sharing his experiences as an elder and a witness of Christ's sufferings. He encourages them to lead with humility and strength, reminding them of the future glory that awaits believers.",
+            "livingItOut": "As church leaders or even in our own communities, we can take this message to heart by leading with compassion and understanding. Let’s make an effort to support and uplift those around us, just like Peter encouraged the elders to do.",
+            "godsLove": "This verse shows us that God cares deeply for His leaders and His people. By sharing in both the sufferings and the future glory, we see how He walks alongside us in our struggles and promises us a beautiful hope.",
+            "reflection": "In what ways can you support and uplift the leaders or elders in your community this week?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, kinakausap ni Pedro ang mga lider ng simbahan, ibinabahagi ang kanyang mga karanasan bilang isang elder at saksi sa mga pagdurusa ni Cristo. hinihimok niya silang mamuno nang may kababaang-loob at lakas, na ipinapaalala ang hinaharap na kaluwalhatian na naghihintay sa mga mananampalataya.",
+            "livingItOut": "Bilang mga lider ng simbahan o kahit sa ating mga komunidad, maaari nating isabuhay ang mensaheng ito sa pamamagitan ng pamumuno nang may malasakit at pag-unawa. Maglaan tayo ng oras para suportahan at iangat ang mga tao sa paligid natin, gaya ng paghimok ni Pedro sa mga elder.",
+            "godsLove": "Ipinapakita ng talatang ito na mahalaga ang mga lider at ang kanilang mga tao sa Diyos. Sa pagbabahagi ng parehong pagdurusa at hinaharap na kaluwalhatian, nakikita natin kung paano Siya kasama natin sa ating mga pagsubok at nangangako ng magandang pag-asa.",
+            "reflection": "Sa anong paraan mo maiaangat at masuportahan ang mga lider o elder sa iyong komunidad ngayong linggo?"
+          }
+        },
+        "2": {
+          "en": {
+            "understanding": "This verse encourages leaders, particularly pastors, to take care of their community like a shepherd cares for sheep. It emphasizes that this care should come from a genuine desire to help, not from pressure or selfish motives.",
+            "livingItOut": "In our daily lives, we can be like shepherds by looking out for those around us. This can mean checking in on friends or family, volunteering in community service, or simply being there for someone in need without expecting anything in return.",
+            "godsLove": "God shows His love through the call for us to care for one another. When we act with kindness and eagerness to support others, we reflect His heart and demonstrate how much He values each person in our lives.",
+            "reflection": "How can you show care and support to someone in your life this week, just like a shepherd would?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagtuturo sa mga lider, lalo na sa mga pastor, na alagaan ang kanilang komunidad tulad ng pag-aalaga ng isang pastor sa kanyang mga tupa. Ipinapakita nito na ang pag-aalaga ay dapat manggaling sa taos-pusong hangaring tumulong, hindi dahil sa pressure o sa makasariling dahilan.",
+            "livingItOut": "Sa araw-araw na buhay, maaari tayong maging parang mga pastor sa pamamagitan ng pag-aalaga sa mga tao sa paligid natin. Maari itong mangahulugan ng pag-check sa mga kaibigan o pamilya, pag-volunteer sa community service, o simpleng pagiging nandiyan para sa isang tao na nangangailangan nang walang inaasahang kapalit.",
+            "godsLove": "Ipinapakita ng Diyos ang Kanyang pagmamahal sa pamamagitan ng pagtawag sa atin na alagaan ang isa't isa. Kapag tayo ay kumikilos nang may kabaitan at sigasig para suportahan ang iba, naipapakita natin ang Kanyang puso at pinapakita kung gaano Niya pinahahalagahan ang bawat tao sa ating buhay.",
+            "reflection": "Paano mo maipapakita ang pag-aalaga at suporta sa isang tao sa iyong buhay sa linggong ito, tulad ng ginagawa ng isang pastor?"
+          }
+        },
+        "3": {
+          "en": {
+            "understanding": "This verse reminds leaders to guide others not by being bossy or controlling, but by setting a good example. It's about showing how to live and act in a way that others can follow.",
+            "livingItOut": "In your daily life, whether at work, home, or in your community, think about how your actions influence others. Try to be a role model by demonstrating kindness, humility, and integrity in everything you do.",
+            "godsLove": "God's love is reflected in His desire for leaders to care for others gently and supportively. He wants us to uplift each other, showing that true leadership is rooted in love and service.",
+            "reflection": "How can you be a better example for those around you today?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay paalala sa mga lider na dapat silang maging gabay sa iba hindi sa pamamagitan ng pagiging mayabang o kontrolado, kundi sa pamamagitan ng magandang halimbawa. Tungkol ito sa pagpapakita kung paano dapat mamuhay at kumilos para masundan ng iba.",
+            "livingItOut": "Sa araw-araw na buhay, kahit sa trabaho, bahay, o komunidad, isipin mo kung paano nakakaapekto ang mga aksyon mo sa iba. Subukan mong maging magandang halimbawa sa pamamagitan ng pagpapakita ng kabaitan, pagpapakumbaba, at katapatan sa lahat ng iyong ginagawa.",
+            "godsLove": "Ang pagmamahal ng Diyos ay makikita sa Kanyang pagnanais na ang mga lider ay mag-alaga sa iba sa isang mahinahon at sumusuportang paraan. Gusto Niya tayong itaguyod ang isa't-isa, na ang tunay na pamumuno ay nakaugat sa pagmamahal at paglilingkod.",
+            "reflection": "Paano ka magiging mas magandang halimbawa para sa mga tao sa paligid mo ngayon?"
+          }
+        },
+        "4": {
+          "en": {
+            "understanding": "This verse reminds us that Jesus is the Chief Shepherd who cares for His followers. When He returns, those who have faithfully served will be rewarded with a crown of glory that lasts forever.",
+            "livingItOut": "In your daily life, think about how you can serve others, whether in your family, community, or church. Small acts of kindness and leadership can reflect the love of Christ, knowing that your efforts matter in God's eyes.",
+            "godsLove": "God loves us so much that He promises a glorious reward for those who follow Him and serve others. This assurance shows that our hard work and dedication are noticed and valued by Him, reminding us that we are cherished in His sight.",
+            "reflection": "What is one way you can serve someone this week, knowing that your efforts will be rewarded in God's perfect timing?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na si Jesus ang ating Chief Shepherd na nagmamalasakit sa Kanyang mga tagasunod. Kapag Siya ay bumalik, ang mga tapat na naglingkod ay bibigyan ng korona ng kaluwalhatian na hindi kailanman mawawala.",
+            "livingItOut": "Sa araw-araw mong buhay, isipin kung paano ka makapaglingkod sa iba, sa pamilya, komunidad, o simbahan. Ang maliliit na gawa ng kabutihan at pamumuno ay makikita sa pagmamahal ni Cristo, na ang iyong mga pagsisikap ay mahalaga sa paningin ng Diyos.",
+            "godsLove": "Ang Diyos ay mahal tayo ng labis kaya't Siya ay nangangako ng isang makapangyarihang gantimpala para sa mga sumusunod sa Kanya at naglilingkod sa iba. Ang katiyakang ito ay nagpapakita na ang ating pagsusumikap at dedikasyon ay pinapansin at pinahahalagahan Niya, na nagpapaalala sa atin na tayo ay mahalaga sa Kanyang paningin.",
+            "reflection": "Ano ang isang paraan na maaari mong paglingkuran ang ibang tao sa linggong ito, na alam mong ang iyong mga pagsisikap ay gagantimpalaan sa tamang panahon ng Diyos?"
+          }
+        },
+        "5": {
+          "en": {
+            "understanding": "This verse encourages younger people to respect and submit to their elders. It highlights the importance of humility in relationships, reminding us that we should treat each other with kindness and respect.",
+            "livingItOut": "In your daily life, make an effort to listen to the advice of those who are older or more experienced than you. Try to show humility by valuing their insights and being open to learning from them.",
+            "godsLove": "God's love is beautifully shown in how He encourages us to care for one another. By teaching us to be humble and respectful, He helps us build strong, loving relationships within our community.",
+            "reflection": "How can you show humility and respect to someone older or more experienced in your life this week?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagtuturo sa mga kabataan na igalang at sumunod sa kanilang mga nakatatanda. Ipinapakita nito ang kahalagahan ng pagpapakumbaba sa ating relasyon, na dapat tayong magpakita ng kabaitan at respeto sa isa't isa.",
+            "livingItOut": "Sa araw-araw mong buhay, subukan mong makinig sa mga payo ng mga nakatatanda o mas may karanasan sa iyo. Ipakita ang pagpapakumbaba sa pamamagitan ng pagpapahalaga sa kanilang mga pananaw at pagiging bukas sa pagkatuto mula sa kanila.",
+            "godsLove": "Ang pagmamahal ng Diyos ay makikita sa kung paano Niya tayo hinikayat na alagaan ang isa't isa. Sa pagtuturo sa atin ng pagpapakumbaba at respeto, tinutulungan Niya tayong bumuo ng matibay at mapagmahal na relasyon sa ating komunidad.",
+            "reflection": "Paano mo maipapakita ang pagpapakumbaba at respeto sa isang nakatatanda o mas may karanasan sa iyong buhay ngayong linggo?"
+          }
+        },
+        "6": {
+          "en": {
+            "understanding": "This verse encourages us to be humble before God. When we recognize His greatness and our need for Him, we open ourselves to His guidance and timing in our lives.",
+            "livingItOut": "To live this out, practice humility by serving others and acknowledging your limitations. Take time each day to pray and seek God’s direction, trusting that He will lift you up when the time is right.",
+            "godsLove": "God's love is shown in His desire to lift us up. He cares for us deeply and wants to see us thrive, but He also knows that humility is essential for our growth and well-being.",
+            "reflection": "In what areas of your life do you find it hard to be humble and trust God’s timing?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nag-uudyok sa atin na maging mapagpakumbaba sa harap ng Diyos. Kapag kinikilala natin ang Kanyang kadakilaan at ang ating pangangailangan sa Kanya, nagiging bukas tayo sa Kanyang patnubay at tamang panahon sa ating buhay.",
+            "livingItOut": "Para maipamuhay ito, mag-practice ng pagpapakumbaba sa pamamagitan ng paglilingkod sa iba at pagtanggap ng iyong mga limitasyon. Maglaan ng oras araw-araw para manalangin at hanapin ang direksyon ng Diyos, nagtitiwala na itataas Ka Niya sa tamang panahon.",
+            "godsLove": "Ipinapakita ng pag-ibig ng Diyos ang Kanyang pagnanais na itaas tayo. Mahal na mahal Niya tayo at nais Niyang magtagumpay tayo, pero alam din Niyang mahalaga ang pagpapakumbaba para sa ating pag-unlad at kabutihan.",
+            "reflection": "Sa anong mga aspeto ng iyong buhay ka nahihirapang maging mapagpakumbaba at magtiwala sa timing ng Diyos?"
+          }
+        },
+        "7": {
+          "en": {
+            "understanding": "This verse reminds us that we can bring all our worries and fears to God. He is not just a distant figure; He genuinely cares about our struggles and wants to help us with them.",
+            "livingItOut": "In your daily life, take a moment to pray and share your worries with God. You can also write down your concerns and then give them to Him, trusting that He will take care of them.",
+            "godsLove": "This verse beautifully shows how much God loves us. He invites us to share our burdens because He cares deeply for each one of us, wanting to lighten our load.",
+            "reflection": "What worries can you hand over to God today to experience His peace?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na puwede nating ipagkatiwala lahat ng ating mga alalahanin sa Diyos. Hindi Siya isang malayo o walang pakialam na tao; talagang nagmamalasakit Siya sa ating mga pinagdadaanan at nais tayong tulungan.",
+            "livingItOut": "Sa araw-araw, maglaan ng oras para magdasal at ibahagi ang iyong mga alalahanin sa Diyos. Puwede mo ring isulat ang mga bagay na nagpapabigat sa iyo at ibigay ito sa Kanya, nagtitiwala na Siya ang bahala dito.",
+            "godsLove": "Ang talatang ito ay nagpapakita ng napakagandang pagmamahal ng Diyos sa atin. Inaanyayahan Niya tayong ibahagi ang ating mga pasanin dahil talagang nagmamalasakit Siya sa bawat isa sa atin at nais na magaan ang ating dinadala.",
+            "reflection": "Anong mga alalahanin ang puwede mong ipagkatiwala sa Diyos ngayon para maranasan ang Kanyang kapayapaan?"
+          }
+        },
+        "8": {
+          "en": {
+            "understanding": "This verse reminds us to stay clear-headed and watchful because the devil is constantly looking for opportunities to harm us. Just like a lion stalking its prey, he seeks to lead us away from what is good and true.",
+            "livingItOut": "To live this out, we can start by being mindful of our thoughts and actions each day. Spend a few moments in prayer or meditation, asking God for strength to resist temptation and to stay focused on what truly matters.",
+            "godsLove": "God cares for us deeply and wants us to be safe from harm. By warning us about the devil’s tactics, He shows His love and desire for us to stay close to Him, where we can find protection and peace.",
+            "reflection": "What are some distractions or temptations in your life that you need to be more aware of?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na dapat tayong maging alerto at malinaw ang isip dahil ang diyablo ay palaging naghahanap ng pagkakataon upang makasakit sa atin. Parang leong nanghuhuli, naghahanap siya ng paraan para ilayo tayo sa mabuti at totoo.",
+            "livingItOut": "Para maisakatuparan ito, simulan natin sa pagiging maingat sa ating mga iniisip at ginagawa araw-araw. Maglaan ng ilang minuto sa panalangin o pagmumuni-muni, humihiling sa Diyos ng lakas upang labanan ang tukso at manatiling nakatuon sa mga tunay na mahalaga.",
+            "godsLove": "Sobrang nagmamalasakit ang Diyos sa atin at gusto Niya tayong ligtas mula sa panganib. Sa pamamagitan ng pag-abiso sa atin tungkol sa mga taktika ng diyablo, ipinapakita Niya ang Kanyang pagmamahal at pagnanais na manatili tayong malapit sa Kanya, kung saan makakahanap tayo ng proteksyon at kapayapaan.",
+            "reflection": "Ano ang mga distractions o tukso sa buhay mo na kailangan mong maging mas maingat tungkol sa mga ito?"
+          }
+        },
+        "9": {
+          "en": {
+            "understanding": "This verse encourages us to stand strong in our faith, knowing that we are not alone in our struggles. Just like our brothers and sisters in Christ around the world, we all face difficulties and sufferings.",
+            "livingItOut": "To live this out, we can support each other in our faith communities. Take time to check in on a friend who may be going through a tough time, or share your own challenges so others can pray for you.",
+            "godsLove": "God loves us deeply and reminds us that we are part of a larger family of believers. Even in our hardest moments, we can find comfort knowing that He cares for us and that we are not isolated in our struggles.",
+            "reflection": "What steps can you take today to support someone who is facing challenges in their faith?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nag-uudyok sa atin na manatiling matatag sa ating pananampalataya, alam na hindi tayo nag-iisa sa ating mga pagsubok. Katulad ng ating mga kapatid kay Cristo sa buong mundo, lahat tayo ay may mga pinagdaraanan at paghihirap.",
+            "livingItOut": "Para maisakatuparan ito, maari tayong magtulungan sa ating mga komunidad ng pananampalataya. Maglaan ng oras na kumustahin ang isang kaibigan na maaaring may pinagdaraanan, o ibahagi ang iyong mga hamon para makapagdasal sila para sa iyo.",
+            "godsLove": "Mahal tayo ng Diyos at pinapaalala sa atin na tayo ay bahagi ng isang mas malaking pamilya ng mga mananampalataya. Kahit sa ating pinakamahirap na sandali, makakahanap tayo ng aliw na alam natin na Siya ay nagmamalasakit sa atin at hindi tayo nag-iisa sa ating mga laban.",
+            "reflection": "Anong mga hakbang ang maari mong gawin ngayon para suportahan ang isang tao na nahaharap sa mga hamon sa kanilang pananampalataya?"
+          }
+        },
+        "10": {
+          "en": {
+            "understanding": "This verse reminds us that our struggles are temporary. Even though it may feel like we're suffering for a long time, God assures us that it's just for a little while compared to the eternal joy we will experience with Him.",
+            "livingItOut": "When you're going through tough times, try to remember that it's just a phase. You can write down three things you're thankful for each day to shift your focus from pain to hope. Share your feelings with a trusted friend or family member to lighten your burden.",
+            "godsLove": "God's love is evident in His promise to restore and strengthen us after our struggles. He cares for us deeply, and His grace is always there to lift us up, reminding us that we are never alone in our pain.",
+            "reflection": "What is one challenge you are facing right now, and how can you lean on God's promise to restore you?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapakita na ang ating mga pagsubok ay pansamantala lamang. Kahit na parang matagal tayong nagdurusa, sinisiguro sa atin ng Diyos na ito'y sandali lamang kumpara sa walang hanggan na kagalakan na mararanasan natin kasama Siya.",
+            "livingItOut": "Sa mga panahon ng hirap, subukan mong alalahanin na parte lang ito ng buhay. Mag-isip ng tatlong bagay na nagpapasalamat ka araw-araw para ma-shift ang focus mo mula sa sakit patungo sa pag-asa. I-share ang nararamdaman mo sa isang kaibigan o kapamilya para maibsan ang iyong pasanin.",
+            "godsLove": "Makikita ang pag-ibig ng Diyos sa Kanyang pangako na tayo'y muling ibabalik at palalakasin pagkatapos ng mga pagsubok. Talagang nagmamalasakit Siya sa atin, at ang Kanyang biyaya ay laging nandiyan upang tayo'y itaas, na nagpapaalala na hindi tayo nag-iisa sa ating mga sakit.",
+            "reflection": "Ano ang isang hamon na hinaharap mo ngayon, at paano mo maaasahan ang pangako ng Diyos na muling ibabalik ka?"
+          }
+        },
+        "11": {
+          "en": {
+            "understanding": "This verse reminds us that all power belongs to God, and it lasts forever. It's an affirmation of our faith in His strength and sovereignty over all things.",
+            "livingItOut": "In your everyday life, acknowledge God’s power in all situations. Whether you’re facing challenges or celebrating victories, remember to give thanks and trust in His strength to guide you.",
+            "godsLove": "This verse shows us how deeply God cares for us by being the ultimate source of power. Knowing that He is in control brings us peace and assurance, reminding us that we are never alone.",
+            "reflection": "In what area of your life do you need to lean more on God's power today?"
+          },
+          "tl": {
+            "understanding": "Ang talatang ito ay nagpapaalala sa atin na ang lahat ng kapangyarihan ay kay God at ito ay walang hanggan. Ito ay isang pagsasaffirm ng ating pananampalataya sa Kanyang lakas at kapangyarihan sa lahat ng bagay.",
+            "livingItOut": "Sa araw-araw na buhay, kilalanin ang kapangyarihan ng Diyos sa lahat ng sitwasyon. Kahit na may mga hamon o nagdiriwang ng tagumpay, alalahanin na magpasalamat at magtiwala sa Kanyang lakas na patnubay sa iyo.",
+            "godsLove": "Ipinapakita ng talatang ito kung gaano kalalim ang pagmamahal ng Diyos sa atin bilang pangunahing pinagmulan ng kapangyarihan. Ang kaalaman na Siya ang may kontrol ay nagbibigay sa atin ng kapayapaan at katiyakan, na tayo ay hindi nag-iisa.",
+            "reflection": "Sa anong bahagi ng iyong buhay mo kailangan ng higit na pagtitiwala sa kapangyarihan ng Diyos ngayon?"
+          }
+        },
+        "12": {
+          "en": {
+            "understanding": "In this verse, Peter is telling his readers that he wrote this letter with the help of Silvanus, who he calls a faithful brother. This shows that Peter wanted to encourage the believers and remind them that God's grace is real and something they can rely on.",
+            "livingItOut": "To live out this verse, find a trusted friend or mentor who can support you in your faith journey. Share your struggles and ask for encouragement, just as Peter did with Silvanus. Together, stand firm in your faith and encourage each other regularly.",
+            "godsLove": "This verse highlights God's love by showing that He provides us with faithful companions like Silvanus to support us in our spiritual journey. God cares for us deeply and wants us to be surrounded by people who remind us of His grace and strength.",
+            "reflection": "Who in your life can you turn to for encouragement in your faith, and how can you support them in return?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, sinasabi ni Pedro sa kanyang mga mambabasa na isinulat niya ang liham na ito kasama si Silvanus, na tinatawag niyang tapat na kapatid. Ipinapakita nito na nais ni Pedro na hikayatin ang mga mananampalataya at ipaalala sa kanila na ang biyaya ng Diyos ay totoo at maaasahan.",
+            "livingItOut": "Para maisakatuparan ito, maghanap ka ng mapagkakatiwalaang kaibigan o mentor na makakatulong sa iyong paglalakbay sa pananampalataya. Ibahagi ang iyong mga pagsubok at humingi ng suporta, katulad ng ginawa ni Pedro kay Silvanus. Sama-sama kayong tumayo sa inyong pananampalataya at hikayatin ang isa't isa.",
+            "godsLove": "Pinapakita ng talatang ito ang pagmamahal ng Diyos sa atin sa pamamagitan ng pagbibigay sa atin ng mga tapat na kasama tulad ni Silvanus na sumusuporta sa ating espiritwal na paglalakbay. Mahalaga sa Diyos na magkaroon tayo ng mga tao na nagpapaalala sa atin ng Kanyang biyaya at lakas.",
+            "reflection": "Sino sa buhay mo ang maaari mong lapitan para sa suporta sa iyong pananampalataya, at paano mo naman siya matutulungan bilang kapalit?"
+          }
+        },
+        "13": {
+          "en": {
+            "understanding": "In this verse, Peter is sending greetings from the church in Babylon, which likely symbolizes Rome. Just like Babylon was a powerful city known for being against God's people, Peter reminds the believers that they are not alone, as they are part of a larger community of faith.",
+            "livingItOut": "To live this out, connect with fellow believers in your community. Join a small group or a church activity to support each other and share your experiences. Remember, you are part of a bigger family of faith, even when times are tough.",
+            "godsLove": "This verse shows us that God cares for us through our community. Just as Peter sends greetings and encouragement, God surrounds us with people who love and support us, reminding us that we are never alone in our struggles.",
+            "reflection": "Who can you reach out to this week for support or encouragement in your faith journey?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, nagpadala ng bati si Pedro mula sa simbahan sa Babilonya, na malamang ay simbolo ng Roma. Katulad ng Babilonya na isang makapangyarihang lungsod na kilala sa pagiging laban sa mga tao ng Diyos, pinapaalala ni Pedro sa mga mananampalataya na hindi sila nag-iisa, bahagi sila ng mas malaking komunidad ng pananampalataya.",
+            "livingItOut": "Para maisabuhay ito, makipag-ugnayan sa mga kapwa mananampalataya sa iyong komunidad. Sumali sa isang small group o aktibidad ng simbahan para magtulungan at magbahagi ng iyong mga karanasan. Tandaan, bahagi ka ng mas malaking pamilya ng pananampalataya, kahit na mahirap ang sitwasyon.",
+            "godsLove": "Ipinapakita ng talatang ito na nagmamalasakit ang Diyos sa atin sa pamamagitan ng ating komunidad. Tulad ng pagpapadala ni Pedro ng bati at pag-encourage, pinalilibutan tayo ng Diyos ng mga tao na nagmamahal at sumusuporta sa atin, na nagpapaalala na hindi tayo nag-iisa sa ating mga pagsubok.",
+            "reflection": "Sino ang maaari mong kausapin ngayong linggo para humingi ng suporta o encouragement sa iyong paglalakbay sa pananampalataya?"
+          }
+        },
+        "14": {
+          "en": {
+            "understanding": "In this verse, Peter encourages believers to greet each other warmly, showing love and affection. A simple kiss of love symbolizes the deep bond and unity that Christians should share with one another.",
+            "livingItOut": "Make it a habit to greet your fellow church members warmly, whether it's with a hug, a friendly smile, or a kind word. This small act of love can strengthen your community and spread positivity.",
+            "godsLove": "God's love is beautifully reflected in how we treat one another. When we greet each other with love, it shows that we are part of God's family, where everyone is valued and cared for.",
+            "reflection": "How can you express love and warmth to someone in your community this week?"
+          },
+          "tl": {
+            "understanding": "Sa talatang ito, hinihimok ni Pedro ang mga mananampalataya na batiin ang isa't isa ng may pagmamahal at yakap. Ang simpleng halik ng pagmamahal ay simbolo ng malalim na ugnayan at pagkakaisa na dapat taglayin ng mga Kristiyano.",
+            "livingItOut": "Gawing ugali na batiin ang mga kasama mo sa simbahan nang may init, kahit sa simpleng yakap, ngiti, o magandang salita. Ang maliliit na gawaing ito ng pagmamahal ay makakapagpatibay ng inyong komunidad at makakapaghatid ng kasiyahan.",
+            "godsLove": "Ang pagmamahal ng Diyos ay makikita sa kung paano natin tinatrato ang isa't isa. Kapag binabati natin ang isa't isa ng pagmamahal, ipinapakita nito na tayo ay bahagi ng pamilya ng Diyos, kung saan ang bawat isa ay mahalaga at inaalagaan.",
+            "reflection": "Paano mo maipapakita ang pagmamahal at init sa isang tao sa iyong komunidad sa linggong ito?"
           }
         }
       }

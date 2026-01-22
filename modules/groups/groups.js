@@ -755,17 +755,21 @@ const Groups = {
     
     // Use GroupMeeting module for meeting section
     let html = '';
-    if (typeof GroupMeeting !== 'undefined') {
+    if (typeof GroupMeeting !== 'undefined' && GroupMeeting.renderMeetingSection) {
       html += GroupMeeting.renderMeetingSection(group, this.isLeader);
     } else {
-      // Fallback if GroupMeeting not loaded
-      const schedule = group.schedule || {};
-      const meetingTime = `${this.capitalizeFirst(schedule.day || 'Saturday')}, ${this.formatTime(schedule.time || '19:00')}`;
+      // Simple fallback - just show schedule text without join button
+      const schedule = group.meetingSchedule || group.schedule || {};
+      const meetingTime = schedule.day && schedule.time 
+        ? `${this.capitalizeFirst(schedule.day)}, ${this.formatTime(schedule.time)}`
+        : 'No meeting scheduled';
       html += `
-        <div class="bg-[#4a0404] p-4 rounded-xl text-center border border-amber-500/20 mb-4 shadow-inner">
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weekly Meeting</p>
-          <p class="text-amber-400 font-black tracking-widest uppercase">${meetingTime}</p>
-          <p class="text-[10px] text-slate-500 mt-1">${group.name}</p>
+        <div class="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] mb-4">
+          <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2 mb-2">
+            <span class="text-xl">📹</span> Weekly Meeting
+          </h3>
+          <p class="text-[var(--text-color)]">${meetingTime}</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">Loading meeting module...</p>
         </div>
       `;
     }

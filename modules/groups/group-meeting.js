@@ -434,7 +434,8 @@ const GroupMeeting = {
    * Render meeting section UI for group screen
    */
   renderMeetingSection(group, isLeader) {
-    const schedule = group.meetingSchedule;
+    // Support both old 'schedule' field and new 'meetingSchedule' field
+    const schedule = group.meetingSchedule || group.schedule;
     const meetingInfo = this.getNextMeetingInfo(schedule);
     const canJoin = meetingInfo.isNow || isLeader;
     
