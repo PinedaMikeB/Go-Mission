@@ -349,12 +349,66 @@ const Groups = {
             
             // Load members
             await this.loadMembers();
+            
+            // Subscribe to real-time group updates
+            this.subscribeToGroupChanges(groupId);
           }
         }
       }
     } catch (error) {
       console.error('[Groups] Error loading user group:', error);
     }
+  },
+  
+  // Store unsubscribe function for cleanup
+  groupUnsubscribe: null,
+  
+  /**
+   * Subscribe to real-time group changes (member count, pending requests, etc.)
+   */
+  subscribeToGroupChanges(groupId) {
+    // Unsubscribe from previous listener if any
+    if (this.groupUnsubscribe) {
+      this.groupUnsubscribe();
+    }
+    
+    if (!window.db || !window.onSnapshot) return;
+    
+    const groupRef = window.doc(window.db, 'goMission_groups', groupId);
+    
+    this.groupUnsubscribe = window.onSnapshot(groupRef, async (doc) => {
+      if (doc.exists()) {
+        const newData = doc.data();
+        const oldMemberCount = this.currentGroup?.members?.length || 0;
+        const newMemberCount = newData.members?.length || 0;
+        
+        // Update local group data
+        this.currentGroup = { id: groupId, ...newData };
+        
+        // If member count changed, reload members and update UI
+        if (newMemberCount !== oldMemberCount) {
+          console.log('[Groups] Member count changed:', oldMemberCount, '→', newMemberCount);
+          await this.loadMembers();
+          this.updateUI();
+        }
+        
+        // If pending requests changed (for leaders)
+        if (this.isLeader) {
+          const oldPending = this.pendingRequests?.length || 0;
+          const newPending = newData.pendingRequests?.length || 0;
+          
+          if (newPending !== oldPending) {
+            console.log('[Groups] Pending requests changed:', oldPending, '→', newPending);
+            this.pendingRequests = newData.pendingRequests || [];
+            this.updateUI();
+          }
+        }
+      }
+    }, (error) => {
+      console.error('[Groups] Error in group listener:', error);
+    });
+    
+    console.log('[Groups] Subscribed to group changes');
   },
   
   /**
