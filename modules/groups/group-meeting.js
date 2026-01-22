@@ -437,7 +437,12 @@ const GroupMeeting = {
     // Support both old 'schedule' field and new 'meetingSchedule' field
     const schedule = group.meetingSchedule || group.schedule;
     const meetingInfo = this.getNextMeetingInfo(schedule);
-    const canJoin = meetingInfo.isNow || isLeader;
+    
+    // Everyone can join anytime - first person becomes host
+    const canJoin = true;
+    
+    // Determine button text
+    let buttonText = meetingInfo.isNow ? 'Join Now' : 'Start Meeting';
     
     return `
       <div class="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)]">
@@ -460,21 +465,15 @@ const GroupMeeting = {
             </p>
             ${!schedule ? `
               <p class="text-xs text-[var(--text-muted)] mt-1">
-                ${isLeader ? 'Set a weekly meeting time for your group' : 'Leader has not set a meeting time yet'}
+                ${isLeader ? 'Set a weekly meeting time for your group' : 'No schedule set yet'}
               </p>
             ` : ''}
           </div>
           
-          ${canJoin ? `
-            <button onclick="GroupMeeting.joinMeeting('${group.id}', '${group.name.replace(/'/g, "\\'")}', '${(window.currentUser?.displayName || 'Guest').replace(/'/g, "\\'")}', '${window.currentUser?.email || ''}', ${isLeader})"
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
-              <span>📹</span> ${meetingInfo.isNow ? 'Join Now' : 'Start Meeting'}
-            </button>
-          ` : `
-            <div class="px-4 py-2 bg-[var(--input-bg)] text-[var(--text-muted)] rounded-lg text-sm">
-              ${schedule ? 'Not yet' : 'No schedule'}
-            </div>
-          `}
+          <button onclick="GroupMeeting.joinMeeting('${group.id}', '${group.name.replace(/'/g, "\\'")}', '${(window.currentUser?.displayName || 'Guest').replace(/'/g, "\\'")}', '${window.currentUser?.email || ''}', ${isLeader})"
+                  class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+            <span>📹</span> ${buttonText}
+          </button>
         </div>
       </div>
     `;
