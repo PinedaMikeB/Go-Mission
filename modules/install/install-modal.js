@@ -1,6 +1,8 @@
 /**
  * Go Mission - Install Instructions Modal
  * Flow: Device Selection → Read Instructions Notice → All Steps (Scrollable)
+ * 
+ * Updated: Shows "Already installed?" section with app icon
  */
 
 const InstallModal = {
@@ -34,11 +36,18 @@ const InstallModal = {
     
     translations: {
         en: {
+            // Already installed section
+            alreadyInstalled: 'Already installed?',
+            alreadyInstalledText: 'To avoid seeing this guide, open Go Mission from your home screen.',
+            findIcon: 'Find and tap this icon:',
+            appName: 'Go Mission',
+            
+            // Not installed section
+            notInstalled: 'Not yet installed?',
             chooseDevice: 'Choose your device:',
             windows: 'Windows / Mac',
             android: 'Android',
             iphone: 'iPhone',
-            skip: 'Skip for now',
             langToggle: '🇵🇭 Tagalog',
             
             // Notice screen
@@ -92,11 +101,18 @@ const InstallModal = {
             win4_desc: 'Click "Enable" when prompted to receive updates from your group'
         },
         tl: {
+            // Already installed section
+            alreadyInstalled: 'Naka-install na?',
+            alreadyInstalledText: 'Para hindi na makita ang guide na ito, buksan ang Go Mission mula sa iyong home screen.',
+            findIcon: 'Hanapin at i-tap ang icon na ito:',
+            appName: 'Go Mission',
+            
+            // Not installed section
+            notInstalled: 'Hindi pa naka-install?',
             chooseDevice: 'Piliin ang iyong device:',
             windows: 'Windows / Mac',
             android: 'Android',
             iphone: 'iPhone',
-            skip: 'Laktawan muna',
             langToggle: '🇺🇸 English',
             
             // Notice screen
@@ -165,9 +181,9 @@ const InstallModal = {
         this.isInstalled = this.checkIfInstalled();
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');
-        const hasSkipped = localStorage.getItem('installSkipped') === 'true';
         
-        if (forceInstall || (!this.isInstalled && !hasSkipped)) {
+        // Only show if NOT in standalone mode (PWA)
+        if (forceInstall || !this.isInstalled) {
             setTimeout(() => this.show(), 500);
         }
         
@@ -222,6 +238,23 @@ const InstallModal = {
                     <button class="lang-toggle" onclick="InstallModal.toggleLang()">${this.t('langToggle')}</button>
                 </div>
                 
+                <!-- Already Installed Section -->
+                <div class="already-installed-section">
+                    <div class="already-installed-badge">✓ ${this.t('alreadyInstalled')}</div>
+                    <p class="already-installed-text">${this.t('alreadyInstalledText')}</p>
+                    <p class="find-icon-text">${this.t('findIcon')}</p>
+                    <div class="app-icon-preview">
+                        <img src="/icons/icon-192.png" alt="Go Mission" class="preview-icon">
+                        <span class="preview-label">${this.t('appName')}</span>
+                    </div>
+                </div>
+                
+                <!-- Divider -->
+                <div class="section-divider">
+                    <span>${this.t('notInstalled')}</span>
+                </div>
+                
+                <!-- Device Selection -->
                 <p class="install-subtitle">${this.t('chooseDevice')}</p>
                 
                 <div class="device-buttons">
@@ -238,10 +271,6 @@ const InstallModal = {
                         <span class="device-name">${this.t('iphone')}</span>
                     </button>
                 </div>
-                
-                <button class="skip-btn" onclick="InstallModal.skip()">
-                    ${this.t('skip')}
-                </button>
             </div>
         `;
     },
@@ -356,11 +385,6 @@ const InstallModal = {
         this.render();
     },
     
-    skip() {
-        localStorage.setItem('installSkipped', 'true');
-        this.close();
-    },
-    
     close() {
         const modal = document.getElementById('installModal');
         if (modal) modal.remove();
@@ -401,6 +425,8 @@ const InstallModal = {
                 padding: 24px;
                 max-width: 420px;
                 width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
                 color: #fff;
                 text-align: center;
             }
@@ -427,27 +453,94 @@ const InstallModal = {
                 font-size: 12px;
                 cursor: pointer;
             }
+            
+            /* Already Installed Section */
+            #installModal .already-installed-section {
+                background: rgba(34, 197, 94, 0.1);
+                border: 1px solid rgba(34, 197, 94, 0.3);
+                border-radius: 16px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            #installModal .already-installed-badge {
+                display: inline-block;
+                background: rgba(34, 197, 94, 0.2);
+                color: #4ade80;
+                font-size: 14px;
+                font-weight: 700;
+                padding: 6px 14px;
+                border-radius: 20px;
+                margin-bottom: 12px;
+            }
+            #installModal .already-installed-text {
+                color: #e2e8f0;
+                font-size: 14px;
+                line-height: 1.5;
+                margin: 0 0 12px 0;
+            }
+            #installModal .find-icon-text {
+                color: #94a3b8;
+                font-size: 13px;
+                margin: 0 0 12px 0;
+            }
+            #installModal .app-icon-preview {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            #installModal .preview-icon {
+                width: 72px;
+                height: 72px;
+                border-radius: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            #installModal .preview-label {
+                color: #fff;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            
+            /* Section Divider */
+            #installModal .section-divider {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin: 20px 0;
+            }
+            #installModal .section-divider::before,
+            #installModal .section-divider::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: rgba(255,255,255,0.1);
+            }
+            #installModal .section-divider span {
+                color: #64748b;
+                font-size: 13px;
+                white-space: nowrap;
+            }
+            
             #installModal .install-subtitle {
                 color: #94a3b8;
-                margin-bottom: 20px;
-                font-size: 16px;
+                margin-bottom: 16px;
+                font-size: 14px;
             }
             #installModal .device-buttons {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                margin-bottom: 20px;
+                gap: 10px;
             }
             #installModal .device-btn {
                 display: flex;
                 align-items: center;
                 gap: 16px;
-                padding: 16px 20px;
+                padding: 14px 18px;
                 background: rgba(255,255,255,0.05);
                 border: 2px solid rgba(255,255,255,0.1);
-                border-radius: 16px;
+                border-radius: 14px;
                 color: #fff;
-                font-size: 18px;
+                font-size: 16px;
                 cursor: pointer;
                 transition: all 0.2s;
             }
@@ -459,18 +552,10 @@ const InstallModal = {
                 border-color: #f59e0b;
             }
             #installModal .device-icon {
-                font-size: 32px;
+                font-size: 28px;
             }
             #installModal .device-name {
                 font-weight: 600;
-            }
-            #installModal .skip-btn {
-                background: transparent;
-                border: none;
-                color: #64748b;
-                font-size: 14px;
-                cursor: pointer;
-                padding: 12px;
             }
             
             /* Notice Screen */
