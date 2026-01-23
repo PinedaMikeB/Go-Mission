@@ -1226,7 +1226,11 @@
                 if (userNameEl) userNameEl.textContent = user.displayName || user.email;
                 if (userPhotoEl) {
                     userPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
-                    if (user.photoURL) userPhotoEl.classList.remove('hidden');
+                    if (user.photoURL) {
+                        userPhotoEl.classList.remove('hidden');
+                        // Hide the initial badge when photo is available
+                        if (userInitialEl) userInitialEl.parentElement.classList.add('hidden');
+                    }
                 }
                 if (adminPhotoEl) adminPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
                 if (userInitialEl) userInitialEl.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
