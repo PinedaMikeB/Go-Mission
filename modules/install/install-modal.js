@@ -60,6 +60,8 @@ const InstallModal = {
             stepsTitle: 'Installation Steps',
             beginTitle: 'Ready to Install!',
             beginText: 'Now tap the Share button below',
+            beginTextAndroid: 'Now tap the Menu (⋮) button above',
+            beginTextWindows: 'Now click the Install icon (⊕) above',
             backToSteps: '← Back to Instructions',
             
             // Android steps
@@ -122,6 +124,8 @@ const InstallModal = {
             stepsTitle: 'Mga Hakbang sa Pag-install',
             beginTitle: 'Handa Nang I-install!',
             beginText: 'Pindutin ang Share button sa baba',
+            beginTextAndroid: 'Pindutin ang Menu (⋮) button sa itaas',
+            beginTextWindows: 'I-click ang Install icon (⊕) sa itaas',
             backToSteps: '← Bumalik sa Instructions',
             
             // Android steps
@@ -331,9 +335,9 @@ const InstallModal = {
                     <div class="begin-section">
                         <div class="begin-icon">✅</div>
                         <h3>${this.t('beginTitle')}</h3>
-                        <p>${this.t('beginText')}</p>
-                        <div class="point-down">
-                            <span>👇</span>
+                        <p>${this.t(this.currentDevice === 'android' ? 'beginTextAndroid' : this.currentDevice === 'windows' ? 'beginTextWindows' : 'beginText')}</p>
+                        <div class="point-${this.currentDevice === 'android' || this.currentDevice === 'windows' ? 'up' : 'down'}">
+                            <span>${this.currentDevice === 'android' || this.currentDevice === 'windows' ? '☝️' : '👇'}</span>
                         </div>
                     </div>
                 </div>
@@ -737,17 +741,28 @@ const InstallModal = {
                 line-height: 1.5;
                 font-weight: 600;
             }
-            #installModal .point-down {
+            #installModal .point-down,
+            #installModal .point-up {
                 display: flex;
                 justify-content: center;
-                animation: bounce 1s infinite;
             }
-            #installModal .point-down span {
+            #installModal .point-down {
+                animation: bounce-down 1s infinite;
+            }
+            #installModal .point-up {
+                animation: bounce-up 1s infinite;
+            }
+            #installModal .point-down span,
+            #installModal .point-up span {
                 font-size: 48px;
             }
-            @keyframes bounce {
+            @keyframes bounce-down {
                 0%, 100% { transform: translateY(0); }
                 50% { transform: translateY(10px); }
+            }
+            @keyframes bounce-up {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
             }
         `;
         
