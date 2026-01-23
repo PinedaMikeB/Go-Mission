@@ -1530,15 +1530,21 @@
             
             try {
                 document.getElementById('errorMessage').classList.add('hidden');
+                console.log('Sending password reset to:', email);
                 await sendPasswordResetEmail(auth, email);
-                showSuccess('Password reset email sent! Check your inbox.');
+                showSuccess('Password reset email sent! Check your inbox (and spam folder).');
                 document.getElementById('resetEmailInput').value = '';
             } catch (error) {
+                console.error('Password reset error:', error.code, error.message);
                 let message = 'Failed to send reset email. ';
                 if (error.code === 'auth/user-not-found') {
-                    message = 'No account found with this email.';
+                    message = 'No account found with this email. Try signing in with Google first to create an account.';
                 } else if (error.code === 'auth/invalid-email') {
                     message = 'Please enter a valid email address.';
+                } else if (error.code === 'auth/missing-email') {
+                    message = 'Please enter your email address.';
+                } else {
+                    message = error.message || 'Unknown error occurred.';
                 }
                 showError(message);
             }
