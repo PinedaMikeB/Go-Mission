@@ -51,6 +51,9 @@ const ScrollHandler = {
     
     /**
      * Update header/nav visibility based on scroll direction
+     * Standard mobile UX (like Instagram, Facebook):
+     * - Scrolling through content (DOWN) = Hide nav for immersive reading
+     * - Scrolling back up = Show nav for navigation
      */
     updateNavVisibility() {
         const currentScrollY = window.scrollY;
@@ -69,10 +72,10 @@ const ScrollHandler = {
         }
         
         if (scrollDiff > 0) {
-            // Scrolling DOWN - hide nav
+            // Scrolling DOWN (reading more content) - HIDE nav for immersive view
             this.hideNav();
         } else {
-            // Scrolling UP - show nav
+            // Scrolling UP (going back) - SHOW nav for navigation
             this.showNav();
         }
         
