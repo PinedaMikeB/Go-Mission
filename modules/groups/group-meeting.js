@@ -20,8 +20,9 @@ const GroupMeeting = {
   joinedAt: null,
   participants: [],
   
-  // Jitsi configuration
-  JITSI_DOMAIN: 'meet.jit.si',
+  // JaaS (Jitsi as a Service) configuration
+  JAAS_APP_ID: 'vpaas-magic-cookie-8beaeb1f813a4ca9959c8927f131134d',
+  JITSI_DOMAIN: '8x8.vc',
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -39,7 +40,7 @@ const GroupMeeting = {
   },
   
   /**
-   * Load Jitsi Meet External API script
+   * Load Jitsi Meet External API script (JaaS version)
    */
   loadJitsiScript() {
     return new Promise((resolve, reject) => {
@@ -49,33 +50,37 @@ const GroupMeeting = {
       }
       
       const script = document.createElement('script');
-      script.src = 'https://meet.jit.si/external_api.js';
+      // Use JaaS script URL with App ID
+      script.src = `https://8x8.vc/${this.JAAS_APP_ID}/external_api.js`;
       script.async = true;
       script.onload = () => {
-        console.log('[GroupMeeting] Jitsi API loaded');
+        console.log('[GroupMeeting] JaaS API loaded');
         resolve();
       };
       script.onerror = () => {
-        console.error('[GroupMeeting] Failed to load Jitsi API');
-        reject(new Error('Failed to load Jitsi API'));
+        console.error('[GroupMeeting] Failed to load JaaS API');
+        reject(new Error('Failed to load JaaS API'));
       };
       document.head.appendChild(script);
     });
   },
   
   /**
-   * Generate unique room name for group
+   * Generate unique room name for group (JaaS format)
+   * Format: {AppID}/{RoomName}
    */
   generateRoomName(groupId, groupName) {
     // Clean group name for URL
     const cleanName = groupName
       .replace(/[^a-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, '')
-      .substring(0, 20);
+      .substring(0, 15);
     
-    // Format: GoMission-{cleanName}-{groupId-last6}
-    const shortId = groupId.substring(groupId.length - 6);
-    return `GoMission${cleanName}${shortId}`;
+    // Use group ID for uniqueness (no random suffix needed for JaaS)
+    const shortId = groupId.substring(groupId.length - 8);
+    
+    // JaaS room format: AppID/RoomName
+    return `${this.JAAS_APP_ID}/GoMission${cleanName}${shortId}`;
   },
   
   /**
@@ -175,19 +180,26 @@ const GroupMeeting = {
         email: userEmail || ''
       },
       configOverwrite: {
-        // Disable features we don't need
+        // Disable authentication requirements
+        disableModeratorIndicator: true,
         disableInviteFunctions: true,
         disableDeepLinking: true,
         prejoinPageEnabled: false,
         startWithAudioMuted: false,
         startWithVideoMuted: false,
+        // Disable lobby - allow direct join
+        enableLobby: false,
+        lobbyModeEnabled: false,
+        // Allow anyone to be moderator
+        enableUserRolesBasedOnToken: false,
         // Branding
         brandingRoomAlias: `Go Mission - ${groupName}`,
-        // Moderation
-        enableLobby: false,
         // Recording (disable for free tier)
         fileRecordingsEnabled: false,
         liveStreamingEnabled: false,
+        // Disable requiring login
+        enableInsecureRoomNameWarning: false,
+        requireDisplayName: false,
       },
       interfaceConfigOverwrite: {
         // Simplified toolbar
@@ -315,25 +327,36 @@ const GroupMeeting = {
     if (!window.db || !window.currentUser) return;
     
     try {
+      const today = new Date().toISOString().split('T')[0];
+      const monthKey = today.substring(0, 7); // YYYY-MM
+      
       // Create/update meeting record
       const meetingRef = window.doc(
         window.db, 
         'goMission_meetings', 
-        `${groupId}_${new Date().toISOString().split('T')[0]}`
+        `${groupId}_${today}`
       );
       
-      this.currentMeetingId = meetingRef.id;
+      this.currentMeetingId = `${groupId}_${today}`;
       
       // Add attendance record
       await window.setDoc(meetingRef, {
         groupId: groupId,
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         startedAt: window.serverTimestamp(),
         attendees: window.arrayUnion({
           odId: window.currentUser.uid,
           name: userName,
           joinedAt: new Date().toISOString()
         })
+      }, { merge: true });
+      
+      // Update monthly usage stats
+      const statsRef = window.doc(window.db, 'goMission_meetingStats', monthKey);
+      await window.setDoc(statsRef, {
+        month: monthKey,
+        totalMeetings: window.increment(1),
+        lastUpdated: window.serverTimestamp()
       }, { merge: true });
       
       console.log('[GroupMeeting] Attendance recorded');
@@ -350,6 +373,7 @@ const GroupMeeting = {
     
     try {
       const duration = this.joinedAt ? Math.round((new Date() - this.joinedAt) / 60000) : 0;
+      const monthKey = new Date().toISOString().substring(0, 7); // YYYY-MM
       
       // Update meeting record with leave time
       const meetingRef = window.doc(window.db, 'goMission_meetings', this.currentMeetingId);
@@ -373,6 +397,13 @@ const GroupMeeting = {
           lastActivity: window.serverTimestamp()
         }, { merge: true });
       }
+      
+      // Update monthly usage stats with minutes
+      const statsRef = window.doc(window.db, 'goMission_meetingStats', monthKey);
+      await window.setDoc(statsRef, {
+        totalMinutes: window.increment(duration),
+        lastUpdated: window.serverTimestamp()
+      }, { merge: true });
       
       console.log('[GroupMeeting] Leave recorded, duration:', duration, 'minutes');
     } catch (error) {
@@ -541,6 +572,68 @@ const GroupMeeting = {
     } else {
       alert('Failed to save schedule. Please try again.');
     }
+  },
+  
+  /**
+   * Get meeting usage stats for current month (for admin dashboard)
+   */
+  async getMonthlyStats() {
+    if (!window.db) return null;
+    
+    try {
+      const monthKey = new Date().toISOString().substring(0, 7);
+      const statsRef = window.doc(window.db, 'goMission_meetingStats', monthKey);
+      const statsDoc = await window.getDoc(statsRef);
+      
+      if (statsDoc.exists()) {
+        return statsDoc.data();
+      }
+      return { month: monthKey, totalMeetings: 0, totalMinutes: 0 };
+    } catch (error) {
+      console.error('[GroupMeeting] Error fetching stats:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Render meeting stats for admin dashboard
+   */
+  async renderMeetingStats() {
+    const stats = await this.getMonthlyStats();
+    if (!stats) return '';
+    
+    const minutesUsed = stats.totalMinutes || 0;
+    const meetingsCount = stats.totalMeetings || 0;
+    const minutesLimit = 5000; // JaaS free tier
+    const usagePercent = Math.min(100, Math.round((minutesUsed / minutesLimit) * 100));
+    
+    return `
+      <div class="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)]">
+        <h3 class="font-bold text-[var(--text-color)] mb-3 flex items-center gap-2">
+          <span>📊</span> Meeting Usage (${stats.month})
+        </h3>
+        
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-[var(--text-muted)] text-sm">Minutes Used</span>
+            <span class="text-[var(--text-color)] font-bold">${minutesUsed} / ${minutesLimit}</span>
+          </div>
+          
+          <div class="w-full bg-black/30 rounded-full h-2">
+            <div class="bg-amber-500 h-2 rounded-full transition-all" style="width: ${usagePercent}%"></div>
+          </div>
+          
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-[var(--text-muted)]">Total Meetings</span>
+            <span class="text-amber-400 font-bold">${meetingsCount}</span>
+          </div>
+          
+          ${usagePercent > 80 ? `
+            <p class="text-xs text-red-400 mt-2">⚠️ Approaching monthly limit. Consider upgrading JaaS plan.</p>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 };
 
