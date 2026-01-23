@@ -164,6 +164,7 @@ const MyGroups = {
     renderGroupCard(group, type) {
         const memberCount = group.members?.length || 0;
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
+        const isLeader = group.leaderId === window.currentUser?.uid;
         
         return `
             <div class="mission-card rounded-xl overflow-hidden">
@@ -175,19 +176,34 @@ const MyGroups = {
                     <button onclick="MyGroups.showGroupMenu('${group.id}')" class="text-[var(--text-muted)]">•••</button>
                 </div>
                 <div class="p-4 space-y-3">
-                    ${hasSchedule ? `
-                        <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
-                            <div>
-                                <p class="text-xs text-[var(--text-muted)]">📅 Weekly Meeting</p>
+                    <!-- Meeting Section -->
+                    <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
+                        <div>
+                            <p class="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                                <span>📅</span> Weekly Meeting
+                            </p>
+                            ${hasSchedule ? `
                                 <p class="text-sm text-[var(--text-color)]">${group.meetingSchedule.day} at ${this.formatTime(group.meetingSchedule.time)}</p>
-                            </div>
-                            ${type === 'downline' ? `
-                                <button onclick="MyGroups.startMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                    Start Meeting
-                                </button>
-                            ` : ''}
+                            ` : `
+                                <p class="text-sm text-[var(--text-muted)]">Not scheduled</p>
+                            `}
                         </div>
-                    ` : ''}
+                        ${type === 'downline' ? `
+                            <!-- Leader: Start Meeting + Edit Schedule -->
+                            <div class="flex items-center gap-2">
+                                <button onclick="MyGroups.editSchedule('${group.id}')" class="text-[var(--mission-gold)] text-xs">Edit</button>
+                                <button onclick="MyGroups.startMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1">
+                                    <span>📹</span> Start Meeting
+                                </button>
+                            </div>
+                        ` : `
+                            <!-- Disciple: Join Meeting -->
+                            <button onclick="MyGroups.joinMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1">
+                                <span>📹</span> Join Meeting
+                            </button>
+                        `}
+                    </div>
+                    
                     <div class="flex items-center justify-between">
                         <span class="text-[var(--text-muted)] text-sm">Members</span>
                         <span class="text-[var(--mission-gold)] font-bold">${memberCount}/12</span>
@@ -487,16 +503,146 @@ const MyGroups = {
     },
     
     /**
-     * Start meeting for a group
+     * Start meeting for a group (Leader)
      */
     startMeeting(groupId) {
         const group = this.downlineGroups.find(g => g.id === groupId);
-        if (group && typeof GroupMeeting !== 'undefined') {
-            Groups.currentGroup = group;
+        if (!group) return;
+        
+        // Use GroupMeeting module if available
+        if (typeof GroupMeeting !== 'undefined') {
+            // Set current group in Groups module for compatibility
+            if (typeof Groups !== 'undefined') {
+                Groups.currentGroup = group;
+            }
             GroupMeeting.startMeeting();
+        } else {
+            // Fallback: Open Jitsi directly
+            const roomName = `GoMission-${groupId}`;
+            const jitsiUrl = `https://meet.jit.si/${roomName}`;
+            window.open(jitsiUrl, '_blank');
         }
     },
     
+    /**
+     * Join meeting for a group (Disciple)
+     */
+    joinMeeting(groupId) {
+        const group = this.uplineGroup?.id === groupId ? this.uplineGroup : null;
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+        
+        // Use GroupMeeting module if available
+        if (typeof GroupMeeting !== 'undefined') {
+            // Set current group in Groups module for compatibility
+            if (typeof Groups !== 'undefined') {
+                Groups.currentGroup = group;
+            }
+            GroupMeeting.joinMeeting();
+        } else {
+            // Fallback: Open Jitsi directly
+            const roomName = `GoMission-${groupId}`;
+            const jitsiUrl = `https://meet.jit.si/${roomName}`;
+            window.open(jitsiUrl, '_blank');
+        }
+    },
+    
+    /**
+     * Edit meeting schedule (Leader)
+     */
+    editSchedule(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const currentDay = group.meetingSchedule?.day || '';
+        const currentTime = group.meetingSchedule?.time || '19:00';
+        
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">📅 Edit Meeting Schedule</h3>
+                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
+                </div>
+                <p class="text-[var(--text-muted)] text-sm mb-4">${group.name}</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[var(--text-muted)] text-sm mb-2">Day of Week</label>
+                        <select id="scheduleDaySelect" class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)]">
+                            <option value="">Select a day</option>
+                            ${days.map(day => `
+                                <option value="${day}" ${day === currentDay ? 'selected' : ''}>${day}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[var(--text-muted)] text-sm mb-2">Time</label>
+                        <input type="time" id="scheduleTimeInput" value="${currentTime}"
+                            class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)]">
+                    </div>
+                </div>
+                
+                <div id="scheduleError" class="text-red-500 text-sm text-center mt-4 hidden"></div>
+                
+                <button onclick="MyGroups.saveSchedule('${groupId}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg mt-6">
+                    Save Schedule
+                </button>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Save meeting schedule
+     */
+    async saveSchedule(groupId) {
+        const day = document.getElementById('scheduleDaySelect')?.value;
+        const time = document.getElementById('scheduleTimeInput')?.value;
+        const errorEl = document.getElementById('scheduleError');
+        
+        if (!day) {
+            if (errorEl) {
+                errorEl.textContent = 'Please select a day';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        try {
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                { 
+                    meetingSchedule: { 
+                        day: day, 
+                        time: time,
+                        updatedAt: new Date().toISOString()
+                    } 
+                },
+                { merge: true }
+            );
+            
+            // Reload and close
+            await this.loadGroups();
+            this.render();
+            this.closeModal();
+            
+        } catch (error) {
+            console.error('[MyGroups] Save schedule error:', error);
+            if (errorEl) {
+                errorEl.textContent = 'Failed to save schedule';
+                errorEl.classList.remove('hidden');
+            }
+        }
+    },
+
     /**
      * Show group menu
      */
