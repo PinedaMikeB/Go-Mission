@@ -19,28 +19,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Core brand colors */
-            --mission-red-deep: #2a0505;
-            --mission-red-mid: #4a0404;
-            --mission-red-bright: #800000;
-            --mission-gold: #fbbf24;
-            --mission-gold-dim: #92400e;
-            --mission-text: #fdfcf0;
+            /* ============================================
+               STITCH MINIMAL 3-COLOR DARK MODE PALETTE
+               Colors: Dark Burgundy + White/Stone + Gold (sparingly)
+               ============================================ */
             
-            /* Dark Theme (default) */
-            --bg-color: #1a0505;
-            --bg-secondary: #1e0202;
-            --text-color: #fdfcf0;
-            --text-muted: #94a3b8;
-            --card-bg: linear-gradient(135deg, rgba(74, 4, 4, 0.95) 0%, rgba(30, 2, 2, 0.98) 100%);
-            --card-bg-solid: #2a0505;
-            --card-border: rgba(251, 191, 36, 0.15);
-            --nav-bg: #1e0202;
-            --nav-border: rgba(251, 191, 36, 0.1);
-            --nav-inactive: rgba(251, 191, 36, 0.4);
-            --input-bg: rgba(0, 0, 0, 0.4);
-            --input-border: rgba(255, 255, 255, 0.1);
-            --shadow-color: rgba(0, 0, 0, 0.6);
+            /* Core brand colors */
+            --mission-red-deep: #1A0A0A;      /* Very dark burgundy - main bg */
+            --mission-red-mid: #2D0F0F;       /* Card background */
+            --mission-red-bright: #7A0000;    /* Primary buttons */
+            --mission-gold: #FFD700;          /* Gold - USE SPARINGLY! */
+            --mission-gold-dim: #78716c;      /* Stone-500 for inactive states */
+            --mission-text: #f5f5f4;          /* Stone-100 - primary text */
+            --mission-text-muted: #a8a29e;    /* Stone-400 - secondary text */
+            --mission-text-dim: #78716c;      /* Stone-500 - inactive text */
+            --text-dim: #78716c;              /* Alias for easier use */
+            
+            /* Dark Theme (default) - Stitch Minimal Design */
+            --bg-color: #1A0A0A;
+            --bg-secondary: #1A0A0A;
+            --text-color: #f5f5f4;            /* Stone-100 */
+            --text-muted: #a8a29e;            /* Stone-400 */
+            --card-bg: rgba(45, 15, 15, 0.85);
+            --card-bg-solid: #2D0F0F;
+            --card-border: rgba(120, 113, 108, 0.15); /* Stone-500 at 15% */
+            --nav-bg: rgba(26, 10, 10, 0.95);
+            --nav-border: rgba(120, 113, 108, 0.15);
+            --nav-inactive: #78716c;          /* Stone-500 */
+            --input-bg: rgba(0, 0, 0, 0.2);
+            --input-border: rgba(255, 255, 255, 0.05);
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            
+            /* Accent usage - MINIMAL GOLD */
+            --accent-active: var(--mission-gold);      /* Only for active/current states */
+            --accent-inactive: #44403c;               /* Stone-700 for inactive */
+            --accent-border: rgba(255, 215, 0, 0.2);  /* Subtle gold border */
+            --accent-glow: rgba(255, 215, 0, 0.4);    /* Gold glow effect */
         }
 
         /* Light Mode Theme - Copied from Gemini Design */
@@ -74,7 +88,7 @@
         .font-mission { font-family: 'Cinzel', serif; }
 
         .bg-mission-sunset {
-            background: linear-gradient(to bottom, rgba(42, 5, 5, 0.7), rgba(42, 5, 5, 0.95)), 
+            background: linear-gradient(to bottom, rgba(26, 10, 10, 0.88), rgba(26, 10, 10, 0.95)), 
                         url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
             background-size: cover;
             background-position: center;
@@ -92,8 +106,9 @@
         .mission-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            box-shadow: 0 10px 40px var(--shadow-color);
-            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px var(--shadow-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
         
@@ -174,15 +189,15 @@
         }
 
         .mission-button {
-            background: linear-gradient(to bottom, #800000, #4a0404);
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            color: var(--mission-gold);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            background: var(--mission-red-bright);
+            border: none;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(122, 0, 0, 0.3);
             transition: all 0.2s ease;
         }
 
         .mission-button:active { transform: scale(0.97); filter: brightness(1.1); }
-        .mission-button:hover { filter: brightness(1.05); }
+        .mission-button:hover { filter: brightness(1.1); background: #8B0000; }
         .mission-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .progress-dot {
@@ -192,12 +207,12 @@
         }
         .progress-dot.active {
             background: var(--mission-gold);
-            border: 2px solid #fcd34d;
-            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+            border: 3px solid var(--card-bg-solid);
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
         }
         .progress-dot.inactive {
-            background: var(--mission-red-deep);
-            border: 2px solid var(--mission-gold-dim);
+            background: #44403c;             /* Stone-700 */
+            border: 3px solid var(--card-bg-solid);
         }
 
         /* Bible verse styles */
@@ -208,8 +223,8 @@
             transition: background 0.2s;
             line-height: 1.8;
         }
-        .verse:hover { background: rgba(251, 191, 36, 0.1); }
-        .verse.highlighted { background: rgba(251, 191, 36, 0.25); }
+        .verse:hover { background: rgba(255, 255, 255, 0.05); }
+        .verse.highlighted { background: rgba(255, 215, 0, 0.15); }
         .verse-num { 
             font-size: 10px; 
             color: var(--mission-gold); 
@@ -221,7 +236,7 @@
         /* Language toggle */
         .lang-toggle {
             display: flex;
-            background: rgba(0,0,0,0.3);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             padding: 2px;
         }
@@ -238,7 +253,7 @@
             color: var(--mission-red-deep);
         }
         .lang-btn:not(.active) {
-            color: var(--mission-gold-dim);
+            color: var(--text-muted);
         }
 
         /* Toggle switch */
@@ -273,24 +288,24 @@
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 162, 158, 0.2); border-radius: 10px; }
 
         .stat-number { color: var(--mission-gold); }
 
         /* Global Language Toggle */
         .lang-toggle-btn {
-            color: rgba(251, 191, 36, 0.5);
+            color: var(--text-muted);
             background: transparent;
             cursor: pointer;
             border: none;
         }
         .lang-toggle-btn.active {
             color: var(--mission-gold);
-            background: rgba(251, 191, 36, 0.15);
-            box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
         }
         .lang-toggle-btn:hover:not(.active) {
-            color: rgba(251, 191, 36, 0.8);
+            color: var(--text-color);
         }
         
         /* Theme Toggle Button */
@@ -301,15 +316,15 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid rgba(251, 191, 36, 0.2);
-            color: var(--mission-gold);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
             cursor: pointer;
             transition: all 0.2s ease;
         }
         .theme-toggle-btn:hover {
-            background: rgba(251, 191, 36, 0.2);
-            border-color: rgba(251, 191, 36, 0.4);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
         }
         .theme-toggle-btn:active {
             transform: scale(0.95);
@@ -329,8 +344,8 @@
     <!-- Loading State -->
     <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
         <div class="text-center animate-fade-up">
-            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p class="text-amber-200/60 text-xs font-bold uppercase tracking-widest">Loading...</p>
+            <div class="w-16 h-16 border-4 border-stone-600 border-t-[var(--mission-gold)] rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-stone-400 text-xs font-bold uppercase tracking-widest">Loading...</p>
         </div>
     </div>
 
@@ -339,7 +354,7 @@
         <div class="max-w-md w-full animate-fade-up">
             <div class="text-center mb-12">
                 <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
-                <div class="flex justify-center gap-1 text-amber-500 mb-8">
+                <div class="flex justify-center gap-1 text-[var(--mission-gold)] mb-8">
                     <span>★</span><span>★</span><span>★</span>
                 </div>
                 <h2 class="text-3xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
@@ -347,22 +362,23 @@
                 </h2>
             </div>
             <div class="space-y-4">
-                <p class="text-amber-200/60 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
-                <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-amber-500/30 hover:border-amber-500/60 shadow-2xl">
-                    <div class="bg-[#4a0404] p-4 rounded-xl border border-amber-500/40 shadow-inner">
-                        <svg class="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
+                <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-stone-700 hover:border-stone-600 shadow-2xl">
+                    <div class="bg-[var(--mission-red-mid)] p-4 rounded-xl border border-stone-700 shadow-inner">
+                        <svg class="w-7 h-7 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                         </svg>
                     </div>
                     <div>
-                        <p class="font-black text-amber-400 text-lg leading-tight uppercase">JOIN OUR MISSION GROUP</p>
-                        <p class="text-[11px] text-slate-300 font-medium">Simulan ang iyong Journey</p>
+                        <p class="font-black text-[var(--text-color)] text-lg leading-tight uppercase">JOIN OUR MISSION GROUP</p>
+                        <p class="text-[11px] text-stone-400 font-medium">Simulan ang iyong Journey</p>
                     </div>
                 </button>
                 <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
             </div>
-            <p class="text-center text-[10px] font-bold text-amber-200/40 uppercase tracking-[0.3em] mt-12">
+            <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-12">
                 Tuklasin ang Misyon Ni God!
+            </p>
             </p>
         </div>
     </div>
@@ -370,45 +386,36 @@
     <!-- Main App -->
     <div id="mainApp" class="hidden">
         <!-- Header -->
-        <header class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] sticky top-0 z-40 transition-colors duration-300">
-            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="text-amber-500">★</span>
-                    <span class="font-mission font-bold text-[var(--text-color)] tracking-widest uppercase">Go Mission</span>
+        <!-- Header - Minimal Design -->
+        <header class="bg-[var(--nav-bg)]/80 border-b border-[var(--nav-border)] sticky top-0 z-40 transition-colors duration-300 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-[var(--accent-active)] text-sm">★</span>
+                    <span class="font-mission font-bold text-[var(--text-color)] tracking-widest text-lg">GO MISSION</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <!-- Global Language Toggle - Flags Only -->
-                    <div class="flex items-center bg-[var(--input-bg)] rounded-full px-1 py-1 border border-[var(--card-border)]">
-                        <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="tl" title="Tagalog">
-                            🇵🇭
-                        </button>
-                        <button id="globalLangEN" onclick="i18n.setLang('en')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="en" title="English">
-                            🇺🇸
-                        </button>
-                    </div>
-                    <!-- Chat Notification Badge -->
-                    <button id="headerChatBadge" onclick="GroupChat?.open(); Notifications?.markAsRead();" class="relative hidden" title="Group Chat">
-                        <svg class="w-6 h-6 text-slate-400 hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- Chat Icon -->
+                    <button id="headerChatBadge" onclick="GroupChat?.open(); Notifications?.markAsRead();" class="relative hidden text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Group Chat">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                         </svg>
                         <span id="headerNotificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">0</span>
                     </button>
-                    <!-- Theme Toggle -->
-                    <button id="themeToggleBtn" onclick="Theme.toggle()" class="theme-toggle-btn" title="Toggle dark/light mode">
-                        <!-- Sun icon (shown in dark mode) -->
-                        <svg class="sun-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                        <!-- Moon icon (shown in light mode, hidden by default) -->
-                        <svg class="moon-icon w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    <!-- Notifications -->
+                    <button class="text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Notifications">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
                     </button>
-                    <span id="userName" class="text-sm text-slate-300 hidden sm:block"></span>
-                    <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-amber-500/30" src="" alt="">
-                    <button id="signOutBtn" class="text-amber-500/60 hover:text-amber-500 transition-colors" title="Sign out">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    <!-- Profile Avatar -->
+                    <div class="w-8 h-8 rounded-full bg-[var(--mission-red-bright)] flex items-center justify-center text-white text-xs font-bold ring-2 ring-[var(--accent-active)]/20">
+                        <span id="userInitial">M</span>
+                    </div>
+                    <img id="userPhoto" class="w-8 h-8 rounded-full ring-2 ring-[var(--card-border)] hidden" src="" alt="">
+                    <!-- Menu -->
+                    <button onclick="toggleMainMenu()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
                 </div>
@@ -419,53 +426,58 @@
         <main class="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
             
             <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) -->
-            <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
+            <div class="mission-card rounded-3xl p-6 mb-4 animate-fade-up">
                 <div class="flex items-center gap-2 mb-6">
-                    <span class="text-amber-500">★</span>
+                    <span class="text-[var(--accent-active)] text-sm">★</span>
                     <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
                 </div>
                 
+                <!-- Journey Stepper - Minimal Gold (only active dot glows) -->
                 <div class="relative px-2 mb-8">
-                    <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
-                    <div id="journeyProgressLine" class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 0%"></div>
+                    <div class="absolute top-[9px] left-4 right-4 h-[2px] bg-[var(--accent-inactive)]"></div>
+                    <div id="journeyProgressLine" class="absolute top-[9px] left-4 h-[2px] bg-[var(--accent-active)]" style="width: 0%"></div>
                     
                     <div class="flex justify-between relative z-10">
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-seeker"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">On The<br>Journey</span>
+                            <span class="text-[9px] mt-2 font-bold uppercase text-center leading-tight w-12" id="label-seeker">On The Journey</span>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-disciple"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple">Disciple</span>
+                            <span class="text-[9px] mt-2 font-medium uppercase text-center leading-tight w-12 text-[var(--text-dim)]" id="label-disciple">Disciple</span>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-disciple-maker"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple-maker">Disciple-<br>Maker</span>
+                            <span class="text-[9px] mt-2 font-medium uppercase text-center leading-tight w-12 text-[var(--text-dim)]" id="label-disciple-maker">Disciple-Maker</span>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-builder"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-builder">Builder</span>
+                            <span class="text-[9px] mt-2 font-medium uppercase text-center leading-tight w-12 text-[var(--text-dim)]" id="label-builder">Builder</span>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="progress-dot" id="dot-multiplier"></div>
-                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-multiplier">Multiplier</span>
+                            <span class="text-[9px] mt-2 font-medium uppercase text-center leading-tight w-12 text-[var(--text-dim)]" id="label-multiplier">Multiplier</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-black/40 rounded-xl p-6 border border-white/5">
-                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.15em] mb-1" id="journeyStageLabel">WHERE GOD HAS YOU TODAY</p>
-                    <p class="text-2xl font-black text-white uppercase tracking-tight mb-4" id="journeyPhaseName">ON THE JOURNEY</p>
+                <!-- Journey Phase Card - Minimal Design -->
+                <div class="bg-black/20 rounded-2xl p-5 border border-[var(--card-border)]">
+                    <p class="text-[10px] font-bold text-[var(--accent-active)] uppercase tracking-widest mb-1" id="journeyStageLabel">WHERE GOD HAS YOU TODAY</p>
+                    <p class="text-2xl font-black text-[var(--text-color)] uppercase tracking-tight mb-4" id="journeyPhaseName">ON THE JOURNEY</p>
                     
-                    <!-- Encouragement Message -->
-                    <div class="border-l-2 border-amber-500/50 pl-4 mb-4">
-                        <p class="text-sm text-slate-300 italic leading-relaxed" id="journeyEncouragement">God drew you to Himself.<br>He sees your seeking heart and delights in it.</p>
+                    <!-- Encouragement Message - Subtle gold border -->
+                    <div class="border-l-2 border-[var(--accent-active)]/30 pl-4 mb-4">
+                        <p class="text-sm text-[var(--text-muted)] italic leading-relaxed" id="journeyEncouragement">God drew you to Himself.<br>He sees your seeking heart and delights in it.</p>
                     </div>
                     
-                    <p class="text-sm text-slate-400 mb-4"><span id="journeyNextLabel">Next:</span> <span class="text-slate-200" id="journeyNextStep">Walk as a Disciple</span></p>
+                    <p class="text-sm text-[var(--text-muted)] mb-6">
+                        <span class="font-medium" id="journeyNextLabel">Next:</span> 
+                        <span class="text-[var(--text-color)]" id="journeyNextStep">Walk as a Disciple</span>
+                    </p>
                     
-                    <button class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
-                        <span id="viewNextStepsBtn">View Next Steps</span>
+                    <button class="mission-button w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        <span id="viewNextStepsBtn">VIEW NEXT STEPS</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
@@ -474,54 +486,61 @@
             </div>
 
             <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
-            <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
+            <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
                 <!-- Header with Menu -->
-                <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <span class="text-2xl">🔥</span>
+                        <span class="text-xl">🔥</span>
                         <div>
-                            <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
-                            <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
+                            <h2 class="text-base font-bold text-[var(--text-color)] leading-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
+                            <p class="text-xs text-[var(--accent-active)] font-medium" id="devotionDate"></p>
                         </div>
                     </div>
-                    <!-- Hamburger Menu Button -->
-                    <button onclick="toggleDevotionMenu()" class="p-2 rounded-lg hover:bg-amber-500/10 transition-colors" title="Menu">
-                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- Menu Button -->
+                    <button onclick="toggleDevotionMenu()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
                 </div>
 
                 <!-- Collapsed Bible Preview - TAP TO OPEN FULLSCREEN -->
-                <div class="p-4 cursor-pointer hover:bg-amber-500/5 transition-colors" onclick="BibleReader.enterFullscreen()">
+                <div class="p-4 cursor-pointer hover:bg-white/5 transition-colors" onclick="BibleReader.enterFullscreen()">
                     <!-- Passage Header -->
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest flex items-center gap-2" id="passageTitle">
-                            <span>📖 Juan 1</span>
-                        </h3>
-                        <div id="chapterProgress" class="text-[10px] text-slate-500 flex items-center gap-1"></div>
+                        <div class="flex items-center gap-1 text-[var(--accent-active)] font-bold">
+                            <span class="text-lg">📖</span>
+                            <span id="passageTitle">John 1</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-[var(--text-muted)] uppercase font-medium" id="chapterProgress"></span>
+                            <div class="flex gap-1" id="chapterDots"></div>
+                        </div>
                     </div>
                     
-                    <!-- Single Verse Preview (3 lines max) -->
-                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed line-clamp-3 mb-4">
-                        <p class="text-slate-500 text-center py-4">Loading...</p>
+                    <!-- Verse Preview -->
+                    <div id="bibleText" class="text-sm text-[var(--text-color)] leading-relaxed line-clamp-2 mb-4">
+                        <p class="text-[var(--text-muted)] text-center py-4">Loading...</p>
                     </div>
                     
                     <!-- Tap to Read Button -->
-                    <div class="flex items-center justify-center gap-2 py-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button class="w-full border-2 border-[var(--accent-active)]/20 bg-white/5 py-3 rounded-xl flex items-center justify-center gap-2 text-[var(--accent-active)] font-bold text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                         </svg>
-                        <span class="text-sm font-bold text-amber-500">Tap to Read & Reflect</span>
-                    </div>
+                        <span>Tap to Read & Reflect</span>
+                    </button>
                 </div>
                 
                 <!-- Week Progress -->
                 <div class="px-4 pb-4">
-                    <div class="flex items-center justify-center gap-2 pt-3 border-t border-white/5">
-                        <span class="text-[10px] text-slate-500">This week:</span>
+                    <div class="flex items-center justify-center gap-2 pt-3 border-t border-[var(--card-border)]">
+                        <span class="text-[10px] text-[var(--text-muted)]">This week:</span>
                         <div class="flex gap-1" id="weekDots"></div>
-                        <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
+                        <span class="text-[10px] text-[var(--accent-active)] font-bold" id="weekCount">0/7 days</span>
                     </div>
                 </div>
                 
@@ -746,39 +765,43 @@
         </main>
 
         <!-- Bottom Navigation -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
-            <div class="flex justify-around items-center px-4 h-20">
-                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-500">
-                    <div class="p-1.5 rounded-lg bg-amber-500/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                    </div>
-                    <span class="text-[8px] font-black uppercase tracking-widest">Journey</span>
+        <!-- Bottom Navigation - Minimal Design -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] backdrop-blur-md border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
+            <div class="flex justify-around items-center px-6 py-3">
+                <!-- Home/Journey - Active -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--accent-active)]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Home</span>
                 </button>
-                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
-                    <div class="p-1.5 rounded-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                    </div>
-                    <span class="text-[8px] font-black uppercase tracking-widest">Group</span>
+                <!-- Training -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Training</span>
                 </button>
-                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
-                    <div class="p-1.5 rounded-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <span class="text-[8px] font-black uppercase tracking-widest">Training</span>
+                <!-- Community/Group -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Community</span>
                 </button>
-                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
-                    <div class="p-1.5 rounded-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
-                        </svg>
-                    </div>
-                    <span class="text-[8px] font-black uppercase tracking-widest">Dash</span>
+                <!-- Messages -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Messages</span>
+                </button>
+                <!-- Groups/Dash -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Groups</span>
                 </button>
             </div>
         </nav>

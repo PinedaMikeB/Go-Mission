@@ -150,13 +150,19 @@ Generate the 4-section insight in JSON format:`;
   }
 }
 
+// Tyndale file name mapping (some files have different naming)
+const TYNDALE_FILE_MAP = {
+  '1SA': 'SA1',  // 1 Samuel is SA1.json in Tyndale
+};
+
 async function processBook(bookId) {
   const bookName = BOOK_NAMES[bookId] || bookId;
   console.log(`\n📖 Processing ${bookName}...`);
   
   // Load Bible and Tyndale data
   const biblePath = path.join(CONFIG.bibleDir, `${bookId}.json`);
-  const tyndalePath = path.join(CONFIG.tyndaleDir, `${bookId}.json`);
+  const tyndaleFileId = TYNDALE_FILE_MAP[bookId] || bookId;
+  const tyndalePath = path.join(CONFIG.tyndaleDir, `${tyndaleFileId}.json`);
   const outputPath = path.join(CONFIG.outputDir, `${bookId}.json`);
   
   if (!fs.existsSync(biblePath)) {
