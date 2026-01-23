@@ -161,7 +161,7 @@ const GroupMeeting = {
     }
     
     // Create meeting modal
-    this.showMeetingModal();
+    this.showMeetingModal(groupName);
     
     const roomName = this.generateRoomName(groupId, groupName);
     this.currentGroupId = groupId;
@@ -169,7 +169,7 @@ const GroupMeeting = {
     
     console.log('[GroupMeeting] Joining room:', roomName);
     
-    // Create Jitsi instance
+    // Create Jitsi instance with OPTIMIZED settings
     const options = {
       roomName: roomName,
       width: '100%',
@@ -180,46 +180,113 @@ const GroupMeeting = {
         email: userEmail || ''
       },
       configOverwrite: {
-        // Disable authentication requirements
-        disableModeratorIndicator: true,
-        disableInviteFunctions: true,
-        disableDeepLinking: true,
-        prejoinPageEnabled: false,
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        // Disable lobby - allow direct join
-        enableLobby: false,
-        lobbyModeEnabled: false,
-        // Allow anyone to be moderator
-        enableUserRolesBasedOnToken: false,
-        // Branding
-        brandingRoomAlias: `Go Mission - ${groupName}`,
-        // Recording (disable for free tier)
+        // === DISABLE RECORDING (fixes Camera Recording popup) ===
         fileRecordingsEnabled: false,
         liveStreamingEnabled: false,
-        // Disable requiring login
+        recordingService: {
+          enabled: false,
+          sharingEnabled: false
+        },
+        localRecording: {
+          enabled: false
+        },
+        
+        // === PERFORMANCE OPTIMIZATIONS ===
+        disableDeepLinking: true,
+        prejoinPageEnabled: false,
+        enableWelcomePage: false,
+        enableClosePage: false,
+        
+        // Start with audio/video ON for faster join
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        
+        // === DISABLE UNNECESSARY FEATURES ===
+        disableModeratorIndicator: true,
+        disableInviteFunctions: true,
+        disablePolls: true,
+        disableReactions: true,
+        disableSelfView: false,
+        disableSelfViewSettings: true,
+        hideConferenceSubject: true,
+        hideConferenceTimer: true,
+        
+        // Disable lobby
+        enableLobby: false,
+        
+        // Disable annoying prompts
         enableInsecureRoomNameWarning: false,
         requireDisplayName: false,
+        enableNoAudioDetection: false,
+        enableNoisyMicDetection: false,
+        
+        // Disable transcription/subtitles
+        transcription: {
+          enabled: false,
+          autoTranscribeOnRecord: false
+        },
+        
+        // Disable breakout rooms
+        breakoutRooms: {
+          hideAddRoomButton: true,
+          hideAutoAssignButton: true,
+          hideJoinRoomButton: true
+        },
+        
+        // Video quality (lower for mobile performance)
+        resolution: 480,
+        constraints: {
+          video: {
+            height: { ideal: 480, max: 720 }
+          }
+        },
+        
+        // Disable virtual backgrounds (performance)
+        disableVirtualBackground: true,
+        
+        // P2P for small groups (faster)
+        p2p: {
+          enabled: true
+        }
       },
       interfaceConfigOverwrite: {
-        // Simplified toolbar
+        // === MINIMAL TOOLBAR (only essentials) ===
         TOOLBAR_BUTTONS: [
-          'microphone', 'camera', 'desktop', 'fullscreen',
-          'chat', 'raisehand', 'participants-pane',
-          'tileview', 'hangup'
+          'microphone', 
+          'camera', 
+          'tileview',
+          'hangup'
         ],
-        // Branding
+        
+        // === HIDE ALL BRANDING ===
         SHOW_JITSI_WATERMARK: false,
         SHOW_WATERMARK_FOR_GUESTS: false,
         SHOW_BRAND_WATERMARK: false,
         BRAND_WATERMARK_LINK: '',
         SHOW_POWERED_BY: false,
-        // UI
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+        SHOW_PROMOTIONAL_CLOSE_PAGE: false,
+        
+        // === CLEAN UI ===
+        DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
         MOBILE_APP_PROMO: false,
         HIDE_INVITE_MORE_HEADER: true,
-        // Tile view by default for groups
-        TILE_VIEW_MAX_COLUMNS: 3,
+        HIDE_DEEP_LINKING_LOGO: true,
+        DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
+        DISABLE_FOCUS_INDICATOR: true,
+        DISABLE_PRESENCE_STATUS: true,
+        DISABLE_TRANSCRIPTION_SUBTITLES: true,
+        
+        // Tile view settings
+        TILE_VIEW_MAX_COLUMNS: 2,
+        VERTICAL_FILMSTRIP: false,
+        FILM_STRIP_MAX_HEIGHT: 100,
+        
+        // Settings
+        SETTINGS_SECTIONS: ['devices'],
+        
+        // Disable video quality label
+        DISABLE_VIDEO_BACKGROUND: true,
+        DEFAULT_BACKGROUND: '#000000'
       }
     };
     
@@ -230,6 +297,11 @@ const GroupMeeting = {
       this.api.addListener('videoConferenceJoined', (data) => {
         console.log('[GroupMeeting] Joined conference:', data);
         this.onJoined(groupId, userName);
+        
+        // Switch to tile view for better group view
+        setTimeout(() => {
+          this.api.executeCommand('setTileView', true);
+        }, 1000);
       });
       
       this.api.addListener('videoConferenceLeft', (data) => {
@@ -240,11 +312,13 @@ const GroupMeeting = {
       this.api.addListener('participantJoined', (data) => {
         console.log('[GroupMeeting] Participant joined:', data);
         this.participants.push(data);
+        this.updateParticipantCount();
       });
       
       this.api.addListener('participantLeft', (data) => {
         console.log('[GroupMeeting] Participant left:', data);
         this.participants = this.participants.filter(p => p.id !== data.id);
+        this.updateParticipantCount();
       });
       
       this.api.addListener('readyToClose', () => {
@@ -260,33 +334,45 @@ const GroupMeeting = {
   },
   
   /**
+   * Update participant count in header
+   */
+  updateParticipantCount() {
+    const countEl = document.getElementById('participant-count');
+    if (countEl) {
+      const count = this.participants.length + 1; // +1 for self
+      countEl.textContent = `${count} participant${count !== 1 ? 's' : ''}`;
+    }
+  },
+  
+  /**
    * Show full-screen meeting modal
    */
-  showMeetingModal() {
+  showMeetingModal(groupName) {
     // Remove existing modal if any
     const existing = document.getElementById('meeting-modal');
     if (existing) existing.remove();
     
     const modal = document.createElement('div');
     modal.id = 'meeting-modal';
-    modal.className = 'fixed inset-0 z-[200] bg-black';
+    modal.className = 'fixed inset-0 z-[200] bg-black flex flex-col';
     modal.innerHTML = `
       <!-- Header -->
-      <div class="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <img src="/icons/icon-192.png" class="w-8 h-8 rounded-lg" alt="Go Mission">
-            <span class="text-white font-bold">Go Mission Meeting</span>
+      <div class="flex-shrink-0 bg-black/90 px-4 py-3 flex items-center justify-between border-b border-white/10">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🔥</span>
+          <div>
+            <p class="text-white font-bold text-sm">${groupName || 'Go Mission Meeting'}</p>
+            <p id="participant-count" class="text-white/60 text-xs">Connecting...</p>
           </div>
-          <button onclick="GroupMeeting.leaveMeeting()" 
-                  class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors">
-            Leave Meeting
-          </button>
         </div>
+        <button onclick="GroupMeeting.leaveMeeting()" 
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-bold transition-colors">
+          ✕ Leave
+        </button>
       </div>
       
       <!-- Jitsi Container -->
-      <div id="jitsi-container" class="w-full h-full"></div>
+      <div id="jitsi-container" class="flex-1 w-full"></div>
     `;
     
     document.body.appendChild(modal);
