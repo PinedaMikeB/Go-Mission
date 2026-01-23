@@ -457,6 +457,8 @@
             </div>
             <div class="space-y-4">
                 <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
+                
+                <!-- Google Sign In Button -->
                 <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-stone-700 hover:border-stone-600 shadow-2xl">
                     <div class="bg-[var(--mission-red-mid)] p-4 rounded-xl border border-stone-700 shadow-inner">
                         <svg class="w-7 h-7 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,11 +470,97 @@
                         <p class="text-[11px] text-stone-400 font-medium">Simulan ang iyong Journey</p>
                     </div>
                 </button>
+                
+                <!-- Email Login Toggle -->
+                <div class="text-center mt-6">
+                    <button id="emailLoginToggle" onclick="toggleEmailLogin()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                        Can't sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Email instead</span>
+                    </button>
+                </div>
+                
+                <!-- Email Login Form (Hidden by default) -->
+                <div id="emailLoginForm" class="hidden mt-6 space-y-4 animate-fade-up">
+                    <div class="border-t border-stone-700 pt-6">
+                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Sign in with Email</p>
+                        
+                        <div class="space-y-3">
+                            <input type="email" id="emailInput" placeholder="Email address" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <input type="password" id="passwordInput" placeholder="Password" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <button id="emailSignInBtn" onclick="signInWithEmail()" 
+                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
+                                Sign In
+                            </button>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mt-4 text-xs">
+                            <button onclick="showForgotPassword()" class="text-stone-500 hover:text-[var(--mission-gold)] transition-colors">
+                                Forgot Password?
+                            </button>
+                            <button onclick="showRegister()" class="text-stone-500 hover:text-[var(--mission-gold)] transition-colors">
+                                Create Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Forgot Password Form (Hidden) -->
+                <div id="forgotPasswordForm" class="hidden mt-6 space-y-4 animate-fade-up">
+                    <div class="border-t border-stone-700 pt-6">
+                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-2">Reset Password</p>
+                        <p class="text-stone-500 text-xs text-center mb-4">Enter your email to receive a password reset link</p>
+                        
+                        <div class="space-y-3">
+                            <input type="email" id="resetEmailInput" placeholder="Email address" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <button id="resetPasswordBtn" onclick="sendPasswordReset()" 
+                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                                Send Reset Link
+                            </button>
+                        </div>
+                        
+                        <button onclick="backToEmailLogin()" class="w-full mt-4 text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                            ← Back to Sign In
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Register Form (Hidden) -->
+                <div id="registerForm" class="hidden mt-6 space-y-4 animate-fade-up">
+                    <div class="border-t border-stone-700 pt-6">
+                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Create Account</p>
+                        
+                        <div class="space-y-3">
+                            <input type="text" id="registerNameInput" placeholder="Full Name" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <input type="email" id="registerEmailInput" placeholder="Email address" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <input type="password" id="registerPasswordInput" placeholder="Password (min 6 characters)" 
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            
+                            <button id="registerBtn" onclick="registerWithEmail()" 
+                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                                Create Account
+                            </button>
+                        </div>
+                        
+                        <button onclick="backToEmailLogin()" class="w-full mt-4 text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                            ← Back to Sign In
+                        </button>
+                    </div>
+                </div>
+                
                 <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
+                <div id="successMessage" class="hidden mt-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm"></div>
             </div>
             <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-12">
                 Tuklasin ang Misyon Ni God!
-            </p>
             </p>
         </div>
     </div>
@@ -989,7 +1077,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
 
         const firebaseConfig = {
@@ -1325,6 +1413,150 @@
                 document.getElementById('errorMessage').classList.remove('hidden');
             }
         });
+
+        // Email Login Functions
+        function toggleEmailLogin() {
+            const form = document.getElementById('emailLoginForm');
+            const forgotForm = document.getElementById('forgotPasswordForm');
+            const registerForm = document.getElementById('registerForm');
+            
+            forgotForm.classList.add('hidden');
+            registerForm.classList.add('hidden');
+            form.classList.toggle('hidden');
+            
+            // Update toggle text
+            const toggle = document.getElementById('emailLoginToggle');
+            if (form.classList.contains('hidden')) {
+                toggle.innerHTML = 'Can\'t sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Email instead</span>';
+            } else {
+                toggle.innerHTML = '<span class="text-stone-400">Hide email login</span>';
+            }
+        }
+        
+        function showForgotPassword() {
+            document.getElementById('emailLoginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('forgotPasswordForm').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+        
+        function showRegister() {
+            document.getElementById('emailLoginForm').classList.add('hidden');
+            document.getElementById('forgotPasswordForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+        
+        function backToEmailLogin() {
+            document.getElementById('forgotPasswordForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('emailLoginForm').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+        
+        async function signInWithEmail() {
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!email || !password) {
+                showError('Please enter email and password');
+                return;
+            }
+            
+            try {
+                document.getElementById('errorMessage').classList.add('hidden');
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                let message = 'Sign in failed. ';
+                if (error.code === 'auth/user-not-found') {
+                    message = 'No account found with this email. Please register first.';
+                } else if (error.code === 'auth/wrong-password') {
+                    message = 'Incorrect password. Try again or use Forgot Password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Please enter a valid email address.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    message = 'Too many failed attempts. Please try again later.';
+                }
+                showError(message);
+            }
+        }
+        
+        async function registerWithEmail() {
+            const name = document.getElementById('registerNameInput').value.trim();
+            const email = document.getElementById('registerEmailInput').value.trim();
+            const password = document.getElementById('registerPasswordInput').value;
+            
+            if (!name || !email || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                document.getElementById('errorMessage').classList.add('hidden');
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                
+                // Update display name
+                await updateProfile(userCredential.user, { displayName: name });
+                
+                // User will be auto-signed in and onAuthStateChanged will handle the rest
+            } catch (error) {
+                let message = 'Registration failed. ';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = 'This email is already registered. Try signing in or use Forgot Password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Please enter a valid email address.';
+                } else if (error.code === 'auth/weak-password') {
+                    message = 'Password is too weak. Use at least 6 characters.';
+                }
+                showError(message);
+            }
+        }
+        
+        async function sendPasswordReset() {
+            const email = document.getElementById('resetEmailInput').value.trim();
+            
+            if (!email) {
+                showError('Please enter your email address');
+                return;
+            }
+            
+            try {
+                document.getElementById('errorMessage').classList.add('hidden');
+                await sendPasswordResetEmail(auth, email);
+                showSuccess('Password reset email sent! Check your inbox.');
+                document.getElementById('resetEmailInput').value = '';
+            } catch (error) {
+                let message = 'Failed to send reset email. ';
+                if (error.code === 'auth/user-not-found') {
+                    message = 'No account found with this email.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Please enter a valid email address.';
+                }
+                showError(message);
+            }
+        }
+        
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+        
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
 
         // Sign out button (may not exist in minimal UI - handled by menu)
         const signOutBtn = document.getElementById('signOutBtn');
