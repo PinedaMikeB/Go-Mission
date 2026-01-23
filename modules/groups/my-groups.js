@@ -449,15 +449,41 @@ const MyGroups = {
      * If no invite code exists, generate one first
      */
     async showInviteCode(groupId) {
-        const group = this.downlineGroups.find(g => g.id === groupId);
+        console.log('[MyGroups] showInviteCode called with:', groupId);
+        console.log('[MyGroups] downlineGroups:', this.downlineGroups);
+        
+        let group = this.downlineGroups.find(g => g.id === groupId);
+        
+        // If group not found in memory, try to fetch it directly
+        if (!group) {
+            console.log('[MyGroups] Group not in memory, fetching from Firestore...');
+            try {
+                const groupDoc = await window.getDoc(
+                    window.doc(window.db, 'goMission_groups', groupId)
+                );
+                if (groupDoc.exists()) {
+                    group = { id: groupDoc.id, ...groupDoc.data() };
+                    console.log('[MyGroups] Fetched group:', group);
+                }
+            } catch (error) {
+                console.error('[MyGroups] Error fetching group:', error);
+            }
+        }
+        
         if (!group) {
             console.error('[MyGroups] Group not found:', groupId);
-            alert('Group not found');
+            alert('Group not found. Please refresh and try again.');
             return;
         }
         
         const modal = document.getElementById('groupModal');
         const content = document.getElementById('groupModalContent');
+        
+        if (!modal || !content) {
+            console.error('[MyGroups] Modal elements not found');
+            alert('Error: Modal not found');
+            return;
+        }
         
         // Check if group has an invite code, if not generate one
         let inviteCode = group.inviteCode;
