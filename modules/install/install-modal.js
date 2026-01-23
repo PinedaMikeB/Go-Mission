@@ -175,12 +175,29 @@ const InstallModal = {
         return false;
     },
     
+    /**
+     * Check if user is on desktop (Windows, Mac, Linux)
+     */
+    isDesktop() {
+        const ua = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/i.test(ua);
+        const isAndroid = /Android/i.test(ua);
+        const isMobile = isIOS || isAndroid || /Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        return !isMobile;
+    },
+    
     init() {
         this.isInstalled = this.checkIfInstalled();
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');
         
-        // Only show if NOT in standalone mode (PWA)
+        // Skip install modal for desktop users - they don't need to install
+        if (this.isDesktop()) {
+            console.log('[InstallModal] Desktop detected - skipping install prompt');
+            return; // Don't show install modal for desktop
+        }
+        
+        // Only show if NOT in standalone mode (PWA) for mobile
         if (forceInstall || !this.isInstalled) {
             setTimeout(() => this.show(), 500);
         }
@@ -193,6 +210,12 @@ const InstallModal = {
     },
     
     show() {
+        // Double-check: Don't show for desktop
+        if (this.isDesktop()) {
+            console.log('[InstallModal] Desktop user - not showing install modal');
+            return;
+        }
+        
         this.currentDevice = null;
         this.currentScreen = 'device';
         this.render();
@@ -226,7 +249,6 @@ const InstallModal = {
         let detected = '';
         if (isIOS) detected = 'iphone';
         else if (isAndroid) detected = 'android';
-        else detected = 'windows';
         
         return `
             <div class="install-overlay"></div>
@@ -252,14 +274,10 @@ const InstallModal = {
                     <span>${this.t('notInstalled')}</span>
                 </div>
                 
-                <!-- Device Selection -->
+                <!-- Device Selection - Only Android and iPhone -->
                 <p class="install-subtitle">${this.t('chooseDevice')}</p>
                 
                 <div class="device-buttons">
-                    <button class="device-btn ${detected === 'windows' ? 'detected' : ''}" onclick="InstallModal.selectDevice('windows')">
-                        <span class="device-icon">💻</span>
-                        <span class="device-name">${this.t('windows')}</span>
-                    </button>
                     <button class="device-btn ${detected === 'android' ? 'detected' : ''}" onclick="InstallModal.selectDevice('android')">
                         <span class="device-icon">🤖</span>
                         <span class="device-name">${this.t('android')}</span>
