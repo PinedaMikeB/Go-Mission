@@ -471,88 +471,58 @@
                     </div>
                 </button>
                 
-                <!-- Email Login Toggle -->
+                <!-- Alternative Login Toggle -->
                 <div class="text-center mt-6">
-                    <button id="emailLoginToggle" onclick="toggleEmailLogin()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
-                        Can't sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Email instead</span>
+                    <button id="phoneLoginToggle" onclick="togglePhoneLogin()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                        Can't sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Phone Number instead</span>
                     </button>
                 </div>
                 
-                <!-- Email Login Form (Hidden by default) -->
-                <div id="emailLoginForm" class="hidden mt-6 space-y-4 animate-fade-up">
+                <!-- Phone Login Form (Hidden by default) -->
+                <div id="phoneLoginForm" class="hidden mt-6 space-y-4 animate-fade-up">
                     <div class="border-t border-stone-700 pt-6">
-                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Sign in with Email</p>
+                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Sign in with Phone Number</p>
                         
-                        <div class="space-y-3">
-                            <input type="email" id="emailInput" placeholder="Email address" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                        <!-- Step 1: Enter Phone -->
+                        <div id="phoneStep1" class="space-y-3">
+                            <div class="flex gap-2">
+                                <div class="w-20 p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] text-center font-bold">
+                                    +63
+                                </div>
+                                <input type="tel" id="phoneInput" placeholder="9XX XXX XXXX" maxlength="10"
+                                    class="flex-1 p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors text-lg tracking-wider">
+                            </div>
                             
-                            <input type="password" id="passwordInput" placeholder="Password" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            <div id="recaptcha-container"></div>
                             
-                            <button id="emailSignInBtn" onclick="signInWithEmail()" 
+                            <button id="sendCodeBtn" onclick="sendVerificationCode()" 
                                 class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
-                                Sign In
+                                📱 Send Verification Code
                             </button>
                         </div>
                         
-                        <div class="flex justify-between items-center mt-4 text-xs">
-                            <button onclick="showForgotPassword()" class="text-stone-500 hover:text-[var(--mission-gold)] transition-colors">
-                                Forgot Password?
-                            </button>
-                            <button onclick="showRegister()" class="text-stone-500 hover:text-[var(--mission-gold)] transition-colors">
-                                Create Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Forgot Password Form (Hidden) -->
-                <div id="forgotPasswordForm" class="hidden mt-6 space-y-4 animate-fade-up">
-                    <div class="border-t border-stone-700 pt-6">
-                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-2">Reset Password</p>
-                        <p class="text-stone-500 text-xs text-center mb-4">Enter your email to receive a password reset link</p>
-                        
-                        <div class="space-y-3">
-                            <input type="email" id="resetEmailInput" placeholder="Email address" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                        <!-- Step 2: Enter Code -->
+                        <div id="phoneStep2" class="hidden space-y-4">
+                            <p class="text-stone-400 text-sm text-center">Enter the 6-digit code sent to your phone</p>
                             
-                            <button id="resetPasswordBtn" onclick="sendPasswordReset()" 
-                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
-                                Send Reset Link
+                            <div class="flex justify-center gap-2">
+                                <input type="text" id="code1" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code2')">
+                                <input type="text" id="code2" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code3')">
+                                <input type="text" id="code3" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code4')">
+                                <input type="text" id="code4" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code5')">
+                                <input type="text" id="code5" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code6')">
+                                <input type="text" id="code6" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, null)">
+                            </div>
+                            
+                            <button id="verifyCodeBtn" onclick="verifyCode()" 
+                                class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95">
+                                ✓ Verify & Sign In
+                            </button>
+                            
+                            <button onclick="resetPhoneLogin()" class="w-full text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                                ← Use different number
                             </button>
                         </div>
-                        
-                        <button onclick="backToEmailLogin()" class="w-full mt-4 text-stone-500 text-xs hover:text-stone-300 transition-colors">
-                            ← Back to Sign In
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Register Form (Hidden) -->
-                <div id="registerForm" class="hidden mt-6 space-y-4 animate-fade-up">
-                    <div class="border-t border-stone-700 pt-6">
-                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Create Account</p>
-                        
-                        <div class="space-y-3">
-                            <input type="text" id="registerNameInput" placeholder="Full Name" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
-                            
-                            <input type="email" id="registerEmailInput" placeholder="Email address" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
-                            
-                            <input type="password" id="registerPasswordInput" placeholder="Password (min 6 characters)" 
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
-                            
-                            <button id="registerBtn" onclick="registerWithEmail()" 
-                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
-                                Create Account
-                            </button>
-                        </div>
-                        
-                        <button onclick="backToEmailLogin()" class="w-full mt-4 text-stone-500 text-xs hover:text-stone-300 transition-colors">
-                            ← Back to Sign In
-                        </button>
                     </div>
                 </div>
                 
@@ -1077,7 +1047,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
 
         const firebaseConfig = {
@@ -1414,140 +1384,150 @@
             }
         });
 
-        // Email Login Functions
-        function toggleEmailLogin() {
-            const form = document.getElementById('emailLoginForm');
-            const forgotForm = document.getElementById('forgotPasswordForm');
-            const registerForm = document.getElementById('registerForm');
-            
-            forgotForm.classList.add('hidden');
-            registerForm.classList.add('hidden');
+        // Phone Login Functions
+        let confirmationResult = null;
+        
+        function togglePhoneLogin() {
+            const form = document.getElementById('phoneLoginForm');
             form.classList.toggle('hidden');
             
-            // Update toggle text
-            const toggle = document.getElementById('emailLoginToggle');
+            const toggle = document.getElementById('phoneLoginToggle');
             if (form.classList.contains('hidden')) {
-                toggle.innerHTML = 'Can\'t sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Email instead</span>';
+                toggle.innerHTML = 'Can\'t sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Phone Number instead</span>';
             } else {
-                toggle.innerHTML = '<span class="text-stone-400">Hide email login</span>';
+                toggle.innerHTML = '<span class="text-stone-400">Hide phone login</span>';
+                setupRecaptcha();
             }
         }
         
-        function showForgotPassword() {
-            document.getElementById('emailLoginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('forgotPasswordForm').classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            document.getElementById('successMessage').classList.add('hidden');
+        function setupRecaptcha() {
+            if (!window.recaptchaVerifier) {
+                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    'size': 'invisible',
+                    'callback': (response) => {
+                        console.log('reCAPTCHA solved');
+                    },
+                    'expired-callback': () => {
+                        showError('reCAPTCHA expired. Please try again.');
+                        window.recaptchaVerifier = null;
+                    }
+                });
+            }
         }
         
-        function showRegister() {
-            document.getElementById('emailLoginForm').classList.add('hidden');
-            document.getElementById('forgotPasswordForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            document.getElementById('successMessage').classList.add('hidden');
-        }
-        
-        function backToEmailLogin() {
-            document.getElementById('forgotPasswordForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('emailLoginForm').classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            document.getElementById('successMessage').classList.add('hidden');
-        }
-        
-        async function signInWithEmail() {
-            const email = document.getElementById('emailInput').value.trim();
-            const password = document.getElementById('passwordInput').value;
+        async function sendVerificationCode() {
+            const phoneInput = document.getElementById('phoneInput').value.trim().replace(/\s/g, '');
             
-            if (!email || !password) {
-                showError('Please enter email and password');
+            if (!phoneInput || phoneInput.length < 10) {
+                showError('Please enter a valid 10-digit phone number');
                 return;
             }
             
+            const phoneNumber = '+63' + phoneInput;
+            
             try {
                 document.getElementById('errorMessage').classList.add('hidden');
-                await signInWithEmailAndPassword(auth, email, password);
+                document.getElementById('sendCodeBtn').disabled = true;
+                document.getElementById('sendCodeBtn').textContent = 'Sending...';
+                
+                setupRecaptcha();
+                confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+                
+                // Show step 2
+                document.getElementById('phoneStep1').classList.add('hidden');
+                document.getElementById('phoneStep2').classList.remove('hidden');
+                document.getElementById('code1').focus();
+                
+                showSuccess('Code sent to ' + phoneNumber);
             } catch (error) {
-                let message = 'Sign in failed. ';
-                if (error.code === 'auth/user-not-found') {
-                    message = 'No account found with this email. Please register first.';
-                } else if (error.code === 'auth/wrong-password') {
-                    message = 'Incorrect password. Try again or use Forgot Password.';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = 'Please enter a valid email address.';
+                console.error('Phone auth error:', error);
+                let message = 'Failed to send code. ';
+                if (error.code === 'auth/invalid-phone-number') {
+                    message = 'Invalid phone number format. Please check and try again.';
                 } else if (error.code === 'auth/too-many-requests') {
-                    message = 'Too many failed attempts. Please try again later.';
-                }
-                showError(message);
-            }
-        }
-        
-        async function registerWithEmail() {
-            const name = document.getElementById('registerNameInput').value.trim();
-            const email = document.getElementById('registerEmailInput').value.trim();
-            const password = document.getElementById('registerPasswordInput').value;
-            
-            if (!name || !email || !password) {
-                showError('Please fill in all fields');
-                return;
-            }
-            
-            if (password.length < 6) {
-                showError('Password must be at least 6 characters');
-                return;
-            }
-            
-            try {
-                document.getElementById('errorMessage').classList.add('hidden');
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                
-                // Update display name
-                await updateProfile(userCredential.user, { displayName: name });
-                
-                // User will be auto-signed in and onAuthStateChanged will handle the rest
-            } catch (error) {
-                let message = 'Registration failed. ';
-                if (error.code === 'auth/email-already-in-use') {
-                    message = 'This email is already registered. Try signing in or use Forgot Password.';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = 'Please enter a valid email address.';
-                } else if (error.code === 'auth/weak-password') {
-                    message = 'Password is too weak. Use at least 6 characters.';
-                }
-                showError(message);
-            }
-        }
-        
-        async function sendPasswordReset() {
-            const email = document.getElementById('resetEmailInput').value.trim();
-            
-            if (!email) {
-                showError('Please enter your email address');
-                return;
-            }
-            
-            try {
-                document.getElementById('errorMessage').classList.add('hidden');
-                console.log('Sending password reset to:', email);
-                await sendPasswordResetEmail(auth, email);
-                showSuccess('Password reset email sent! Check your inbox (and spam folder).');
-                document.getElementById('resetEmailInput').value = '';
-            } catch (error) {
-                console.error('Password reset error:', error.code, error.message);
-                let message = 'Failed to send reset email. ';
-                if (error.code === 'auth/user-not-found') {
-                    message = 'No account found with this email. Try signing in with Google first to create an account.';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = 'Please enter a valid email address.';
-                } else if (error.code === 'auth/missing-email') {
-                    message = 'Please enter your email address.';
+                    message = 'Too many attempts. Please try again later.';
+                } else if (error.code === 'auth/quota-exceeded') {
+                    message = 'SMS quota exceeded. Please try again tomorrow or use Google Sign In.';
                 } else {
                     message = error.message || 'Unknown error occurred.';
                 }
                 showError(message);
+                
+                // Reset recaptcha
+                window.recaptchaVerifier = null;
+            } finally {
+                document.getElementById('sendCodeBtn').disabled = false;
+                document.getElementById('sendCodeBtn').textContent = '📱 Send Verification Code';
             }
+        }
+        
+        function moveToNext(current, nextId) {
+            if (current.value.length === 1 && nextId) {
+                document.getElementById(nextId).focus();
+            }
+            // Auto-submit if all 6 digits entered
+            if (!nextId && current.value.length === 1) {
+                verifyCode();
+            }
+        }
+        
+        async function verifyCode() {
+            const code = ['code1', 'code2', 'code3', 'code4', 'code5', 'code6']
+                .map(id => document.getElementById(id).value)
+                .join('');
+            
+            if (code.length !== 6) {
+                showError('Please enter the complete 6-digit code');
+                return;
+            }
+            
+            if (!confirmationResult) {
+                showError('Session expired. Please request a new code.');
+                resetPhoneLogin();
+                return;
+            }
+            
+            try {
+                document.getElementById('errorMessage').classList.add('hidden');
+                document.getElementById('verifyCodeBtn').disabled = true;
+                document.getElementById('verifyCodeBtn').textContent = 'Verifying...';
+                
+                await confirmationResult.confirm(code);
+                // Success! onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Verification error:', error);
+                let message = 'Verification failed. ';
+                if (error.code === 'auth/invalid-verification-code') {
+                    message = 'Invalid code. Please check and try again.';
+                } else if (error.code === 'auth/code-expired') {
+                    message = 'Code expired. Please request a new one.';
+                } else {
+                    message = error.message || 'Unknown error occurred.';
+                }
+                showError(message);
+                
+                // Clear code inputs
+                ['code1', 'code2', 'code3', 'code4', 'code5', 'code6'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                document.getElementById('code1').focus();
+            } finally {
+                document.getElementById('verifyCodeBtn').disabled = false;
+                document.getElementById('verifyCodeBtn').textContent = '✓ Verify & Sign In';
+            }
+        }
+        
+        function resetPhoneLogin() {
+            document.getElementById('phoneStep1').classList.remove('hidden');
+            document.getElementById('phoneStep2').classList.add('hidden');
+            document.getElementById('phoneInput').value = '';
+            ['code1', 'code2', 'code3', 'code4', 'code5', 'code6'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            confirmationResult = null;
+            window.recaptchaVerifier = null;
         }
         
         function showError(message) {
@@ -1564,14 +1544,12 @@
             document.getElementById('errorMessage').classList.add('hidden');
         }
 
-        // Expose email login functions to global scope for onclick handlers
-        window.toggleEmailLogin = toggleEmailLogin;
-        window.showForgotPassword = showForgotPassword;
-        window.showRegister = showRegister;
-        window.backToEmailLogin = backToEmailLogin;
-        window.signInWithEmail = signInWithEmail;
-        window.registerWithEmail = registerWithEmail;
-        window.sendPasswordReset = sendPasswordReset;
+        // Expose phone login functions to global scope for onclick handlers
+        window.togglePhoneLogin = togglePhoneLogin;
+        window.sendVerificationCode = sendVerificationCode;
+        window.verifyCode = verifyCode;
+        window.moveToNext = moveToNext;
+        window.resetPhoneLogin = resetPhoneLogin;
 
         // Sign out button (may not exist in minimal UI - handled by menu)
         const signOutBtn = document.getElementById('signOutBtn');
