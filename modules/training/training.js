@@ -696,6 +696,120 @@ const Training = {
     };
     
     return labels[lang] || labels.en;
+  },
+  
+  /**
+   * Open training in full screen mode (from My Training card)
+   */
+  openFullScreen() {
+    console.log('[Training] Opening full screen');
+    
+    const lang = window.currentLang || 'en';
+    const labels = this.getLabels(lang);
+    
+    // Create full screen training view
+    let modal = document.getElementById('trainingFullScreen');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'trainingFullScreen';
+      document.body.appendChild(modal);
+    }
+    
+    let sessionsHtml = '';
+    
+    if (this.sessions.length === 0) {
+      sessionsHtml = `
+        <div class="text-center py-8">
+          <p class="text-[var(--text-muted)]">Loading training content...</p>
+        </div>
+      `;
+    } else {
+      // Render each session
+      this.sessions.forEach(session => {
+        const completedDays = session.days.filter(d => this.isDayCompleted(session.sessionNumber, d.dayNumber)).length;
+        const totalDays = session.days.length;
+        const progress = Math.round((completedDays / totalDays) * 100);
+        
+        sessionsHtml += `
+          <div class="training-session mb-6">
+            <div class="session-header bg-gradient-to-r from-amber-500/20 to-transparent p-4 rounded-xl mb-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-amber-400 font-bold text-lg">${labels.session} ${session.sessionNumber}</h3>
+                  <p class="text-[var(--text-color)] font-medium">${session.sessionTitle}</p>
+                </div>
+                <div class="text-right">
+                  <div class="text-2xl font-bold text-amber-400">${completedDays}/${totalDays}</div>
+                  <div class="text-xs text-[var(--text-muted)]">${labels.daysCompleted}</div>
+                </div>
+              </div>
+              <div class="mt-3 h-2 bg-black/30 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500" style="width: ${progress}%"></div>
+              </div>
+            </div>
+            
+            <div class="days-grid grid gap-2">
+              ${session.days.map(day => this.renderDayCard(session, day, labels)).join('')}
+            </div>
+            
+            <!-- Day 7: Group Processing -->
+            <div class="mt-3">
+              ${this.renderDay7Card(session, labels)}
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    modal.innerHTML = `
+      <div class="fixed inset-0 bg-[var(--bg-color)] z-50 flex flex-col">
+        <!-- Header -->
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button onclick="Training.closeFullScreen()" class="text-[var(--mission-gold)] hover:text-[var(--mission-gold)]/80">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </button>
+            <h2 class="text-lg font-bold text-[var(--text-color)]">🎯 Mission Training</h2>
+          </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-4">
+          ${sessionsHtml}
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+  },
+  
+  /**
+   * Close full screen training view
+   */
+  closeFullScreen() {
+    const modal = document.getElementById('trainingFullScreen');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  },
+  
+  /**
+   * Get training progress for card display
+   */
+  getProgressSummary() {
+    let totalDays = 0;
+    let completedDays = 0;
+    
+    this.sessions.forEach(session => {
+      totalDays += session.days.length;
+      completedDays += session.days.filter(d => 
+        this.isDayCompleted(session.sessionNumber, d.dayNumber)
+      ).length;
+    });
+    
+    return { completed: completedDays, total: totalDays };
   }
 };
 

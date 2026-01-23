@@ -11,36 +11,56 @@
 
 ---
 
-## Current Session (2026-01-23 Evening)
-- **MODULE**: UI/UX Improvements
-- **STATUS**: ✅ Complete
-- **TASK**: Scroll hide header/nav + Loading animation
+## Current Session (2026-01-24)
+- **MODULE**: App Restructure - Upline/Downline Groups
+- **STATUS**: 🔄 In Progress
+- **TASK**: Restructure groups into Upline (being discipled) and Downline (discipling others)
 
-### ✅ Completed This Session
+### 🔄 Changes In Progress
 
-#### 1. Password Reset Bug Fix
-- Added Firebase Functions SDK import
-- Connected callable functions to frontend
-- Updated Gmail credentials for email sending
+#### 1. Home Screen Card Restructure
+- **My Mission card** → Opens "My Groups" screen (Upline + Downline)
+- **My Training card** → Opens Training full screen
+- Both cards show daily scripture verses (random, consistent per day)
 
-#### 2. Profile Badge Fix  
-- Initial "M" badge now hides when user has profile photo
+#### 2. New Group Structure
+**Upline Group** (You are a disciple):
+- User can be in ONE upline group
+- Joined via invite code from discipler
+- Cannot create, only join
 
-#### 3. Scroll Hide Header/Footer (NEW)
-- **Scroll DOWN** → Header and bottom nav hide (immersive mode)
-- **Scroll UP** → Header and bottom nav show
-- Works on all platforms (iOS, Android, Desktop)
-- Smooth 0.3s transition animation
+**Downline Groups** (You are a discipler):
+- User can create MULTIPLE groups
+- Each group has unique 6-character invite code
+- Can start Jitsi meetings for each group
 
-**Files:**
-- `/modules/core/scroll-handler.js` - New scroll handler module
-- `/index.html` - Added IDs to header/nav, CSS transitions
+#### 3. New Files Created
+| File | Purpose |
+|------|---------|
+| `/modules/core/discipleship-content.js` | Daily verses for Mission/Training cards |
+| `/modules/groups/my-groups.js` | Upline/Downline groups management |
 
-#### 4. Pulsing Logo Loading Screen (NEW)
-- Replaced spinner with branded logo animation
-- Go Mission logo with rotating gold ring
-- Bouncing dots for "loading" indicator
-- Dark themed to match app
+#### 4. Firestore Schema Update
+```javascript
+// goMission_members/{odId} - NEW FIELDS
+{
+  uplineGroupId: "groupId",     // The ONE group where user is discipled
+  // downlineGroupIds derived from groups where leaderId = odId
+}
+
+// goMission_groups/{groupId} - NEW FIELD
+{
+  inviteCode: "ABC123",         // 6-char code for joining
+  type: "downline",             // Group type indicator
+}
+```
+
+### 📋 Next Steps:
+1. Test the My Groups screen
+2. Test join with invite code flow
+3. Test create new downline group
+4. Connect group chat and meetings to new structure
+5. Update bottom nav Groups tab to open My Groups
 
 ---
 
