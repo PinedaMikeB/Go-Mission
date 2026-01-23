@@ -34,11 +34,11 @@
             color: #94a3b8;
             margin-bottom: 30px;
         }
-        .warning-badge {
+        .device-badge {
             display: inline-block;
-            background: rgba(239, 68, 68, 0.2);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            color: #fca5a5;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #86efac;
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 13px;
@@ -147,22 +147,24 @@
         .copy-btn.copied {
             background: #22c55e;
         }
-        .browser-note {
+        .status-text {
             color: #64748b;
             font-size: 12px;
             margin-top: 20px;
         }
-        .try-anyway-btn {
-            background: transparent;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            color: #f59e0b;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 16px;
-            width: 100%;
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f59e0b;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -172,168 +174,244 @@
         <h1>GO MISSION</h1>
         <p class="subtitle" id="subtitle">Making Disciple-Makers</p>
         
-        <!-- Show warning if in Messenger/In-App Browser -->
-        <div class="warning-badge hidden" id="warningBadge">
-            ⚠️ Open in your browser to install
-        </div>
+        <div class="device-badge" id="deviceBadge">Detecting device...</div>
         
         <button class="install-btn" id="installBtn" onclick="handleInstall()">
             📱 Install Go Mission App
         </button>
         
+        <!-- Fallback instructions if auto-open fails -->
         <div class="manual-steps hidden" id="manualSteps">
-            <h3>📲 How to Open in Browser</h3>
+            <h3 id="manualTitle">📲 Open Manually</h3>
             
-            <!-- iOS/iPhone Steps -->
             <div id="iosSteps" class="hidden">
                 <div class="manual-step">
                     <div class="step-num">1</div>
                     <div class="step-text">
-                        Tap the <strong>•••</strong> or <strong>⋯</strong> button <span class="highlight-icon">•••</span>
+                        Tap <strong>•••</strong> at the bottom <span class="highlight-icon">•••</span>
                     </div>
                 </div>
                 <div class="manual-step">
                     <div class="step-num">2</div>
                     <div class="step-text">
-                        Select <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong>
+                        Select <strong>"Open in Safari"</strong>
                     </div>
                 </div>
             </div>
             
-            <!-- Android Steps -->
             <div id="androidSteps" class="hidden">
                 <div class="manual-step">
                     <div class="step-num">1</div>
                     <div class="step-text">
-                        Tap the <strong>⋮</strong> menu (3 dots) at top right <span class="highlight-icon">⋮</span>
+                        Tap <strong>⋮</strong> menu at top right <span class="highlight-icon">⋮</span>
                     </div>
                 </div>
                 <div class="manual-step">
                     <div class="step-num">2</div>
                     <div class="step-text">
-                        Select <strong>"Open in Chrome"</strong> or <strong>"Open in Browser"</strong>
+                        Select <strong>"Open in Chrome"</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="desktopSteps" class="hidden">
+                <div class="manual-step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        Copy the link below
+                    </div>
+                </div>
+                <div class="manual-step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        Open <strong>Chrome</strong> and paste it
                     </div>
                 </div>
             </div>
             
             <div class="url-box">
-                <p>Or copy this link and paste in Safari/Chrome:</p>
-                <code id="urlCode">gomission.netlify.app</code>
+                <p>Copy this link:</p>
+                <code>gomission.netlify.app</code>
                 <br>
                 <button class="copy-btn" id="copyBtn" onclick="copyUrl()">📋 Copy Link</button>
             </div>
-            
-            <button class="try-anyway-btn" onclick="tryOpenBrowser()">
-                🔄 Try to Open Browser Automatically
-            </button>
         </div>
         
-        <p class="browser-note" id="browserNote"></p>
+        <p class="status-text" id="statusText"></p>
     </div>
 
     <script>
         const appUrl = 'https://gomission.netlify.app/?install=true';
         
-        // Detect device and browser
+        // ============================================
+        // DEVICE DETECTION
+        // ============================================
         const ua = navigator.userAgent || navigator.vendor || window.opera;
+        
+        // Device type
         const isIOS = /iPhone|iPad|iPod/i.test(ua);
         const isAndroid = /Android/i.test(ua);
+        const isDesktop = !isIOS && !isAndroid;
         
-        // Detect in-app browsers (Messenger, Facebook, Instagram, etc.)
+        // In-app browser detection (Messenger, Facebook, Instagram, etc.)
         const inAppPatterns = [
-            'FBAN', 'FBAV', 'FB_IAB', 'FBIOS', 'FBSS',  // Facebook
-            'Instagram',                                  // Instagram
-            'Messenger',                                  // Messenger
-            'Line',                                       // Line
-            'MicroMessenger', 'WeChat',                   // WeChat
-            'Twitter',                                    // Twitter
-            'Snapchat',                                   // Snapchat
-            'Pinterest',                                  // Pinterest
-            'LinkedInApp'                                 // LinkedIn
+            'FBAN', 'FBAV', 'FB_IAB', 'FBIOS', 'FBSS',
+            'Instagram', 'Messenger', 'Line', 
+            'MicroMessenger', 'WeChat', 'Twitter',
+            'Snapchat', 'Pinterest', 'LinkedInApp'
         ];
+        const isInAppBrowser = inAppPatterns.some(p => ua.includes(p));
         
-        const isInAppBrowser = inAppPatterns.some(pattern => ua.includes(pattern));
+        // Detect which in-app browser
+        function getInAppName() {
+            if (ua.includes('Messenger') || (ua.includes('FBAN') && ua.includes('Messenger'))) return 'Messenger';
+            if (ua.includes('FBAN') || ua.includes('FBAV')) return 'Facebook';
+            if (ua.includes('Instagram')) return 'Instagram';
+            if (ua.includes('Line')) return 'Line';
+            if (ua.includes('MicroMessenger')) return 'WeChat';
+            return 'app';
+        }
         
-        // Which in-app browser?
-        let inAppName = 'app';
-        if (ua.includes('Messenger') || ua.includes('FBAN')) inAppName = 'Messenger';
-        else if (ua.includes('Instagram')) inAppName = 'Instagram';
-        else if (ua.includes('Line')) inAppName = 'Line';
-        else if (ua.includes('MicroMessenger')) inAppName = 'WeChat';
-        
-        // Initialize page based on browser detection
+        // ============================================
+        // INITIALIZE PAGE
+        // ============================================
         function initPage() {
-            if (isInAppBrowser) {
-                // In Messenger/Facebook/etc - show warning and instructions immediately
-                document.getElementById('warningBadge').classList.remove('hidden');
-                document.getElementById('subtitle').textContent = `You're in ${inAppName}. Open in browser to install.`;
-                document.getElementById('installBtn').textContent = '📲 Show Instructions';
-                document.getElementById('browserNote').textContent = `Detected: ${inAppName} browser`;
-                
-                // Show platform-specific steps
-                if (isIOS) {
-                    document.getElementById('iosSteps').classList.remove('hidden');
-                } else {
-                    document.getElementById('androidSteps').classList.remove('hidden');
-                }
-            } else {
-                // Real browser - hide warning
-                document.getElementById('warningBadge').classList.add('hidden');
-            }
-        }
-        
-        // Handle install button click
-        function handleInstall() {
-            if (!isInAppBrowser) {
-                // Already in a real browser - go directly to app
-                window.location.href = appUrl;
-                return;
-            }
+            const badge = document.getElementById('deviceBadge');
+            const btn = document.getElementById('installBtn');
+            const subtitle = document.getElementById('subtitle');
             
-            // In-app browser - show manual instructions
-            document.getElementById('manualSteps').classList.remove('hidden');
-            document.getElementById('installBtn').textContent = '👆 Follow Steps Above';
-            
-            // Also try to open browser automatically
-            tryOpenBrowser();
-        }
-        
-        // Try various methods to open in external browser
-        function tryOpenBrowser() {
             if (isIOS) {
-                // iOS methods
-                
-                // Method 1: Safari URL scheme (rarely works in Messenger)
-                // window.location.href = 'x-safari-' + appUrl;
-                
-                // Method 2: Try Google Chrome iOS
-                const chromeUrl = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
-                window.open(chromeUrl, '_blank');
-                
-                // Method 3: Universal link (sometimes triggers Safari)
-                setTimeout(() => {
-                    window.location.href = appUrl;
-                }, 500);
-                
+                badge.textContent = '📱 iPhone detected';
+                btn.innerHTML = '🍎 Open in Safari';
             } else if (isAndroid) {
-                // Android Intent - try to open in Chrome
-                const intentUrl = 'intent://gomission.netlify.app/?install=true#Intent;' +
-                    'scheme=https;' +
-                    'package=com.android.chrome;' +
-                    'S.browser_fallback_url=' + encodeURIComponent(appUrl) + ';' +
-                    'end';
-                
-                window.location.href = intentUrl;
-                
-                // Fallback: Try direct Chrome URL
-                setTimeout(() => {
-                    const chromeAndroid = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
-                    window.location.href = chromeAndroid;
-                }, 500);
+                badge.textContent = '📱 Android detected';
+                btn.innerHTML = '🌐 Open in Chrome';
+            } else {
+                badge.textContent = '💻 Desktop detected';
+                btn.innerHTML = '🌐 Open in Chrome';
+            }
+            
+            // If in Messenger/Facebook app
+            if (isInAppBrowser) {
+                const appName = getInAppName();
+                subtitle.textContent = `You're in ${appName}. Tap below to open in browser.`;
+                badge.style.background = 'rgba(251, 191, 36, 0.2)';
+                badge.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+                badge.style.color = '#fcd34d';
+                badge.textContent = `⚠️ ${appName} browser detected`;
             }
         }
         
-        // Copy URL to clipboard
+        // ============================================
+        // HANDLE INSTALL BUTTON
+        // ============================================
+        function handleInstall() {
+            const statusText = document.getElementById('statusText');
+            statusText.innerHTML = '<span class="loading"></span> Opening browser...';
+            
+            if (isIOS) {
+                openInSafari();
+            } else if (isAndroid) {
+                openInChrome();
+            } else {
+                openInDesktopChrome();
+            }
+            
+            // Show manual fallback after 2 seconds if still on page
+            setTimeout(() => {
+                showManualSteps();
+            }, 2000);
+        }
+        
+        // ============================================
+        // iOS - OPEN IN SAFARI
+        // ============================================
+        function openInSafari() {
+            // Method 1: Direct navigation (works if already in Safari or can escape)
+            // The x-safari-https:// scheme doesn't work reliably
+            
+            // Method 2: Try to trigger Safari via window.open
+            const newWindow = window.open(appUrl, '_blank');
+            
+            // Method 3: If in Messenger, try the direct URL 
+            // Messenger sometimes opens links in Safari when using location.href
+            setTimeout(() => {
+                window.location.href = appUrl;
+            }, 100);
+            
+            // Show iOS-specific manual steps
+            document.getElementById('iosSteps').classList.remove('hidden');
+        }
+        
+        // ============================================
+        // ANDROID - OPEN IN CHROME
+        // ============================================
+        function openInChrome() {
+            // Method 1: Android Intent URL (best for Messenger/Facebook)
+            const intentUrl = 'intent://gomission.netlify.app/?install=true#Intent;' +
+                'scheme=https;' +
+                'package=com.android.chrome;' +
+                'S.browser_fallback_url=' + encodeURIComponent(appUrl) + ';' +
+                'end';
+            
+            window.location.href = intentUrl;
+            
+            // Method 2: Fallback - try googlechrome:// scheme
+            setTimeout(() => {
+                window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
+            }, 500);
+            
+            // Method 3: Last resort - direct URL
+            setTimeout(() => {
+                window.location.href = appUrl;
+            }, 1000);
+            
+            // Show Android-specific manual steps
+            document.getElementById('androidSteps').classList.remove('hidden');
+        }
+        
+        // ============================================
+        // DESKTOP - OPEN IN CHROME
+        // ============================================
+        function openInDesktopChrome() {
+            // Desktop: Just open in new tab (will use default browser)
+            window.open(appUrl, '_blank');
+            
+            // Also try direct navigation
+            setTimeout(() => {
+                window.location.href = appUrl;
+            }, 500);
+            
+            // Show desktop-specific manual steps
+            document.getElementById('desktopSteps').classList.remove('hidden');
+        }
+        
+        // ============================================
+        // SHOW MANUAL FALLBACK STEPS
+        // ============================================
+        function showManualSteps() {
+            const manualSteps = document.getElementById('manualSteps');
+            const statusText = document.getElementById('statusText');
+            const manualTitle = document.getElementById('manualTitle');
+            
+            manualSteps.classList.remove('hidden');
+            statusText.textContent = "Didn't open? Follow the steps below:";
+            
+            if (isIOS) {
+                manualTitle.textContent = '📲 Open in Safari Manually';
+                document.getElementById('iosSteps').classList.remove('hidden');
+            } else if (isAndroid) {
+                manualTitle.textContent = '📲 Open in Chrome Manually';
+                document.getElementById('androidSteps').classList.remove('hidden');
+            } else {
+                manualTitle.textContent = '📲 Open in Chrome Manually';
+                document.getElementById('desktopSteps').classList.remove('hidden');
+            }
+        }
+        
+        // ============================================
+        // COPY URL
+        // ============================================
         function copyUrl() {
             const url = 'gomission.netlify.app';
             const copyBtn = document.getElementById('copyBtn');
@@ -352,20 +430,14 @@
         function fallbackCopy(text, btn) {
             const textarea = document.createElement('textarea');
             textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            textarea.style.left = '-9999px';
+            textarea.style.cssText = 'position:fixed;opacity:0;left:-9999px';
             document.body.appendChild(textarea);
             textarea.focus();
             textarea.select();
             
             try {
-                const success = document.execCommand('copy');
-                if (success) {
-                    showCopied(btn);
-                } else {
-                    alert('Copy this link: ' + text);
-                }
+                document.execCommand('copy');
+                showCopied(btn);
             } catch (e) {
                 alert('Copy this link: ' + text);
             }
@@ -376,14 +448,13 @@
         function showCopied(btn) {
             btn.textContent = '✅ Copied!';
             btn.classList.add('copied');
-            
             setTimeout(() => {
                 btn.textContent = '📋 Copy Link';
                 btn.classList.remove('copied');
             }, 2000);
         }
         
-        // Initialize on load
+        // Initialize
         initPage();
     </script>
 </body>
