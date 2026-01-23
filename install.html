@@ -34,6 +34,16 @@
             color: #94a3b8;
             margin-bottom: 30px;
         }
+        .warning-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
         .install-btn {
             display: block;
             width: 100%;
@@ -50,16 +60,18 @@
             box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
             margin-bottom: 20px;
         }
+        .install-btn:active {
+            transform: scale(0.98);
+        }
         .manual-steps {
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 16px;
             padding: 20px;
             text-align: left;
-            display: none;
         }
-        .manual-steps.show {
-            display: block;
+        .manual-steps.hidden {
+            display: none;
         }
         .manual-steps h3 {
             color: #f59e0b;
@@ -124,15 +136,33 @@
             background: #f59e0b;
             color: #1a0505;
             border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 12px;
+            width: 100%;
         }
         .copy-btn.copied {
             background: #22c55e;
+        }
+        .browser-note {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .try-anyway-btn {
+            background: transparent;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #f59e0b;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            width: 100%;
         }
     </style>
 </head>
@@ -140,20 +170,26 @@
     <div class="container">
         <div class="icon">🔥</div>
         <h1>GO MISSION</h1>
-        <p class="subtitle">Making Disciple-Makers</p>
+        <p class="subtitle" id="subtitle">Making Disciple-Makers</p>
         
-        <button class="install-btn" onclick="openInBrowser()">
+        <!-- Show warning if in Messenger/In-App Browser -->
+        <div class="warning-badge hidden" id="warningBadge">
+            ⚠️ Open in your browser to install
+        </div>
+        
+        <button class="install-btn" id="installBtn" onclick="handleInstall()">
             📱 Install Go Mission App
         </button>
         
-        <div class="manual-steps" id="manualSteps">
-            <h3>👆 Open in your Browser</h3>
+        <div class="manual-steps hidden" id="manualSteps">
+            <h3>📲 How to Open in Browser</h3>
             
-            <div id="iosSteps" style="display:none;">
+            <!-- iOS/iPhone Steps -->
+            <div id="iosSteps" class="hidden">
                 <div class="manual-step">
                     <div class="step-num">1</div>
                     <div class="step-text">
-                        Tap the <strong>⋯</strong> button at the bottom right <span class="highlight-icon">⋯</span>
+                        Tap the <strong>•••</strong> or <strong>⋯</strong> button <span class="highlight-icon">•••</span>
                     </div>
                 </div>
                 <div class="manual-step">
@@ -164,11 +200,12 @@
                 </div>
             </div>
             
-            <div id="androidSteps" style="display:none;">
+            <!-- Android Steps -->
+            <div id="androidSteps" class="hidden">
                 <div class="manual-step">
                     <div class="step-num">1</div>
                     <div class="step-text">
-                        Tap the <strong>⋮</strong> menu at the top right <span class="highlight-icon">⋮</span>
+                        Tap the <strong>⋮</strong> menu (3 dots) at top right <span class="highlight-icon">⋮</span>
                     </div>
                 </div>
                 <div class="manual-step">
@@ -180,101 +217,174 @@
             </div>
             
             <div class="url-box">
-                <p>Or copy this link and paste in your browser:</p>
-                <code>gomission.netlify.app</code>
+                <p>Or copy this link and paste in Safari/Chrome:</p>
+                <code id="urlCode">gomission.netlify.app</code>
                 <br>
-                <button class="copy-btn" onclick="copyUrl()">📋 Copy Link</button>
+                <button class="copy-btn" id="copyBtn" onclick="copyUrl()">📋 Copy Link</button>
             </div>
+            
+            <button class="try-anyway-btn" onclick="tryOpenBrowser()">
+                🔄 Try to Open Browser Automatically
+            </button>
         </div>
+        
+        <p class="browser-note" id="browserNote"></p>
     </div>
 
     <script>
         const appUrl = 'https://gomission.netlify.app/?install=true';
         
-        // Detect device and in-app browser
+        // Detect device and browser
         const ua = navigator.userAgent || navigator.vendor || window.opera;
         const isIOS = /iPhone|iPad|iPod/i.test(ua);
         const isAndroid = /Android/i.test(ua);
-        const isInAppBrowser = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line|Twitter|MicroMessenger|WeChat|Snapchat/i.test(ua);
         
-        function openInBrowser() {
+        // Detect in-app browsers (Messenger, Facebook, Instagram, etc.)
+        const inAppPatterns = [
+            'FBAN', 'FBAV', 'FB_IAB', 'FBIOS', 'FBSS',  // Facebook
+            'Instagram',                                  // Instagram
+            'Messenger',                                  // Messenger
+            'Line',                                       // Line
+            'MicroMessenger', 'WeChat',                   // WeChat
+            'Twitter',                                    // Twitter
+            'Snapchat',                                   // Snapchat
+            'Pinterest',                                  // Pinterest
+            'LinkedInApp'                                 // LinkedIn
+        ];
+        
+        const isInAppBrowser = inAppPatterns.some(pattern => ua.includes(pattern));
+        
+        // Which in-app browser?
+        let inAppName = 'app';
+        if (ua.includes('Messenger') || ua.includes('FBAN')) inAppName = 'Messenger';
+        else if (ua.includes('Instagram')) inAppName = 'Instagram';
+        else if (ua.includes('Line')) inAppName = 'Line';
+        else if (ua.includes('MicroMessenger')) inAppName = 'WeChat';
+        
+        // Initialize page based on browser detection
+        function initPage() {
+            if (isInAppBrowser) {
+                // In Messenger/Facebook/etc - show warning and instructions immediately
+                document.getElementById('warningBadge').classList.remove('hidden');
+                document.getElementById('subtitle').textContent = `You're in ${inAppName}. Open in browser to install.`;
+                document.getElementById('installBtn').textContent = '📲 Show Instructions';
+                document.getElementById('browserNote').textContent = `Detected: ${inAppName} browser`;
+                
+                // Show platform-specific steps
+                if (isIOS) {
+                    document.getElementById('iosSteps').classList.remove('hidden');
+                } else {
+                    document.getElementById('androidSteps').classList.remove('hidden');
+                }
+            } else {
+                // Real browser - hide warning
+                document.getElementById('warningBadge').classList.add('hidden');
+            }
+        }
+        
+        // Handle install button click
+        function handleInstall() {
             if (!isInAppBrowser) {
-                // Already in a real browser
+                // Already in a real browser - go directly to app
                 window.location.href = appUrl;
                 return;
             }
             
-            // Show manual instructions
-            document.getElementById('manualSteps').classList.add('show');
+            // In-app browser - show manual instructions
+            document.getElementById('manualSteps').classList.remove('hidden');
+            document.getElementById('installBtn').textContent = '👆 Follow Steps Above';
             
+            // Also try to open browser automatically
+            tryOpenBrowser();
+        }
+        
+        // Try various methods to open in external browser
+        function tryOpenBrowser() {
             if (isIOS) {
-                document.getElementById('iosSteps').style.display = 'block';
-                document.getElementById('androidSteps').style.display = 'none';
+                // iOS methods
                 
-                // Try various iOS methods
-                // Method 1: Safari universal link (sometimes works)
-                window.location.href = 'x-safari-' + appUrl;
+                // Method 1: Safari URL scheme (rarely works in Messenger)
+                // window.location.href = 'x-safari-' + appUrl;
                 
-                // Method 2: Googlechrome scheme
+                // Method 2: Try Google Chrome iOS
+                const chromeUrl = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
+                window.open(chromeUrl, '_blank');
+                
+                // Method 3: Universal link (sometimes triggers Safari)
                 setTimeout(() => {
-                    window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
-                }, 300);
-            } else if (isAndroid) {
-                document.getElementById('iosSteps').style.display = 'none';
-                document.getElementById('androidSteps').style.display = 'block';
+                    window.location.href = appUrl;
+                }, 500);
                 
-                // Try Android intent
-                const intentUrl = 'intent://gomission.netlify.app/?install=true#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(appUrl) + ';end';
+            } else if (isAndroid) {
+                // Android Intent - try to open in Chrome
+                const intentUrl = 'intent://gomission.netlify.app/?install=true#Intent;' +
+                    'scheme=https;' +
+                    'package=com.android.chrome;' +
+                    'S.browser_fallback_url=' + encodeURIComponent(appUrl) + ';' +
+                    'end';
+                
                 window.location.href = intentUrl;
+                
+                // Fallback: Try direct Chrome URL
+                setTimeout(() => {
+                    const chromeAndroid = 'googlechrome://navigate?url=' + encodeURIComponent(appUrl);
+                    window.location.href = chromeAndroid;
+                }, 500);
             }
         }
         
+        // Copy URL to clipboard
         function copyUrl() {
             const url = 'gomission.netlify.app';
+            const copyBtn = document.getElementById('copyBtn');
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
-                    showCopied();
+                    showCopied(copyBtn);
                 }).catch(() => {
-                    fallbackCopy(url);
+                    fallbackCopy(url, copyBtn);
                 });
             } else {
-                fallbackCopy(url);
+                fallbackCopy(url, copyBtn);
             }
         }
         
-        function fallbackCopy(text) {
+        function fallbackCopy(text, btn) {
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
             textarea.style.opacity = '0';
+            textarea.style.left = '-9999px';
             document.body.appendChild(textarea);
             textarea.focus();
             textarea.select();
+            
             try {
-                document.execCommand('copy');
-                showCopied();
+                const success = document.execCommand('copy');
+                if (success) {
+                    showCopied(btn);
+                } else {
+                    alert('Copy this link: ' + text);
+                }
             } catch (e) {
-                alert('Please copy manually: ' + text);
+                alert('Copy this link: ' + text);
             }
+            
             document.body.removeChild(textarea);
         }
         
-        function showCopied() {
-            const btn = document.querySelector('.copy-btn');
-            btn.textContent = '✓ Copied!';
+        function showCopied(btn) {
+            btn.textContent = '✅ Copied!';
             btn.classList.add('copied');
+            
             setTimeout(() => {
                 btn.textContent = '📋 Copy Link';
                 btn.classList.remove('copied');
             }, 2000);
         }
         
-        // Auto-show instructions if in Messenger
-        if (isInAppBrowser) {
-            // Show a hint
-            document.querySelector('.subtitle').textContent = 'Tap the button below to install';
-        }
+        // Initialize on load
+        initPage();
     </script>
 </body>
 </html>
