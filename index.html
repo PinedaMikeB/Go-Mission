@@ -1558,6 +1558,15 @@
             document.getElementById('errorMessage').classList.add('hidden');
         }
 
+        // Expose email login functions to global scope for onclick handlers
+        window.toggleEmailLogin = toggleEmailLogin;
+        window.showForgotPassword = showForgotPassword;
+        window.showRegister = showRegister;
+        window.backToEmailLogin = backToEmailLogin;
+        window.signInWithEmail = signInWithEmail;
+        window.registerWithEmail = registerWithEmail;
+        window.sendPasswordReset = sendPasswordReset;
+
         // Sign out button (may not exist in minimal UI - handled by menu)
         const signOutBtn = document.getElementById('signOutBtn');
         if (signOutBtn) {
