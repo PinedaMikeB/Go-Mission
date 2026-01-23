@@ -11,9 +11,75 @@
 
 ---
 
-## Current Session (2026-01-23)
+## Current Session (2026-01-23 Evening)
+- **MODULE**: Authentication - Password Reset Fix
+- **STATUS**: 🔄 In Progress
+- **TASK**: Fix "sendPasswordResetCode is not a function" error
+
+### 🐛 Bug Fixed This Session
+
+**Problem:**
+Users who previously signed in with Google now cannot reset password because:
+1. Cloud Functions were created but never connected to frontend
+2. `window.sendPasswordResetCode` was called but never defined
+3. Firebase Functions SDK was not imported
+
+**Root Cause:**
+Previous session created Cloud Functions in `/functions/index.js` but forgot to:
+- Import `getFunctions` and `httpsCallable` from Firebase Functions SDK
+- Initialize the functions and create callable references  
+- Assign them to window objects
+
+**Fix Applied:**
+| File | Changes |
+|------|---------|
+| `/index.html` | Added Firebase Functions import + callable function initialization |
+
+**Code Changes:**
+```javascript
+// Added import
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+// Added initialization after app init
+const functions = getFunctions(app);
+window.sendPasswordResetCode = httpsCallable(functions, 'sendPasswordResetCode');
+window.verifyPasswordResetCode = httpsCallable(functions, 'verifyPasswordResetCode');
+window.completePasswordReset = httpsCallable(functions, 'completePasswordReset');
+```
+
+### 📋 Next Steps:
+1. **Deploy Cloud Functions (if not already deployed):**
+   ```bash
+   cd /Volumes/Wotg Drive Mike/GitHub/Go-Mission/functions
+   firebase deploy --only functions
+   ```
+
+2. **Set up Gmail secrets for email sending:**
+   ```bash
+   firebase functions:secrets:set GMAIL_EMAIL
+   firebase functions:secrets:set GMAIL_PASSWORD
+   ```
+   Note: Use Gmail App Password (not regular password)
+   
+3. **Test the password reset flow:**
+   - Go to Sign In
+   - Click "Forgot Password?"
+   - Enter email
+   - Check email for code
+   - Enter code + new password
+
+4. **Commit & Push:**
+   ```bash
+   git add .
+   git commit -m "Fix: Add Firebase Functions SDK for password reset"
+   git push origin main
+   ```
+
+---
+
+## Previous Session (2026-01-23)
 - **MODULE**: Authentication - Email/Password Migration
-- **STATUS**: ✅ Code complete, ready to deploy
+- **STATUS**: ✅ Code complete, missing frontend integration
 - **TASK**: Migrated from Google/Phone auth to Email/Password only
 
 ### 🔐 Authentication Changes (COMPLETED)

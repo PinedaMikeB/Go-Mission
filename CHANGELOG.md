@@ -10,7 +10,55 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.1.0] - 2026-01-23 ⭐ CURRENT
+## [v1.1.1] - 2026-01-23 ⭐ CURRENT
+
+### 🐛 Password Reset Bug Fix
+
+**Summary:** Fixed "sendPasswordResetCode is not a function" error that prevented password resets.
+
+**Problem:**
+- Users who signed up with Google couldn't reset password
+- Clicking "Send Verification Code" threw JavaScript error
+- Cloud Functions were created but never connected to frontend
+
+**Root Cause:**
+- Previous session created Cloud Functions but forgot to:
+  1. Import Firebase Functions SDK (`getFunctions`, `httpsCallable`)
+  2. Initialize callable function references
+  3. Assign them to `window` objects
+
+**Fix:**
+```javascript
+// Added to index.html
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+const functions = getFunctions(app);
+window.sendPasswordResetCode = httpsCallable(functions, 'sendPasswordResetCode');
+window.verifyPasswordResetCode = httpsCallable(functions, 'verifyPasswordResetCode');
+window.completePasswordReset = httpsCallable(functions, 'completePasswordReset');
+```
+
+**Files Changed:**
+- `/index.html` - Added Firebase Functions import + callable initialization
+
+**Deployment:**
+```bash
+git add .
+git commit -m "Fix: Add Firebase Functions SDK for password reset"
+git push origin main
+```
+
+**Note:** Cloud Functions must be deployed separately:
+```bash
+cd functions
+firebase deploy --only functions
+firebase functions:secrets:set GMAIL_EMAIL
+firebase functions:secrets:set GMAIL_PASSWORD
+```
+
+---
+
+## [v1.1.0] - 2026-01-23
 
 ### 🔐 Email/Password Authentication (Major Change)
 
