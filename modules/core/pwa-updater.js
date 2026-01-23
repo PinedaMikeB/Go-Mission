@@ -1,28 +1,31 @@
 /**
- * Go Mission - PWA Update Handler (Force Update Version)
+ * Go Mission - PWA Silent Auto-Update Handler
  * 
- * FORCE UPDATE FLOW:
- * 1. Service worker detects new version
- * 2. Shows FULL SCREEN lock (can't dismiss!)
- * 3. User must click "Update Now"
- * 4. Clears all caches → hard reload
+ * SILENT UPDATE FLOW:
+ * 1. Checks for updates every 5 minutes (silent)
+ * 2. When update found → downloads new SW in background
+ * 3. When user leaves app (blur/hidden) → activates new SW + clears cache
+ * 4. When user returns → app is already updated (seamless!)
+ * 
+ * NO PROMPTS - Updates happen automatically when user isn't looking
  * 
  * To push update:
  * 1. Change CACHE_VERSION in firebase-messaging-sw.js
  * 2. Deploy to Netlify
- * 3. Users see force update screen on next app open
+ * 3. Users get silent update on next app blur/exit
  */
 
 const PWAUpdater = {
     registration: null,
-    updateAvailable: false,
-    currentVersion: null,
+    updateReady: false,
+    newWorker: null,
+    isUpdating: false,
     
     /**
      * Initialize PWA and register service worker
      */
     async init() {
-        console.log('[PWA] Initializing...');
+        console.log('[PWA] Initializing silent auto-updater...');
         
         if (!('serviceWorker' in navigator)) {
             console.log('[PWA] Service workers not supported');
@@ -36,48 +39,72 @@ const PWAUpdater = {
             
             // Check for waiting SW immediately (update was downloaded in background)
             if (this.registration.waiting) {
-                console.log('[PWA] Found waiting SW on load - update available');
-                this.showForceUpdateScreen('New version ready');
-                return;
+                console.log('[PWA] Found waiting SW on load - update ready');
+                this.updateReady = true;
+                this.newWorker = this.registration.waiting;
             }
             
             // Listen for new service worker installing
             this.registration.addEventListener('updatefound', () => {
                 console.log('[PWA] Update found - new SW installing');
-                const newWorker = this.registration.installing;
+                const installingWorker = this.registration.installing;
                 
-                newWorker.addEventListener('statechange', () => {
-                    console.log('[PWA] New SW state:', newWorker.state);
+                installingWorker.addEventListener('statechange', () => {
+                    console.log('[PWA] New SW state:', installingWorker.state);
                     
-                    // When new SW is installed and we have an existing controller
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('[PWA] New version installed - showing force update');
-                        this.showForceUpdateScreen('New version ready');
+                    if (installingWorker.state === 'installed') {
+                        if (navigator.serviceWorker.controller) {
+                            // New SW installed, existing one is active
+                            console.log('[PWA] ✓ Update downloaded - will apply when user leaves app');
+                            this.updateReady = true;
+                            this.newWorker = installingWorker;
+                        } else {
+                            // First install, no need to update
+                            console.log('[PWA] First install complete');
+                        }
                     }
                 });
             });
             
-            // Listen for messages from service worker
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                console.log('[PWA] Message from SW:', event.data);
-                
-                if (event.data?.type === 'SW_UPDATED') {
-                    console.log('[PWA] SW_UPDATED received, version:', event.data.version);
-                    this.showForceUpdateScreen(event.data.version);
+            // Listen for SW taking control (after skipWaiting)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (this.isUpdating) {
+                    console.log('[PWA] Controller changed - reloading...');
+                    window.location.reload();
                 }
             });
             
             // Check for updates every 5 minutes
             setInterval(() => this.checkForUpdates(), 5 * 60 * 1000);
             
-            // Also check on visibility change (when user comes back to app)
+            // SILENT UPDATE: Apply update when user leaves/hides app
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
+                if (document.visibilityState === 'hidden' && this.updateReady) {
+                    console.log('[PWA] User left app - applying silent update');
+                    this.applySilentUpdate();
+                } else if (document.visibilityState === 'visible') {
+                    // Check for updates when user returns
                     this.checkForUpdates();
                 }
             });
             
-            console.log('[PWA] Ready');
+            // Also handle page unload/beforeunload for mobile PWA
+            window.addEventListener('pagehide', () => {
+                if (this.updateReady) {
+                    console.log('[PWA] Page hiding - applying silent update');
+                    this.applySilentUpdate();
+                }
+            });
+            
+            // Handle blur event (user switches apps on mobile)
+            window.addEventListener('blur', () => {
+                if (this.updateReady) {
+                    console.log('[PWA] Window blur - applying silent update');
+                    this.applySilentUpdate();
+                }
+            });
+            
+            console.log('[PWA] Silent auto-updater ready');
             
         } catch (error) {
             console.error('[PWA] Registration failed:', error);
@@ -85,7 +112,7 @@ const PWAUpdater = {
     },
     
     /**
-     * Check for service worker updates
+     * Check for service worker updates (silent)
      */
     async checkForUpdates() {
         if (!this.registration) return;
@@ -97,121 +124,49 @@ const PWAUpdater = {
             // Check if there's a waiting worker after update check
             if (this.registration.waiting) {
                 console.log('[PWA] Found waiting SW after update check');
-                this.showForceUpdateScreen('New version available');
+                this.updateReady = true;
+                this.newWorker = this.registration.waiting;
             }
         } catch (error) {
-            console.log('[PWA] Update check failed:', error);
+            console.log('[PWA] Update check failed:', error.message);
         }
     },
     
     /**
-     * Show FORCE update screen (blocks entire app)
+     * Apply update silently (no UI, happens in background)
      */
-    showForceUpdateScreen(version) {
-        if (this.updateAvailable) return; // Already showing
-        this.updateAvailable = true;
+    async applySilentUpdate() {
+        if (this.isUpdating || !this.updateReady) return;
+        this.isUpdating = true;
         
-        // Remove any existing
-        const existing = document.getElementById('pwaForceUpdate');
-        if (existing) existing.remove();
-        
-        const versionDisplay = this.extractVersion(version);
-        
-        const screen = document.createElement('div');
-        screen.id = 'pwaForceUpdate';
-        screen.innerHTML = `
-            <div class="force-update-overlay"></div>
-            <div class="force-update-content">
-                <div class="force-update-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                </div>
-                
-                <h2>Update Available</h2>
-                <p class="force-update-subtitle">A new version of Go Mission is ready!</p>
-                
-                <div class="force-update-version">
-                    <span class="label">New Version</span>
-                    <span class="value">${versionDisplay}</span>
-                </div>
-                
-                <p class="force-update-note">
-                    Please update to get the latest features, bug fixes, and improvements.
-                </p>
-                
-                <button class="force-update-btn" onclick="PWAUpdater.applyUpdate()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Update Now
-                </button>
-                
-                <p class="force-update-footer">This will refresh the app</p>
-            </div>
-        `;
-        
-        this.addForceUpdateStyles();
-        document.body.appendChild(screen);
-        document.body.style.overflow = 'hidden';
-    },
-    
-    /**
-     * Extract version from cache name
-     */
-    extractVersion(version) {
-        if (!version) return 'Latest';
-        
-        // go-mission-v1.0.3 → v1.0.3
-        const match = version.match(/v[\d.]+/);
-        return match ? match[0] : version;
-    },
-    
-    /**
-     * Apply the update
-     */
-    async applyUpdate() {
-        const btn = document.querySelector('.force-update-btn');
-        if (btn) {
-            btn.innerHTML = `
-                <svg class="btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                </svg>
-                Updating...
-            `;
-            btn.disabled = true;
-        }
+        console.log('[PWA] Applying silent update...');
         
         try {
-            // 1. Tell waiting SW to skip waiting
-            if (this.registration?.waiting) {
-                console.log('[PWA] Telling waiting SW to skip waiting');
-                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-            
-            // 2. Clear ALL caches
+            // 1. Clear all caches first
             if ('caches' in window) {
                 const cacheNames = await caches.keys();
                 console.log('[PWA] Clearing', cacheNames.length, 'caches');
                 await Promise.all(cacheNames.map(name => caches.delete(name)));
             }
             
-            // 3. Wait a moment for SW to take over
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // 2. Tell waiting SW to skip waiting and take over
+            if (this.newWorker) {
+                this.newWorker.postMessage({ type: 'SKIP_WAITING' });
+            } else if (this.registration?.waiting) {
+                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
             
-            // 4. Hard reload (bypass cache)
-            console.log('[PWA] Reloading...');
-            window.location.reload(true);
+            // Note: controllerchange event will trigger reload
+            console.log('[PWA] Silent update applied - will reload on next focus');
             
         } catch (error) {
-            console.error('[PWA] Update error:', error);
-            // Force reload anyway
-            window.location.reload(true);
+            console.error('[PWA] Silent update error:', error);
+            this.isUpdating = false;
         }
     },
     
     /**
-     * Force refresh (manual trigger)
+     * Manual force refresh (for debugging/settings)
      */
     async forceRefresh() {
         console.log('[PWA] Force refresh triggered');
@@ -237,167 +192,54 @@ const PWAUpdater = {
     },
     
     /**
-     * Add styles for force update screen
+     * Get current version info (for settings/debug screen)
      */
-    addForceUpdateStyles() {
-        if (document.getElementById('forceUpdateStyles')) return;
+    async getVersion() {
+        if (!this.registration?.active) return 'Unknown';
         
-        const style = document.createElement('style');
-        style.id = 'forceUpdateStyles';
-        style.textContent = `
-            #pwaForceUpdate {
-                position: fixed;
-                inset: 0;
-                z-index: 999999;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = (event) => {
+                resolve(event.data?.version || 'Unknown');
+            };
+            this.registration.active.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
             
-            .force-update-overlay {
-                position: absolute;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.95);
-                backdrop-filter: blur(10px);
-            }
-            
-            .force-update-content {
-                position: relative;
-                background: linear-gradient(135deg, #1a0505 0%, #2a0505 100%);
-                border: 2px solid rgba(251, 191, 36, 0.3);
-                border-radius: 24px;
-                padding: 40px 32px;
-                max-width: 380px;
-                width: 100%;
-                text-align: center;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            }
-            
-            .force-update-icon {
-                width: 80px;
-                height: 80px;
-                margin: 0 auto 24px;
-                background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.05) 100%);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .force-update-icon svg {
-                width: 40px;
-                height: 40px;
-                color: #f59e0b;
-                animation: rotate 2s linear infinite;
-            }
-            
-            @keyframes rotate {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            
-            .force-update-content h2 {
-                font-size: 28px;
-                font-weight: 800;
-                color: #f59e0b;
-                margin: 0 0 8px 0;
-            }
-            
-            .force-update-subtitle {
-                color: #94a3b8;
-                font-size: 16px;
-                margin: 0 0 24px 0;
-            }
-            
-            .force-update-version {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: rgba(0, 0, 0, 0.3);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 20px;
-            }
-            
-            .force-update-version .label {
-                color: #64748b;
-                font-size: 14px;
-            }
-            
-            .force-update-version .value {
-                color: #4ade80;
-                font-weight: 700;
-                font-size: 18px;
-            }
-            
-            .force-update-note {
-                color: #e2e8f0;
-                font-size: 14px;
-                line-height: 1.6;
-                margin: 0 0 24px 0;
-            }
-            
-            .force-update-btn {
-                width: 100%;
-                padding: 18px 32px;
-                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-                border: none;
-                border-radius: 14px;
-                color: #1a0505;
-                font-size: 18px;
-                font-weight: 800;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
-                transition: transform 0.2s, box-shadow 0.2s;
-                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
-            }
-            
-            .force-update-btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 30px rgba(245, 158, 11, 0.4);
-            }
-            
-            .force-update-btn:disabled {
-                opacity: 0.7;
-                cursor: wait;
-                transform: none;
-            }
-            
-            .force-update-btn .btn-icon {
-                width: 24px;
-                height: 24px;
-            }
-            
-            .force-update-btn .btn-icon.spinning {
-                animation: spin 1s linear infinite;
-            }
-            
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            
-            .force-update-footer {
-                color: #64748b;
-                font-size: 12px;
-                margin: 16px 0 0 0;
-            }
-        `;
-        
-        document.head.appendChild(style);
+            // Timeout fallback
+            setTimeout(() => resolve('Unknown'), 1000);
+        });
     },
     
     /**
-     * Debug: Test the force update screen
+     * Check if update is pending (for UI indicators)
      */
-    testForceUpdate() {
-        this.updateAvailable = false;
-        this.showForceUpdateScreen('go-mission-v9.9.9');
+    isUpdatePending() {
+        return this.updateReady;
+    },
+    
+    /**
+     * Debug: Manually trigger update check and apply
+     */
+    async debugUpdate() {
+        console.log('[PWA Debug] Checking for updates...');
+        await this.checkForUpdates();
+        
+        if (this.updateReady) {
+            console.log('[PWA Debug] Update ready - applying now');
+            this.isUpdating = true;
+            
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            }
+            
+            if (this.newWorker) {
+                this.newWorker.postMessage({ type: 'SKIP_WAITING' });
+            } else if (this.registration?.waiting) {
+                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+        } else {
+            console.log('[PWA Debug] No update available');
+        }
     }
 };
 

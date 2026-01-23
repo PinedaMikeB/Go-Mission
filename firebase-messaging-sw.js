@@ -1,20 +1,21 @@
 /**
  * Go Mission - Combined Service Worker
- * Handles: Push Notifications, Caching, Auto-Updates
+ * Handles: Push Notifications, Caching, Silent Auto-Updates
  * 
- * UPDATE FLOW:
+ * SILENT UPDATE FLOW:
  * 1. Change CACHE_VERSION below
  * 2. Deploy to Netlify
- * 3. User opens app → new SW installs
- * 4. SW sends 'SW_UPDATED' message
- * 5. AppUpdater shows lock screen
- * 6. User clicks Update → hard reload
+ * 3. User opens app → new SW installs in background
+ * 4. User leaves/blurs app → SW activates silently
+ * 5. User returns → app is already updated!
+ * 
+ * NO PROMPTS - Fully automatic updates
  */
 
 // ============================================
-// 🔥 CHANGE THIS VERSION TO FORCE UPDATE
+// 🔥 CHANGE THIS VERSION TO PUSH UPDATE
 // ============================================
-const CACHE_VERSION = 'v1.0.3';
+const CACHE_VERSION = 'v1.0.4';
 const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
 
 // Files to cache for offline
@@ -43,16 +44,15 @@ self.addEventListener('install', (event) => {
                 });
             })
             .then(() => {
-                // Skip waiting - activate immediately
-                console.log('[SW] Skipping wait, activating immediately');
-                return self.skipWaiting();
+                // DON'T skip waiting here - let the app control when to activate
+                console.log('[SW] Install complete - waiting for activation signal');
             })
     );
 });
 
 
 // ============================================
-// ACTIVATE - Clean old caches & notify clients
+// ACTIVATE - Clean old caches & claim clients
 // ============================================
 self.addEventListener('activate', (event) => {
     console.log('[SW] Activating:', CACHE_NAME);
@@ -70,24 +70,13 @@ self.addEventListener('activate', (event) => {
                     })
                 );
             })
-            // 2. Take control of all clients
+            // 2. Take control of all clients immediately
             .then(() => {
                 console.log('[SW] Claiming clients');
                 return self.clients.claim();
             })
-            // 3. Notify all clients about the update
             .then(() => {
-                return self.clients.matchAll({ type: 'window' });
-            })
-            .then((clients) => {
-                console.log('[SW] Notifying', clients.length, 'clients about update');
-                clients.forEach((client) => {
-                    client.postMessage({ 
-                        type: 'SW_UPDATED', 
-                        version: CACHE_NAME,
-                        timestamp: Date.now()
-                    });
-                });
+                console.log('[SW] ✓ Activated and controlling all clients');
             })
     );
 });
@@ -181,7 +170,7 @@ self.addEventListener('message', (event) => {
     console.log('[SW] Message received:', event.data);
     
     if (event.data?.type === 'SKIP_WAITING') {
-        console.log('[SW] Skip waiting requested');
+        console.log('[SW] Skip waiting requested - activating now');
         self.skipWaiting();
     }
     

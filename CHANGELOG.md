@@ -10,7 +10,54 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.1.1] - 2026-01-23 ⭐ CURRENT
+## [v1.1.2] - 2026-01-24 ⭐ CURRENT
+
+### 🔄 Silent PWA Auto-Updates
+
+**Summary:** Replaced annoying force-update prompts with seamless background updates.
+
+**Problem:**
+- Force update lock screen interrupted user flow
+- Mobile PWA users had to click "Update Now" repeatedly
+- Updates felt intrusive and broke reading/prayer experience
+
+**Solution - Silent Update Flow:**
+1. App checks for updates every 5 minutes (silent)
+2. New version downloads in background (user unaware)
+3. When user leaves app (blur/hidden/close) → SW activates + clears cache
+4. When user returns → app already updated (seamless!)
+
+**Key Changes:**
+- Removed force update lock screen UI
+- Added `visibilitychange` listener (update when hidden)
+- Added `pagehide` listener (update when closing)
+- Added `blur` listener (update when switching apps on mobile)
+- Added `controllerchange` listener for seamless reload
+
+**Files Changed:**
+- `/modules/core/pwa-updater.js` - Complete rewrite for silent updates
+- `/firebase-messaging-sw.js` - v1.0.4, removed auto-skipWaiting
+
+**Debug Commands:**
+```javascript
+PWAUpdater.forceRefresh();     // Manual full refresh
+PWAUpdater.debugUpdate();      // Force check and apply
+PWAUpdater.getVersion();       // Get current SW version
+PWAUpdater.isUpdatePending();  // Check if update waiting
+```
+
+**Deployment:**
+```bash
+git add .
+git commit -m "v1.1.2: Silent PWA auto-updates (no more prompts)"
+git push origin main
+```
+
+**Rollback:** Restore `pwa-updater.js` and `firebase-messaging-sw.js` from v1.1.1
+
+---
+
+## [v1.1.1] - 2026-01-23
 
 ### 🐛 Password Reset Bug Fix
 

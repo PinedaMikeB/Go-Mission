@@ -12,6 +12,69 @@
 ---
 
 ## Current Session (2026-01-24)
+- **MODULE**: PWA Silent Auto-Update + Invite Code Fix
+- **STATUS**: ✅ Complete
+- **TASK**: Silent updates + Fix invite code generation for existing groups
+
+### ✅ Invite Code Fix (COMPLETED)
+
+**Problem:** "Invite Members" button wasn't working for groups created before invite codes were implemented.
+
+**Solution:** `showInviteCode()` now auto-generates a code if group doesn't have one.
+
+**Changes to `/modules/groups/my-groups.js`:**
+- Made `showInviteCode()` async
+- Added check for missing `inviteCode` 
+- Auto-generates and saves new code to Firestore if missing
+- Added "Share via..." button using native share API
+- Improved UI with larger code display and better instructions
+
+### ✅ PWA Silent Auto-Update (COMPLETED)
+
+**Problem Solved:**
+- Force update prompts were annoying on mobile PWA
+- Users had to click "Update Now" repeatedly
+- Interrupted reading/prayer flow
+
+**New Silent Update Flow:**
+```
+1. Check for updates every 5 minutes (silent)
+2. When update found → download new SW in background
+3. When user LEAVES app (blur/hidden/pagehide) → activate new SW + clear caches
+4. When user RETURNS → app is already updated! (seamless)
+```
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `/modules/core/pwa-updater.js` | Removed force update UI, added silent background updates |
+| `/firebase-messaging-sw.js` | Bumped to v1.0.4, don't auto-skipWaiting on install |
+
+**Key Changes:**
+- ❌ Removed: Force update lock screen
+- ❌ Removed: "Update Now" button requirement  
+- ✅ Added: Silent update on `visibilitychange` (hidden)
+- ✅ Added: Silent update on `pagehide` event
+- ✅ Added: Silent update on `blur` event (mobile app switch)
+- ✅ Added: `controllerchange` listener for seamless reload
+
+**How Updates Work Now:**
+1. User opens app → checks for updates silently
+2. New version found → downloads in background (user unaware)
+3. User switches to another app or closes → SW activates silently
+4. User returns → page reloads with new version automatically
+
+**Debug/Manual Options:**
+```javascript
+PWAUpdater.forceRefresh();     // Manual full refresh
+PWAUpdater.debugUpdate();      // Force check and apply
+PWAUpdater.getVersion();       // Get current version
+PWAUpdater.isUpdatePending();  // Check if update waiting
+```
+
+---
+
+## Previous Session (2026-01-24 - Earlier)
 - **MODULE**: App Restructure - Upline/Downline Groups
 - **STATUS**: 🔄 In Progress
 - **TASK**: Restructure groups into Upline (being discipled) and Downline (discipling others)
