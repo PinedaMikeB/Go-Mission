@@ -625,11 +625,19 @@ const MyGroups = {
     },
     
     /**
-     * Join meeting for a group (Disciple)
+     * Join meeting for a group (Disciple/Member)
      */
     joinMeeting(groupId) {
-        const group = this.uplineGroup?.id === groupId ? this.uplineGroup : null;
+        // Check upline group first, then downline groups
+        let group = null;
+        if (this.uplineGroup?.id === groupId) {
+            group = this.uplineGroup;
+        } else {
+            group = this.downlineGroups.find(g => g.id === groupId);
+        }
+        
         if (!group) {
+            console.error('[MyGroups] Group not found for joinMeeting:', groupId);
             alert('Group not found');
             return;
         }
@@ -638,7 +646,8 @@ const MyGroups = {
         if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
             const userName = window.currentUser?.displayName || 'Guest';
             const userEmail = window.currentUser?.email || '';
-            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, false);
+            const isLeader = group.leaderId === window.currentUser?.uid;
+            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
         } else {
             // Fallback: Open Jitsi directly
             const roomName = `GoMission-${groupId}`;
