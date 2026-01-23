@@ -606,15 +606,16 @@ const MyGroups = {
      */
     startMeeting(groupId) {
         const group = this.downlineGroups.find(g => g.id === groupId);
-        if (!group) return;
+        if (!group) {
+            console.error('[MyGroups] Group not found for startMeeting:', groupId);
+            return;
+        }
         
         // Use GroupMeeting module if available
-        if (typeof GroupMeeting !== 'undefined') {
-            // Set current group in Groups module for compatibility
-            if (typeof Groups !== 'undefined') {
-                Groups.currentGroup = group;
-            }
-            GroupMeeting.startMeeting();
+        if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
+            const userName = window.currentUser?.displayName || 'Leader';
+            const userEmail = window.currentUser?.email || '';
+            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, true);
         } else {
             // Fallback: Open Jitsi directly
             const roomName = `GoMission-${groupId}`;
@@ -634,12 +635,10 @@ const MyGroups = {
         }
         
         // Use GroupMeeting module if available
-        if (typeof GroupMeeting !== 'undefined') {
-            // Set current group in Groups module for compatibility
-            if (typeof Groups !== 'undefined') {
-                Groups.currentGroup = group;
-            }
-            GroupMeeting.joinMeeting();
+        if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
+            const userName = window.currentUser?.displayName || 'Guest';
+            const userEmail = window.currentUser?.email || '';
+            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, false);
         } else {
             // Fallback: Open Jitsi directly
             const roomName = `GoMission-${groupId}`;
