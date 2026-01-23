@@ -955,9 +955,19 @@
             
             if (user) {
                 window.currentUser = user;
-                document.getElementById('userName').textContent = user.displayName || user.email;
-                document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
-                document.getElementById('adminPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                // Safely update user display elements (some may not exist in minimal UI)
+                const userNameEl = document.getElementById('userName');
+                const userPhotoEl = document.getElementById('userPhoto');
+                const adminPhotoEl = document.getElementById('adminPhoto');
+                const userInitialEl = document.getElementById('userInitial');
+                
+                if (userNameEl) userNameEl.textContent = user.displayName || user.email;
+                if (userPhotoEl) {
+                    userPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                    if (user.photoURL) userPhotoEl.classList.remove('hidden');
+                }
+                if (adminPhotoEl) adminPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                if (userInitialEl) userInitialEl.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
                 
                 await ensureUserExists(user);
                 loginScreen.classList.add('hidden');
@@ -1222,9 +1232,13 @@
             }
         });
 
-        document.getElementById('signOutBtn').addEventListener('click', async () => {
-            await signOut(auth);
-        });
+        // Sign out button (may not exist in minimal UI - handled by menu)
+        const signOutBtn = document.getElementById('signOutBtn');
+        if (signOutBtn) {
+            signOutBtn.addEventListener('click', async () => {
+                await signOut(auth);
+            });
+        }
     </script>
 
     <!-- App Logic -->
@@ -1476,6 +1490,43 @@
         window.toggleDevotionMenu = function() {
             const modal = document.getElementById('devotionMenuModal');
             modal.classList.toggle('hidden');
+        };
+        
+        // Toggle main menu (header menu button)
+        window.toggleMainMenu = function() {
+            const modal = document.getElementById('mainMenuModal');
+            if (modal) {
+                modal.classList.toggle('hidden');
+            } else {
+                // Create menu modal if doesn't exist
+                const menuHTML = `
+                    <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
+                        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-64 mt-16 mr-2 overflow-hidden shadow-2xl">
+                            <div class="p-4 border-b border-[var(--card-border)]">
+                                <p class="text-sm font-bold text-[var(--text-color)]">${window.currentUser?.displayName || 'User'}</p>
+                                <p class="text-xs text-[var(--text-muted)]">${window.currentUser?.email || ''}</p>
+                            </div>
+                            <div class="p-2">
+                                <button onclick="i18n.setLang(i18n.getLang() === 'en' ? 'tl' : 'en'); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">${i18n.getLang() === 'en' ? '🇵🇭' : '🇺🇸'}</span>
+                                    <span class="text-sm text-[var(--text-color)]">${i18n.getLang() === 'en' ? 'Switch to Tagalog' : 'Switch to English'}</span>
+                                </button>
+                                <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">🌓</span>
+                                    <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
+                                </button>
+                                <button onclick="signOut(auth); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left text-red-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                    </svg>
+                                    <span class="text-sm">Sign Out</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', menuHTML);
+            }
         };
         
         // Toggle popup share
