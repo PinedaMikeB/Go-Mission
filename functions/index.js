@@ -1,19 +1,66 @@
 /**
  * Go Mission - Firebase Cloud Functions (v2)
  * Push Notification System with Badge Support
+ * Password Reset with Email Verification Codes
  */
 
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+const { getAuth } = require('firebase-admin/auth');
+const nodemailer = require('nodemailer');
 
 initializeApp();
 
 const db = getFirestore();
 const messaging = getMessaging();
+const adminAuth = getAuth();
+
+// ============================================
+// EMAIL CONFIGURATION (using Firebase Secrets)
+// ============================================
+// To set up Gmail App Password:
+// 1. Enable 2FA on your Google account
+// 2. Go to https://myaccount.google.com/apppasswords
+// 3. Create an app password for "Mail"
+// 4. Run: firebase functions:secrets:set GMAIL_EMAIL
+// 5. Run: firebase functions:secrets:set GMAIL_PASSWORD
+
+const gmailEmail = defineSecret('GMAIL_EMAIL');
+const gmailPassword = defineSecret('GMAIL_PASSWORD');
+
+/**
+ * Send email using nodemailer
+ */
+async function sendEmailWithCredentials(to, subject, html, email, password) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: email,
+      pass: password
+    }
+  });
+  
+  const mailOptions = {
+    from: `"Go Mission" <${email}>`,
+    to: to,
+    subject: subject,
+    html: html
+  };
+  
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
+}
 
 // ============================================
 // NOTIFICATION HELPER FUNCTIONS
@@ -346,6 +393,257 @@ exports.sendDailyReminder = onSchedule({
   
   const userIds = usersSnapshot.docs.map(doc => doc.id);
   await sendToUsers(userIds, notification);
+  
+  return null;
+});
+
+// ============================================
+// PASSWORD RESET WITH EMAIL CODE
+// ============================================
+
+/**
+ * Generate a 6-digit verification code
+ */
+function generateVerificationCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Send password reset code to user's email
+ * Stores code in Firestore with 15-minute expiry
+ */
+exports.sendPasswordResetCode = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+  const { email } = request.data;
+  
+  if (!email) {
+    throw new HttpsError('invalid-argument', 'Email is required');
+  }
+  
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Check if user exists in Firebase Auth
+  let userRecord;
+  try {
+    userRecord = await adminAuth.getUserByEmail(normalizedEmail);
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      // Don't reveal if email exists or not for security
+      // But return success anyway to prevent email enumeration
+      return { success: true, message: 'If an account exists, a code has been sent.' };
+    }
+    throw new HttpsError('internal', 'Error checking user');
+  }
+  
+  // Generate 6-digit code
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  
+  // Store code in Firestore
+  await db.collection('goMission_passwordResets').doc(normalizedEmail).set({
+    code: code,
+    email: normalizedEmail,
+    uid: userRecord.uid,
+    expiresAt: expiresAt,
+    attempts: 0,
+    createdAt: FieldValue.serverTimestamp()
+  });
+  
+  // Send email with verification code
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #1a0505; color: #ffffff; padding: 40px 20px; margin: 0;">
+      <div style="max-width: 500px; margin: 0 auto; background: linear-gradient(135deg, #2a0a0a 0%, #1a0505 100%); border-radius: 16px; padding: 40px; border: 1px solid #3d1515;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #f59e0b; font-size: 24px; margin: 0; letter-spacing: 3px;">★ GO MISSION ★</h1>
+        </div>
+        
+        <h2 style="color: #ffffff; font-size: 20px; margin-bottom: 20px; text-align: center;">Password Reset Code</h2>
+        
+        <p style="color: #a8a29e; font-size: 14px; line-height: 1.6; margin-bottom: 30px; text-align: center;">
+          You requested to reset your password. Use this verification code:
+        </p>
+        
+        <div style="background: #3d1515; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 30px;">
+          <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #f59e0b;">${code}</span>
+        </div>
+        
+        <p style="color: #78716c; font-size: 12px; text-align: center; margin-bottom: 20px;">
+          This code expires in <strong style="color: #f59e0b;">15 minutes</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #3d1515; margin: 30px 0;">
+        
+        <p style="color: #57534e; font-size: 11px; text-align: center; line-height: 1.5;">
+          If you didn't request this, you can safely ignore this email.<br>
+          Your password will not be changed.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Try to send email using secrets
+  const emailSent = await sendEmailWithCredentials(
+    normalizedEmail,
+    '🔐 Go Mission - Password Reset Code',
+    emailHtml,
+    gmailEmail.value(),
+    gmailPassword.value()
+  );
+  
+  // Log for debugging
+  console.log(`Password reset code for ${normalizedEmail}: ${code} (email sent: ${emailSent})`);
+  
+  return { 
+    success: true, 
+    message: 'Verification code sent to your email.',
+    emailSent: emailSent
+  };
+});
+
+/**
+ * Verify the password reset code
+ */
+exports.verifyPasswordResetCode = onCall(async (request) => {
+  const { email, code } = request.data;
+  
+  if (!email || !code) {
+    throw new HttpsError('invalid-argument', 'Email and code are required');
+  }
+  
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Get the reset document
+  const resetDoc = await db.collection('goMission_passwordResets').doc(normalizedEmail).get();
+  
+  if (!resetDoc.exists) {
+    throw new HttpsError('not-found', 'No reset code found. Please request a new one.');
+  }
+  
+  const resetData = resetDoc.data();
+  
+  // Check if expired
+  if (resetData.expiresAt.toDate() < new Date()) {
+    await db.collection('goMission_passwordResets').doc(normalizedEmail).delete();
+    throw new HttpsError('deadline-exceeded', 'Code has expired. Please request a new one.');
+  }
+  
+  // Check attempts (max 5)
+  if (resetData.attempts >= 5) {
+    await db.collection('goMission_passwordResets').doc(normalizedEmail).delete();
+    throw new HttpsError('resource-exhausted', 'Too many attempts. Please request a new code.');
+  }
+  
+  // Increment attempts
+  await db.collection('goMission_passwordResets').doc(normalizedEmail).update({
+    attempts: FieldValue.increment(1)
+  });
+  
+  // Verify code
+  if (resetData.code !== code) {
+    throw new HttpsError('permission-denied', 'Invalid code. Please try again.');
+  }
+  
+  // Code is valid! Generate a temporary token for password reset
+  // Mark as verified
+  await db.collection('goMission_passwordResets').doc(normalizedEmail).update({
+    verified: true,
+    verifiedAt: FieldValue.serverTimestamp()
+  });
+  
+  return { 
+    success: true, 
+    message: 'Code verified successfully.',
+    uid: resetData.uid
+  };
+});
+
+/**
+ * Complete password reset after code verification
+ */
+exports.completePasswordReset = onCall(async (request) => {
+  const { email, code, newPassword } = request.data;
+  
+  if (!email || !code || !newPassword) {
+    throw new HttpsError('invalid-argument', 'Email, code, and new password are required');
+  }
+  
+  if (newPassword.length < 6) {
+    throw new HttpsError('invalid-argument', 'Password must be at least 6 characters');
+  }
+  
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Get the reset document
+  const resetDoc = await db.collection('goMission_passwordResets').doc(normalizedEmail).get();
+  
+  if (!resetDoc.exists) {
+    throw new HttpsError('not-found', 'No reset session found. Please start over.');
+  }
+  
+  const resetData = resetDoc.data();
+  
+  // Check if verified
+  if (!resetData.verified) {
+    throw new HttpsError('failed-precondition', 'Code not verified. Please verify first.');
+  }
+  
+  // Check if still valid (give 5 more minutes after verification)
+  const verifiedAt = resetData.verifiedAt?.toDate() || new Date(0);
+  if (new Date() - verifiedAt > 5 * 60 * 1000) {
+    await db.collection('goMission_passwordResets').doc(normalizedEmail).delete();
+    throw new HttpsError('deadline-exceeded', 'Session expired. Please start over.');
+  }
+  
+  // Verify code one more time
+  if (resetData.code !== code) {
+    throw new HttpsError('permission-denied', 'Invalid code.');
+  }
+  
+  // Update password using Admin SDK
+  try {
+    await adminAuth.updateUser(resetData.uid, {
+      password: newPassword
+    });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    throw new HttpsError('internal', 'Failed to update password. Please try again.');
+  }
+  
+  // Clean up reset document
+  await db.collection('goMission_passwordResets').doc(normalizedEmail).delete();
+  
+  return { 
+    success: true, 
+    message: 'Password updated successfully. You can now sign in.'
+  };
+});
+
+/**
+ * Clean up expired password reset codes (runs daily)
+ */
+exports.cleanupExpiredResetCodes = onSchedule({
+  schedule: '0 0 * * *', // Daily at midnight
+  timeZone: 'Asia/Manila',
+}, async (event) => {
+  const now = new Date();
+  
+  const expiredDocs = await db.collection('goMission_passwordResets')
+    .where('expiresAt', '<', now)
+    .get();
+  
+  const batch = db.batch();
+  expiredDocs.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  await batch.commit();
+  console.log(`Cleaned up ${expiredDocs.size} expired password reset codes`);
   
   return null;
 });

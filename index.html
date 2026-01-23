@@ -446,90 +446,191 @@
     <!-- Login Screen -->
     <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
         <div class="max-w-md w-full animate-fade-up">
-            <div class="text-center mb-12">
+            <div class="text-center mb-8">
                 <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
-                <div class="flex justify-center gap-1 text-[var(--mission-gold)] mb-8">
+                <div class="flex justify-center gap-1 text-[var(--mission-gold)] mb-6">
                     <span>★</span><span>★</span><span>★</span>
                 </div>
-                <h2 class="text-3xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
+                <h2 class="text-2xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
                     Making Disciple-<br/>Making Leaders
                 </h2>
             </div>
+            
             <div class="space-y-4">
-                <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
-                
-                <!-- Google Sign In Button -->
-                <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-stone-700 hover:border-stone-600 shadow-2xl">
-                    <div class="bg-[var(--mission-red-mid)] p-4 rounded-xl border border-stone-700 shadow-inner">
-                        <svg class="w-7 h-7 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-black text-[var(--text-color)] text-lg leading-tight uppercase">JOIN OUR MISSION GROUP</p>
-                        <p class="text-[11px] text-stone-400 font-medium">Simulan ang iyong Journey</p>
-                    </div>
-                </button>
-                
-                <!-- Alternative Login Toggle -->
-                <div class="text-center mt-6">
-                    <button id="phoneLoginToggle" onclick="togglePhoneLogin()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
-                        Can't sign in with Google? <span class="text-[var(--mission-gold)] underline">Use Phone Number instead</span>
+                <!-- Auth Mode Tabs -->
+                <div class="flex bg-[var(--card-bg)] rounded-xl p-1 border border-stone-700">
+                    <button id="tabSignIn" onclick="switchAuthMode('signin')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
+                        Sign In
+                    </button>
+                    <button id="tabSignUp" onclick="switchAuthMode('signup')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all text-stone-400 hover:text-stone-300">
+                        Sign Up
                     </button>
                 </div>
                 
-                <!-- Phone Login Form (Hidden by default) -->
-                <div id="phoneLoginForm" class="hidden mt-6 space-y-4 animate-fade-up">
-                    <div class="border-t border-stone-700 pt-6">
-                        <p class="text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Sign in with Phone Number</p>
-                        
-                        <!-- Step 1: Enter Phone -->
-                        <div id="phoneStep1" class="space-y-3">
-                            <div class="flex gap-2">
-                                <div class="w-20 p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] text-center font-bold">
-                                    +63
-                                </div>
-                                <input type="tel" id="phoneInput" placeholder="9XX XXX XXXX" maxlength="10"
-                                    class="flex-1 p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors text-lg tracking-wider">
-                            </div>
-                            
-                            <div id="recaptcha-container"></div>
-                            
-                            <button id="sendCodeBtn" onclick="sendVerificationCode()" 
-                                class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
-                                📱 Send Verification Code
+                <!-- Sign In Form -->
+                <div id="signInForm" class="space-y-4">
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <input type="email" id="signInEmail" placeholder="your@email.com"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <div class="relative">
+                            <input type="password" id="signInPassword" placeholder="••••••••"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signInPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
                             </button>
                         </div>
-                        
-                        <!-- Step 2: Enter Code -->
-                        <div id="phoneStep2" class="hidden space-y-4">
-                            <p class="text-stone-400 text-sm text-center">Enter the 6-digit code sent to your phone</p>
-                            
-                            <div class="flex justify-center gap-2">
-                                <input type="text" id="code1" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code2')">
-                                <input type="text" id="code2" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code3')">
-                                <input type="text" id="code3" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code4')">
-                                <input type="text" id="code4" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code5')">
-                                <input type="text" id="code5" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, 'code6')">
-                                <input type="text" id="code6" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNext(this, null)">
-                            </div>
-                            
-                            <button id="verifyCodeBtn" onclick="verifyCode()" 
-                                class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95">
-                                ✓ Verify & Sign In
-                            </button>
-                            
-                            <button onclick="resetPhoneLogin()" class="w-full text-stone-500 text-xs hover:text-stone-300 transition-colors">
-                                ← Use different number
+                    </div>
+                    <button id="signInBtn" onclick="handleSignIn()" 
+                        class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
+                        🚀 Sign In
+                    </button>
+                    <div class="text-center">
+                        <button onclick="switchAuthMode('forgot')" class="text-stone-500 text-xs hover:text-[var(--mission-gold)] transition-colors">
+                            Forgot Password?
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Sign Up Form -->
+                <div id="signUpForm" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Full Name</label>
+                        <input type="text" id="signUpName" placeholder="Juan Dela Cruz"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <input type="email" id="signUpEmail" placeholder="your@email.com"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <div class="relative">
+                            <input type="password" id="signUpPassword" placeholder="At least 6 characters"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signUpPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
                             </button>
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm Password</label>
+                        <div class="relative">
+                            <input type="password" id="signUpConfirmPassword" placeholder="Confirm your password"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signUpConfirmPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="signUpBtn" onclick="handleSignUp()" 
+                        class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-green-500/20">
+                        ✨ Create Account
+                    </button>
+                </div>
+                
+                <!-- Forgot Password Form -->
+                <div id="forgotPasswordForm" class="hidden space-y-4">
+                    <!-- Step 1: Enter Email -->
+                    <div id="forgotStep1" class="space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Enter your email and we'll send you a verification code</p>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                            <input type="email" id="forgotEmail" placeholder="your@email.com"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                        </div>
+                        <button id="sendResetCodeBtn" onclick="handleSendResetCode()" 
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            📧 Send Verification Code
+                        </button>
+                        <div class="text-center">
+                            <button onclick="switchAuthMode('signin')" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                                ← Back to Sign In
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Enter Code -->
+                    <div id="forgotStep2" class="hidden space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Enter the 6-digit code sent to <span id="forgotEmailDisplay" class="text-[var(--mission-gold)]"></span></p>
+                        </div>
+                        <div class="flex justify-center gap-2">
+                            <input type="text" id="resetCode1" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode2')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode2" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode3')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode3" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode4')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode4" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode5')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode5" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode6')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode6" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, null)" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
+                        <button id="verifyResetCodeBtn" onclick="handleVerifyResetCode()" 
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            ✓ Verify Code
+                        </button>
+                        <div class="text-center">
+                            <button onclick="resetForgotPassword()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                                ← Use different email
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: New Password -->
+                    <div id="forgotStep3" class="hidden space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Create your new password</p>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">New Password</label>
+                            <div class="relative">
+                                <input type="password" id="newPassword" placeholder="At least 6 characters"
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                                <button type="button" onclick="togglePasswordVisibility('newPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm New Password</label>
+                            <div class="relative">
+                                <input type="password" id="confirmNewPassword" placeholder="Confirm new password"
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                                <button type="button" onclick="togglePasswordVisibility('confirmNewPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="resetPasswordBtn" onclick="handleResetPassword()" 
+                            class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95">
+                            🔐 Reset Password
+                        </button>
                     </div>
                 </div>
                 
                 <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
                 <div id="successMessage" class="hidden mt-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm"></div>
             </div>
-            <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-12">
+            <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-8">
                 Tuklasin ang Misyon Ni God!
             </p>
         </div>
@@ -1535,28 +1636,6 @@
             el.textContent = message;
             el.classList.remove('hidden');
             document.getElementById('successMessage').classList.add('hidden');
-        }
-        
-        function showSuccess(message) {
-            const el = document.getElementById('successMessage');
-            el.textContent = message;
-            el.classList.remove('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-        }
-
-        // Expose phone login functions to global scope for onclick handlers
-        window.togglePhoneLogin = togglePhoneLogin;
-        window.sendVerificationCode = sendVerificationCode;
-        window.verifyCode = verifyCode;
-        window.moveToNext = moveToNext;
-        window.resetPhoneLogin = resetPhoneLogin;
-
-        // Sign out button (may not exist in minimal UI - handled by menu)
-        const signOutBtn = document.getElementById('signOutBtn');
-        if (signOutBtn) {
-            signOutBtn.addEventListener('click', async () => {
-                await signOut(auth);
-            });
         }
     </script>
 

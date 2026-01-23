@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Mission - Making Disciple-Making Leaders</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Go Mission">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Core brand colors */
+            --mission-red-deep: #2a0505;
+            --mission-red-mid: #4a0404;
+            --mission-red-bright: #800000;
+            --mission-gold: #fbbf24;
+            --mission-gold-dim: #92400e;
+            --mission-text: #fdfcf0;
+            
+            /* Dark Theme (default) */
+            --bg-color: #1a0505;
+            --bg-secondary: #1e0202;
+            --text-color: #fdfcf0;
+            --text-muted: #94a3b8;
+            --card-bg: linear-gradient(135deg, rgba(74, 4, 4, 0.95) 0%, rgba(30, 2, 2, 0.98) 100%);
+            --card-bg-solid: #2a0505;
+            --card-border: rgba(251, 191, 36, 0.15);
+            --nav-bg: #1e0202;
+            --nav-border: rgba(251, 191, 36, 0.1);
+            --nav-inactive: rgba(251, 191, 36, 0.4);
+            --input-bg: rgba(0, 0, 0, 0.4);
+            --input-border: rgba(255, 255, 255, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.6);
+        }
+
+        /* Light Mode Theme - Copied from Gemini Design */
+        .light-mode {
+            --bg-color: #fcfaf2;
+            --bg-secondary: #ffffff;
+            --text-color: #2a0505;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --card-bg-solid: #ffffff;
+            --card-border: rgba(42, 5, 5, 0.1);
+            --nav-bg: #ffffff;
+            --nav-border: rgba(42, 5, 5, 0.1);
+            --nav-inactive: rgba(42, 5, 5, 0.4);
+            --input-bg: rgba(42, 5, 5, 0.05);
+            --input-border: rgba(42, 5, 5, 0.15);
+            --shadow-color: rgba(42, 5, 5, 0.1);
+            --progress-bg: rgba(42, 5, 5, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .font-mission { font-family: 'Cinzel', serif; }
+
+        .bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(42, 5, 5, 0.7), rgba(42, 5, 5, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        .light-mode.bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(252, 250, 242, 0.85), rgba(252, 250, 242, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .mission-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 40px var(--shadow-color);
+            backdrop-filter: blur(8px);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .light-mode .mission-card {
+            backdrop-filter: none;
+        }
+        
+        .light-mode .checkbox-custom {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        /* Light mode overrides for hardcoded dark colors */
+        .light-mode .bg-black\/40,
+        .light-mode .bg-black\/30,
+        .light-mode .bg-black\/60 {
+            background: rgba(42, 5, 5, 0.05) !important;
+        }
+        
+        .light-mode .border-white\/5,
+        .light-mode .border-white\/10 {
+            border-color: rgba(42, 5, 5, 0.08) !important;
+        }
+        
+        .light-mode .text-white {
+            color: #2a0505 !important;
+        }
+        
+        .light-mode .text-slate-200,
+        .light-mode .text-slate-300 {
+            color: #475569 !important;
+        }
+        
+        .light-mode .text-slate-400,
+        .light-mode .text-slate-500,
+        .light-mode .text-slate-600 {
+            color: #64748b !important;
+        }
+        
+        .light-mode .progress-dot.inactive {
+            background: var(--bg-color);
+            border-color: rgba(42, 5, 5, 0.2);
+        }
+        
+        .light-mode .toggle-switch {
+            background: rgba(42, 5, 5, 0.15);
+        }
+        
+        /* Light mode - AI reflection card text */
+        .light-mode #aiReflectCard,
+        .light-mode #commentaryContent {
+            background: rgba(42, 5, 5, 0.05) !important;
+        }
+        
+        .light-mode #aiReflectCard p,
+        .light-mode #aiReflectCard .text-amber-100,
+        .light-mode #reflectionQuestion {
+            color: #374151 !important;
+        }
+        
+        /* Light mode - Reading toolbar */
+        .light-mode #readingToolbar {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        .light-mode #readingToolbar button {
+            background: rgba(42, 5, 5, 0.08);
+            color: #475569;
+        }
+        
+        .light-mode #readingToolbar button:hover {
+            background: rgba(251, 191, 36, 0.2);
+            color: #d97706;
+        }
+        
+        /* Fullscreen overlay light mode */
+        .light-mode #bibleFullscreenOverlay {
+            background: var(--bg-color);
+        }
+
+        .mission-button {
+            background: linear-gradient(to bottom, #800000, #4a0404);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--mission-gold);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .mission-button:active { transform: scale(0.97); filter: brightness(1.1); }
+        .mission-button:hover { filter: brightness(1.05); }
+        .mission-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .progress-dot {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .progress-dot.active {
+            background: var(--mission-gold);
+            border: 2px solid #fcd34d;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+        .progress-dot.inactive {
+            background: var(--mission-red-deep);
+            border: 2px solid var(--mission-gold-dim);
+        }
+
+        /* Bible verse styles */
+        .verse { 
+            padding: 8px 4px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: background 0.2s;
+            line-height: 1.8;
+        }
+        .verse:hover { background: rgba(251, 191, 36, 0.1); }
+        .verse.highlighted { background: rgba(251, 191, 36, 0.25); }
+        .verse-num { 
+            font-size: 10px; 
+            color: var(--mission-gold); 
+            font-weight: bold;
+            vertical-align: super;
+            margin-right: 4px;
+        }
+
+        /* Language toggle */
+        .lang-toggle {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 2px;
+        }
+        .lang-btn {
+            padding: 4px 12px;
+            border-radius: 18px;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .lang-btn.active {
+            background: var(--mission-gold);
+            color: var(--mission-red-deep);
+        }
+        .lang-btn:not(.active) {
+            color: var(--mission-gold-dim);
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-switch.active { background: var(--mission-gold); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle-switch.active::after { transform: translateX(20px); }
+
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fade-up 0.4s ease-out forwards; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.2); border-radius: 10px; }
+
+        .stat-number { color: var(--mission-gold); }
+
+        /* Global Language Toggle */
+        .lang-toggle-btn {
+            color: rgba(251, 191, 36, 0.5);
+            background: transparent;
+            cursor: pointer;
+            border: none;
+        }
+        .lang-toggle-btn.active {
+            color: var(--mission-gold);
+            background: rgba(251, 191, 36, 0.15);
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+        }
+        .lang-toggle-btn:hover:not(.active) {
+            color: rgba(251, 191, 36, 0.8);
+        }
+        
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            color: var(--mission-gold);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-btn:hover {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: rgba(251, 191, 36, 0.4);
+        }
+        .theme-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        .light-mode .theme-toggle-btn {
+            background: rgba(42, 5, 5, 0.05);
+            border-color: rgba(42, 5, 5, 0.15);
+            color: var(--mission-red-mid);
+        }
+        .light-mode .theme-toggle-btn:hover {
+            background: rgba(42, 5, 5, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-mission-sunset min-h-screen">
+    
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
+        <div class="text-center animate-fade-up">
+            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-amber-200/60 text-xs font-bold uppercase tracking-widest">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
+        <div class="max-w-md w-full animate-fade-up">
+            <div class="text-center mb-12">
+                <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
+                <div class="flex justify-center gap-1 text-amber-500 mb-8">
+                    <span>★</span><span>★</span><span>★</span>
+                </div>
+                <h2 class="text-3xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
+                    Making Disciple-<br/>Making Leaders
+                </h2>
+            </div>
+            <div class="space-y-4">
+                <p class="text-amber-200/60 text-[10px] font-bold uppercase tracking-[0.2em] text-center mb-4">Handa ka na ba?</p>
+                <button id="googleSignInBtn" class="w-full mission-card p-6 rounded-2xl flex items-center gap-5 text-left transition-all active:scale-95 border border-amber-500/30 hover:border-amber-500/60 shadow-2xl">
+                    <div class="bg-[#4a0404] p-4 rounded-xl border border-amber-500/40 shadow-inner">
+                        <svg class="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-black text-amber-400 text-lg leading-tight uppercase">JOIN OUR MISSION GROUP</p>
+                        <p class="text-[11px] text-slate-300 font-medium">Simulan ang iyong Journey</p>
+                    </div>
+                </button>
+                <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
+            </div>
+            <p class="text-center text-[10px] font-bold text-amber-200/40 uppercase tracking-[0.3em] mt-12">
+                Tuklasin ang Misyon Ni God!
+            </p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <header class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] sticky top-0 z-40 transition-colors duration-300">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-amber-500">★</span>
+                    <span class="font-mission font-bold text-[var(--text-color)] tracking-widest uppercase">Go Mission</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- Global Language Toggle - Flags Only -->
+                    <div class="flex items-center bg-[var(--input-bg)] rounded-full px-1 py-1 border border-[var(--card-border)]">
+                        <button id="globalLangTL" onclick="i18n.setLang('tl')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="tl" title="Tagalog">
+                            🇵🇭
+                        </button>
+                        <button id="globalLangEN" onclick="i18n.setLang('en')" class="lang-toggle-btn w-8 h-8 rounded-full text-lg flex items-center justify-center transition-all" data-lang="en" title="English">
+                            🇺🇸
+                        </button>
+                    </div>
+                    <!-- Chat Notification Badge -->
+                    <button id="headerChatBadge" onclick="GroupChat?.open(); Notifications?.markAsRead();" class="relative hidden" title="Group Chat">
+                        <svg class="w-6 h-6 text-slate-400 hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <span id="headerNotificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">0</span>
+                    </button>
+                    <!-- Theme Toggle -->
+                    <button id="themeToggleBtn" onclick="Theme.toggle()" class="theme-toggle-btn" title="Toggle dark/light mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <!-- Moon icon (shown in light mode, hidden by default) -->
+                        <svg class="moon-icon w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                    <span id="userName" class="text-sm text-slate-300 hidden sm:block"></span>
+                    <img id="userPhoto" class="w-8 h-8 rounded-full border-2 border-amber-500/30" src="" alt="">
+                    <button id="signOutBtn" class="text-amber-500/60 hover:text-amber-500 transition-colors" title="Sign out">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
+            
+            <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) -->
+            <div class="mission-card rounded-2xl p-6 mb-4 animate-fade-up">
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="text-amber-500">★</span>
+                    <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
+                </div>
+                
+                <div class="relative px-2 mb-8">
+                    <div class="absolute top-[7px] left-4 right-4 h-[2px] bg-amber-900/30"></div>
+                    <div id="journeyProgressLine" class="absolute top-[7px] left-4 h-[2px] bg-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: 0%"></div>
+                    
+                    <div class="flex justify-between relative z-10">
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-seeker"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-seeker">On The<br>Journey</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-disciple"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple">Disciple</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-disciple-maker"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-disciple-maker">Disciple-<br>Maker</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-builder"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-builder">Builder</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="progress-dot" id="dot-multiplier"></div>
+                            <span class="text-[8px] mt-2 font-black uppercase text-center" id="label-multiplier">Multiplier</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-black/40 rounded-xl p-6 border border-white/5">
+                    <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.15em] mb-1" id="journeyStageLabel">WHERE GOD HAS YOU TODAY</p>
+                    <p class="text-2xl font-black text-white uppercase tracking-tight mb-4" id="journeyPhaseName">ON THE JOURNEY</p>
+                    
+                    <!-- Encouragement Message -->
+                    <div class="border-l-2 border-amber-500/50 pl-4 mb-4">
+                        <p class="text-sm text-slate-300 italic leading-relaxed" id="journeyEncouragement">God drew you to Himself.<br>He sees your seeking heart and delights in it.</p>
+                    </div>
+                    
+                    <p class="text-sm text-slate-400 mb-4"><span id="journeyNextLabel">Next:</span> <span class="text-slate-200" id="journeyNextStep">Walk as a Disciple</span></p>
+                    
+                    <button class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                        <span id="viewNextStepsBtn">View Next Steps</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
+            <div class="mission-card rounded-2xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
+                <!-- Header with Menu -->
+                <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🔥</span>
+                        <div>
+                            <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
+                            <p class="text-[10px] text-amber-500/60" id="devotionDate"></p>
+                        </div>
+                    </div>
+                    <!-- Hamburger Menu Button -->
+                    <button onclick="toggleDevotionMenu()" class="p-2 rounded-lg hover:bg-amber-500/10 transition-colors" title="Menu">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Collapsed Bible Preview - TAP TO OPEN FULLSCREEN -->
+                <div class="p-4 cursor-pointer hover:bg-amber-500/5 transition-colors" onclick="BibleReader.enterFullscreen()">
+                    <!-- Passage Header -->
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-black text-amber-500 uppercase tracking-widest flex items-center gap-2" id="passageTitle">
+                            <span>📖 Juan 1</span>
+                        </h3>
+                        <div id="chapterProgress" class="text-[10px] text-slate-500 flex items-center gap-1"></div>
+                    </div>
+                    
+                    <!-- Single Verse Preview (3 lines max) -->
+                    <div id="bibleText" class="text-sm text-slate-200 leading-relaxed line-clamp-3 mb-4">
+                        <p class="text-slate-500 text-center py-4">Loading...</p>
+                    </div>
+                    
+                    <!-- Tap to Read Button -->
+                    <div class="flex items-center justify-center gap-2 py-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <span class="text-sm font-bold text-amber-500">Tap to Read & Reflect</span>
+                    </div>
+                </div>
+                
+                <!-- Week Progress -->
+                <div class="px-4 pb-4">
+                    <div class="flex items-center justify-center gap-2 pt-3 border-t border-white/5">
+                        <span class="text-[10px] text-slate-500">This week:</span>
+                        <div class="flex gap-1" id="weekDots"></div>
+                        <span class="text-[10px] text-amber-500 font-bold" id="weekCount">0/7 days</span>
+                    </div>
+                </div>
+                
+                <!-- Hidden elements needed by BibleReader -->
+                <div class="hidden">
+                    <div id="chapterNavigation"></div>
+                    <div id="readingToolbar"></div>
+                    <div id="commentarySection"><div id="commentaryContent"></div></div>
+                    <div id="reflectSection"></div>
+                    <div id="aiReflectCard"><p id="reflectionQuestion"></p></div>
+                    <textarea id="reflectionAnswer"></textarea>
+                    <div id="shareToggle"></div>
+                    <button id="saveDevotionBtn"><span id="saveBtnText">💾 Save This Day</span></button>
+                </div>
+            </div>
+            
+            <!-- DEVOTION MENU MODAL (Journal, Settings, etc) -->
+            <div id="devotionMenuModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)]/95 hidden">
+                <div class="flex flex-col h-full">
+                    <!-- Menu Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
+                        <h2 class="text-lg font-bold text-amber-500">📋 Menu</h2>
+                        <button onclick="toggleDevotionMenu()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Menu Items -->
+                    <div class="flex-1 p-4 space-y-3">
+                        <button onclick="openJournal()" class="w-full flex items-center gap-3 p-4 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 transition-colors">
+                            <span class="text-2xl">📖</span>
+                            <div class="text-left">
+                                <p class="font-bold text-amber-500">My Journal</p>
+                                <p class="text-xs text-[var(--text-muted)]">Review past devotions</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="BiblePicker.open(); toggleDevotionMenu();" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">🔍</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Choose Passage</p>
+                                <p class="text-xs text-[var(--text-muted)]">Select a book and chapter</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingPlan()" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">📅</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Reading Plan</p>
+                                <p class="text-xs text-[var(--text-muted)]">Follow a guided reading plan</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingStats()" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">📊</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Reading Stats</p>
+                                <p class="text-xs text-[var(--text-muted)]">Your reading progress</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- REFLECTION POPUP MODAL (shown after exiting fullscreen) -->
+            <div id="reflectionPopupModal" class="fixed inset-0 z-[60] bg-[var(--bg-color)] hidden flex flex-col">
+                <div class="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full overflow-y-auto">
+                    <!-- Header -->
+                    <div class="flex items-center gap-2 mb-4 pt-4">
+                        <span class="text-2xl">🔥</span>
+                        <h2 class="text-xl font-bold text-amber-500 uppercase tracking-wide" id="reflectPopupTitle">PAGNILAYAN</h2>
+                    </div>
+                    
+                    <!-- AI Reflection Question Card -->
+                    <div class="mb-4 p-4 bg-[var(--card-bg)] rounded-xl border border-amber-500/30">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl">💭</span>
+                            <div>
+                                <p class="text-[10px] text-amber-500/70 font-bold uppercase tracking-wider mb-2">PAGNILAYAN</p>
+                                <p class="text-base text-[var(--text-color)] leading-relaxed italic" id="reflectPopupQuestion">"What is one thing God is inviting you to live out today?"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Previous Reflections (if any) -->
+                    <div id="previousReflectionsContainer" class="mb-4 hidden">
+                        <p class="text-xs text-[var(--text-muted)] mb-2">Previous reflections this session:</p>
+                        <div id="previousReflectionsList" class="space-y-2 max-h-32 overflow-y-auto"></div>
+                    </div>
+                    
+                    <!-- Reflection Input -->
+                    <textarea id="reflectionPopupAnswer" rows="4" autocomplete="off" class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl p-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none mb-4" placeholder="Write your reflection here..."></textarea>
+                    
+                    <!-- Share Toggle -->
+                    <div class="flex items-start gap-3 mb-4 p-3 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)]">
+                        <div class="toggle-switch" id="sharePopupToggle" onclick="togglePopupShare()"></div>
+                        <div class="flex-1">
+                            <p class="text-sm text-[var(--text-color)] font-medium">Share with my group</p>
+                            <p class="text-[10px] text-[var(--text-muted)] mt-1">Help your leader walk with you</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="space-y-3 pb-4">
+                        <button onclick="saveAndContinueReading()" class="w-full py-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl font-bold text-amber-500 flex items-center justify-center gap-2 transition-colors">
+                            <span>📖</span> Save & Continue Reading
+                        </button>
+                        
+                        <button onclick="saveAndGoHome()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                            <span>🏠</span> Save & Go to Menu
+                        </button>
+                        
+                        <button onclick="skipReflection()" class="w-full py-3 text-[var(--text-muted)] hover:text-[var(--text-color)] text-sm transition-colors">
+                            Skip for now
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- JOURNAL MODAL (List of past devotions) -->
+            <div id="journalModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)] hidden flex flex-col">
+                <div class="flex-1 flex flex-col max-w-lg mx-auto w-full">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
+                        <h2 class="text-lg font-bold text-amber-500 flex items-center gap-2">
+                            <span>📖</span> My Journal
+                        </h2>
+                        <button onclick="closeJournal()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Journal Entries -->
+                    <div class="flex-1 p-4 overflow-y-auto" id="journalEntriesList">
+                        <p class="text-[var(--text-muted)] text-center py-8">Loading journal...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                
+                <!-- Mission Group Card -->
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">👥</span>
+                            Mission Group
+                            <span id="pendingRequestsBadge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                        </h3>
+                        <button class="text-amber-500/60">•••</button>
+                    </div>
+                    <div class="p-4" id="groupCardContent">
+                        <!-- Dynamic content loaded by Groups module -->
+                        <div class="text-center py-6">
+                            <p class="text-slate-500 text-sm">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission Training Card -->
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up" id="trainingCard">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">🎯</span>
+                            <span data-i18n="missionTraining">Mission Training</span>
+                        </h3>
+                        <button class="text-amber-500/60">•••</button>
+                    </div>
+                    <div class="p-4" id="trainingContent">
+                        <!-- Training content will be rendered dynamically by Training.render() -->
+                        <div class="text-center py-8">
+                            <div class="animate-pulse text-amber-400">Loading training...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leader Dashboard Card - Only visible for leaders/admins -->
+                <div id="leaderDashboardCard" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">📊</span>
+                            Leader Dashboard
+                        </h3>
+                        <button class="text-amber-500/60">✕</button>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-between bg-black/60 p-4 rounded-xl border border-white/5 mb-6">
+                            <div class="flex items-center gap-3">
+                                <img id="adminPhoto" class="w-10 h-10 rounded-full border border-amber-500/30" src="https://ui-avatars.com/api/?name=Admin&background=4a0404&color=fbbf24" alt="">
+                                <span class="text-xs font-bold text-slate-200">Admin Mode</span>
+                            </div>
+                            <div class="w-12 h-6 bg-amber-500 rounded-full relative cursor-pointer p-1">
+                                <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">70</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Mission Groups</span>
+                            </div>
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">125</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Active Disciples</span>
+                            </div>
+                            <div class="flex items-baseline gap-6 border-b border-white/5 pb-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">34</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">New Recruits</span>
+                            </div>
+                            <div class="flex items-baseline gap-6">
+                                <span class="text-4xl font-black stat-number tracking-tighter">22</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Builders Developed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
+            <div class="flex justify-around items-center px-4 h-20">
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-500">
+                    <div class="p-1.5 rounded-lg bg-amber-500/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Journey</span>
+                </button>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Group</span>
+                </button>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Training</span>
+                </button>
+                <button class="flex flex-col items-center gap-1.5 flex-1 text-amber-900/40 hover:text-amber-500 transition-colors">
+                    <div class="p-1.5 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-[8px] font-black uppercase tracking-widest">Dash</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Group Modal (for join/create/requests) -->
+    <div id="groupModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-full max-w-md max-h-[80vh] overflow-y-auto transition-colors duration-300">
+            <div id="groupModalContent">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <!-- Training Day Modal (created dynamically by Training.js) -->
+    <div id="trainingDayModal" class="hidden"></div>
+    
+    <div id="chatModal" class="fixed inset-0 bg-[var(--bg-color)] z-50 hidden flex flex-col">
+        <!-- Chat Header -->
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between transition-colors duration-300">
+            <div class="flex items-center gap-3">
+                <button onclick="GroupChat.close()" class="text-amber-500 hover:text-amber-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <div>
+                    <h3 class="font-bold text-[var(--text-color)]" id="chatGroupName">Group Chat</h3>
+                    <p class="text-xs text-[var(--text-muted)]" id="chatMemberCount">0 members</p>
+                </div>
+            </div>
+            <!-- Members Button -->
+            <button onclick="GroupChat.showMembers()" class="text-amber-500 hover:text-amber-400 flex items-center gap-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <span class="text-sm font-bold">Members</span>
+            </button>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[var(--bg-color)]">
+            <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading messages...</p>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="bg-[var(--nav-bg)] border-t border-[var(--nav-border)] p-4 transition-colors duration-300">
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" placeholder="Type a message..." 
+                       class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
+                       onkeypress="GroupChat.handleKeyPress(event)">
+                <button onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="successToast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-900/90 border border-green-500/50 text-green-200 px-6 py-3 rounded-xl shadow-xl z-50 hidden">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="font-bold text-sm">Day saved! God is pleased.</span>
+        </div>
+    </div>
+
+    <!-- Core Modules -->
+    <script src="modules/core/theme.js"></script>
+    <script src="modules/core/i18n.js"></script>
+    <script src="modules/bible/bible-loader.js"></script>
+    <script src="modules/bible/bible-picker.js"></script>
+    <script src="modules/bible/bible-reader.js"></script>
+    <script src="modules/groups/group-meeting.js"></script>
+    <script src="modules/groups/groups.js"></script>
+    <script src="modules/groups/group-chat.js"></script>
+    <script src="modules/core/notifications.js"></script>
+    <script src="modules/core/push-notifications.js"></script>
+    <script src="modules/core/pwa-updater.js"></script>
+    <script src="modules/install/install-modal.js"></script>
+    <script src="modules/training/training.js"></script>
+    
+    <!-- Bible Data & Reading Plan -->
+    <script src="js/bible-data.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
+            authDomain: "shaped-by-grace.firebaseapp.com",
+            projectId: "shaped-by-grace",
+            storageBucket: "shaped-by-grace.firebasestorage.app",
+            messagingSenderId: "421948043828",
+            appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
+        };
+        
+        // VAPID Key for Web Push Notifications
+        window.FIREBASE_VAPID_KEY = 'BNcvs5HoLfqTpzfqC2WIshbnBE6SrVTGrQZOV0LEZl_Ks9bc79euFwCfBowRmnj6WDzacNy4_E7RgV7aOZG1LLM';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // Make available globally
+        window.db = db;
+        window.auth = auth;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.addDoc = addDoc;
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
+        window.getDocs = getDocs;
+        window.orderBy = orderBy;
+        window.limit = limit;
+        window.onSnapshot = onSnapshot;
+        window.serverTimestamp = serverTimestamp;
+        window.arrayUnion = arrayUnion;
+        window.arrayRemove = arrayRemove;
+        window.currentUser = null;
+        
+        // Initialize Firebase Messaging
+        let messaging = null;
+        try {
+            messaging = getMessaging(app);
+            window.firebaseMessaging = messaging;
+            window.getMessagingToken = getToken;
+            window.onMessagingMessage = onMessage;
+            console.log('[Firebase] Messaging initialized');
+        } catch (e) {
+            console.log('[Firebase] Messaging not available:', e.message);
+        }
+
+        const loading = document.getElementById('loading');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+
+        onAuthStateChanged(auth, async (user) => {
+            loading.classList.add('hidden');
+            
+            if (user) {
+                window.currentUser = user;
+                document.getElementById('userName').textContent = user.displayName || user.email;
+                document.getElementById('userPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                document.getElementById('adminPhoto').src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                
+                await ensureUserExists(user);
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                
+                await loadUserData(user.uid);
+                initializeDevotion();
+                await loadTodaysEntry(user.uid);
+                await loadWeekProgress(user.uid);
+                
+                // Clear app badge when user opens app
+                if (typeof PushNotifications !== 'undefined') {
+                    PushNotifications.clearBadge();
+                }
+                
+                // Initialize Groups module
+                if (typeof Groups !== 'undefined') {
+                    await Groups.init();
+                    
+                    // Initialize Notifications after Groups
+                    if (typeof Notifications !== 'undefined') {
+                        await Notifications.init();
+                    }
+                    
+                    // Initialize Training module
+                    if (typeof Training !== 'undefined') {
+                        await Training.init();
+                        Training.render();
+                    }
+                    
+                    // Check for join code in URL (?join=CODE)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const joinCode = urlParams.get('join');
+                    if (joinCode && !Groups.currentGroup) {
+                        // Clear the URL parameter
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        // Show join modal with pre-filled code
+                        Groups.showJoinWithCodeModal();
+                        setTimeout(() => {
+                            const codeInput = document.getElementById('groupInviteCode');
+                            if (codeInput) {
+                                codeInput.value = joinCode.toUpperCase();
+                            }
+                        }, 200);
+                    }
+                    
+                    // Initialize Push Notifications and show prompt if needed
+                    if (typeof PushNotifications !== 'undefined') {
+                        await PushNotifications.init();
+                        // Show permission prompt after a short delay
+                        setTimeout(() => {
+                            if (PushNotifications.shouldShowPrompt()) {
+                                PushNotifications.showPermissionPrompt();
+                            }
+                        }, 3000);
+                    }
+                }
+            } else {
+                window.currentUser = null;
+                loginScreen.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+            }
+        });
+
+        async function ensureUserExists(user) {
+            const userRef = doc(db, 'goMission_members', user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                await setDoc(userRef, {
+                    id: user.uid,
+                    name: user.displayName || '',
+                    email: user.email,
+                    photoURL: user.photoURL || '',
+                    stage: 'seeker',
+                    roles: { isMissionary: true, isGroupLeader: false, isTrainer: false, isShepherd: false, isWelcomeTeam: false, isAdmin: false },
+                    groupId: null,
+                    discipledBy: null,
+                    discipling: [],
+                    training: {
+                        currentPhase: 1,
+                        phases: {
+                            phase1: { status: 'enrolled', sessionsAttended: [] },
+                            phase2: { status: 'locked' },
+                            phase3: { status: 'locked' },
+                            phase4: { status: 'locked' }
+                        }
+                    },
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            }
+        }
+
+        async function loadUserData(uid) {
+            try {
+                const userRef = doc(db, 'goMission_members', uid);
+                const userDoc = await getDoc(userRef);
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    window.currentUserStage = data.stage || 'seeker';
+                    window.currentUserRoles = data.roles || {};
+                    updateJourneyDisplay(window.currentUserStage);
+                    
+                    // Show/hide leader dashboard based on roles
+                    const leaderDashboard = document.getElementById('leaderDashboardCard');
+                    if (leaderDashboard) {
+                        const isAdmin = data.roles?.isAdmin || data.email === 'michael.marga@gmail.com';
+                        const isGroupLeader = data.roles?.isGroupLeader;
+                        const isTrainer = data.roles?.isTrainer;
+                        const isShepherd = data.roles?.isShepherd;
+                        
+                        // Only show dashboard for leaders, trainers, shepherds, or admins
+                        if (isAdmin || isGroupLeader || isTrainer || isShepherd) {
+                            leaderDashboard.classList.remove('hidden');
+                        } else {
+                            leaderDashboard.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        window.updateJourneyDisplay = function(stage) {
+            const stages = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
+            
+            // Stage content in English and Tagalog
+            const stageContent = {
+                'seeker': {
+                    name_en: 'ON THE JOURNEY',
+                    name_tl: 'NASA PAGLALAKBAY',
+                    encouragement_en: 'God drew you to Himself.<br>He sees your seeking heart and delights in it.',
+                    encouragement_tl: 'Inakay ka ng Diyos palapit sa Kanya.<br>Nakikita Niya ang puso mong naghahanap, at kinalulugdan Niya ito.',
+                    next_en: 'Walk as a Disciple',
+                    next_tl: 'Mamuhay Bilang Alagad'
+                },
+                'disciple': {
+                    name_en: 'DISCIPLE',
+                    name_tl: 'ALAGAD',
+                    encouragement_en: 'You are learning to follow Jesus.<br>He is shaping you to be more like Him.',
+                    encouragement_tl: 'Natututo kang sumunod kay Jesus.<br>Hinuhubog ka Niya upang maging katulad Niya.',
+                    next_en: 'Become a Disciple-Maker',
+                    next_tl: 'Maging Tagapaghubog ng Alagad'
+                },
+                'disciple-maker': {
+                    name_en: 'DISCIPLE-MAKER',
+                    name_tl: 'TAGAPAGHUBOG NG ALAGAD',
+                    encouragement_en: 'You are now investing in others.<br>God is multiplying His kingdom through you.',
+                    encouragement_tl: 'Namumuhunan ka na sa iba.<br>Pinarami ng Diyos ang Kanyang kaharian sa pamamagitan mo.',
+                    next_en: 'Become a Builder',
+                    next_tl: 'Maging Tagapagtayo'
+                },
+                'builder': {
+                    name_en: 'BUILDER',
+                    name_tl: 'TAGAPAGTAYO',
+                    encouragement_en: 'You are building a community of disciples.<br>God is using you to lead His mission.',
+                    encouragement_tl: 'Nagtatayo ka ng komunidad ng mga alagad.<br>Ginagamit ka ng Diyos upang pangunahan ang Kanyang misyon.',
+                    next_en: 'Become a Multiplier',
+                    next_tl: 'Maging Tagapagparami'
+                },
+                'multiplier': {
+                    name_en: 'MULTIPLIER',
+                    name_tl: 'TAGAPAGPARAMI',
+                    encouragement_en: 'You are raising leaders who raise leaders.<br>Generations will be transformed because of your faithfulness.',
+                    encouragement_tl: 'Naghuhubog ka ng mga lider na naghuhubog ng mga lider.<br>Mababago ang mga henerasyon dahil sa iyong katapatan.',
+                    next_en: 'Keep multiplying!',
+                    next_tl: 'Patuloy na magparami!'
+                }
+            };
+            
+            const content = stageContent[stage] || stageContent['seeker'];
+            // Use i18n.getLang() for reliable language detection
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : (currentLanguage || 'tl');
+            
+            const currentIndex = stages.indexOf(stage);
+            const progressPercent = (currentIndex / (stages.length - 1)) * 100;
+            
+            document.getElementById('journeyProgressLine').style.width = progressPercent + '%';
+            
+            // Update card title
+            document.getElementById('journeyCardTitle').textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
+            
+            // Update stage label
+            document.getElementById('journeyStageLabel').textContent = lang === 'tl' ? 'KUNG SAAN KA NILALAGAY NG DIYOS NGAYON' : 'WHERE GOD HAS YOU TODAY';
+            
+            // Update stage name
+            document.getElementById('journeyPhaseName').textContent = lang === 'tl' ? content.name_tl : content.name_en;
+            
+            // Update encouragement
+            document.getElementById('journeyEncouragement').innerHTML = lang === 'tl' ? content.encouragement_tl : content.encouragement_en;
+            
+            // Update next step
+            document.getElementById('journeyNextLabel').textContent = lang === 'tl' ? 'Susunod:' : 'Next:';
+            document.getElementById('journeyNextStep').textContent = lang === 'tl' ? content.next_tl : content.next_en;
+            
+            // Update button text
+            document.getElementById('viewNextStepsBtn').textContent = lang === 'tl' ? 'Tingnan ang Mga Susunod na Hakbang' : 'View Next Steps';
+            
+            // Update progress dots
+            stages.forEach((s, i) => {
+                const dot = document.getElementById('dot-' + s);
+                const label = document.getElementById('label-' + s);
+                if (i <= currentIndex) {
+                    dot.classList.add('active');
+                    dot.classList.remove('inactive');
+                    label.classList.add('text-amber-400');
+                    label.classList.remove('text-slate-600');
+                } else {
+                    dot.classList.remove('active');
+                    dot.classList.add('inactive');
+                    label.classList.remove('text-amber-400');
+                    label.classList.add('text-slate-600');
+                }
+            });
+            
+            // Update dot labels based on language
+            const dotLabels = {
+                'seeker': { en: 'On The<br>Journey', tl: 'Nasa<br>Paglalakbay' },
+                'disciple': { en: 'Disciple', tl: 'Alagad' },
+                'disciple-maker': { en: 'Disciple-<br>Maker', tl: 'Tagapag-<br>hubog' },
+                'builder': { en: 'Builder', tl: 'Tagapag-<br>tayo' },
+                'multiplier': { en: 'Multiplier', tl: 'Tagapag-<br>parami' }
+            };
+            
+            stages.forEach(s => {
+                const label = document.getElementById('label-' + s);
+                label.innerHTML = lang === 'tl' ? dotLabels[s].tl : dotLabels[s].en;
+            });
+        }
+
+        window.loadWeekProgress = async function(uid) {
+            const weekDates = getWeekDates();
+            let savedDays = 0;
+            const dotsHtml = [];
+            
+            for (const date of weekDates) {
+                const entryRef = doc(db, 'goMission_devotions', uid + '_' + date);
+                try {
+                    const entryDoc = await getDoc(entryRef);
+                    const isSaved = entryDoc.exists();
+                    if (isSaved) savedDays++;
+                    const isToday = date === getTodayString();
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full ${isSaved ? 'bg-amber-500' : 'bg-amber-900/30'} ${isToday ? 'ring-2 ring-amber-500/50' : ''}"></div>`);
+                } catch (e) {
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full bg-amber-900/30"></div>`);
+                }
+            }
+            
+            document.getElementById('weekDots').innerHTML = dotsHtml.join('');
+            document.getElementById('weekCount').textContent = savedDays + '/7 days';
+        };
+
+        document.getElementById('googleSignInBtn').addEventListener('click', async () => {
+            try {
+                document.getElementById('errorMessage').classList.add('hidden');
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Sign in failed. Please try again.';
+                document.getElementById('errorMessage').classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('signOutBtn').addEventListener('click', async () => {
+            await signOut(auth);
+        });
+    </script>
+
+    <!-- App Logic -->
+    <script>
+        // State - use i18n module for language if available
+        let currentLanguage = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+        let highlightedVerses = [];
+        let shareWithGroup = false;
+        let currentReading = null;
+
+        // Helpers
+        function getTodayString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getWeekDates() {
+            const dates = [];
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(monday);
+                date.setDate(monday.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+            return dates;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        }
+
+        // Initialize devotion - now uses BibleReader module
+        function initializeDevotion() {
+            document.getElementById('devotionDate').textContent = formatDate(new Date());
+            
+            // Default reflection question (will be replaced when verse is highlighted)
+            // BibleReader will auto-initialize and load from saved progress
+        }
+
+        // Legacy loadBiblePassage - now handled by BibleReader module
+        function loadBiblePassage() {
+            // This function is now handled by BibleReader.loadChapter()
+            // Keeping for backward compatibility
+            if (typeof BibleReader !== 'undefined' && BibleReader.currentBook) {
+                BibleReader.loadChapter(BibleReader.currentBook, BibleReader.currentChapter);
+            }
+        }
+
+        // Legacy loadCommentary - now handled by BibleReader module
+        function loadCommentary(chapter, verseRange) {
+            // This function is now handled by BibleReader.loadCommentary()
+            // Keeping for backward compatibility
+        }
+
+        // Legacy toggleHighlight - now use BibleReader.toggleHighlight()
+        window.toggleHighlight = function(verseNum) {
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.toggleHighlight(verseNum);
+            }
+        };
+
+        // Legacy toggleCommentary - commentary now always visible
+        window.toggleCommentary = function() {
+            // Commentary is now always visible when verses are highlighted
+            // This function kept for backward compatibility
+        };
+
+        // Set language - use i18n module
+        window.setLanguage = function(lang) {
+            // Use i18n module if available
+            if (typeof i18n !== 'undefined') {
+                i18n.setLang(lang);
+            } else {
+                currentLanguage = lang;
+                document.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.lang === lang);
+                });
+            }
+            loadBiblePassage();
+            // Also update Journey card language
+            if (window.currentUserStage) {
+                updateJourneyDisplay(window.currentUserStage);
+            }
+        };
+        
+        // Listen for language changes from i18n module
+        document.addEventListener('languageChanged', function(e) {
+            console.log('[Language Changed]', e.detail.lang, 'Stage:', window.currentUserStage);
+            currentLanguage = e.detail.lang;
+            // Don't call loadBiblePassage() - BibleReader handles this via its own listener
+            // which preserves highlighted verses
+            // Always update journey display on language change
+            window.updateJourneyDisplay(window.currentUserStage || 'seeker');
+        });
+
+        // Toggle commentary section (Help me understand)
+        window.toggleCommentarySection = function() {
+            const content = document.getElementById('commentaryContent');
+            const arrow = document.getElementById('commentaryArrow');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = '';
+            }
+        };
+
+        // Toggle share
+        window.toggleShare = function() {
+            shareWithGroup = !shareWithGroup;
+            document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
+        };
+
+        // Load today's entry if exists - ONLY restore highlights, not reflection text
+        window.loadTodaysEntry = async function(uid) {
+            if (!uid) return;
+            
+            // Clear reflection if element exists
+            const reflectionAnswer = document.getElementById('reflectionAnswer');
+            const saveBtnText = document.getElementById('saveBtnText');
+            if (reflectionAnswer) reflectionAnswer.value = '';
+            if (saveBtnText) saveBtnText.textContent = '💾 Save This Day';
+            
+            const today = getTodayString();
+            const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
+            
+            try {
+                const entryDoc = await window.getDoc(entryRef);
+                if (entryDoc.exists()) {
+                    const data = entryDoc.data();
+                    
+                    // Only restore highlights to BibleReader
+                    if (typeof BibleReader !== 'undefined' && data.highlightedVerses && data.highlightedVerses.length > 0) {
+                        BibleReader.highlightedVerses = data.highlightedVerses.map(v => {
+                            if (typeof v === 'object' && v.verse) return v;
+                            return { verse: v, color: 'gold' };
+                        });
+                        
+                        // Re-render to show restored highlights
+                        BibleReader.renderVerses();
+                        if (BibleReader.highlightedVerses.length > 0) {
+                            await BibleReader.loadCommentary();
+                        }
+                    }
+                    
+                    // Restore share toggle preference only
+                    shareWithGroup = data.sharedWithGroup || false;
+                    const shareToggle = document.getElementById('shareToggle');
+                    if (shareToggle) shareToggle.classList.toggle('active', shareWithGroup);
+                }
+            } catch (error) {
+                console.error('Error loading entry:', error);
+            }
+        };
+
+        // Save this day
+        window.saveThisDay = async function() {
+            if (!window.currentUser) {
+                alert('Please sign in to save your devotion.');
+                return;
+            }
+            
+            const reflection = document.getElementById('reflectionAnswer').value.trim();
+            if (!reflection) {
+                alert('Please write your reflection before saving.');
+                return;
+            }
+            
+            const btn = document.getElementById('saveDevotionBtn');
+            const btnText = document.getElementById('saveBtnText');
+            btn.disabled = true;
+            btnText.textContent = 'Saving...';
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                // Get reading info from BibleReader
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
+                // Get the reflection question (AI-generated or default)
+                const reflectionEl = document.getElementById('reflectionQuestion');
+                const question = reflectionEl ? reflectionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
+                await window.setDoc(entryRef, {
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
+                    question: question,
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    savedAt: window.serverTimestamp()
+                });
+                
+                // Show success
+                document.getElementById('successToast').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('successToast').classList.add('hidden');
+                }, 3000);
+                
+                // Clear the reflection textarea after successful save
+                document.getElementById('reflectionAnswer').value = '';
+                
+                // Reset highlights and commentary
+                if (typeof BibleReader !== 'undefined') {
+                    BibleReader.highlightedVerses = [];
+                    BibleReader.renderVerses();
+                    BibleReader.clearCommentary();
+                }
+                
+                // Hide the AI reflection card
+                const aiReflectCard = document.getElementById('aiReflectCard');
+                if (aiReflectCard) aiReflectCard.classList.add('hidden');
+                
+                // Show saved briefly, then reset to default
+                btnText.textContent = '✓ Saved!';
+                btn.disabled = false;
+                await window.loadWeekProgress(window.currentUser.uid);
+                
+                // Reset button text after 2 seconds
+                setTimeout(() => {
+                    btnText.textContent = '💾 Save This Day';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Error saving. Please try again.');
+                btnText.textContent = '💾 Save This Day';
+                btn.disabled = false;
+            }
+            
+            btn.disabled = false;
+        };
+        
+        // ====== NEW: Devotion Menu Functions ======
+        
+        // Toggle devotion menu
+        window.toggleDevotionMenu = function() {
+            const modal = document.getElementById('devotionMenuModal');
+            modal.classList.toggle('hidden');
+        };
+        
+        // Toggle popup share
+        window.togglePopupShare = function() {
+            const toggle = document.getElementById('sharePopupToggle');
+            toggle.classList.toggle('active');
+        };
+        
+        // Show reflection popup (called when exiting fullscreen)
+        window.showReflectionPopup = function() {
+            const modal = document.getElementById('reflectionPopupModal');
+            
+            // Get the current reflection question from BibleReader
+            const questionEl = document.getElementById('reflectionQuestion');
+            const popupQuestionEl = document.getElementById('reflectPopupQuestion');
+            if (questionEl && popupQuestionEl) {
+                popupQuestionEl.textContent = questionEl.textContent || '"What is one thing God is inviting you to live out today?"';
+            }
+            
+            // Update language labels
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+            document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+            
+            modal.classList.remove('hidden');
+        };
+        
+        // Save and continue reading
+        window.saveAndContinueReading = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup and go back to fullscreen
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reopen fullscreen
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.enterFullscreen();
+            }
+        };
+        
+        // Save and go home
+        window.saveAndGoHome = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reset highlights for next session
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.highlightedVerses = [];
+                BibleReader.renderVerses();
+            }
+            
+            // Reload week progress
+            if (window.currentUser) {
+                await window.loadWeekProgress(window.currentUser.uid);
+            }
+        };
+        
+        // Skip reflection
+        window.skipReflection = function() {
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+        };
+        
+        // Save reflection from popup
+        async function saveReflectionFromPopup(reflection) {
+            if (!window.currentUser || !reflection) return;
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
+                const questionEl = document.getElementById('reflectPopupQuestion');
+                const question = questionEl ? questionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
+                const shareToggle = document.getElementById('sharePopupToggle');
+                const shareWithGroup = shareToggle?.classList.contains('active') || false;
+                
+                await window.setDoc(entryRef, {
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
+                    question: question,
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    savedAt: window.serverTimestamp()
+                });
+                
+                console.log('[Devotion] Saved reflection from popup');
+            } catch (error) {
+                console.error('Error saving reflection:', error);
+            }
+        }
+        
+        // Open journal
+        window.openJournal = async function() {
+            toggleDevotionMenu(); // Close menu
+            const modal = document.getElementById('journalModal');
+            const list = document.getElementById('journalEntriesList');
+            
+            modal.classList.remove('hidden');
+            list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Loading...</p>';
+            
+            if (!window.currentUser) {
+                list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Please sign in to view your journal.</p>';
+                return;
+            }
+            
+            try {
+                const devotionsRef = window.collection(window.db, 'goMission_devotions');
+                const q = window.query(
+                    devotionsRef,
+                    window.where('uid', '==', window.currentUser.uid),
+                    window.orderBy('savedAt', 'desc'),
+                    window.limit(30)
+                );
+                
+                const snapshot = await window.getDocs(q);
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">No journal entries yet. Start your first devotion!</p>';
+                    return;
+                }
+                
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = new Date(data.date);
+                    const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const bookName = (typeof BibleLoader !== 'undefined') ? BibleLoader.getBookName(data.book, 'en') : data.book;
+                    
+                    html += `
+                        <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-amber-500 font-bold">${formattedDate}</span>
+                                <span class="text-xs text-[var(--text-muted)]">${bookName} ${data.chapter}</span>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] italic mb-2">"${data.question || ''}"</p>
+                            <p class="text-sm text-[var(--text-color)]">${data.reflection || ''}</p>
+                            ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading journal:', error);
+                list.innerHTML = '<p class="text-red-400 text-center py-8">Error loading journal. Please try again.</p>';
+            }
+        };
+        
+        // Close journal
+        window.closeJournal = function() {
+            document.getElementById('journalModal').classList.add('hidden');
+        };
+        
+        // Placeholder functions for future features
+        window.openReadingPlan = function() {
+            alert('Reading Plan feature coming soon!');
+            toggleDevotionMenu();
+        };
+        
+        window.openReadingStats = function() {
+            alert('Reading Stats feature coming soon!');
+            toggleDevotionMenu();
+        };
+    </script>
+</body>
+</html>

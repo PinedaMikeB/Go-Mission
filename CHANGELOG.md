@@ -10,7 +10,54 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.0.3] - 2026-01-22 ⭐ CURRENT
+## [v1.1.0] - 2026-01-23 ⭐ CURRENT
+
+### 🔐 Email/Password Authentication (Major Change)
+
+**Summary:** Replaced Google/Phone authentication with Email/Password for better user control and account recovery.
+
+**Changes:**
+- ❌ **Removed:** Google Sign-In
+- ❌ **Removed:** Phone Number Sign-In
+- ✅ **Added:** Email/Password Sign In
+- ✅ **Added:** Email/Password Sign Up (with display name)
+- ✅ **Added:** Forgot Password with 6-digit email verification code
+- ✅ **Added:** Cloud Functions for password reset code generation
+
+**Why This Change:**
+- Google login fails on some devices (in-app browsers, PWA issues)
+- Phone login created separate accounts from Google accounts
+- Users had no way to recover accounts if Google auth failed
+- Email/Password gives users full control over their credentials
+
+**New Cloud Functions:**
+- `sendPasswordResetCode` - Sends 6-digit code to email (15-min expiry)
+- `verifyPasswordResetCode` - Validates the code
+- `completePasswordReset` - Updates password after verification
+- `cleanupExpiredResetCodes` - Daily cleanup of expired codes
+
+**New Firestore Collections:**
+- `goMission_passwordResets/{email}` - Temporary reset codes
+- `goMission_mailQueue` - Email queue (for future email extension)
+
+**Files Changed:**
+- `/index.html` - New login UI with tabs (Sign In / Sign Up / Forgot Password)
+- `/functions/index.js` - Added password reset functions
+
+**Migration Notes:**
+- Existing users with Google accounts need to Sign Up with their email
+- Their Firebase UID will be different (new account)
+- Data migration may be needed for power users
+
+**Rollback:**
+```bash
+git checkout v1.0.3 -- index.html functions/index.js
+firebase deploy --only functions
+```
+
+---
+
+## [v1.0.3] - 2026-01-22
 
 ### 🔒 Force Update System
 

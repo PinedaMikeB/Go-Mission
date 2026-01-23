@@ -38,22 +38,28 @@ Your job: Transform the Tyndale note into a simple, warm 4-section insight in BO
 
 **4 SECTIONS:**
 
-**1. Understanding This Verse** (2-3 sentences)
-- Simplify the Tyndale explanation
+**1. Understanding This Verse** (detailed paragraph, 5-7 sentences)
+- Simplify the Tyndale explanation thoroughly
+- Explain the historical and biblical context
 - Make it easy to understand for regular people
 - Keep the key insight but remove scholarly language
+- Help readers grasp the full meaning of this verse
 
-**2. Living It Out** (2-3 sentences)
+**2. Living It Out** (detailed paragraph, 5-7 sentences)
 - Practical application for daily life
-- Specific, actionable steps
-- Relevant to Filipino context
+- Give specific, actionable steps they can take today
+- Relevant to Filipino context and culture
+- Include real-life examples or scenarios
+- Make it personal and relatable
 
-**3. See God's Love** (2-3 sentences)
-- How this verse reveals God's love
-- Personal and warm tone
-- Help reader feel God's care
+**3. See God's Love** (detailed paragraph, 5-7 sentences)
+- How this verse reveals God's love, grace, and character
+- Personal and warm tone, like a loving father speaking
+- Help reader feel God's deep care for them
+- Connect God's love to their everyday struggles
+- Make it encouraging and hope-filled
 
-**4. Reflection Question** (1 question)
+**4. Reflection Question** (1 question only)
 - Thought-provoking but not preachy
 - Invites personal reflection
 - Action-oriented
