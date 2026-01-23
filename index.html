@@ -288,6 +288,26 @@
         .stepper-line-active {
             background: var(--accent-active);
         }
+        
+        /* Devotion content area - Same cream bg as Journey phase card */
+        .devotion-content-area {
+            background: rgba(0, 0, 0, 0.2);  /* Dark mode */
+        }
+        .light-mode .devotion-content-area {
+            background: #F5F2EE;              /* Cream for light mode */
+        }
+        
+        /* Tap to Read button - Same style as journey quote text */
+        .tap-read-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 215, 0, 0.2);
+            color: var(--accent-active);
+        }
+        .light-mode .tap-read-btn {
+            background: rgba(123, 0, 0, 0.05);
+            border-color: rgba(123, 0, 0, 0.15);
+            color: #57534e;                   /* Stone-600 - same as journey quote */
+        }
 
         /* Bible verse styles */
         .verse { 
@@ -578,11 +598,11 @@
                     </button>
                 </div>
 
-                <!-- Collapsed Bible Preview - TAP TO OPEN FULLSCREEN -->
-                <div class="p-4 cursor-pointer hover:bg-white/5 transition-colors" onclick="BibleReader.enterFullscreen()">
+                <!-- Collapsed Bible Preview - Cream bg area like Journey phase card -->
+                <div class="devotion-content-area p-4 cursor-pointer transition-colors" onclick="BibleReader.enterFullscreen()">
                     <!-- Passage Header -->
                     <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-1 text-[var(--accent-active)] font-bold">
+                        <div class="flex items-center gap-1 text-[var(--text-color)] font-bold">
                             <span class="text-lg">📖</span>
                             <span id="passageTitle">John 1</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -595,13 +615,13 @@
                         </div>
                     </div>
                     
-                    <!-- Verse Preview -->
-                    <div id="bibleText" class="text-sm text-[var(--text-color)] leading-relaxed line-clamp-2 mb-4">
+                    <!-- Verse Preview - Same style as Journey quote (italic, journey-quote color) -->
+                    <div id="bibleText" class="journey-quote text-sm italic leading-relaxed line-clamp-2 mb-4">
                         <p class="text-[var(--text-muted)] text-center py-4">Loading...</p>
                     </div>
                     
-                    <!-- Tap to Read Button -->
-                    <button class="w-full border-2 border-[var(--accent-active)]/20 bg-white/5 py-3 rounded-xl flex items-center justify-center gap-2 text-[var(--accent-active)] font-bold text-sm">
+                    <!-- Tap to Read Button - Same color as quote text -->
+                    <button class="tap-read-btn w-full border-2 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                         </svg>
