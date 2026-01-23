@@ -16,7 +16,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             /* ============================================
@@ -57,22 +57,50 @@
             --accent-glow: rgba(255, 215, 0, 0.4);    /* Gold glow effect */
         }
 
-        /* Light Mode Theme - Copied from Gemini Design */
+        /* ============================================
+           LIGHT MODE - Stitch Cream/Burgundy Design
+           ============================================ */
         .light-mode {
-            --bg-color: #fcfaf2;
-            --bg-secondary: #ffffff;
-            --text-color: #2a0505;
-            --text-muted: #64748b;
-            --card-bg: #ffffff;
-            --card-bg-solid: #ffffff;
-            --card-border: rgba(42, 5, 5, 0.1);
-            --nav-bg: #ffffff;
-            --nav-border: rgba(42, 5, 5, 0.1);
-            --nav-inactive: rgba(42, 5, 5, 0.4);
-            --input-bg: rgba(42, 5, 5, 0.05);
-            --input-border: rgba(42, 5, 5, 0.15);
-            --shadow-color: rgba(42, 5, 5, 0.1);
-            --progress-bg: rgba(42, 5, 5, 0.05);
+            /* Backgrounds - Cream tones */
+            --bg-color: #F9F6F2;              /* Warm cream background */
+            --bg-secondary: #F9F6F2;
+            --card-bg: #FFFFFF;
+            --card-bg-solid: #FFFFFF;
+            --card-inner: #F5F2EE;            /* Inner card sections */
+            
+            /* Text - Deep burgundy palette */
+            --text-color: #7B0000;            /* Primary burgundy for headings */
+            --text-body: #44403c;             /* Stone-700 for body text */
+            --text-muted: #78716c;            /* Stone-500 */
+            --text-dim: #a8a29e;              /* Stone-400 */
+            
+            /* Borders & UI */
+            --card-border: rgba(123, 0, 0, 0.1);   /* Subtle burgundy border */
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --nav-border: rgba(123, 0, 0, 0.1);
+            --nav-inactive: #a8a29e;          /* Stone-400 */
+            --input-bg: rgba(123, 0, 0, 0.03);
+            --input-border: rgba(123, 0, 0, 0.1);
+            --shadow-color: rgba(123, 0, 0, 0.08);
+            
+            /* Accents - Gold for active only */
+            --accent-active: #D4A017;         /* Slightly darker gold for light mode */
+            --accent-inactive: #E5E7EB;       /* Light gray for inactive */
+            --accent-glow: rgba(212, 160, 23, 0.3);
+            
+            /* Stepper specific */
+            --stepper-line: #E5E7EB;          /* Light gray line */
+            --stepper-line-active: #D4A017;   /* Gold active line */
+            --stepper-dot-inactive: #E5E7EB;
+            --stepper-dot-border: #FFFFFF;
+        }
+        
+        /* Dark mode stepper variables */
+        :root {
+            --stepper-line: #44403c;
+            --stepper-line-active: var(--mission-gold);
+            --stepper-dot-inactive: #44403c;
+            --stepper-dot-border: var(--card-bg-solid);
         }
 
         body {
@@ -86,6 +114,7 @@
         }
 
         .font-mission { font-family: 'Cinzel', serif; }
+        .font-display { font-family: 'Playfair Display', serif; }
 
         .bg-mission-sunset {
             background: linear-gradient(to bottom, rgba(26, 10, 10, 0.88), rgba(26, 10, 10, 0.95)), 
@@ -147,19 +176,14 @@
             color: #64748b !important;
         }
         
-        .light-mode .progress-dot.inactive {
-            background: var(--bg-color);
-            border-color: rgba(42, 5, 5, 0.2);
-        }
-        
         .light-mode .toggle-switch {
-            background: rgba(42, 5, 5, 0.15);
+            background: rgba(123, 0, 0, 0.1);
         }
         
         /* Light mode - AI reflection card text */
         .light-mode #aiReflectCard,
         .light-mode #commentaryContent {
-            background: rgba(42, 5, 5, 0.05) !important;
+            background: rgba(123, 0, 0, 0.03) !important;
         }
         
         .light-mode #aiReflectCard p,
@@ -200,19 +224,69 @@
         .mission-button:hover { filter: brightness(1.1); background: #8B0000; }
         .mission-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* Journey Stepper Dots - Stitch Style */
         .progress-dot {
-            width: 14px; height: 14px;
+            width: 18px; 
+            height: 18px;
             border-radius: 50%;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .progress-dot.active {
-            background: var(--mission-gold);
-            border: 3px solid var(--card-bg-solid);
-            box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+            background: var(--accent-active);
+            border: 4px solid var(--stepper-dot-border, var(--card-bg-solid));
+            box-shadow: 0 0 12px var(--accent-glow, rgba(255, 215, 0, 0.5));
         }
         .progress-dot.inactive {
-            background: #44403c;             /* Stone-700 */
-            border: 3px solid var(--card-bg-solid);
+            background: var(--stepper-dot-inactive, #E5E7EB);
+            border: 4px solid var(--stepper-dot-border, var(--card-bg-solid));
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Light mode specific stepper overrides */
+        .light-mode .progress-dot.inactive {
+            background: #E5E7EB;
+            border-color: #FFFFFF;
+        }
+        .light-mode .progress-dot.active {
+            border-color: #FFFFFF;
+        }
+        
+        /* Journey Phase Card - Different bg for light/dark */
+        .journey-phase-card {
+            background: rgba(0, 0, 0, 0.2);  /* Dark mode default */
+        }
+        .light-mode .journey-phase-card {
+            background: #F5F2EE;              /* Warm cream for light mode */
+            border-color: rgba(123, 0, 0, 0.08);
+        }
+        
+        /* Journey text colors */
+        .journey-quote {
+            color: var(--text-muted);
+        }
+        .light-mode .journey-quote {
+            color: #57534e;                   /* Stone-600 - readable on cream */
+        }
+        .journey-next {
+            color: var(--text-muted);
+        }
+        .light-mode .journey-next {
+            color: #78716c;                   /* Stone-500 */
+        }
+        .light-mode .journey-next span:last-child {
+            color: var(--text-color);         /* Burgundy for emphasis */
+        }
+        
+        /* Stepper line colors */
+        .stepper-line-bg {
+            background: var(--stepper-line, #44403c);
+        }
+        .light-mode .stepper-line-bg {
+            background: #E5E7EB;
+        }
+        .stepper-line-active {
+            background: var(--accent-active);
         }
 
         /* Bible verse styles */
@@ -432,10 +506,10 @@
                     <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
                 </div>
                 
-                <!-- Journey Stepper - Minimal Gold (only active dot glows) -->
+                <!-- Journey Stepper - Stitch Style -->
                 <div class="relative px-2 mb-8">
-                    <div class="absolute top-[9px] left-4 right-4 h-[2px] bg-[var(--accent-inactive)]"></div>
-                    <div id="journeyProgressLine" class="absolute top-[9px] left-4 h-[2px] bg-[var(--accent-active)]" style="width: 0%"></div>
+                    <div class="absolute top-[9px] left-4 right-4 h-[2px] stepper-line-bg"></div>
+                    <div id="journeyProgressLine" class="absolute top-[9px] left-4 h-[2px] stepper-line-active" style="width: 0%"></div>
                     
                     <div class="flex justify-between relative z-10">
                         <div class="flex flex-col items-center">
@@ -461,19 +535,19 @@
                     </div>
                 </div>
 
-                <!-- Journey Phase Card - Minimal Design -->
-                <div class="bg-black/20 rounded-2xl p-5 border border-[var(--card-border)]">
+                <!-- Journey Phase Card - Stitch Style (cream bg in light mode) -->
+                <div class="journey-phase-card rounded-2xl p-5 border border-[var(--card-border)]">
                     <p class="text-[10px] font-bold text-[var(--accent-active)] uppercase tracking-widest mb-1" id="journeyStageLabel">WHERE GOD HAS YOU TODAY</p>
-                    <p class="text-2xl font-black text-[var(--text-color)] uppercase tracking-tight mb-4" id="journeyPhaseName">ON THE JOURNEY</p>
+                    <h3 class="font-display text-2xl font-bold text-[var(--text-color)] mb-4" id="journeyPhaseName">ON THE JOURNEY</h3>
                     
-                    <!-- Encouragement Message - Subtle gold border -->
-                    <div class="border-l-2 border-[var(--accent-active)]/30 pl-4 mb-4">
-                        <p class="text-sm text-[var(--text-muted)] italic leading-relaxed" id="journeyEncouragement">God drew you to Himself.<br>He sees your seeking heart and delights in it.</p>
+                    <!-- Encouragement Message - Subtle accent border -->
+                    <div class="border-l-2 border-[var(--accent-active)]/40 pl-4 mb-4">
+                        <p class="text-sm italic leading-relaxed journey-quote" id="journeyEncouragement">"God drew you to Himself.<br>He sees your seeking heart and delights in it."</p>
                     </div>
                     
-                    <p class="text-sm text-[var(--text-muted)] mb-6">
+                    <p class="text-sm mb-6 journey-next">
                         <span class="font-medium" id="journeyNextLabel">Next:</span> 
-                        <span class="text-[var(--text-color)]" id="journeyNextStep">Walk as a Disciple</span>
+                        <span id="journeyNextStep">Walk as a Disciple</span>
                     </p>
                     
                     <button class="mission-button w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2">
