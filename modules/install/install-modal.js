@@ -58,11 +58,8 @@ const InstallModal = {
             
             // Steps screen
             stepsTitle: 'Installation Steps',
-            beginTitle: '✅ Ready to Install?',
-            beginText: 'You have read all the steps. Now tap the Share button below to begin!',
-            beginBtn: '📤 Tap Share Button to Begin',
-            beginBtnAndroid: '⋮ Tap Menu Button to Begin',
-            beginBtnWindows: '⊕ Click Install Icon to Begin',
+            beginTitle: 'Ready to Install!',
+            beginText: 'Now tap the Share button below',
             backToSteps: '← Back to Instructions',
             
             // Android steps
@@ -123,11 +120,8 @@ const InstallModal = {
             
             // Steps screen
             stepsTitle: 'Mga Hakbang sa Pag-install',
-            beginTitle: '✅ Handa Ka Na?',
-            beginText: 'Nabasa mo na lahat ng steps. Pindutin na ang Share button sa baba para magsimula!',
-            beginBtn: '📤 Pindutin ang Share Button para Magsimula',
-            beginBtnAndroid: '⋮ Pindutin ang Menu para Magsimula',
-            beginBtnWindows: '⊕ I-click ang Install Icon para Magsimula',
+            beginTitle: 'Handa Nang I-install!',
+            beginText: 'Pindutin ang Share button sa baba',
             backToSteps: '← Bumalik sa Instructions',
             
             // Android steps
@@ -322,11 +316,6 @@ const InstallModal = {
             stepsHtml += `<div class="ios-note">${this.t('iphNote')}</div>`;
         }
         
-        // Begin button text based on device
-        let beginBtn = this.t('beginBtn');
-        if (this.currentDevice === 'android') beginBtn = this.t('beginBtnAndroid');
-        if (this.currentDevice === 'windows') beginBtn = this.t('beginBtnWindows');
-        
         return `
             <div class="install-overlay"></div>
             <div class="install-content steps-content">
@@ -340,12 +329,12 @@ const InstallModal = {
                     ${stepsHtml}
                     
                     <div class="begin-section">
-                        <div class="begin-icon">🚀</div>
+                        <div class="begin-icon">✅</div>
                         <h3>${this.t('beginTitle')}</h3>
                         <p>${this.t('beginText')}</p>
-                        <button class="begin-btn" onclick="InstallModal.close()">
-                            ${beginBtn}
-                        </button>
+                        <div class="point-down">
+                            <span>👇</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -742,21 +731,23 @@ const InstallModal = {
                 margin: 0 0 8px 0;
             }
             #installModal .begin-section p {
-                font-size: 14px;
-                color: #94a3b8;
-                margin: 0 0 20px 0;
-                line-height: 1.5;
-            }
-            #installModal .begin-btn {
-                width: 100%;
-                padding: 16px;
-                background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-                border: none;
-                border-radius: 14px;
-                color: #fff;
                 font-size: 16px;
-                font-weight: 700;
-                cursor: pointer;
+                color: #e2e8f0;
+                margin: 0 0 16px 0;
+                line-height: 1.5;
+                font-weight: 600;
+            }
+            #installModal .point-down {
+                display: flex;
+                justify-content: center;
+                animation: bounce 1s infinite;
+            }
+            #installModal .point-down span {
+                font-size: 48px;
+            }
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(10px); }
             }
         `;
         
