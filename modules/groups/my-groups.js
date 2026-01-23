@@ -450,14 +450,14 @@ const MyGroups = {
      */
     async showInviteCode(groupId) {
         console.log('[MyGroups] showInviteCode called with:', groupId);
-        console.log('[MyGroups] downlineGroups:', this.downlineGroups);
         
-        let group = this.downlineGroups.find(g => g.id === groupId);
-        
-        // If group not found in memory, try to fetch it directly
-        if (!group) {
-            console.log('[MyGroups] Group not in memory, fetching from Firestore...');
-            try {
+        try {
+            let group = this.downlineGroups.find(g => g.id === groupId);
+            console.log('[MyGroups] Found group in memory:', group);
+            
+            // If group not found in memory, try to fetch it directly
+            if (!group) {
+                console.log('[MyGroups] Group not in memory, fetching from Firestore...');
                 const groupDoc = await window.getDoc(
                     window.doc(window.db, 'goMission_groups', groupId)
                 );
@@ -465,43 +465,44 @@ const MyGroups = {
                     group = { id: groupDoc.id, ...groupDoc.data() };
                     console.log('[MyGroups] Fetched group:', group);
                 }
-            } catch (error) {
-                console.error('[MyGroups] Error fetching group:', error);
             }
-        }
-        
-        if (!group) {
-            console.error('[MyGroups] Group not found:', groupId);
-            alert('Group not found. Please refresh and try again.');
-            return;
-        }
-        
-        const modal = document.getElementById('groupModal');
-        const content = document.getElementById('groupModalContent');
-        
-        if (!modal || !content) {
-            console.error('[MyGroups] Modal elements not found');
-            alert('Error: Modal not found');
-            return;
-        }
-        
-        // Check if group has an invite code, if not generate one
-        let inviteCode = group.inviteCode;
-        
-        if (!inviteCode) {
-            console.log('[MyGroups] No invite code found, generating one...');
             
-            // Show loading state
-            content.innerHTML = `
-                <div class="p-6 text-center">
-                    <p class="text-[var(--text-muted)]">Generating invite code...</p>
-                </div>
-            `;
-            modal.classList.remove('hidden');
+            if (!group) {
+                console.error('[MyGroups] Group not found:', groupId);
+                alert('Group not found. Please refresh and try again.');
+                return;
+            }
             
-            try {
+            const modal = document.getElementById('groupModal');
+            const content = document.getElementById('groupModalContent');
+            
+            console.log('[MyGroups] Modal element:', modal);
+            console.log('[MyGroups] Content element:', content);
+            
+            if (!modal || !content) {
+                console.error('[MyGroups] Modal elements not found');
+                alert('Error: Modal not found');
+                return;
+            }
+            
+            // Check if group has an invite code, if not generate one
+            let inviteCode = group.inviteCode;
+            console.log('[MyGroups] Current invite code:', inviteCode);
+            
+            if (!inviteCode) {
+                console.log('[MyGroups] No invite code found, generating one...');
+                
+                // Show loading state
+                content.innerHTML = `
+                    <div class="p-6 text-center">
+                        <p class="text-[var(--text-muted)]">Generating invite code...</p>
+                    </div>
+                `;
+                modal.classList.remove('hidden');
+                
                 // Generate and save new invite code
                 inviteCode = this.generateInviteCode();
+                console.log('[MyGroups] Generated code:', inviteCode);
                 
                 await window.setDoc(
                     window.doc(window.db, 'goMission_groups', groupId),
@@ -511,45 +512,41 @@ const MyGroups = {
                 
                 // Update local group object
                 group.inviteCode = inviteCode;
-                console.log('[MyGroups] Invite code generated:', inviteCode);
-                
-            } catch (error) {
-                console.error('[MyGroups] Error generating invite code:', error);
-                content.innerHTML = `
-                    <div class="p-6 text-center">
-                        <p class="text-red-500">Failed to generate invite code</p>
-                        <button onclick="MyGroups.closeModal()" class="mt-4 text-[var(--mission-gold)]">Close</button>
-                    </div>
-                `;
-                return;
+                console.log('[MyGroups] Invite code saved to Firestore');
             }
+            
+            // Show the invite code modal
+            console.log('[MyGroups] Showing modal with code:', inviteCode);
+            content.innerHTML = `
+                <div class="p-6 text-center">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold text-[var(--text-color)]">🔑 Invite Code</h3>
+                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <p class="text-[var(--text-muted)] text-sm mb-4">Share this code with people you want to disciple:</p>
+                    <div class="bg-black/30 rounded-xl p-6 mb-4">
+                        <p class="text-4xl font-bold text-[var(--mission-gold)] tracking-[0.3em] font-mono">${inviteCode}</p>
+                    </div>
+                    <p class="text-[var(--text-color)] font-medium mb-4">${group.name}</p>
+                    <div class="space-y-3">
+                        <button onclick="MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                            📋 Copy Code
+                        </button>
+                        <button onclick="MyGroups.shareInviteCode('${inviteCode}', '${group.name.replace(/'/g, "\\'")}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-3 rounded-lg">
+                            📤 Share via...
+                        </button>
+                    </div>
+                    <p class="text-[var(--text-dim)] text-xs mt-4">They can join using "+ Join" on My Groups screen</p>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            console.log('[MyGroups] Modal should now be visible');
+            
+        } catch (error) {
+            console.error('[MyGroups] Error in showInviteCode:', error);
+            alert('Error showing invite code: ' + error.message);
         }
-        
-        // Show the invite code modal
-        content.innerHTML = `
-            <div class="p-6 text-center">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-bold text-[var(--text-color)]">🔑 Invite Code</h3>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
-                </div>
-                <p class="text-[var(--text-muted)] text-sm mb-4">Share this code with people you want to disciple:</p>
-                <div class="bg-black/30 rounded-xl p-6 mb-4">
-                    <p class="text-4xl font-bold text-[var(--mission-gold)] tracking-[0.3em] font-mono">${inviteCode}</p>
-                </div>
-                <p class="text-[var(--text-color)] font-medium mb-4">${group.name}</p>
-                <div class="space-y-3">
-                    <button onclick="MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
-                        📋 Copy Code
-                    </button>
-                    <button onclick="MyGroups.shareInviteCode('${inviteCode}', '${group.name}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-3 rounded-lg">
-                        📤 Share via...
-                    </button>
-                </div>
-                <p class="text-[var(--text-dim)] text-xs mt-4">They can join using "+ Join" on My Groups screen</p>
-            </div>
-        `;
-        
-        modal.classList.remove('hidden');
     },
     
     /**
