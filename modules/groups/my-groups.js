@@ -1084,7 +1084,8 @@ const MyGroups = {
             // Reload and refresh
             await this.loadGroups();
             this.render();
-            this.showJoinRequests(groupId);
+            this.updateBadges();
+            this.showGroupMembers(groupId);
             
         } catch (error) {
             console.error('[MyGroups] Approve error:', error);
@@ -1117,7 +1118,8 @@ const MyGroups = {
             // Reload and refresh
             await this.loadGroups();
             this.render();
-            this.showJoinRequests(groupId);
+            this.updateBadges();
+            this.showGroupMembers(groupId);
             
         } catch (error) {
             console.error('[MyGroups] Decline error:', error);
@@ -1225,6 +1227,51 @@ const MyGroups = {
             
             membersHtml += '</div>';
             
+            // Build pending requests section (if any and user is leader)
+            const requests = group.joinRequests || [];
+            let pendingHtml = '';
+            
+            if (isLeader && requests.length > 0) {
+                pendingHtml = `
+                    <div class="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                        <p class="text-amber-400 font-bold text-sm mb-3">🔔 PENDING REQUESTS (${requests.length})</p>
+                        <div class="space-y-3">
+                            ${requests.map(req => `
+                                <div class="bg-black/30 rounded-lg p-3">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <img src="${req.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name)}&background=4a0404&color=fbbf24`}" 
+                                             class="w-10 h-10 rounded-full border border-amber-500/50">
+                                        <div class="flex-1">
+                                            <p class="text-[var(--text-color)] font-medium">${req.name}</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
+                                            ${req.hasExistingGroup ? `
+                                                <p class="text-xs text-blue-400 mt-1">Already in: ${req.existingGroupName}</p>
+                                            ` : `
+                                                <p class="text-xs text-green-400 mt-1">✨ New (no current group)</p>
+                                            `}
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                                class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-lg">
+                                            ✅ Member
+                                        </button>
+                                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+                                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg">
+                                            🎫 Guest
+                                        </button>
+                                        <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
+                                                class="bg-red-600/30 hover:bg-red-600/50 text-red-400 text-xs font-bold py-2 px-3 rounded-lg border border-red-500/30">
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
             content.innerHTML = `
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-6">
@@ -1232,6 +1279,7 @@ const MyGroups = {
                         <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
                     <div class="max-h-[60vh] overflow-y-auto">
+                        ${pendingHtml}
                         ${membersHtml}
                     </div>
                 </div>
