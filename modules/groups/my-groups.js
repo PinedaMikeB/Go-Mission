@@ -329,6 +329,15 @@ const MyGroups = {
             const groupDoc = snapshot.docs[0];
             const groupData = groupDoc.data();
             
+            // Check if invite code has expired
+            if (groupData.inviteCodeExpiresAt && new Date(groupData.inviteCodeExpiresAt) < new Date()) {
+                if (errorEl) {
+                    errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+            
             // Check if already a member
             if (groupData.members?.includes(window.currentUser.uid)) {
                 if (errorEl) {
@@ -394,8 +403,9 @@ const MyGroups = {
         }
         
         try {
-            // Generate 6-character invite code
+            // Generate 6-character invite code with 7-day expiration
             const inviteCode = this.generateInviteCode();
+            const inviteCodeExpiresAt = this.generateExpirationDate();
             
             // Create group
             const groupRef = await window.addDoc(
@@ -406,6 +416,7 @@ const MyGroups = {
                     leaderName: window.currentUser.displayName || 'Leader',
                     members: [window.currentUser.uid],
                     inviteCode: inviteCode,
+                    inviteCodeExpiresAt: inviteCodeExpiresAt,
                     type: 'downline',
                     createdAt: window.serverTimestamp(),
                     meetingSchedule: null
@@ -442,6 +453,15 @@ const MyGroups = {
             code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         return code;
+    },
+    
+    /**
+     * Generate expiration date (7 days from now)
+     */
+    generateExpirationDate() {
+        const date = new Date();
+        date.setDate(date.getDate() + 7);
+        return date.toISOString();
     },
     
     /**
@@ -486,34 +506,48 @@ const MyGroups = {
             }
             
             // Check if group has an invite code, if not generate one
+            // Also check if existing code has expired
             let inviteCode = group.inviteCode;
-            console.log('[MyGroups] Current invite code:', inviteCode);
+            let inviteCodeExpiresAt = group.inviteCodeExpiresAt;
+            const isExpired = inviteCodeExpiresAt && new Date(inviteCodeExpiresAt) < new Date();
             
-            if (!inviteCode) {
-                console.log('[MyGroups] No invite code found, generating one...');
+            console.log('[MyGroups] Current invite code:', inviteCode, 'Expires:', inviteCodeExpiresAt, 'Expired:', isExpired);
+            
+            if (!inviteCode || isExpired) {
+                console.log('[MyGroups] No invite code or expired, generating new one...');
                 
                 // Show loading state
                 content.innerHTML = `
                     <div class="p-6 text-center">
-                        <p class="text-[var(--text-muted)]">Generating invite code...</p>
+                        <p class="text-[var(--text-muted)]">${isExpired ? 'Code expired. Generating new code...' : 'Generating invite code...'}</p>
                     </div>
                 `;
                 modal.classList.remove('hidden');
                 
-                // Generate and save new invite code
+                // Generate and save new invite code with 7-day expiration
                 inviteCode = this.generateInviteCode();
-                console.log('[MyGroups] Generated code:', inviteCode);
+                inviteCodeExpiresAt = this.generateExpirationDate();
+                console.log('[MyGroups] Generated code:', inviteCode, 'Expires:', inviteCodeExpiresAt);
                 
                 await window.setDoc(
                     window.doc(window.db, 'goMission_groups', groupId),
-                    { inviteCode: inviteCode },
+                    { 
+                        inviteCode: inviteCode,
+                        inviteCodeExpiresAt: inviteCodeExpiresAt
+                    },
                     { merge: true }
                 );
                 
                 // Update local group object
                 group.inviteCode = inviteCode;
+                group.inviteCodeExpiresAt = inviteCodeExpiresAt;
                 console.log('[MyGroups] Invite code saved to Firestore');
             }
+            
+            // Calculate days until expiration
+            const expiresDate = new Date(inviteCodeExpiresAt);
+            const daysLeft = Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24));
+            const expiresText = daysLeft === 1 ? 'Expires in 1 day' : `Expires in ${daysLeft} days`;
             
             // Show the invite code modal
             console.log('[MyGroups] Showing modal with code:', inviteCode);
@@ -524,9 +558,10 @@ const MyGroups = {
                         <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
                     <p class="text-[var(--text-muted)] text-sm mb-4">Share this code with people you want to disciple:</p>
-                    <div class="bg-black/30 rounded-xl p-6 mb-4">
+                    <div class="bg-black/30 rounded-xl p-6 mb-2">
                         <p class="text-4xl font-bold text-[var(--mission-gold)] tracking-[0.3em] font-mono">${inviteCode}</p>
                     </div>
+                    <p class="text-amber-500/70 text-xs mb-4">⏱️ ${expiresText}</p>
                     <p class="text-[var(--text-color)] font-medium mb-4">${group.name}</p>
                     <div class="space-y-3">
                         <button onclick="MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
