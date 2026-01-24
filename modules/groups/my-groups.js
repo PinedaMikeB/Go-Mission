@@ -163,6 +163,8 @@ const MyGroups = {
      */
     renderGroupCard(group, type) {
         const memberCount = group.members?.length || 0;
+        const guestCount = group.guests?.length || 0;
+        const requestCount = group.joinRequests?.length || 0;
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
         
@@ -204,16 +206,34 @@ const MyGroups = {
                         `}
                     </div>
                     
+                    <!-- Members & Guests Count -->
                     <div class="flex items-center justify-between">
                         <span class="text-[var(--text-muted)] text-sm">Members</span>
                         <span class="text-[var(--mission-gold)] font-bold">${memberCount}/12</span>
                     </div>
+                    ${guestCount > 0 ? `
+                    <div class="flex items-center justify-between">
+                        <span class="text-[var(--text-muted)] text-sm">🎫 Guests</span>
+                        <span class="text-blue-400 font-bold">${guestCount}</span>
+                    </div>
+                    ` : ''}
+                    
+                    ${type === 'downline' && requestCount > 0 ? `
+                    <!-- Pending Requests Badge -->
+                    <button onclick="MyGroups.showJoinRequests('${group.id}')" class="w-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
+                        🔔 ${requestCount} Pending Request${requestCount > 1 ? 's' : ''}
+                    </button>
+                    ` : ''}
+                    
                     <button onclick="MyGroups.openGroupChat('${group.id}')" class="w-full bg-[var(--mission-red-bright)] hover:bg-[var(--mission-red-bright)]/80 text-white font-bold py-3 rounded-lg text-sm">
                         💬 GROUP CHAT
                     </button>
                     ${type === 'downline' ? `
                         <button onclick="MyGroups.showInviteCode('${group.id}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm">
                             🔑 Invite Members
+                        </button>
+                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-white/10 text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm">
+                            👥 View Members ${guestCount > 0 ? `& Guests` : ''}
                         </button>
                     ` : ''}
                 </div>
@@ -341,47 +361,60 @@ const MyGroups = {
             // Check if already a member
             if (groupData.members?.includes(window.currentUser.uid)) {
                 if (errorEl) {
-                    errorEl.textContent = 'You are already in this group';
+                    errorEl.textContent = 'You are already a member of this group';
                     errorEl.classList.remove('hidden');
                 }
                 return;
             }
             
-            // Check if user already has an upline group
-            if (this.uplineGroup) {
+            // Check if already a guest
+            if (groupData.guests?.some(g => g.odId === window.currentUser.uid)) {
                 if (errorEl) {
-                    errorEl.textContent = 'You already have an upline group. Leave it first to join another.';
+                    errorEl.textContent = 'You are already a guest in this group';
                     errorEl.classList.remove('hidden');
                 }
                 return;
             }
             
-            // Add user to group
+            // Check if already has pending request
+            if (groupData.joinRequests?.some(r => r.odId === window.currentUser.uid)) {
+                if (errorEl) {
+                    errorEl.textContent = 'You already have a pending request for this group';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+            
+            // Create join request (leader will approve as member or guest)
+            const joinRequest = {
+                odId: window.currentUser.uid,
+                name: window.currentUser.displayName || 'Unknown',
+                email: window.currentUser.email || '',
+                photo: window.currentUser.photoURL || '',
+                requestedAt: new Date().toISOString(),
+                // Include existing group info if they have one
+                hasExistingGroup: !!this.uplineGroup,
+                existingGroupId: this.uplineGroup?.id || null,
+                existingGroupName: this.uplineGroup?.name || null,
+                existingLeaderName: this.uplineGroup?.leaderName || null
+            };
+            
+            // Add join request to group
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupDoc.id),
-                { members: window.arrayUnion(window.currentUser.uid) },
+                { joinRequests: window.arrayUnion(joinRequest) },
                 { merge: true }
             );
             
-            // Update user's uplineGroupId
-            await window.setDoc(
-                window.doc(window.db, 'goMission_members', window.currentUser.uid),
-                { uplineGroupId: groupDoc.id },
-                { merge: true }
-            );
-            
-            // Reload and close
-            await this.loadGroups();
-            this.render();
-            this.updateMissionCard();
+            // Close modal and show success
             this.closeModal();
             
-            alert(`Welcome to ${groupData.name}!`);
+            alert(`Request sent to ${groupData.name}!\n\nThe group leader will review your request.`);
             
         } catch (error) {
-            console.error('[MyGroups] Join error:', error);
+            console.error('[MyGroups] Join request error:', error);
             if (errorEl) {
-                errorEl.textContent = 'Failed to join group';
+                errorEl.textContent = 'Failed to send request';
                 errorEl.classList.remove('hidden');
             }
         }
@@ -791,6 +824,405 @@ const MyGroups = {
     showGroupMenu(groupId) {
         // TODO: Implement group settings menu
         console.log('[MyGroups] Show menu for:', groupId);
+    },
+    
+    /**
+     * Show pending join requests for a group
+     */
+    showJoinRequests(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const requests = group.joinRequests || [];
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        
+        if (!modal || !content) return;
+        
+        let requestsHtml = '';
+        
+        if (requests.length === 0) {
+            requestsHtml = `
+                <div class="text-center py-8">
+                    <p class="text-[var(--text-muted)]">No pending requests</p>
+                </div>
+            `;
+        } else {
+            requestsHtml = requests.map(req => `
+                <div class="bg-black/30 rounded-xl p-4 border border-white/10">
+                    <div class="flex items-start gap-3">
+                        <img src="${req.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name)}&background=4a0404&color=fbbf24`}" 
+                             class="w-12 h-12 rounded-full border border-white/10">
+                        <div class="flex-1">
+                            <p class="font-bold text-[var(--text-color)]">${req.name}</p>
+                            <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
+                            ${req.hasExistingGroup ? `
+                                <div class="mt-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+                                    <p class="text-xs text-blue-400">
+                                        ℹ️ Already in: <strong>${req.existingGroupName}</strong>
+                                    </p>
+                                    <p class="text-xs text-blue-400/70">
+                                        Leader: ${req.existingLeaderName}
+                                    </p>
+                                </div>
+                            ` : `
+                                <p class="text-xs text-green-400 mt-2">✨ New believer (no current group)</p>
+                            `}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex gap-2">
+                        ${req.hasExistingGroup ? `
+                            <!-- Has existing group: can be member or guest -->
+                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                    class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
+                                ✅ Member
+                            </button>
+                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+                                    class="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-lg">
+                                🎫 Guest
+                            </button>
+                        ` : `
+                            <!-- New believer: only member option -->
+                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                    class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
+                                ✅ Approve
+                            </button>
+                        `}
+                        <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
+                                class="flex-1 bg-red-600/20 text-red-400 text-sm font-bold py-2 rounded-lg border border-red-500/30">
+                            ❌ Decline
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">🔔 Join Requests</h3>
+                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+                <p class="text-[var(--text-muted)] text-sm mb-4">${group.name}</p>
+                <div class="space-y-4 max-h-[60vh] overflow-y-auto">
+                    ${requestsHtml}
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Approve a join request as member or guest
+     */
+    async approveRequest(groupId, odId, type) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const request = group.joinRequests?.find(r => r.odId === odId);
+        if (!request) return;
+        
+        try {
+            // Remove from joinRequests
+            const updatedRequests = (group.joinRequests || []).filter(r => r.odId !== odId);
+            
+            if (type === 'member') {
+                // Add as full member
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_groups', groupId),
+                    { 
+                        members: window.arrayUnion(odId),
+                        joinRequests: updatedRequests
+                    },
+                    { merge: true }
+                );
+                
+                // Update user's uplineGroupId (only if they don't have one or it's a transfer)
+                if (!request.hasExistingGroup) {
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', odId),
+                        { uplineGroupId: groupId },
+                        { merge: true }
+                    );
+                }
+                
+                alert(`${request.name} is now a member!`);
+                
+            } else if (type === 'guest') {
+                // Add as guest
+                const guestData = {
+                    odId: odId,
+                    name: request.name,
+                    email: request.email || '',
+                    photo: request.photo || '',
+                    homeGroupId: request.existingGroupId,
+                    homeGroupName: request.existingGroupName,
+                    homeLeaderName: request.existingLeaderName,
+                    joinedAsGuestAt: new Date().toISOString(),
+                    approvedBy: window.currentUser.uid
+                };
+                
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_groups', groupId),
+                    { 
+                        guests: window.arrayUnion(guestData),
+                        joinRequests: updatedRequests
+                    },
+                    { merge: true }
+                );
+                
+                // Also update user's guestGroups array
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_members', odId),
+                    { guestGroups: window.arrayUnion(groupId) },
+                    { merge: true }
+                );
+                
+                alert(`${request.name} is now a guest!`);
+            }
+            
+            // Reload and refresh
+            await this.loadGroups();
+            this.render();
+            this.showJoinRequests(groupId);
+            
+        } catch (error) {
+            console.error('[MyGroups] Approve error:', error);
+            alert('Failed to approve request');
+        }
+    },
+    
+    /**
+     * Decline a join request
+     */
+    async declineRequest(groupId, odId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const request = group.joinRequests?.find(r => r.odId === odId);
+        if (!request) return;
+        
+        if (!confirm(`Decline request from ${request.name}?`)) return;
+        
+        try {
+            // Remove from joinRequests
+            const updatedRequests = (group.joinRequests || []).filter(r => r.odId !== odId);
+            
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                { joinRequests: updatedRequests },
+                { merge: true }
+            );
+            
+            // Reload and refresh
+            await this.loadGroups();
+            this.render();
+            this.showJoinRequests(groupId);
+            
+        } catch (error) {
+            console.error('[MyGroups] Decline error:', error);
+            alert('Failed to decline request');
+        }
+    },
+    
+    /**
+     * Show group members and guests
+     */
+    async showGroupMembers(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        
+        if (!modal || !content) return;
+        
+        // Show loading
+        content.innerHTML = `
+            <div class="p-6 text-center">
+                <p class="text-[var(--text-muted)]">Loading members...</p>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+        
+        try {
+            // Load member details
+            const memberIds = group.members || [];
+            const guests = group.guests || [];
+            
+            let membersHtml = '<div class="space-y-3">';
+            
+            // Section: Members
+            membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium">📍 DISCIPLES (${memberIds.length})</p>`;
+            
+            for (const memberId of memberIds) {
+                if (memberId === group.leaderId) continue; // Skip leader
+                
+                const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+                const member = memberDoc.exists() ? memberDoc.data() : { displayName: 'Unknown' };
+                
+                membersHtml += `
+                    <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'U')}&background=4a0404&color=fbbf24`}" 
+                                 class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="text-[var(--text-color)] font-medium">${member.displayName || 'Unknown'}</p>
+                                <p class="text-xs text-[var(--text-muted)]">Member</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Section: Guests
+            if (guests.length > 0) {
+                membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium mt-4">🎫 GUESTS (${guests.length})</p>`;
+                
+                for (const guest of guests) {
+                    membersHtml += `
+                        <div class="flex items-center justify-between bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                            <div class="flex items-center gap-3">
+                                <img src="${guest.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(guest.name)}&background=1e40af&color=93c5fd`}" 
+                                     class="w-10 h-10 rounded-full">
+                                <div>
+                                    <p class="text-[var(--text-color)] font-medium">${guest.name} <span class="text-blue-400 text-xs">🎫</span></p>
+                                    <p class="text-xs text-blue-400/70">From: ${guest.homeGroupName}</p>
+                                </div>
+                            </div>
+                            <button onclick="MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
+                        </div>
+                    `;
+                }
+            }
+            
+            membersHtml += '</div>';
+            
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${group.name}</h3>
+                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <div class="max-h-[60vh] overflow-y-auto">
+                        ${membersHtml}
+                    </div>
+                </div>
+            `;
+            
+        } catch (error) {
+            console.error('[MyGroups] Load members error:', error);
+            content.innerHTML = `
+                <div class="p-6 text-center">
+                    <p class="text-red-400">Failed to load members</p>
+                    <button onclick="MyGroups.closeModal()" class="mt-4 text-[var(--text-muted)]">Close</button>
+                </div>
+            `;
+        }
+    },
+    
+    /**
+     * Show options for a guest (promote to member, remove)
+     */
+    showGuestOptions(groupId, guestId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const guest = group.guests?.find(g => g.odId === guestId);
+        if (!guest) return;
+        
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">Guest Options</h3>
+                    <button onclick="MyGroups.showGroupMembers('${groupId}')" class="text-[var(--text-muted)]">← Back</button>
+                </div>
+                
+                <div class="flex items-center gap-3 mb-6">
+                    <img src="${guest.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(guest.name)}&background=1e40af&color=93c5fd`}" 
+                         class="w-14 h-14 rounded-full">
+                    <div>
+                        <p class="text-[var(--text-color)] font-bold">${guest.name}</p>
+                        <p class="text-xs text-blue-400">🎫 Guest from ${guest.homeGroupName}</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <button onclick="MyGroups.promoteGuestToMember('${groupId}', '${guestId}')" 
+                            class="w-full bg-green-600 text-white font-bold py-3 rounded-lg">
+                        ✅ Promote to Full Member
+                    </button>
+                    <p class="text-xs text-[var(--text-muted)] text-center">
+                        This will request transfer from their original leader
+                    </p>
+                    
+                    <button onclick="MyGroups.removeGuest('${groupId}', '${guestId}')" 
+                            class="w-full bg-red-600/20 text-red-400 font-bold py-3 rounded-lg border border-red-500/30 mt-4">
+                        ❌ Remove as Guest
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+    
+    /**
+     * Promote guest to full member (initiates transfer request)
+     */
+    async promoteGuestToMember(groupId, guestId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const guest = group.guests?.find(g => g.odId === guestId);
+        if (!guest) return;
+        
+        // For now, we'll create a transfer request that needs approval from original leader
+        // TODO: Implement transfer request system
+        alert(`Transfer request feature coming soon!\n\n${guest.name}'s original leader (${guest.homeLeaderName}) will need to approve the transfer.`);
+    },
+    
+    /**
+     * Remove a guest from group
+     */
+    async removeGuest(groupId, guestId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        const guest = group.guests?.find(g => g.odId === guestId);
+        if (!guest) return;
+        
+        if (!confirm(`Remove ${guest.name} as guest?`)) return;
+        
+        try {
+            // Remove from guests array
+            const updatedGuests = (group.guests || []).filter(g => g.odId !== guestId);
+            
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                { guests: updatedGuests },
+                { merge: true }
+            );
+            
+            // Remove from user's guestGroups
+            await window.setDoc(
+                window.doc(window.db, 'goMission_members', guestId),
+                { guestGroups: window.arrayRemove(groupId) },
+                { merge: true }
+            );
+            
+            // Reload and refresh
+            await this.loadGroups();
+            this.render();
+            this.showGroupMembers(groupId);
+            
+        } catch (error) {
+            console.error('[MyGroups] Remove guest error:', error);
+            alert('Failed to remove guest');
+        }
     }
 };
 
