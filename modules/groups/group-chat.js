@@ -86,6 +86,9 @@ const GroupChat = {
       modal.classList.remove('hidden');
     }
     
+    // Update member count in header
+    this.updateMemberCount();
+    
     // Mark notifications as read
     if (typeof Notifications !== 'undefined') {
       Notifications.markAsRead();
@@ -443,37 +446,59 @@ const GroupChat = {
   /**
    * Show members list modal
    */
-  showMembers() {
-    if (!Groups.currentGroup || !Groups.members) {
+  async showMembers() {
+    if (!Groups.currentGroup) {
       alert('Unable to load members');
       return;
     }
     
     const group = Groups.currentGroup;
-    const members = Groups.members;
-    const isLeader = Groups.isLeader;
+    const memberIds = group.members || [];
+    const isLeader = group.leaderId === window.currentUser?.uid;
     
-    // Create modal
+    // Create modal with loading state
     const modal = document.createElement('div');
     modal.id = 'membersModal';
     modal.className = 'fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-[var(--card-bg)] rounded-2xl w-full max-w-md p-6 text-center">
+        <p class="text-[var(--text-muted)]">Loading members...</p>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Load member details from Firestore
+    const members = [];
+    for (const memberId of memberIds) {
+      try {
+        const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+        if (memberDoc.exists()) {
+          const data = memberDoc.data();
+          members.push({
+            id: memberId,
+            displayName: data.displayName || data.email?.split('@')[0] || 'Unknown',
+            photoURL: data.photoURL || ''
+          });
+        }
+      } catch (e) {
+        console.error('[GroupChat] Error loading member:', memberId, e);
+      }
+    }
     
     let membersHtml = '';
     for (const member of members) {
-      // Support both 'id' and 'odId' field names
-      const memberId = member.id || member.odId;
-      // Support both 'displayName' and 'name' field names
-      const memberName = member.displayName || member.name || 'Unknown';
-      const memberPhoto = member.photoURL || member.photo;
+      const memberId = member.id;
+      const memberName = member.displayName || 'Unknown';
+      const memberPhoto = member.photoURL;
       
       const isCurrentUser = memberId === window.currentUser?.uid;
       const isMemberLeader = memberId === group.leaderId;
       
       membersHtml += `
-        <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5 ${isCurrentUser ? 'border-amber-500/30' : ''}">
+        <div class="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-white/5 ${isMemberLeader ? 'border-amber-500/30 bg-amber-500/5' : ''} ${isCurrentUser && !isMemberLeader ? 'border-blue-500/30' : ''}">
           <div class="flex items-center gap-3">
             <img src="${memberPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=4a0404&color=fbbf24`}" 
-                 class="w-10 h-10 rounded-full border ${isMemberLeader ? 'border-amber-500' : 'border-white/10'}" 
+                 class="w-10 h-10 rounded-full border-2 ${isMemberLeader ? 'border-amber-500' : 'border-white/10'}" 
                  alt="${memberName}">
             <div>
               <p class="text-[var(--text-color)] font-bold text-sm">
@@ -486,7 +511,7 @@ const GroupChat = {
             </div>
           </div>
           ${isLeader && !isMemberLeader && !isCurrentUser ? `
-            <button onclick="Groups.removeMember('${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
+            <button onclick="GroupChat.removeMemberFromChat('${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
                     class="text-xs text-red-400 hover:text-red-300 px-2 py-1">
               Remove
             </button>
@@ -512,12 +537,66 @@ const GroupChat = {
       </div>
     `;
     
-    document.body.appendChild(modal);
-    
     // Close on backdrop click
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.remove();
     });
+  },
+  
+  /**
+   * Remove member from chat (delegates to MyGroups)
+   */
+  async removeMemberFromChat(memberId, memberName) {
+    if (!Groups.currentGroup) return;
+    
+    if (!confirm(`Remove ${memberName} from the group?`)) return;
+    
+    try {
+      const groupId = Groups.currentGroup.id;
+      
+      // Remove member from group
+      await window.setDoc(
+        window.doc(window.db, 'goMission_groups', groupId),
+        { members: window.arrayRemove(memberId) },
+        { merge: true }
+      );
+      
+      // Clear member's uplineGroupId
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', memberId),
+        { uplineGroupId: null },
+        { merge: true }
+      );
+      
+      alert(`${memberName} has been removed.`);
+      
+      // Close members modal and refresh
+      document.getElementById('membersModal')?.remove();
+      
+      // Refresh group data
+      const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', groupId));
+      if (groupDoc.exists()) {
+        Groups.currentGroup = { id: groupDoc.id, ...groupDoc.data() };
+      }
+      
+      // Update chat header
+      this.updateChatHeader();
+      
+    } catch (error) {
+      console.error('[GroupChat] Remove member error:', error);
+      alert('Failed to remove member');
+    }
+  },
+  
+  /**
+   * Update chat header with current member count
+   */
+  updateChatHeader() {
+    const memberCount = Groups.currentGroup?.members?.length || 0;
+    const headerSubtitle = document.querySelector('#chatModal .text-xs.text-\\[var\\(--text-muted\\)\\]');
+    if (headerSubtitle) {
+      headerSubtitle.textContent = `${memberCount} member${memberCount !== 1 ? 's' : ''}`;
+    }
   }
 };
 
