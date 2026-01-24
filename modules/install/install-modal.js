@@ -266,6 +266,17 @@ const InstallModal = {
     
     selectLanguage(lang) {
         this.currentLang = lang;
+        
+        // Save language preference to localStorage (same key as i18n module)
+        localStorage.setItem('goMission_language', lang);
+        
+        // Also update i18n module if it's loaded
+        if (typeof i18n !== 'undefined' && i18n.setLang) {
+            i18n.setLang(lang);
+        }
+        
+        console.log('[InstallModal] Language saved:', lang);
+        
         this.currentScreen = 'device';
         this.render();
     },
