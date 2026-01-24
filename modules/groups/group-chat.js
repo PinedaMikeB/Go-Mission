@@ -30,6 +30,40 @@ const GroupChat = {
       return;
     }
     
+    // Verify user is still a member or guest - refetch group data
+    try {
+      const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', Groups.currentGroup.id));
+      if (!groupDoc.exists()) {
+        alert('This group no longer exists.');
+        return;
+      }
+      
+      const groupData = groupDoc.data();
+      const isMember = groupData.members?.includes(window.currentUser.uid);
+      const isGuest = groupData.guests?.some(g => g.odId === window.currentUser.uid);
+      
+      if (!isMember && !isGuest) {
+        alert('You are no longer a member of this group.');
+        // Clear user's reference to this group
+        await window.setDoc(
+          window.doc(window.db, 'goMission_members', window.currentUser.uid),
+          { uplineGroupId: null },
+          { merge: true }
+        );
+        // Reload MyGroups to reflect changes
+        if (typeof MyGroups !== 'undefined') {
+          await MyGroups.loadGroups();
+          MyGroups.render();
+        }
+        return;
+      }
+      
+      // Update local group data with fresh data
+      Groups.currentGroup = { id: groupDoc.id, ...groupData };
+    } catch (error) {
+      console.error('[GroupChat] Error verifying membership:', error);
+    }
+    
     const groupId = Groups.currentGroup.id;
     console.log('[GroupChat] Opening chat for group:', groupId);
     
@@ -215,6 +249,16 @@ const GroupChat = {
   async sendMessage(text) {
     if (!text || !text.trim()) return;
     if (!Groups.currentGroup || !window.currentUser || !window.db) return;
+    
+    // Verify user is still a member or guest of the group
+    const isMember = Groups.currentGroup.members?.includes(window.currentUser.uid);
+    const isGuest = Groups.currentGroup.guests?.some(g => g.odId === window.currentUser.uid);
+    
+    if (!isMember && !isGuest) {
+      alert('You are no longer a member of this group.');
+      this.close();
+      return;
+    }
     
     try {
       const message = {

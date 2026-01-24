@@ -1047,30 +1047,55 @@ const MyGroups = {
             // Load member details
             const memberIds = group.members || [];
             const guests = group.guests || [];
+            const isLeader = group.leaderId === window.currentUser?.uid;
             
             let membersHtml = '<div class="space-y-3">';
             
-            // Section: Members
-            membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium">📍 DISCIPLES (${memberIds.length})</p>`;
+            // Section: Leader first
+            const leaderDoc = await window.getDoc(window.doc(window.db, 'goMission_members', group.leaderId));
+            const leaderData = leaderDoc.exists() ? leaderDoc.data() : {};
+            const leaderName = leaderData.displayName || group.leaderName || 'Leader';
+            const leaderPhoto = leaderData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(leaderName)}&background=4a0404&color=fbbf24`;
             
-            for (const memberId of memberIds) {
-                if (memberId === group.leaderId) continue; // Skip leader
-                
-                const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
-                const member = memberDoc.exists() ? memberDoc.data() : { displayName: 'Unknown' };
-                
-                membersHtml += `
-                    <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
-                        <div class="flex items-center gap-3">
-                            <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'U')}&background=4a0404&color=fbbf24`}" 
-                                 class="w-10 h-10 rounded-full">
-                            <div>
-                                <p class="text-[var(--text-color)] font-medium">${member.displayName || 'Unknown'}</p>
-                                <p class="text-xs text-[var(--text-muted)]">Member</p>
-                            </div>
+            membersHtml += `
+                <div class="flex items-center justify-between bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                    <div class="flex items-center gap-3">
+                        <img src="${leaderPhoto}" class="w-10 h-10 rounded-full border-2 border-amber-500">
+                        <div>
+                            <p class="text-[var(--text-color)] font-medium">${leaderName} ${group.leaderId === window.currentUser?.uid ? '<span class="text-amber-400">(You)</span>' : ''}</p>
+                            <p class="text-xs text-amber-400">👑 Leader</p>
                         </div>
                     </div>
-                `;
+                </div>
+            `;
+            
+            // Section: Members (excluding leader)
+            const otherMembers = memberIds.filter(id => id !== group.leaderId);
+            if (otherMembers.length > 0) {
+                membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium mt-4">📍 DISCIPLES (${otherMembers.length})</p>`;
+                
+                for (const memberId of otherMembers) {
+                    const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+                    const member = memberDoc.exists() ? memberDoc.data() : {};
+                    const memberName = member.displayName || member.email?.split('@')[0] || 'Unknown';
+                    const memberPhoto = member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=4a0404&color=fbbf24`;
+                    
+                    membersHtml += `
+                        <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
+                            <div class="flex items-center gap-3">
+                                <img src="${memberPhoto}" class="w-10 h-10 rounded-full">
+                                <div>
+                                    <p class="text-[var(--text-color)] font-medium">${memberName}</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Member</p>
+                                </div>
+                            </div>
+                            ${isLeader ? `
+                                <button onclick="MyGroups.removeMember('${groupId}', '${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
+                                        class="text-red-400 text-sm hover:text-red-300">Remove</button>
+                            ` : ''}
+                        </div>
+                    `;
+                }
             }
             
             // Section: Guests
@@ -1085,10 +1110,12 @@ const MyGroups = {
                                      class="w-10 h-10 rounded-full">
                                 <div>
                                     <p class="text-[var(--text-color)] font-medium">${guest.name} <span class="text-blue-400 text-xs">🎫</span></p>
-                                    <p class="text-xs text-blue-400/70">From: ${guest.homeGroupName}</p>
+                                    <p class="text-xs text-blue-400/70">From: ${guest.homeGroupName || 'Unknown'}</p>
                                 </div>
                             </div>
-                            <button onclick="MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
+                            ${isLeader ? `
+                                <button onclick="MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
+                            ` : ''}
                         </div>
                     `;
                 }
@@ -1218,6 +1245,57 @@ const MyGroups = {
         } catch (error) {
             console.error('[MyGroups] Remove guest error:', error);
             alert('Failed to remove guest');
+        }
+    },
+    
+    /**
+     * Remove a member from group (leader only)
+     */
+    async removeMember(groupId, memberId, memberName) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        // Verify current user is the leader
+        if (group.leaderId !== window.currentUser?.uid) {
+            alert('Only the leader can remove members');
+            return;
+        }
+        
+        // Can't remove yourself (the leader)
+        if (memberId === group.leaderId) {
+            alert('You cannot remove yourself as the leader');
+            return;
+        }
+        
+        if (!confirm(`Remove ${memberName} from the group?\n\nThey will need to rejoin with a new invite code.`)) return;
+        
+        try {
+            // Remove member from group's members array
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                { members: window.arrayRemove(memberId) },
+                { merge: true }
+            );
+            
+            // Clear the member's uplineGroupId so they have no group
+            await window.setDoc(
+                window.doc(window.db, 'goMission_members', memberId),
+                { uplineGroupId: null },
+                { merge: true }
+            );
+            
+            console.log(`[MyGroups] Removed ${memberName} from group`);
+            
+            // Reload and refresh
+            await this.loadGroups();
+            this.render();
+            this.showGroupMembers(groupId);
+            
+            alert(`${memberName} has been removed from the group.`);
+            
+        } catch (error) {
+            console.error('[MyGroups] Remove member error:', error);
+            alert('Failed to remove member');
         }
     }
 };
