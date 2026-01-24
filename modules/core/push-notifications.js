@@ -233,6 +233,18 @@ const PushNotifications = {
   showForegroundNotification(payload) {
     const { notification, data } = payload;
     
+    // SKIP notification if it's for a chat that's currently open
+    if (data?.type === 'chat' && data?.groupId) {
+      // Check if GroupChat is open with this group
+      if (typeof GroupChat !== 'undefined' && GroupChat.isOpen) {
+        const currentGroupId = GroupChat.currentGroupId || Groups?.currentGroup?.id;
+        if (currentGroupId === data.groupId) {
+          console.log('[PushNotifications] Skipping notification - chat is open for this group');
+          return; // Don't show notification
+        }
+      }
+    }
+    
     // Update in-app notification badge
     if (typeof Notifications !== 'undefined') {
       Notifications.addNotification({

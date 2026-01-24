@@ -30,9 +30,17 @@ const GroupChat = {
       return;
     }
     
-    this.isOpen = true;
+    const groupId = Groups.currentGroup.id;
+    console.log('[GroupChat] Opening chat for group:', groupId);
     
-    // Show chat modal
+    this.isOpen = true;
+    this.currentGroupId = groupId; // Store for reference
+    
+    // FIRST: Set active chat in Firestore (prevents notifications while chat is open)
+    // Wait for this to complete before proceeding
+    await this.setActiveChat(groupId);
+    
+    // THEN: Show chat modal
     const modal = document.getElementById('chatModal');
     if (modal) {
       modal.classList.remove('hidden');
@@ -42,9 +50,6 @@ const GroupChat = {
     if (typeof Notifications !== 'undefined') {
       Notifications.markAsRead();
     }
-    
-    // Set active chat in Firestore (prevents notifications while chat is open)
-    await this.setActiveChat(Groups.currentGroup.id);
     
     // Load messages
     await this.loadMessages();
