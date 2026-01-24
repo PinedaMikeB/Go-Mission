@@ -50,10 +50,16 @@ const GroupChat = {
           { uplineGroupId: null },
           { merge: true }
         );
+        
+        // Clear local group reference
+        Groups.currentGroup = null;
+        
         // Reload MyGroups to reflect changes
         if (typeof MyGroups !== 'undefined') {
+          MyGroups.uplineGroup = null;
           await MyGroups.loadGroups();
           MyGroups.render();
+          MyGroups.updateMissionCard();
         }
         return;
       }

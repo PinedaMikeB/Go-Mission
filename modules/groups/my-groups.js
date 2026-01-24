@@ -39,7 +39,35 @@ const MyGroups = {
                     window.doc(window.db, 'goMission_groups', userData.uplineGroupId)
                 );
                 if (uplineDoc.exists()) {
-                    this.uplineGroup = { id: uplineDoc.id, ...uplineDoc.data() };
+                    const groupData = uplineDoc.data();
+                    // Verify user is still a member of this group
+                    const isMember = groupData.members?.includes(window.currentUser.uid);
+                    const isGuest = groupData.guests?.some(g => g.odId === window.currentUser.uid);
+                    
+                    if (isMember || isGuest) {
+                        this.uplineGroup = { id: uplineDoc.id, ...groupData };
+                        // Also set Groups.currentGroup for chat
+                        if (typeof Groups !== 'undefined') {
+                            Groups.currentGroup = this.uplineGroup;
+                        }
+                    } else {
+                        // User was removed - clear their uplineGroupId
+                        console.log('[MyGroups] User was removed from upline group, clearing reference');
+                        this.uplineGroup = null;
+                        await window.setDoc(
+                            window.doc(window.db, 'goMission_members', window.currentUser.uid),
+                            { uplineGroupId: null },
+                            { merge: true }
+                        );
+                    }
+                } else {
+                    // Group doesn't exist anymore
+                    this.uplineGroup = null;
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', window.currentUser.uid),
+                        { uplineGroupId: null },
+                        { merge: true }
+                    );
                 }
             }
             
