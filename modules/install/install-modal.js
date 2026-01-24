@@ -7,7 +7,7 @@
 
 const InstallModal = {
     currentDevice: null,
-    currentScreen: 'device', // 'device', 'notice', 'steps'
+    currentScreen: 'language', // 'language', 'device', 'notice', 'steps'
     currentLang: 'en',
     isInstalled: false,
     
@@ -211,7 +211,7 @@ const InstallModal = {
         }
         
         this.currentDevice = null;
-        this.currentScreen = 'device';
+        this.currentScreen = 'language';
         this.render();
     },
     
@@ -222,7 +222,9 @@ const InstallModal = {
         const modal = document.createElement('div');
         modal.id = 'installModal';
         
-        if (this.currentScreen === 'device') {
+        if (this.currentScreen === 'language') {
+            modal.innerHTML = this.renderLanguageSelection();
+        } else if (this.currentScreen === 'device') {
             modal.innerHTML = this.renderDeviceSelection();
         } else if (this.currentScreen === 'notice') {
             modal.innerHTML = this.renderNotice();
@@ -233,6 +235,39 @@ const InstallModal = {
         this.addStyles();
         document.body.appendChild(modal);
         document.body.style.overflow = 'hidden';
+    },
+    
+    renderLanguageSelection() {
+        return `
+            <div class="install-overlay"></div>
+            <div class="install-content">
+                <div class="install-logo">
+                    <img src="/icons/icon-192.png" alt="Go Mission" class="logo-icon">
+                </div>
+                <h2 class="install-title">🔥 Go Mission</h2>
+                <p class="install-tagline">Making Disciple-Makers</p>
+                
+                <p class="install-subtitle" style="margin-top: 24px;">Choose your language:</p>
+                <p class="install-subtitle-small">Piliin ang iyong wika:</p>
+                
+                <div class="language-buttons">
+                    <button class="lang-btn" onclick="InstallModal.selectLanguage('en')">
+                        <span class="lang-flag">🇺🇸</span>
+                        <span class="lang-name">English</span>
+                    </button>
+                    <button class="lang-btn" onclick="InstallModal.selectLanguage('tl')">
+                        <span class="lang-flag">🇵🇭</span>
+                        <span class="lang-name">Tagalog</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+    
+    selectLanguage(lang) {
+        this.currentLang = lang;
+        this.currentScreen = 'device';
+        this.render();
     },
     
     renderDeviceSelection() {
@@ -248,8 +283,9 @@ const InstallModal = {
             <div class="install-overlay"></div>
             <div class="install-content">
                 <div class="install-header">
+                    <button class="back-btn" onclick="InstallModal.backToLanguage()">← Back</button>
                     <h2>🔥 Install Go Mission</h2>
-                    <button class="lang-toggle" onclick="InstallModal.toggleLang()">${this.t('langToggle')}</button>
+                    <div style="width: 50px;"></div>
                 </div>
                 
                 <!-- Device Selection - Only Android and iPhone -->
@@ -267,6 +303,11 @@ const InstallModal = {
                 </div>
             </div>
         `;
+    },
+    
+    backToLanguage() {
+        this.currentScreen = 'language';
+        this.render();
     },
     
     renderNotice() {
@@ -428,10 +469,74 @@ const InstallModal = {
                 margin-bottom: 20px;
             }
             #installModal .install-header h2 {
-                font-size: 20px;
+                font-size: 18px;
                 font-weight: 800;
                 color: #f59e0b;
                 margin: 0;
+            }
+            #installModal .back-btn {
+                background: transparent;
+                border: none;
+                color: #f59e0b;
+                font-size: 14px;
+                cursor: pointer;
+                padding: 4px;
+            }
+            
+            /* Language Selection Screen */
+            #installModal .install-logo {
+                margin-bottom: 16px;
+            }
+            #installModal .logo-icon {
+                width: 80px;
+                height: 80px;
+                border-radius: 20px;
+                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+            }
+            #installModal .install-title {
+                font-size: 28px;
+                font-weight: 800;
+                color: #f59e0b;
+                margin: 0 0 4px 0;
+            }
+            #installModal .install-tagline {
+                font-size: 14px;
+                color: #94a3b8;
+                margin: 0;
+            }
+            #installModal .install-subtitle-small {
+                font-size: 13px;
+                color: #64748b;
+                margin: 4px 0 20px 0;
+            }
+            #installModal .language-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            #installModal .lang-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                padding: 16px 20px;
+                background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+                border: 2px solid rgba(251, 191, 36, 0.3);
+                border-radius: 16px;
+                color: #fff;
+                font-size: 18px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            #installModal .lang-btn:hover {
+                border-color: #f59e0b;
+                background: rgba(251, 191, 36, 0.2);
+            }
+            #installModal .lang-flag {
+                font-size: 32px;
+            }
+            #installModal .lang-name {
+                font-weight: 700;
             }
             #installModal .lang-toggle {
                 background: transparent;
