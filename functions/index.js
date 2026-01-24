@@ -177,7 +177,26 @@ async function sendToGroup(groupId, notification, excludeUserId = null) {
       return { success: true, message: 'No members to notify' };
     }
     
-    return await sendToUsers(memberIds, notification);
+    // Filter out users who have this chat open (activeChat === groupId)
+    const membersToNotify = [];
+    for (const memberId of memberIds) {
+      const memberDoc = await db.collection('goMission_members').doc(memberId).get();
+      if (memberDoc.exists) {
+        const memberData = memberDoc.data();
+        // Skip if user has this chat open
+        if (memberData.activeChat === groupId) {
+          console.log(`Skipping notification for ${memberId} - chat is open`);
+          continue;
+        }
+        membersToNotify.push(memberId);
+      }
+    }
+    
+    if (membersToNotify.length === 0) {
+      return { success: true, message: 'All members have chat open' };
+    }
+    
+    return await sendToUsers(membersToNotify, notification);
   } catch (error) {
     return { success: false, error: error.message };
   }

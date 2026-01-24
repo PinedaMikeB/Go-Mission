@@ -43,6 +43,9 @@ const GroupChat = {
       Notifications.markAsRead();
     }
     
+    // Set active chat in Firestore (prevents notifications while chat is open)
+    await this.setActiveChat(Groups.currentGroup.id);
+    
     // Load messages
     await this.loadMessages();
     
@@ -65,10 +68,55 @@ const GroupChat = {
       modal.classList.add('hidden');
     }
     
+    // Clear active chat in Firestore (re-enable notifications)
+    this.clearActiveChat();
+    
     // Unsubscribe from updates
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
+    }
+    
+    // Clear poll interval
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+  
+  /**
+   * Set active chat in Firestore (to prevent notifications)
+   */
+  async setActiveChat(groupId) {
+    if (!window.db || !window.currentUser) return;
+    
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', window.currentUser.uid),
+        { activeChat: groupId },
+        { merge: true }
+      );
+      console.log('[GroupChat] Active chat set:', groupId);
+    } catch (error) {
+      console.error('[GroupChat] Error setting active chat:', error);
+    }
+  },
+  
+  /**
+   * Clear active chat in Firestore (re-enable notifications)
+   */
+  async clearActiveChat() {
+    if (!window.db || !window.currentUser) return;
+    
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', window.currentUser.uid),
+        { activeChat: null },
+        { merge: true }
+      );
+      console.log('[GroupChat] Active chat cleared');
+    } catch (error) {
+      console.error('[GroupChat] Error clearing active chat:', error);
     }
   },
   
