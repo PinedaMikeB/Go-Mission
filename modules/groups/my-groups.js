@@ -7,6 +7,7 @@ const MyGroups = {
     // State
     uplineGroup: null,
     downlineGroups: [],
+    guestGroups: [],  // Groups where user is a guest
     isOpen: false,
     pendingRequestsCount: 0,
     
@@ -85,9 +86,31 @@ const MyGroups = {
                 ...doc.data()
             }));
             
+            // Load guest groups (where user is in guests array)
+            this.guestGroups = [];
+            if (userData.guestGroups?.length > 0) {
+                for (const groupId of userData.guestGroups) {
+                    try {
+                        const guestGroupDoc = await window.getDoc(
+                            window.doc(window.db, 'goMission_groups', groupId)
+                        );
+                        if (guestGroupDoc.exists()) {
+                            const groupData = guestGroupDoc.data();
+                            // Verify user is still a guest
+                            if (groupData.guests?.some(g => g.odId === window.currentUser.uid)) {
+                                this.guestGroups.push({ id: guestGroupDoc.id, ...groupData });
+                            }
+                        }
+                    } catch (e) {
+                        console.log('[MyGroups] Error loading guest group:', groupId, e);
+                    }
+                }
+            }
+            
             console.log('[MyGroups] Loaded:', {
                 upline: this.uplineGroup?.name || 'None',
-                downline: this.downlineGroups.length
+                downline: this.downlineGroups.length,
+                guest: this.guestGroups.length
             });
             
         } catch (error) {
@@ -214,6 +237,7 @@ const MyGroups = {
      */
     render() {
         this.renderUplineGroup();
+        this.renderGuestGroups();
         this.renderDownlineGroups();
     },
     
@@ -235,6 +259,32 @@ const MyGroups = {
                     </button>
                 </div>
             `;
+        }
+    },
+    
+    /**
+     * Render guest groups section (groups where user is a guest visitor)
+     */
+    renderGuestGroups() {
+        // Find or create container for guest groups
+        let container = document.getElementById('guestGroupsContainer');
+        let section = document.getElementById('guestGroupsSection');
+        
+        // If no guest groups, hide section
+        if (this.guestGroups.length === 0) {
+            if (section) section.classList.add('hidden');
+            return;
+        }
+        
+        // Show section
+        if (section) {
+            section.classList.remove('hidden');
+        }
+        
+        if (container) {
+            container.innerHTML = this.guestGroups
+                .map(group => this.renderGroupCard(group, 'guest'))
+                .join('');
         }
     },
     
@@ -269,12 +319,23 @@ const MyGroups = {
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
         
+        // Determine icon based on type
+        let typeIcon = '👥';
+        let typeBadge = '';
+        if (type === 'upline') {
+            typeIcon = '👤';
+        } else if (type === 'guest') {
+            typeIcon = '🎫';
+            typeBadge = '<span class="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Guest</span>';
+        }
+        
         return `
-            <div class="mission-card rounded-xl overflow-hidden">
+            <div class="mission-card rounded-xl overflow-hidden ${type === 'guest' ? 'border border-blue-500/30' : ''}">
                 <div class="p-4 border-b border-white/5 flex items-center justify-between">
                     <h4 class="font-bold text-[var(--text-color)] flex items-center gap-2">
-                        <span class="text-amber-500">${type === 'upline' ? '👤' : '👥'}</span>
+                        <span class="${type === 'guest' ? 'text-blue-400' : 'text-amber-500'}">${typeIcon}</span>
                         ${group.name}
+                        ${typeBadge}
                     </h4>
                     <button onclick="MyGroups.showGroupMenu('${group.id}')" class="text-[var(--text-muted)]">•••</button>
                 </div>
@@ -300,7 +361,7 @@ const MyGroups = {
                                 </button>
                             </div>
                         ` : `
-                            <!-- Disciple: Join Meeting -->
+                            <!-- Member/Guest: Join Meeting -->
                             <button onclick="MyGroups.joinMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1">
                                 <span>📹</span> Join Meeting
                             </button>
@@ -336,6 +397,11 @@ const MyGroups = {
                         <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-white/10 text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
                             👥 View Members ${guestCount > 0 ? `& Guests` : ''}
                             ${requestCount > 0 ? `<span class="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
+                        </button>
+                    ` : ''}
+                    ${type === 'guest' ? `
+                        <button onclick="MyGroups.leaveAsGuest('${group.id}')" class="w-full border border-red-500/30 text-red-400 font-medium py-2 rounded-lg text-sm">
+                            Leave as Guest
                         </button>
                     ` : ''}
                 </div>
@@ -1446,6 +1512,45 @@ const MyGroups = {
         } catch (error) {
             console.error('[MyGroups] Remove member error:', error);
             alert('Failed to remove member');
+        }
+    },
+    
+    /**
+     * Leave a group as a guest
+     */
+    async leaveAsGuest(groupId) {
+        const group = this.guestGroups.find(g => g.id === groupId);
+        if (!group) return;
+        
+        if (!confirm(`Leave ${group.name} as a guest?`)) return;
+        
+        try {
+            // Remove from group's guests array
+            const updatedGuests = (group.guests || []).filter(g => g.odId !== window.currentUser.uid);
+            
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                { guests: updatedGuests },
+                { merge: true }
+            );
+            
+            // Remove from user's guestGroups array
+            await window.setDoc(
+                window.doc(window.db, 'goMission_members', window.currentUser.uid),
+                { guestGroups: window.arrayRemove(groupId) },
+                { merge: true }
+            );
+            
+            // Reload and refresh
+            await this.loadGroups();
+            this.render();
+            this.closeModal();
+            
+            alert(`You have left ${group.name}.`);
+            
+        } catch (error) {
+            console.error('[MyGroups] Leave as guest error:', error);
+            alert('Failed to leave group');
         }
     }
 };
