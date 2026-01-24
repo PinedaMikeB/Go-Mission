@@ -8,6 +8,7 @@ const MyGroups = {
     uplineGroup: null,
     downlineGroups: [],
     isOpen: false,
+    pendingRequestsCount: 0,
     
     /**
      * Initialize module
@@ -16,6 +17,8 @@ const MyGroups = {
         console.log('[MyGroups] Initializing...');
         await this.loadGroups();
         this.updateMissionCard();
+        this.updateBadges();
+        this.subscribeToJoinRequests();
     },
     
     /**
@@ -111,6 +114,76 @@ const MyGroups = {
             const total = (this.uplineGroup ? 1 : 0) + this.downlineGroups.length;
             countEl.textContent = `${total} group${total !== 1 ? 's' : ''}`;
         }
+    },
+    
+    /**
+     * Count total pending join requests across all downline groups
+     */
+    countPendingRequests() {
+        let total = 0;
+        for (const group of this.downlineGroups) {
+            total += (group.joinRequests?.length || 0);
+        }
+        this.pendingRequestsCount = total;
+        return total;
+    },
+    
+    /**
+     * Update badges for pending requests
+     */
+    updateBadges() {
+        const count = this.countPendingRequests();
+        
+        // Update Groups footer nav badge
+        const groupsNavBadge = document.getElementById('groupsNavBadge');
+        if (groupsNavBadge) {
+            if (count > 0) {
+                groupsNavBadge.textContent = count;
+                groupsNavBadge.classList.remove('hidden');
+            } else {
+                groupsNavBadge.classList.add('hidden');
+            }
+        }
+        
+        console.log('[MyGroups] Pending requests:', count);
+    },
+    
+    /**
+     * Subscribe to real-time updates for join requests (for leaders)
+     */
+    subscribeToJoinRequests() {
+        if (!window.currentUser || !window.db || !window.onSnapshot) return;
+        
+        // Unsubscribe from previous listener
+        if (this.joinRequestsUnsubscribe) {
+            this.joinRequestsUnsubscribe();
+        }
+        
+        // Listen to groups where user is leader
+        const groupsQuery = window.query(
+            window.collection(window.db, 'goMission_groups'),
+            window.where('leaderId', '==', window.currentUser.uid)
+        );
+        
+        this.joinRequestsUnsubscribe = window.onSnapshot(groupsQuery, (snapshot) => {
+            // Update downline groups with latest data
+            this.downlineGroups = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            // Update badges
+            this.updateBadges();
+            
+            // Re-render if screen is open
+            if (this.isOpen) {
+                this.render();
+            }
+            
+            console.log('[MyGroups] Real-time update, groups:', this.downlineGroups.length);
+        }, (error) => {
+            console.error('[MyGroups] Snapshot error:', error);
+        });
     },
     
     /**
@@ -260,8 +333,9 @@ const MyGroups = {
                         <button onclick="MyGroups.showInviteCode('${group.id}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm">
                             🔑 Invite Members
                         </button>
-                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-white/10 text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm">
+                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-white/10 text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
                             👥 View Members ${guestCount > 0 ? `& Guests` : ''}
+                            ${requestCount > 0 ? `<span class="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
                         </button>
                     ` : ''}
                 </div>
