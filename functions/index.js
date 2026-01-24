@@ -270,8 +270,12 @@ exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (
   const oldRequests = before.joinRequests || [];
   const newRequests = after.joinRequests || [];
   
+  console.log('[onMemberJoined] Join requests - old:', oldRequests.length, 'new:', newRequests.length);
+  
   if (newRequests.length > oldRequests.length) {
     const newRequest = newRequests.find(r => !oldRequests.some(o => o.odId === r.odId));
+    
+    console.log('[onMemberJoined] New request found:', newRequest?.name, 'Leader:', after.leaderId);
     
     if (newRequest && after.leaderId) {
       const notification = {
@@ -283,7 +287,8 @@ exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (
         }
       };
       
-      await sendToUser(after.leaderId, notification);
+      const result = await sendToUser(after.leaderId, notification);
+      console.log('[onMemberJoined] Notification result:', result);
     }
   }
   
