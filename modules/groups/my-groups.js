@@ -827,10 +827,16 @@ const MyGroups = {
      */
     openGroupChat(groupId) {
         if (typeof GroupChat !== 'undefined') {
-            // Set the active group and open chat
-            const group = this.uplineGroup?.id === groupId ? 
-                this.uplineGroup : 
-                this.downlineGroups.find(g => g.id === groupId);
+            // Set the active group and open chat - check upline, guest, then downline groups
+            let group = null;
+            if (this.uplineGroup?.id === groupId) {
+                group = this.uplineGroup;
+            } else if (this.guestGroups?.length > 0) {
+                group = this.guestGroups.find(g => g.id === groupId);
+            }
+            if (!group) {
+                group = this.downlineGroups.find(g => g.id === groupId);
+            }
             
             if (group && typeof Groups !== 'undefined') {
                 Groups.currentGroup = group;
@@ -863,14 +869,18 @@ const MyGroups = {
     },
     
     /**
-     * Join meeting for a group (Disciple/Member)
+     * Join meeting for a group (Disciple/Member/Guest)
      */
     joinMeeting(groupId) {
-        // Check upline group first, then downline groups
+        // Check upline group first, then guest groups, then downline groups
         let group = null;
         if (this.uplineGroup?.id === groupId) {
             group = this.uplineGroup;
-        } else {
+        } else if (this.guestGroups?.length > 0) {
+            group = this.guestGroups.find(g => g.id === groupId);
+        }
+        
+        if (!group) {
             group = this.downlineGroups.find(g => g.id === groupId);
         }
         
