@@ -36,14 +36,10 @@ const InstallModal = {
     
     translations: {
         en: {
-            // Already installed section
-            alreadyInstalled: 'Already installed?',
-            alreadyInstalledText: 'To avoid seeing this guide, open Go Mission from your home screen.',
-            findIcon: 'Find and tap this icon:',
-            appName: 'Go Mission',
+            // Language selection
+            chooseLanguage: 'Choose Language',
             
-            // Not installed section
-            notInstalled: 'Not yet installed?',
+            // Device selection
             chooseDevice: 'Choose your device:',
             windows: 'Windows / Mac',
             android: 'Android',
@@ -60,8 +56,9 @@ const InstallModal = {
             stepsTitle: 'Installation Steps',
             beginTitle: 'Ready to Install!',
             beginText: 'Now tap the Share button below',
-            beginTextAndroid: 'Now tap the Menu (⋮) button above',
+            beginTextAndroid: 'Now tap the Menu (⋮) button above and click "Add to Home Screen"',
             beginTextWindows: 'Now click the Install icon (⊕) above',
+            beginTextIphone: 'Now tap the Share (📤) button below and click "Add to Home Screen"',
             backToSteps: '← Back to Instructions',
             
             // Android steps
@@ -100,14 +97,10 @@ const InstallModal = {
             win4_desc: 'Click "Enable" when prompted to receive updates from your group'
         },
         tl: {
-            // Already installed section
-            alreadyInstalled: 'Naka-install na?',
-            alreadyInstalledText: 'Para hindi na makita ang guide na ito, buksan ang Go Mission mula sa iyong home screen.',
-            findIcon: 'Hanapin at i-tap ang icon na ito:',
-            appName: 'Go Mission',
+            // Language selection
+            chooseLanguage: 'Piliin ang Wika',
             
-            // Not installed section
-            notInstalled: 'Hindi pa naka-install?',
+            // Device selection
             chooseDevice: 'Piliin ang iyong device:',
             windows: 'Windows / Mac',
             android: 'Android',
@@ -124,8 +117,9 @@ const InstallModal = {
             stepsTitle: 'Mga Hakbang sa Pag-install',
             beginTitle: 'Handa Nang I-install!',
             beginText: 'Pindutin ang Share button sa baba',
-            beginTextAndroid: 'Pindutin ang Menu (⋮) button sa itaas',
+            beginTextAndroid: 'Pindutin ang Menu (⋮) button sa itaas at i-click ang "Add to Home Screen"',
             beginTextWindows: 'I-click ang Install icon (⊕) sa itaas',
+            beginTextIphone: 'Pindutin ang Share (📤) button sa baba at i-click ang "Add to Home Screen"',
             backToSteps: '← Bumalik sa Instructions',
             
             // Android steps
@@ -254,24 +248,8 @@ const InstallModal = {
             <div class="install-overlay"></div>
             <div class="install-content">
                 <div class="install-header">
-                    <h2>📱 Install Go Mission</h2>
+                    <h2>🔥 Install Go Mission</h2>
                     <button class="lang-toggle" onclick="InstallModal.toggleLang()">${this.t('langToggle')}</button>
-                </div>
-                
-                <!-- Already Installed Section -->
-                <div class="already-installed-section">
-                    <div class="already-installed-badge">✓ ${this.t('alreadyInstalled')}</div>
-                    <p class="already-installed-text">${this.t('alreadyInstalledText')}</p>
-                    <p class="find-icon-text">${this.t('findIcon')}</p>
-                    <div class="app-icon-preview">
-                        <img src="/icons/icon-192.png" alt="Go Mission" class="preview-icon">
-                        <span class="preview-label">${this.t('appName')}</span>
-                    </div>
-                </div>
-                
-                <!-- Divider -->
-                <div class="section-divider">
-                    <span>${this.t('notInstalled')}</span>
                 </div>
                 
                 <!-- Device Selection - Only Android and iPhone -->
@@ -353,7 +331,7 @@ const InstallModal = {
                     <div class="begin-section">
                         <div class="begin-icon">✅</div>
                         <h3>${this.t('beginTitle')}</h3>
-                        <p>${this.t(this.currentDevice === 'android' ? 'beginTextAndroid' : this.currentDevice === 'windows' ? 'beginTextWindows' : 'beginText')}</p>
+                        <p>${this.currentDevice === 'android' ? this.t('beginTextAndroid') : this.currentDevice === 'windows' ? this.t('beginTextWindows') : this.t('beginTextIphone')}</p>
                         <div class="point-${this.currentDevice === 'android' || this.currentDevice === 'windows' ? 'up' : 'down'}">
                             <span>${this.currentDevice === 'android' || this.currentDevice === 'windows' ? '☝️' : '👇'}</span>
                         </div>
