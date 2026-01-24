@@ -287,6 +287,45 @@ exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (
     }
   }
   
+  // Check for new guests
+  const oldGuests = before.guests || [];
+  const newGuests = after.guests || [];
+  
+  if (newGuests.length > oldGuests.length) {
+    const newGuest = newGuests.find(g => !oldGuests.some(o => o.odId === g.odId));
+    
+    if (newGuest) {
+      // Notify the new guest
+      const guestNotification = {
+        title: '🎫 You are now a Guest!',
+        body: `Welcome to ${after.name} as a guest`,
+        data: {
+          type: 'guest_approved',
+          groupId: event.params.groupId,
+          groupName: after.name
+        }
+      };
+      
+      await sendToUser(newGuest.odId, guestNotification);
+      
+      // Notify other members
+      const memberNotification = {
+        title: `🎫 New Guest!`,
+        body: `${newGuest.name} joined ${after.name} as a guest`,
+        data: {
+          type: 'guest_joined',
+          groupId: event.params.groupId,
+          guestId: newGuest.odId
+        }
+      };
+      
+      const membersToNotify = (after.members || []).filter(id => id !== after.leaderId);
+      if (membersToNotify.length > 0) {
+        await sendToUsers(membersToNotify, memberNotification);
+      }
+    }
+  }
+  
   return null;
 });
 

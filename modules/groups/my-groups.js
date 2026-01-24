@@ -406,6 +406,8 @@ const MyGroups = {
                 { merge: true }
             );
             
+            // Note: Cloud Function (onMemberJoined) will automatically send push notification to leader
+            
             // Close modal and show success
             this.closeModal();
             
@@ -974,6 +976,8 @@ const MyGroups = {
                 
                 alert(`${request.name} is now a guest!`);
             }
+            
+            // Note: Cloud Function (onMemberJoined) will automatically send notification to the user
             
             // Reload and refresh
             await this.loadGroups();
