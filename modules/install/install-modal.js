@@ -170,6 +170,14 @@ const InstallModal = {
     },
     
     /**
+     * Check if this is the first time opening as installed PWA
+     */
+    isFirstLaunchAsPWA() {
+        const hasSeenWelcome = localStorage.getItem('goMission_welcomeShown');
+        return this.checkIfInstalled() && !hasSeenWelcome;
+    },
+    
+    /**
      * Check if user is on desktop (Windows, Mac, Linux)
      */
     isDesktop() {
@@ -185,13 +193,26 @@ const InstallModal = {
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');
         
+        // Check saved language preference
+        const savedLang = localStorage.getItem('goMission_language');
+        if (savedLang) {
+            this.currentLang = savedLang;
+        }
+        
         // Skip install modal for desktop users - they don't need to install
         if (this.isDesktop()) {
             console.log('[InstallModal] Desktop detected - skipping install prompt');
-            return; // Don't show install modal for desktop
+            return;
         }
         
-        // Only show if NOT in standalone mode (PWA) for mobile
+        // If first time opening as installed PWA, show welcome message!
+        if (this.isFirstLaunchAsPWA()) {
+            console.log('[InstallModal] First launch as PWA - showing welcome!');
+            setTimeout(() => this.showWelcome(), 500);
+            return;
+        }
+        
+        // Only show install guide if NOT in standalone mode (PWA) for mobile
         if (forceInstall || !this.isInstalled) {
             setTimeout(() => this.show(), 500);
         }
@@ -200,6 +221,193 @@ const InstallModal = {
             const url = new URL(window.location);
             url.searchParams.delete('install');
             window.history.replaceState({}, '', url);
+        }
+    },
+    
+    /**
+     * Show welcome message for first-time PWA launch
+     */
+    showWelcome() {
+        const lang = this.currentLang;
+        
+        const welcomeText = {
+            en: {
+                title: '🎉 Welcome to Go Mission!',
+                subtitle: 'The app is now installed on your device.',
+                findApp: 'You can always find it on your home screen:',
+                appName: 'Go Mission',
+                journey: 'Your journey with God starts today!',
+                button: "Let's Start! 🔥"
+            },
+            tl: {
+                title: '🎉 Maligayang Pagdating sa Go Mission!',
+                subtitle: 'Ang app ay naka-install na sa iyong device.',
+                findApp: 'Makikita mo ito sa iyong home screen:',
+                appName: 'Go Mission',
+                journey: 'Ang iyong paglalakbay kasama ang Diyos ay nagsisimula ngayon!',
+                button: 'Simulan Na! 🔥'
+            }
+        };
+        
+        const t = welcomeText[lang] || welcomeText.en;
+        
+        const modal = document.createElement('div');
+        modal.id = 'welcomeModal';
+        modal.innerHTML = `
+            <div class="welcome-overlay"></div>
+            <div class="welcome-content">
+                <div class="welcome-icon">
+                    <img src="/icons/icon-192.png" alt="Go Mission" class="welcome-logo">
+                </div>
+                
+                <h1 class="welcome-title">${t.title}</h1>
+                <p class="welcome-subtitle">${t.subtitle}</p>
+                
+                <div class="welcome-app-preview">
+                    <p class="welcome-find-text">${t.findApp}</p>
+                    <div class="welcome-app-icon">
+                        <img src="/icons/icon-192.png" alt="Go Mission">
+                        <span>${t.appName}</span>
+                    </div>
+                </div>
+                
+                <p class="welcome-journey">${t.journey}</p>
+                
+                <button class="welcome-btn" onclick="InstallModal.closeWelcome()">
+                    ${t.button}
+                </button>
+            </div>
+        `;
+        
+        // Add styles
+        const style = document.createElement('style');
+        style.id = 'welcomeModalStyles';
+        style.textContent = `
+            #welcomeModal {
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            #welcomeModal .welcome-overlay {
+                position: absolute;
+                inset: 0;
+                background: rgba(0,0,0,0.95);
+            }
+            #welcomeModal .welcome-content {
+                position: relative;
+                background: linear-gradient(135deg, #1a0505 0%, #2a0a0a 100%);
+                border: 2px solid rgba(251, 191, 36, 0.4);
+                border-radius: 28px;
+                padding: 32px 24px;
+                max-width: 380px;
+                width: 100%;
+                text-align: center;
+                color: #fff;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(251, 191, 36, 0.1);
+            }
+            #welcomeModal .welcome-icon {
+                margin-bottom: 20px;
+            }
+            #welcomeModal .welcome-logo {
+                width: 100px;
+                height: 100px;
+                border-radius: 24px;
+                box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4);
+                animation: pulse-glow 2s infinite;
+            }
+            @keyframes pulse-glow {
+                0%, 100% { box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4); }
+                50% { box-shadow: 0 8px 50px rgba(245, 158, 11, 0.6); }
+            }
+            #welcomeModal .welcome-title {
+                font-size: 24px;
+                font-weight: 800;
+                color: #f59e0b;
+                margin: 0 0 8px 0;
+            }
+            #welcomeModal .welcome-subtitle {
+                font-size: 16px;
+                color: #e2e8f0;
+                margin: 0 0 24px 0;
+            }
+            #welcomeModal .welcome-app-preview {
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 16px;
+                padding: 16px;
+                margin-bottom: 20px;
+            }
+            #welcomeModal .welcome-find-text {
+                font-size: 13px;
+                color: #94a3b8;
+                margin: 0 0 12px 0;
+            }
+            #welcomeModal .welcome-app-icon {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            #welcomeModal .welcome-app-icon img {
+                width: 64px;
+                height: 64px;
+                border-radius: 16px;
+            }
+            #welcomeModal .welcome-app-icon span {
+                font-size: 14px;
+                font-weight: 600;
+                color: #fff;
+            }
+            #welcomeModal .welcome-journey {
+                font-size: 18px;
+                font-weight: 600;
+                color: #4ade80;
+                margin: 0 0 24px 0;
+                line-height: 1.4;
+            }
+            #welcomeModal .welcome-btn {
+                width: 100%;
+                padding: 18px;
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                border: none;
+                border-radius: 16px;
+                color: #1a0505;
+                font-size: 18px;
+                font-weight: 800;
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+            }
+            #welcomeModal .welcome-btn:active {
+                transform: scale(0.98);
+            }
+        `;
+        
+        document.head.appendChild(style);
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+    },
+    
+    /**
+     * Close welcome modal and mark as shown
+     */
+    closeWelcome() {
+        localStorage.setItem('goMission_welcomeShown', 'true');
+        
+        const modal = document.getElementById('welcomeModal');
+        const style = document.getElementById('welcomeModalStyles');
+        if (modal) modal.remove();
+        if (style) style.remove();
+        
+        document.body.style.overflow = '';
+        
+        // Navigate to home if not already there
+        if (typeof App !== 'undefined' && App.showScreen) {
+            App.showScreen('home');
         }
     },
     
