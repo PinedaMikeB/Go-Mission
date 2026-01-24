@@ -20,9 +20,8 @@ const GroupMeeting = {
   joinedAt: null,
   participants: [],
   
-  // JaaS (Jitsi as a Service) configuration
-  JAAS_APP_ID: 'vpaas-magic-cookie-8beaeb1f813a4ca9959c8927f131134d',
-  JITSI_DOMAIN: '8x8.vc',
+  // Self-hosted Jitsi configuration (FAST - your own server!)
+  JITSI_DOMAIN: 'meet.wotgonline.com',
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -40,7 +39,7 @@ const GroupMeeting = {
   },
   
   /**
-   * Load Jitsi Meet External API script (JaaS version)
+   * Load Jitsi Meet External API script (Self-hosted)
    */
   loadJitsiScript() {
     return new Promise((resolve, reject) => {
@@ -50,24 +49,23 @@ const GroupMeeting = {
       }
       
       const script = document.createElement('script');
-      // Use JaaS script URL with App ID
-      script.src = `https://8x8.vc/${this.JAAS_APP_ID}/external_api.js`;
+      // Use self-hosted Jitsi external API
+      script.src = `https://${this.JITSI_DOMAIN}/external_api.js`;
       script.async = true;
       script.onload = () => {
-        console.log('[GroupMeeting] JaaS API loaded');
+        console.log('[GroupMeeting] Jitsi API loaded from', this.JITSI_DOMAIN);
         resolve();
       };
       script.onerror = () => {
-        console.error('[GroupMeeting] Failed to load JaaS API');
-        reject(new Error('Failed to load JaaS API'));
+        console.error('[GroupMeeting] Failed to load Jitsi API');
+        reject(new Error('Failed to load Jitsi API'));
       };
       document.head.appendChild(script);
     });
   },
   
   /**
-   * Generate unique room name for group (JaaS format)
-   * Format: {AppID}/{RoomName}
+   * Generate unique room name for group (Self-hosted format)
    */
   generateRoomName(groupId, groupName) {
     // Clean group name for URL
@@ -76,11 +74,11 @@ const GroupMeeting = {
       .replace(/\s+/g, '')
       .substring(0, 15);
     
-    // Use group ID for uniqueness (no random suffix needed for JaaS)
+    // Use group ID for uniqueness
     const shortId = groupId.substring(groupId.length - 8);
     
-    // JaaS room format: AppID/RoomName
-    return `${this.JAAS_APP_ID}/GoMission${cleanName}${shortId}`;
+    // Self-hosted room format: just the room name
+    return `GoMission${cleanName}${shortId}`;
   },
   
   /**
