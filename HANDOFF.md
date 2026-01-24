@@ -6,514 +6,227 @@
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app
 - **Repo**: /Volumes/Wotg Drive Mike/GitHub/Go-Mission
-- **Firebase**: shaped-by-grace (Firestore + Auth)
+- **Firebase**: wotg-app (Firestore + Auth + Cloud Functions)
 - **Stack**: HTML/JS + Tailwind CDN + Firebase
 
 ---
 
 ## Current Session (2026-01-24)
-- **MODULE**: PWA Silent Auto-Update + Invite Code Fix
+- **MODULE**: Group Join Requests + Guest System + Member Management
 - **STATUS**: ✅ Complete
-- **TASK**: Silent updates + Fix invite code generation for existing groups
+- **TASK**: Implement join request approval system with member/guest options
 
-### ✅ Invite Code Fix (COMPLETED)
-
-**Problem:** "Invite Members" button wasn't working for groups created before invite codes were implemented.
-
-**Solution:** `showInviteCode()` now auto-generates a code if group doesn't have one.
-
-**Changes to `/modules/groups/my-groups.js`:**
-- Made `showInviteCode()` async
-- Added check for missing `inviteCode` 
-- Auto-generates and saves new code to Firestore if missing
-- Added "Share via..." button using native share API
-- Improved UI with larger code display and better instructions
-
-### ✅ PWA Silent Auto-Update (COMPLETED)
-
-**Problem Solved:**
-- Force update prompts were annoying on mobile PWA
-- Users had to click "Update Now" repeatedly
-- Interrupted reading/prayer flow
-
-**New Silent Update Flow:**
-```
-1. Check for updates every 5 minutes (silent)
-2. When update found → download new SW in background
-3. When user LEAVES app (blur/hidden/pagehide) → activate new SW + clear caches
-4. When user RETURNS → app is already updated! (seamless)
-```
-
-**Files Modified:**
-| File | Changes |
-|------|---------|
-| `/modules/core/pwa-updater.js` | Removed force update UI, added silent background updates |
-| `/firebase-messaging-sw.js` | Bumped to v1.0.4, don't auto-skipWaiting on install |
-
-**Key Changes:**
-- ❌ Removed: Force update lock screen
-- ❌ Removed: "Update Now" button requirement  
-- ✅ Added: Silent update on `visibilitychange` (hidden)
-- ✅ Added: Silent update on `pagehide` event
-- ✅ Added: Silent update on `blur` event (mobile app switch)
-- ✅ Added: `controllerchange` listener for seamless reload
-
-**How Updates Work Now:**
-1. User opens app → checks for updates silently
-2. New version found → downloads in background (user unaware)
-3. User switches to another app or closes → SW activates silently
-4. User returns → page reloads with new version automatically
-
-**Debug/Manual Options:**
-```javascript
-PWAUpdater.forceRefresh();     // Manual full refresh
-PWAUpdater.debugUpdate();      // Force check and apply
-PWAUpdater.getVersion();       // Get current version
-PWAUpdater.isUpdatePending();  // Check if update waiting
-```
-
----
-
-## Previous Session (2026-01-24 - Earlier)
-- **MODULE**: App Restructure - Upline/Downline Groups
-- **STATUS**: 🔄 In Progress
-- **TASK**: Restructure groups into Upline (being discipled) and Downline (discipling others)
-
-### 🔄 Changes In Progress
-
-#### 1. Home Screen Card Restructure
-- **My Mission card** → Opens "My Groups" screen (Upline + Downline)
-- **My Training card** → Opens Training full screen
-- Both cards show daily scripture verses (random, consistent per day)
-
-#### 2. New Group Structure
-**Upline Group** (You are a disciple):
-- User can be in ONE upline group
-- Joined via invite code from discipler
-- Cannot create, only join
-
-**Downline Groups** (You are a discipler):
-- User can create MULTIPLE groups
-- Each group has unique 6-character invite code
-- Can start Jitsi meetings for each group
-
-#### 3. New Files Created
-| File | Purpose |
-|------|---------|
-| `/modules/core/discipleship-content.js` | Daily verses for Mission/Training cards |
-| `/modules/groups/my-groups.js` | Upline/Downline groups management |
-
-#### 4. Firestore Schema Update
-```javascript
-// goMission_members/{odId} - NEW FIELDS
-{
-  uplineGroupId: "groupId",     // The ONE group where user is discipled
-  // downlineGroupIds derived from groups where leaderId = odId
-}
-
-// goMission_groups/{groupId} - NEW FIELD
-{
-  inviteCode: "ABC123",         // 6-char code for joining
-  type: "downline",             // Group type indicator
-}
-```
-
-### 📋 Next Steps:
-1. Test the My Groups screen
-2. Test join with invite code flow
-3. Test create new downline group
-4. Connect group chat and meetings to new structure
-5. Update bottom nav Groups tab to open My Groups
-
----
-
-## Previous Session (2026-01-23)
-- **MODULE**: Authentication - Email/Password Migration
-- **STATUS**: ✅ Code complete, missing frontend integration
-- **TASK**: Migrated from Google/Phone auth to Email/Password only
-
-### 🔐 Authentication Changes (COMPLETED)
-
-**REMOVED:**
-- ❌ Google Sign-In (completely removed)
-- ❌ Phone Number Sign-In (completely removed)
-
-**ADDED:**
-- ✅ Email/Password Sign In
-- ✅ Email/Password Sign Up (with display name)
-- ✅ Forgot Password with Email Verification Code
-- ✅ Cloud Functions for code-based password reset
-
-**Files Modified:**
-| File | Changes |
-|------|---------|
-| `/index.html` | New login UI with Sign In/Sign Up tabs, forgot password flow |
-| `/functions/index.js` | Added `sendPasswordResetCode`, `verifyPasswordResetCode`, `completePasswordReset` functions |
-
-**New Firestore Collections:**
-- `goMission_passwordResets/{email}` - Stores reset codes (15-min expiry)
-- `goMission_mailQueue` - For email sending (requires email extension setup)
-
-### 📋 Next Steps to Deploy:
-1. **Deploy Cloud Functions:**
-   ```bash
-   cd /Volumes/Wotg Drive Mike/GitHub/Go-Mission/functions
-   firebase deploy --only functions
-   ```
-
-2. **Test Locally:** Open `index.html` and test Sign Up / Sign In
-
-3. **Email Sending:** Currently codes are logged to console. To send actual emails:
-   - Install Firebase Extension "Trigger Email" or
-   - Add SendGrid/Mailgun integration
-
-4. **Commit & Push:**
-   ```bash
-   git add .
-   git commit -m "Replace Google/Phone auth with Email/Password"
-   git push origin main
-   ```
-
-### 🔄 OT Generation - FULL REGENERATION (39 books)
-**Batches running in parallel (5 books each):**
-
-| Batch | Books | Status |
-|-------|-------|--------|
-| 1 | Genesis, Exodus, Leviticus, Numbers, Deuteronomy | 🔄 Running |
-| 2 | Joshua, Judges, Ruth, 1 Samuel, 2 Samuel | ⏳ Queued |
-| 3 | 1 Kings, 2 Kings, 1 Chronicles, 2 Chronicles, Ezra | ⏳ Queued |
-| 4 | Nehemiah, Esther, Job, Psalms, Proverbs | ⏳ Queued |
-| 5 | Ecclesiastes, Song of Solomon, Isaiah, Jeremiah, Lamentations | ⏳ Queued |
-| 6 | Ezekiel, Daniel, Hosea, Joel, Amos | ⏳ Queued |
-| 7 | Obadiah, Jonah, Micah, Nahum, Habakkuk | ⏳ Queued |
-| 8 | Zephaniah, Haggai, Zechariah, Malachi | ⏳ Queued |
-
-**Monitor:** `tail -f scripts/logs/*.log`
-**Script:** `./scripts/generate-ot-all.sh`
-
----
-
-## ✅ Completed This Session
-
-### 1. Jitsi Video Meeting Integration (NEW)
-Embedded Jitsi Meet for in-app group video meetings.
-
-**Features:**
-- Full-screen Jitsi embed (no leaving app)
-- Weekly meeting schedule (day + time) per group
-- "Join Meeting" button appears when it's meeting time
-- Leaders can start meeting anytime
-- Meeting attendance tracked in Firestore
-
-**Files:**
-- `/modules/groups/group-meeting.js` - Jitsi integration module
-- `/modules/groups/groups.js` - Updated to use new meeting section
-
-**Firestore Collection:**
-```javascript
-// goMission_meetings/{groupId}_{date}
-{
-  groupId: "abc123",
-  date: "2026-01-23",
-  startedAt: timestamp,
-  attendees: [
-    { odId: "user1", name: "Mike", joinedAt: "...", leftAt: "...", durationMinutes: 45 }
-  ],
-  lastActivity: timestamp
-}
-
-// goMission_groups/{groupId}.meetingSchedule
-{
-  day: "Saturday",      // Day of week
-  time: "19:00",        // 24h format
-  updatedAt: timestamp
-}
-```
-
-**Usage:**
-- Members see "Join Now" button during meeting window (15 min before to 2 hours after)
-- Leaders see "Start Meeting" button anytime
-- Leaders can set/edit schedule via modal
-
----
-
-## 🔄 Background: Quick Insights Generation
-
-### Currently Generating (11 NT books via GPT-4o-mini)
-| Book | Code | Verses | Status |
-|------|------|--------|--------|
-| Titus | TIT | 46/46 | ✅ Complete |
-| Philemon | PHM | 25/25 | ✅ Complete |
-| 2 John | 2JN | 13/13 | ✅ Complete |
-| 3 John | 3JN | 14/14 | ✅ Complete |
-| Jude | JUD | 25/25 | ✅ Complete |
-| 2 Peter | 2PE | 61/61 | ✅ Complete |
-| James | JAS | 78/108 | 🔄 In Progress |
-| 1 Peter | 1PE | 78/105 | 🔄 In Progress |
-| 1 John | 1JN | 77/105 | 🔄 In Progress |
-| Hebrews | HEB | 75/303 | 🔄 In Progress |
-| Revelation | REV | 76/404 | 🔄 In Progress |
-
-**Monitor:** `tail -f scripts/logs/*.log`
-
----
-
-## Quick Insights Generation Status
-
-### ✅ Completed Books (17 + 6 = 23 books)
-| Book | Chapters | File |
-|------|----------|------|
-| Genesis (GEN) | 50 | ✅ |
-| Matthew (MAT) | 28 | ✅ |
-| Mark (MRK) | 16 | ✅ |
-| Luke (LUK) | 24 | ✅ |
-| John (JHN) | 21 | ✅ |
-| Acts (ACT) | 28 | ✅ |
-| Romans (ROM) | 16 | ✅ |
-| 1 Corinthians (1CO) | 16 | ✅ |
-| 2 Corinthians (2CO) | 13 | ✅ |
-| Galatians (GAL) | 6 | ✅ |
-| Ephesians (EPH) | 6 | ✅ |
-| Philippians (PHP) | 4 | ✅ |
-| Colossians (COL) | 4 | ✅ |
-| 1 Timothy (1TI) | 6 | ✅ |
-| 2 Timothy (2TI) | 4 | ✅ |
-| Psalms (PSA) | 150 | ✅ |
-| Proverbs (PRO) | 31 | ✅ |
-| Titus (TIT) | 3 | ✅ NEW |
-| Philemon (PHM) | 1 | ✅ NEW |
-| 2 John (2JN) | 1 | ✅ NEW |
-| 3 John (3JN) | 1 | ✅ NEW |
-| Jude (JUD) | 1 | ✅ NEW |
-| 2 Peter (2PE) | 3 | ✅ NEW |
-
-### 🔄 In Progress (5 books)
-- James (JAS) - 5 chapters
-- 1 Peter (1PE) - 5 chapters  
-- 1 John (1JN) - 5 chapters
-- Hebrews (HEB) - 13 chapters
-- Revelation (REV) - 22 chapters
-
-### ❌ Failed - Missing Tyndale Source
-| Book | Issue |
-|------|-------|
-| 1 Thessalonians (1TH) | Tyndale file not found |
-| 2 Thessalonians (2TH) | Tyndale file not found |
-
----
-
-## ✅ Completed This Session
-
-### 1. Force Update System (NEW)
-Replaced silent update with FORCE update lock screen:
-
-**Problem:**
-- Silent updates weren't reliable
-- Users stuck on old cached UI
-- Cache hard to clear on mobile
-
-**Solution:**
-- Full-screen lock screen when update detected
-- Cannot be dismissed - user MUST click "Update Now"
-- Clears ALL caches before hard reload
-- Checks for updates every 5 min + on app focus
-
-**Files:**
-- `/firebase-messaging-sw.js` - Version bumped to v1.0.3
-- `/modules/core/pwa-updater.js` - Force update screen
-
-**How to Push Updates:**
-```
-1. Change CACHE_VERSION in firebase-messaging-sw.js
-2. git add . && git commit -m "v1.0.4: description"
-3. git push origin main
-4. Netlify auto-deploys
-5. Users see force update screen
-```
-
-### 2. Landing Page for Messenger/In-App Browsers (`install.html`)
-Force exits Facebook Messenger browser and redirects to Safari/Chrome:
-
-**Features:**
-- Detects in-app browsers (FB, Instagram, Messenger, Line, WeChat, etc.)
-- Shows platform-specific instructions (iOS/Android)
-- Auto-redirect attempts via intent URLs
-- Copy-to-clipboard fallback for manual URL entry
-- Clean, branded UI with Go Mission styling
-
-**How it works:**
-1. User shares `gomission.netlify.app/install.html` via Messenger
-2. Page detects in-app browser
-3. Shows "Open in Browser" instructions
-4. Attempts auto-redirect to Chrome/Safari
-5. Falls back to manual copy/paste
-
-### 2. Install Modal (`modules/install/install-modal.js`)
-3-screen PWA installation wizard:
+### ✅ Join Request & Approval System (COMPLETED)
 
 **Flow:**
-1. **Device Selection** - Choose Android/iPhone/Windows
-2. **Notice Screen** - "Read ALL instructions first" reminder
-3. **Steps Screen** - Scrollable step-by-step cards with icons
+1. User enters invite code → Creates join request (NOT auto-added)
+2. Leader sees "🔔 1 Pending Request" badge on group card
+3. Leader clicks "View Members" → Sees pending requests at TOP
+4. Leader chooses: ✅ Member | 🎫 Guest | ✕ Decline
+5. User gets notified and can access group
 
 **Features:**
-- Bilingual support (English/Tagalog toggle)
-- Platform-specific instructions
-- Auto-detects user's device type
-- Skip option (remembers in localStorage)
-- Triggers on `?install=true` parameter or first visit
+- Real-time badges via Firestore `onSnapshot`
+- Red badge on Groups nav icon showing total pending requests
+- Red badge on "View Members" button per group
+- Pending requests shown at top of View Members modal
+- Cloud Function sends push notification to leader on new request
 
-### 3. Service Worker for Easy Updates (`firebase-messaging-sw.js`)
-Combined service worker handles PWA caching + push notifications:
+### ✅ Guest System (COMPLETED)
 
-**Caching Strategy:**
-- `CACHE_NAME = 'go-mission-v1.0.2'` - Version for cache busting
-- Network-first for HTML/JS/CSS (always gets latest code)
-- Cache-first for assets (images for performance)
-- Old caches auto-deleted on activation
+**Guest vs Member:**
+| Feature | Member | Guest |
+|---------|--------|-------|
+| Group Chat | ✅ | ✅ |
+| Join Meeting | ✅ | ✅ |
+| View in My Groups | Upline section | Guest Groups section |
+| Invite others | ❌ | ❌ |
+| Leave group | Via leader | Self ("Leave as Guest") |
 
-**Auto-Update Flow:**
+**Guest Groups Section:**
+- New section in My Groups: "🎫 GUEST GROUPS"
+- Blue border on guest group cards
+- "Guest" badge on card header
+- "Leave as Guest" button
+
+**Firestore Schema:**
+```javascript
+// goMission_groups/{groupId}
+{
+  members: ["uid1", "uid2"],           // Full members
+  guests: [{                            // Guest visitors
+    odId: "uid3",
+    name: "Guest Name",
+    photo: "url",
+    homeGroupId: "original-group-id",
+    homeGroupName: "Original Group",
+    joinedAsGuestAt: "timestamp"
+  }],
+  joinRequests: [{                      // Pending requests
+    odId: "uid4",
+    name: "Requester Name",
+    email: "email@example.com",
+    photo: "url",
+    requestedAt: "timestamp",
+    hasExistingGroup: true/false,
+    existingGroupId: "group-id",
+    existingGroupName: "Group Name"
+  }]
+}
+
+// goMission_members/{odId}
+{
+  uplineGroupId: "group-id",           // Primary group (as member)
+  guestGroups: ["group-id-1", "group-id-2"]  // Groups visiting as guest
+}
 ```
-1. New SW installs → skipWaiting()
-2. SW activates → claims clients
-3. Posts message: { type: 'SW_UPDATED', version }
-4. App can show "Update available" toast
+
+### ✅ Member Management (COMPLETED)
+
+**View Members Modal:**
+- Leader shown at top with 👑 crown and gold border
+- "DISCIPLES (X)" section with all members
+- "Remove" button for leader to remove members
+- "🎫 GUESTS (X)" section for guests
+
+**Remove Member Flow:**
+1. Leader clicks "Remove" next to member
+2. Confirms removal
+3. Member removed from `members[]` array
+4. Member's `uplineGroupId` cleared
+5. Removed member can't access chat/meeting
+6. Removed member sees "You are no longer a member"
+
+### ✅ Notifications (COMPLETED)
+
+**Cloud Functions (`functions/index.js`):**
+- `onMemberJoined` trigger detects:
+  - New join requests → Notifies leader
+  - New members → Notifies existing members
+  - New guests → Notifies guest + members
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `/modules/groups/my-groups.js` | Join requests, guests, badges, member management |
+| `/modules/groups/group-chat.js` | Membership verification, showMembers fix |
+| `/functions/index.js` | Guest notifications, logging |
+| `/index.html` | Groups nav badge, guest groups section |
+
+---
+
+## 🔄 Background: OT Quick Insights Generation
+
+**Status:** Running in background (independent of Claude)
+**Script:** `/scripts/run-ot-generation.sh`
+**Log:** `/scripts/logs/background-generation.log`
+
+**Monitor:**
+```bash
+tail -f /Volumes/Wotg\ Drive\ Mike/GitHub/Go-Mission/scripts/logs/background-generation.log
 ```
 
-**Push Notifications:**
-- Firebase Cloud Messaging integration
-- Background message handling
-- Notification click → opens relevant screen
-
-### 4. App Icons
-Generated icons for PWA:
-- `/icons/icon-192.png` - Android/general
-- `/icons/icon-512.png` - Splash screen
-- `/icons/apple-touch-icon.png` - iOS home screen
+**Books Being Generated:** 36 OT books
+- Uses GPT-4o-mini
+- Detailed 4-section format (Understanding, Living It Out, God's Love, Reflection)
+- Bilingual (English + Tagalog)
+- Skips verses that already have insights
 
 ---
 
 ## Key Files Reference
 
-### Install System
+### Groups System
 | File | Purpose |
 |------|---------|
-| `/install.html` | Landing page for Messenger links |
-| `/modules/install/install-modal.js` | PWA installation wizard |
-| `/manifest.json` | PWA manifest |
-| `/firebase-messaging-sw.js` | Service worker (cache + push) |
-| `/icons/` | App icons |
+| `/modules/groups/my-groups.js` | Upline/Downline/Guest groups, join requests |
+| `/modules/groups/group-chat.js` | Real-time chat with membership checks |
+| `/modules/groups/group-meeting.js` | Jitsi video meetings |
+| `/modules/groups/groups.js` | Legacy group management |
 
-### Core Modules
-| File | Purpose |
-|------|---------|
-| `/index.html` | Main app, all screens |
-| `/modules/core/theme.js` | Light/dark mode |
-| `/modules/core/i18n.js` | Language switching |
-| `/modules/core/push-notifications.js` | FCM token management |
-| `/modules/bible/bible-reader.js` | Scripture reading |
-| `/modules/groups/groups.js` | Group management |
-| `/modules/groups/group-chat.js` | Chat functionality |
-| `/modules/training/training.js` | Training sessions |
+### Cloud Functions
+| Function | Trigger |
+|----------|---------|
+| `onMemberJoined` | Group document update - handles join requests, new members, guests |
+| `onNewChatMessage` | New chat message - sends notifications |
+| `sendCustomNotification` | Callable - for manual notifications |
 
 ### Firebase Collections
 | Collection | Purpose |
 |------------|---------|
-| `goMission_members` | User profiles, FCM tokens |
-| `goMission_groups` | Mission groups |
+| `goMission_members` | User profiles, FCM tokens, uplineGroupId, guestGroups |
+| `goMission_groups` | Groups with members[], guests[], joinRequests[] |
 | `goMission_chats` | Group chat messages |
-| `goMission_devotions` | Saved devotions |
-| `goMission_trainingContent` | Training materials |
 
 ---
 
-## App Architecture
+## Recent Changes Summary
 
+### Join Request Flow
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    GO MISSION APP                        │
-├─────────────────────────────────────────────────────────┤
-│  Journey Tab    │  Group Tab    │ Training │   Dash    │
-│  - Bible Reader │  - Group Info │ - Sessions│ - Stats  │
-│  - Reflection   │  - Chat       │ - Progress│ - Admin  │
-│  - Journal      │  - Members    │           │          │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                   FIREBASE BACKEND                       │
-│  Firestore │ Auth │ Cloud Functions │ Cloud Messaging   │
-└─────────────────────────────────────────────────────────┘
+User enters code → joinWithCode() → 
+  Creates joinRequest in group → 
+  Cloud Function notifies leader →
+  Leader sees badge →
+  Leader opens View Members →
+  Leader approves as Member/Guest →
+  User added to members[] or guests[] →
+  Cloud Function notifies user →
+  User can access group
 ```
 
----
+### Group Access Check
+```javascript
+// Check if user can access group
+const isMember = group.members?.includes(userId);
+const isGuest = group.guests?.some(g => g.odId === userId);
+const canAccess = isMember || isGuest;
+```
 
-## PWA Update Workflow
-
-To push an update to users:
-
-1. **Make code changes**
-2. **Update service worker version:**
-   ```javascript
-   // firebase-messaging-sw.js
-   const CACHE_NAME = 'go-mission-v1.0.3';  // Bump version
-   ```
-3. **Commit and push:**
-   ```bash
-   git add .
-   git commit -m "v1.0.3: Description of changes"
-   git push origin main
-   ```
-4. **Netlify auto-deploys**
-5. **Users get update on next app open** (Network-first for JS)
+### Badge System
+```javascript
+// Real-time listener for pending requests
+window.onSnapshot(groupsQuery, (snapshot) => {
+  this.downlineGroups = snapshot.docs.map(...);
+  this.updateBadges();  // Updates nav + button badges
+});
+```
 
 ---
 
 ## Development Notes
 
-### Theme Variables
-```css
---bg-color         /* Main background */
---card-bg          /* Card background */
---text-color       /* Primary text */
---text-muted       /* Secondary text */
---card-border      /* Border colors */
---input-bg         /* Input backgrounds */
-```
+### Testing Join Requests
+1. Get invite code from leader's group
+2. Log in as different user
+3. Enter code → Should see "Request sent" message
+4. Leader should see badge appear (real-time)
+5. Leader opens View Members → Approves
+6. User refreshes → Should see group
 
-### Install Modal Customization
-```javascript
-// Force show install modal
-InstallModal.show();
+### Testing Guest Access
+1. Approve user as "Guest" instead of "Member"
+2. User should see group in "Guest Groups" section
+3. User can chat and join meetings
+4. User cannot invite others
+5. User can "Leave as Guest"
 
-// Check if installed
-InstallModal.checkIfInstalled();
-
-// Clear skip preference
-localStorage.removeItem('installSkipped');
-```
-
-### Adding New Notifications
-In `/functions/index.js`, use the helper functions:
-```javascript
-// Single user
-await sendToUser(userId, { title, body, data });
-
-// Group members  
-await sendToGroup(groupId, notification, excludeUserId);
-
-// Multiple users
-await sendToUsers(userIds, notification);
-```
+### Common Issues
+- **"Group not found"** → Check if `guestGroups` array is being searched
+- **Badge not appearing** → Check `onSnapshot` listener is active
+- **Notification not received** → Check FCM tokens in Firestore
 
 ---
 
-## Recent Git Commits (for reference)
+## Git Commits This Session
 ```
-23dedaf Add PWA auto-update, fix share icon, combine service workers
-0e02f3c New install flow: read all steps first, then begin - with cards layout
-ce34a4c Add Go Mission logo as app icons for iOS and Android
-e5231c4 Step-by-step install wizard, fix iPhone instructions, add icon generator
-8362361 Fix install page: show manual steps to open in browser from Messenger
-cf8eabf Fix install flow: open in external browser, lock app until installed
-bb4d47e Add install landing page and modal with bilingual instructions
+56e3207 Fix: Guest users can now join meetings and open group chat
+c6b1b5d Fix: Guest users can now see and access their guest groups
+e7da052 Fix: View Members now shows pending requests at top
+a2c6c68 Add logging to join request Cloud Function for debugging
+772cfa6 Add: Join request badges + real-time updates
+f180eb3 Fix: Group chat members list and count
+8709df8 Fix: Removed member's group card disappears immediately
+0d91da7 Fix: Member management - show names, add remove button, verify membership
+ef28fec Fix: Join requests with member/guest approval + notifications
 ```

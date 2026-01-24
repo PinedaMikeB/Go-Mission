@@ -10,7 +10,75 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.1.2] - 2026-01-24 ⭐ CURRENT
+## [v1.2.0] - 2026-01-24 ⭐ CURRENT
+
+### 🎫 Join Requests + Guest System + Member Management
+
+**Summary:** Complete overhaul of group membership flow with approval system and guest support.
+
+**New Features:**
+
+#### 1. Join Request Approval System
+- Users no longer auto-join groups with invite code
+- Join request sent to leader for approval
+- Leader can approve as **Member** or **Guest**
+- Real-time badges show pending request count
+- Push notifications to leader on new requests
+
+#### 2. Guest System
+- Guests can chat and join meetings
+- Guests appear in separate "Guest Groups" section
+- Blue badge distinguishes guest groups
+- "Leave as Guest" option for self-removal
+- Tracks home group info for guests
+
+#### 3. Member Management
+- View Members shows pending requests at TOP
+- Leader/Disciples/Guests organized in sections
+- "Remove" button for leaders to remove members
+- Removed members can't access chat/meetings
+- Removed members' uplineGroupId cleared
+
+#### 4. Real-time Badges
+- Red badge on Groups nav icon
+- Red badge on "View Members" button
+- Updates instantly via Firestore onSnapshot
+- Clears when all requests processed
+
+**Files Changed:**
+- `/modules/groups/my-groups.js` - Major updates for requests, guests, badges
+- `/modules/groups/group-chat.js` - Membership verification, showMembers fix
+- `/functions/index.js` - Guest notifications, join request notifications
+- `/index.html` - Groups nav badge, guest groups section HTML
+
+**Firestore Schema Updates:**
+```javascript
+// goMission_groups
+{
+  members: ["uid1", "uid2"],      // Full members
+  guests: [{odId, name, photo, homeGroupId, homeGroupName, joinedAsGuestAt}],
+  joinRequests: [{odId, name, email, photo, requestedAt, hasExistingGroup, existingGroupId}]
+}
+
+// goMission_members
+{
+  uplineGroupId: "group-id",      // Primary group
+  guestGroups: ["group-id-1"]     // Guest memberships
+}
+```
+
+**Deployment:**
+```bash
+cd functions && npm run deploy  # Deploy Cloud Functions first
+git add . && git commit -m "v1.2.0: Join requests, guest system, member management"
+git push origin main
+```
+
+**Rollback:** Restore from commit `b9fdb60` (before this feature)
+
+---
+
+## [v1.1.2] - 2026-01-24
 
 ### 🔄 Silent PWA Auto-Updates
 
