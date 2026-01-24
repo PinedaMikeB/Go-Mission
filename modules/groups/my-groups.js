@@ -872,26 +872,18 @@ const MyGroups = {
                     </div>
                     
                     <div class="mt-4 flex gap-2">
-                        ${req.hasExistingGroup ? `
-                            <!-- Has existing group: can be member or guest -->
-                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                    class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
-                                ✅ Member
-                            </button>
-                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
-                                    class="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-lg">
-                                🎫 Guest
-                            </button>
-                        ` : `
-                            <!-- New believer: only member option -->
-                            <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                    class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
-                                ✅ Approve
-                            </button>
-                        `}
+                        <!-- Always show both options: Member or Guest -->
+                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
+                            ✅ Member
+                        </button>
+                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+                                class="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-lg">
+                            🎫 Guest
+                        </button>
                         <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
                                 class="flex-1 bg-red-600/20 text-red-400 text-sm font-bold py-2 rounded-lg border border-red-500/30">
-                            ❌ Decline
+                            ❌
                         </button>
                     </div>
                 </div>
