@@ -193,6 +193,15 @@ const InstallModal = {
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');
         
+        // PWA SELF-CALIBRATION: If running as PWA, ensure clean URL and skip install
+        if (this.isInstalled) {
+            // Clean any URL parameters when running as installed PWA
+            if (window.location.search || window.location.pathname !== '/') {
+                console.log('[InstallModal] PWA detected with dirty URL, cleaning...');
+                window.history.replaceState({}, '', '/');
+            }
+        }
+        
         // Check saved language preference
         const savedLang = localStorage.getItem('goMission_language');
         if (savedLang) {
@@ -205,14 +214,17 @@ const InstallModal = {
             return;
         }
         
-        // If first time opening as installed PWA, show welcome message!
-        if (this.isFirstLaunchAsPWA()) {
-            console.log('[InstallModal] First launch as PWA - showing welcome!');
-            setTimeout(() => this.showWelcome(), 500);
-            return;
+        // If running as installed PWA, never show install modal
+        if (this.isInstalled) {
+            // Check if first time launch to show welcome
+            if (this.isFirstLaunchAsPWA()) {
+                console.log('[InstallModal] First launch as PWA - showing welcome!');
+                setTimeout(() => this.showWelcome(), 500);
+            }
+            return; // Never show install modal for installed PWA
         }
         
-        // Only show install guide if NOT in standalone mode (PWA) for mobile
+        // Only show install guide for browser users (not installed)
         if (forceInstall || !this.isInstalled) {
             setTimeout(() => this.show(), 500);
         }

@@ -6,6 +6,28 @@
     <title>Go Mission - Making Disciple-Making Leaders</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     
+    <!-- PWA Auto-Calibration: Redirect to clean URL when opened from home screen -->
+    <script>
+        (function() {
+            // Check if running as installed PWA (standalone mode)
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone === true;
+            
+            // If PWA and URL has parameters or is on install page, clean it
+            if (isStandalone) {
+                const url = new URL(window.location.href);
+                const hasParams = url.search.length > 0;
+                const isInstallPage = url.pathname.includes('install');
+                
+                if (hasParams || isInstallPage) {
+                    console.log('[PWA] Cleaning URL for standalone mode');
+                    // Redirect to clean home page
+                    window.location.replace(url.origin + '/');
+                }
+            }
+        })();
+    </script>
+    
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#f59e0b">
