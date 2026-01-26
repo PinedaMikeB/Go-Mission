@@ -217,6 +217,7 @@ const GospelPresentation = {
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangalawang Katotohanan</p>
+                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">Kaya hindi natin nararanasan ang buhay na walang hanggan ay dahil...</p>
                         <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">LAHAT TAYO AY MAKASALANAN</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Nahiwalay tayo sa Diyos</p>
                     </div>
