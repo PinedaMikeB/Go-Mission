@@ -193,22 +193,15 @@ const GospelPresentation = {
                 wrongFeedback: 'Ang tamang sagot ay: <strong>Ibinigay Niya ang Kanyang Anak para sa akin.</strong>'
             },
             {
-                type: 'verse',
-                verse: {
-                    text: '"Ako\'y naparito upang sila\'y magkaroon ng buhay, at magkaroon ng kasaganaan nito."',
-                    ref: 'John 10:10'
-                }
-            },
-            {
                 type: 'question',
                 question: 'Ano ang gusto ng Diyos para sa iyo?',
                 options: [
-                    { text: 'Relihiyon at ritwal', correct: false },
-                    { text: 'Mabuting gawa lamang', correct: false },
-                    { text: 'Buhay na walang hanggan', correct: true }
+                    { text: 'Magandang trabaho at kayamanan', correct: false },
+                    { text: 'Buhay na walang hanggan', correct: true },
+                    { text: 'Relihiyon at ritwal', correct: false }
                 ],
-                correctFeedback: '🎉 Tama! Gusto ng Diyos na magkaroon ka ng buhay na walang hanggan!',
-                wrongFeedback: 'Ang tamang sagot ay: <strong>Buhay na walang hanggan.</strong>'
+                correctFeedback: '🎉 Tama! Gusto ng Diyos na magkaroon ka ng BUHAY NA WALANG HANGGAN!',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Buhay na walang hanggan.</strong> Ito ang regalo ng Diyos sa iyo!'
             },
             {
                 type: 'transition',
