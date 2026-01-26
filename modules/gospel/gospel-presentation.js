@@ -444,20 +444,20 @@ const GospelPresentation = {
             {
                 type: 'verse',
                 verse: {
-                    text: '"Sapagkat sa biyaya kayo ay naligtas, sa pamamagitan ng pananampalataya; at ito\'y hindi sa inyong sarili, ito\'y kaloob ng Diyos; hindi sa pamamagitan ng mga gawa."',
+                    text: '"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito\'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya\'t walang maipagmamalaki ang sinuman."',
                     ref: 'Ephesians 2:8-9'
                 }
             },
             {
-                type: 'question',
-                question: 'Ano ang formula ng kaligtasan?',
+                type: 'formula-question',
+                question: 'Kung ilalagay sa formula ang kaligtasan ayon sa Ephesians 2:8-9, ano dito sa mga sumusunod ang tama?',
                 options: [
-                    { text: 'Pananampalataya + Mabuting Gawa', correct: false },
-                    { text: 'Relihiyon + Ritwal', correct: false },
-                    { text: 'Pananampalataya LANG', correct: true }
+                    { text: 'Pananampalataya + Mabuting Gawa = Kaligtasan', correct: false },
+                    { text: 'Pananampalataya + Sampung Utos = Kaligtasan', correct: false },
+                    { text: 'Pananampalataya + Wala = Kaligtasan', correct: true }
                 ],
-                correctFeedback: '🎉 Tama! Pananampalataya LANG - walang idadagdag!',
-                wrongFeedback: 'Ang tamang sagot ay: <strong>Pananampalataya LANG.</strong>'
+                correctFeedback: '🎉 Tama! Pananampalataya + Wala = Kaligtasan. Ang kaligtasan ay regalo ng Diyos - tanggapin mo lang sa pamamagitan ng pananampalataya!',
+                wrongFeedback: 'formula-explanation'
             },
 
             // ========== DECISION & PRAYER ==========
@@ -612,6 +612,10 @@ const GospelPresentation = {
                 html = this.renderQuestion(slide);
                 nextBtn.style.display = 'none';
                 break;
+            case 'formula-question':
+                html = this.renderQuestion(slide);
+                nextBtn.style.display = 'none';
+                break;
             case 'transition':
                 html = this.renderTransition(slide);
                 nextBtn.style.display = 'flex';
@@ -716,8 +720,22 @@ const GospelPresentation = {
             feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-green-500/10 border border-green-500/30 text-green-300';
             feedback.innerHTML = slide.correctFeedback;
         } else {
-            feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-orange-500/10 border border-orange-500/30 text-orange-300';
-            feedback.innerHTML = slide.wrongFeedback;
+            // Check if this is the formula question with special explanation
+            if (slide.wrongFeedback === 'formula-explanation') {
+                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-xs bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] max-h-48 overflow-y-auto';
+                feedback.innerHTML = `
+                    <p class="italic text-[var(--text-muted)] mb-2">"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya't walang maipagmamalaki ang sinuman."</p>
+                    <p class="text-[var(--mission-gold)] text-right text-xs mb-3">— Ephesians 2:8-9</p>
+                    <p class="mb-2">Ayon sa talata, ang kaligtasan ay <strong>hindi bunga ng mabubuting gawa</strong> kaya ang Letter A at B ay hindi tama.</p>
+                    <p class="mb-2">Pangalawa, ayon sa talata <strong>hindi ito mula sa sarili kundi ito ay kaloob ng Diyos</strong>. Ang kaligtasan ay regalo ng Diyos at hindi binabayaran ng pagsunod sa sampung utos, pagsali sa relihiyon o paggawa ng mabuting gawa.</p>
+                    <p class="mb-2">Ang kaligtasan ay tinatanggap lamang natin mula sa <strong>kagandahang-loob ng Diyos (grace)</strong>.</p>
+                    <p class="text-[var(--mission-gold)] font-bold">Kaya ang tamang sagot ay Letter C - Pananampalataya + Wala = Kaligtasan.</p>
+                    <p class="text-[var(--text-muted)] mt-2 text-xs">Ang paggawa ng mabuti at pagsunod sa utos ng Diyos ay mabuti pero hindi natin ito babasehan ng Diyos para sa ating kaligtasan kundi ang ginawa lamang ng Panginoong Hesus para sa atin.</p>
+                `;
+            } else {
+                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-orange-500/10 border border-orange-500/30 text-orange-300';
+                feedback.innerHTML = slide.wrongFeedback;
+            }
         }
         
         setTimeout(() => {
