@@ -243,6 +243,13 @@ const GospelPresentation = {
                 wrongFeedback: 'Ang tamang sagot ay: <strong>Ang lahat ng tao.</strong>'
             },
             {
+                type: 'transition',
+                emoji: '⚠️',
+                title: 'May Kabayaran',
+                text: 'Hindi lang tayo nahiwalay sa Diyos dahil makasalanan tayo...',
+                highlight: 'Ang ating kasalanan ay may kabayaran.'
+            },
+            {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract2.jpg',
                 verse: {
