@@ -31,22 +31,71 @@ The app revolves around ONE main card: **"Aking Paglalakbay"** (My Journey). Use
 Know God's love, Accept Christ, Join community
 
 ### User Experience
-1. User clicks **"SIMULAN ANG SUSUNOD NA HAKBANG"** (Take the next step)
+1. User clicks **"HUMAKBANG NGAYON"** (Take a step today)
 2. Modal shows options:
-   - ❤️ **Kilalanin ang Pag-ibig ng Diyos** → Gospel Presentation
-   - 📖 **Maglaan ng Oras sa Diyos** → Conversation with God Guide
-   - 👥 **Sumali sa Mission Group** → Join Group flow
+   - ❤️ **Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos** → Gospel Presentation
+   - 📖 **Maglaan ng Oras sa Diyos** → Conversation with God Guide (locked until Gospel complete)
+   - 👥 **Sumali sa Mission Group** → Join Group flow (locked until Gospel complete)
 
-### Gospel Presentation (Interactive)
-- **"Ang Daan Papuntang Langit"** - 4 Truths:
-  1. God Loves You (John 3:16, John 10:10)
-  2. Sin Separates (Romans 3:23, 6:23, Rev 21:8)
-  3. Jesus is the Way (John 14:6, 1 Peter 3:18)
-  4. Believe to be Saved (Ephesians 2:8-9)
-- Interactive formula question
-- Prayer of salvation (saved to Firebase)
-- Assurance verses
-- Audio narration support
+### Gospel Presentation (Interactive) ⭐ COMPLETED
+**Location:** `/modules/gospel/gospel-presentation.js`
+**Pattern:** See `/INTERACTIVE-PRESENTATION-PATTERN.md`
+
+**"Ang Daan Papuntang Langit"** - 34 animated slides with question-based discovery:
+
+**Truth 1: Mahal Ka ng Diyos**
+- John 3:16 verse + image
+- Q1: "Paano pinatunayan ng Diyos na mahal ka Niya?" → Ibinigay Niya ang Kanyang Anak
+- Q2: "Ano ang gusto ng Diyos para sa iyo?" → Buhay na walang hanggan
+- Transition: "Pero bakit hindi natin ito nararanasan?"
+
+**Truth 2: Lahat Tayo ay Makasalanan**
+- Romans 3:23 + image
+- Q: "Sino ang nagkasala?" → Ang lahat ng tao
+- Transition: "Hindi lang tayo nahiwalay... May kabayaran"
+- Romans 6:23a + image
+- Q: "Ano ang kabayaran ng kasalanan?" → Kamatayan
+- Transition: "Pero bakit buhay pa ako?" → Dalawang kamatayan
+- Physical vs Spiritual death explanation
+- Revelation 21:8 (second death = lake of fire)
+- Q: "Saan ang pangalawang kamatayan?" → Lawa ng apoy
+
+**Truth 3: Si Hesus ang Tanging Daan**
+- Human efforts fail (10 Commandments, Religion, Good Works, Rituals)
+- Kawikaan 14:12 + image
+- Transition: "Kung lahat tayo makasalanan... Paano maliligtas?"
+- John 14:6 + image
+- Q: "Sino ang TANGING daan?" → Si Hesus lamang
+- Transition: "Pero bakit si Hesus?"
+- 1 Peter 3:18
+- Q: "Bakit namatay si Hesus?" → Para bayaran ang ating kasalanan
+
+**Truth 4: Sumampalataya Para Maligtas**
+- Transition: "Kung binayaran na, ligtas na ba ako?" → Hindi pa, kailangan ng pananampalataya
+- Ephesians 2:8-9 (corrected translation)
+- Formula Q: "Kung ilalagay sa formula ang kaligtasan..."
+  - A) Pananampalataya + Mabuting Gawa = ❌
+  - B) Pananampalataya + Sampung Utos = ❌
+  - C) Pananampalataya + Wala = ✅
+- Detailed wrong-answer explanation
+
+**Decision Flow:**
+- "Nais mo bang ilagay ang pananampalataya mo sa Panginoong Hesus ngayon?"
+- **If "Hindi pa ako handa":** Record, encourage to continue seeking, return to app
+- **If "Oo, ibibigay ko na":** Prayer intro → Prayer of Acceptance → Confirmation
+
+**Prayer of Acceptance:**
+> "Panginoong Hesus, Inaamin ko po na ako ay makasalanan. Patawarin Niyo po ako. Nananampalataya po ako na Ikaw ang nagbayad ng aking kasalanan sa krus. Ngayon nga ay binubuksan ko na ang aking puso. Pumasok Ka at manahan sa akin. Tinatanggap Kita bilang aking Panginoon at Tagapagligtas. Salamat sapagkat balang araw ay makakasama Kita sa langit. Simula ngayon ay tatalikdan ko ang aking kasalanan. Sinusuko ko na ang aking buhay sa Iyo. Amen."
+
+**Firebase Tracking:**
+- `gospelDecision.status`: 'not-ready', 'needs-followup', 'saved'
+- `gospelDecision.acceptedAt`: timestamp
+- `stats/gospel.savedCount`: incremented on salvation
+
+**Celebration:**
+- "MALIGAYANG BATI! Ikaw ay bagong nilalang!"
+- Assurance verses (John 1:12, 1 John 5:11, 2 Cor 5:17)
+- "Simulan ang Paglalakbay" → Continue journey
 
 ### Conversation with God Guide
 After accepting Christ, guide them to daily devotion:

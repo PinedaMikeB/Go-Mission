@@ -2,6 +2,7 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 > 📚 For full discipleship system details, see **MASTERPLAN.md**
+> 🎬 For interactive presentation pattern, see **INTERACTIVE-PRESENTATION-PATTERN.md**
 
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
@@ -12,155 +13,106 @@
 
 ---
 
-## Current Session (2026-01-26 Evening)
+## Current Session (2026-01-26 Late Night)
 
 ### ✅ COMPLETED TODAY
 
-#### 1. Home Screen Redesign
-- Journey Card is now the **main/only** prominent card
-- Button changed to **"SIMULAN ANG SUSUNOD NA HAKBANG"**
-- Removed standalone "Know How Much God Loves You" button
-- Gospel now accessed through Next Steps Modal
-
-#### 2. Next Steps Modal
-**Location:** `/modules/journey/next-steps-modal.js`
-
-Shows stage-appropriate options:
-- **Seeker:** Gospel, Quiet Time, Join Group
-- **Disciple:** Bible reading, Training enrollment
-- **Disciple-Maker:** Lead group, Level 2
-- **Builder:** Develop leaders, Level 3
-- **Multiplier:** Movement dashboard
-
-#### 3. Gospel Presentation Module
+#### 1. Interactive Gospel Presentation (Complete Overhaul)
 **Location:** `/modules/gospel/gospel-presentation.js`
 
-- 27 interactive slides based on "Ang Daan Papuntang Langit"
-- 4 Truths structure with verses
-- Formula question for engagement
-- Prayer decision saved to Firebase
-- Audio timestamps ready (awaiting recording)
+**Features Implemented:**
+- 34 animated slides with smooth transitions
+- Staggered element animations (bounce, fade-up, scale-in)
+- Question-based discovery learning
+- Two-path decision flow (ready / not ready)
+- Firebase tracking for salvation decisions
+- Detailed wrong-answer explanations
 
-**Images:** `/assets/images/gospel/gospel_tract1-5.jpg`
+**Flow Structure:**
+1. Intro → Truth 1 (God Loves You) → John 3:16 + 2 Questions
+2. Transition "Pero bakit..." → Truth 2 (All Sinners) → Romans 3:23 + Question
+3. "May Kabayaran" transition → Romans 6:23 + Question
+4. "Dalawang Kamatayan" (Physical vs Spiritual) → Revelation 21:8 + Question
+5. Truth 3 intro → Kawikaan 14:12 → Human efforts grid (fail)
+6. "Paano maliligtas?" → Truth 3 (Jesus is the Way) → John 14:6 + Question
+7. "Pero bakit si Hesus?" → 1 Peter 3:18 + Question
+8. "Kung binayaran na..." transition → Truth 4 (Believe) → Ephesians 2:8-9
+9. Formula question with detailed explanation for wrong answers
+10. Decision: "Nais mo bang ilagay ang pananampalataya mo?" (2 buttons)
+11. If Yes → Prayer intro → Prayer → "Tinanggap mo ba?" → Celebration
+12. If No → Encouragement → Continue to Bible reading
 
-#### 4. NT Quick Insights Generation
-**Status:** Running in background
-**Log:** `/scripts/logs/nt-incomplete-generation.log`
+**Firebase Tracking:**
+- `gospelDecision.status`: 'not-ready', 'needs-followup', 'saved'
+- `gospelDecision.acceptedAt`: timestamp for saved users
+- `stats/gospel.savedCount`: incremented on each salvation
 
-```bash
-# Monitor progress
-tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-incomplete-generation.log"
-```
+#### 2. Home Screen Updates
+- Button text: **"HUMAKBANG NGAYON"** (Take a step today)
+- Journey-centric dashboard with 5-stage progress
 
----
-
-## 🎯 THE DISCIPLESHIP SYSTEM (Summary)
-
-> Full details in **MASTERPLAN.md**
-
-### 5 Stages
-```
-NASA PAGLALAKBAY → ALAGAD → TAGAPAG-HUBOG → TAGAPAG-TAYO → TAGAPAG-PARAMI
-    (Seeker)      (Disciple)  (D-Maker)      (Builder)     (Multiplier)
-```
-
-### Stage Transitions
-| From | To | Requirements |
-|------|-----|--------------|
-| Seeker | Disciple | Accept Christ + Join Group |
-| Disciple | Disciple-Maker | Complete Level 1 (18 sessions) |
-| Disciple-Maker | Builder | Lead Group + Complete Level 2 |
-| Builder | Multiplier | Produce Leaders + Complete Level 3 |
-
-### Wednesday Equipping (Level 1)
-- **18 sessions** (18 weeks)
-- **6-day weekly cycle** of daily readings
-- **Wednesday** = Group processing
-- **Daily format:** Intro → Topic → Verse → Story → Explanation → Question → Outro
+#### 3. Next Steps Modal
+**Location:** `/modules/journey/next-steps-modal.js`
+- Sequential locking (Gospel must complete first)
+- Stage-appropriate options
 
 ---
 
-## 📁 Key Files
+## Key Files Reference
 
-### Modules
-```
-/modules/
-  /gospel/
-    gospel-presentation.js     # Interactive gospel (27 slides)
-    README.md
-  /journey/
-    next-steps-modal.js        # Stage-based options modal
-  /bible/
-    /data/quick-insights/      # JSON files per book
-```
-
-### Scripts
-```
-/scripts/
-  generate-quick-insights-openai.js  # Quick Insights generator
-  run-nt-incomplete.sh               # NT batch runner
-  /logs/                             # Generation logs
-```
-
-### Assets
-```
-/assets/images/gospel/
-  gospel_tract1.jpg through gospel_tract5.jpg
-```
+| File | Purpose |
+|------|---------|
+| `/modules/gospel/gospel-presentation.js` | Complete interactive Gospel (934 lines) |
+| `/modules/journey/next-steps-modal.js` | Stage-based options modal |
+| `/assets/images/gospel/gospel_tract1-5.jpg` | Gospel tract images |
+| `/index.html` | Main app with journey card |
+| `/MASTERPLAN.md` | Full 5-stage discipleship system |
+| `/INTERACTIVE-PRESENTATION-PATTERN.md` | Reusable pattern for future presentations |
 
 ---
 
-## 🔜 WHAT'S NEXT
+## Testing the Gospel Presentation
 
-### Immediate (After Audio)
-1. **Mike provides:** Gospel audio recording (one long file)
-2. **Claude splits:** By slide timestamps
-3. **Implement:** Audio playback in Gospel module
-
-### Then Build
-1. **Conversation with God Guide** - Quiet time tutorial modal
-2. **Prayer Request Tracking** - Add to journal, mark answered
-3. **Level 1 Training Content** - 18 sessions structure
-
-### Later
-4. Stage progression logic (auto-promote when requirements met)
-5. Badge system
-6. Leader dashboard (see members' progress)
-7. Certificates
-
----
-
-## 🧪 Testing
-
-### Test Gospel Flow
 1. Go to https://gomission.netlify.app
-2. Click **"SIMULAN ANG SUSUNOD NA HAKBANG"**
-3. Select **"Kilalanin ang Pag-ibig ng Diyos"**
-4. Navigate through 27 slides
-5. Test formula question (select option 3)
-6. Test prayer button
-
-### Test Next Steps Modal
-1. Modal should show 3 options for Seekers
-2. Completed items show ✓ checkmark
-3. Gospel opens GospelPresentation
-4. Join Group opens MyGroups.showJoinModal()
+2. Click "HUMAKBANG NGAYON"
+3. Click "Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos"
+4. Go through all slides, answer questions
+5. Test both paths: "Hindi pa ako handa" and "Oo, ibibigay ko na"
+6. Check Firebase for recorded decisions
 
 ---
 
-## 📝 Commands Reference
+## Next Development Priorities
 
-```bash
-# Monitor NT generation
-tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-incomplete-generation.log"
+1. **Wednesday Equipping Level 1** - 18 sessions, 6-day reading cycle
+2. **Quiet Time Guide** - "Conversation with God" module
+3. **Group Joining** - Mission Groups feature
+4. **Audio narration** - For Gospel presentation
+5. **Admin Dashboard** - View saved count, follow-up list
 
-# Check running processes
-ps aux | grep "generate-quick-insights" | grep -v grep
+---
 
-# Git push
-cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission" && git add -A && git commit -m "message" && git push origin main
+## Firebase Collections
+
+```
+users/{uid}
+  - gospelDecision: { status, acceptedAt, needsFollowUp }
+  - stage: 'seeker' | 'disciple' | 'disciple-maker' | 'builder' | 'multiplier'
+
+stats/gospel
+  - savedCount: number
+  - lastSavedAt: timestamp
 ```
 
 ---
 
-*Last Updated: January 26, 2026 - 8:45 PM PST*
+## Quick Commands
+
+```bash
+# Check for JS errors
+node --check modules/gospel/gospel-presentation.js
+
+# Push changes
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git add -A && git commit -m "message" && git push origin main
+```
