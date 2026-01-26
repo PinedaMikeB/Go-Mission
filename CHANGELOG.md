@@ -10,7 +10,83 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.3.0] - 2026-01-26 ⭐ CURRENT
+## [v1.4.0] - 2026-01-26 ⭐ CURRENT
+
+### 🚀 Journey-Centric Dashboard + Gospel Presentation
+
+**Summary:** Major redesign making the app journey-centric. Users always know where they are and what's next. Added interactive Gospel presentation.
+
+**New Features:**
+
+#### 1. Journey-Centric Home Screen
+- Journey Card is now the **main/only** prominent card
+- Removed standalone "Know How Much God Loves You" button
+- Single CTA: **"SIMULAN ANG SUSUNOD NA HAKBANG"** (Take the next step)
+- Other features moved to collapsible section (removed)
+
+#### 2. Next Steps Modal
+- Bottom sheet modal with stage-appropriate options
+- **Seeker options:** Gospel, Quiet Time, Join Group
+- **Disciple options:** Bible reading, Training enrollment
+- **Disciple-Maker options:** Lead group, Level 2 training
+- Completed items show ✓ checkmark
+- Smooth slide-up animation
+
+**File Created:**
+- `/modules/journey/next-steps-modal.js`
+
+#### 3. Gospel Presentation Module
+- 27 interactive slides based on "Ang Daan Papuntang Langit"
+- 4 Truths: God Loves You → Sin Separates → Jesus is the Way → Believe
+- Interactive formula question (3 options)
+- Prayer of salvation with decision tracking
+- Assurance verses and next steps
+- Audio timestamps ready (awaiting recording)
+- Saves prayer decision to Firebase
+
+**Files Created:**
+- `/modules/gospel/gospel-presentation.js`
+- `/modules/gospel/README.md`
+
+#### 4. Gospel Images
+- Downloaded 5 images from mission.wotgonline.com/daan
+- Classic "Bridge to Life" illustration style
+
+**Files Created:**
+- `/assets/images/gospel/gospel_tract1.jpg` through `gospel_tract5.jpg`
+
+#### 5. Discipleship System Documentation
+- Complete 5-stage journey mapped out
+- Wednesday Equipping structure (18 sessions)
+- Daily reading format defined
+- Badge and certificate system planned
+- Leader dashboard requirements
+
+**Files Updated:**
+- `/MASTERPLAN.md` - Complete discipleship system
+- `/HANDOFF.md` - Current session details
+
+**The 5 Stages:**
+```
+NASA PAGLALAKBAY → ALAGAD → TAGAPAG-HUBOG → TAGAPAG-TAYO → TAGAPAG-PARAMI
+    (Seeker)      (Disciple)  (D-Maker)      (Builder)     (Multiplier)
+```
+
+**Stage Transitions:**
+- Seeker → Disciple: Accept Christ + Join Group
+- Disciple → Disciple-Maker: Complete Level 1 (18 sessions)
+- Disciple-Maker → Builder: Lead Group + Level 2
+- Builder → Multiplier: Produce Leaders + Level 3
+
+**Rollback:** 
+```bash
+git checkout 6419842 -- index.html
+# Remove new modules manually if needed
+```
+
+---
+
+## [v1.3.0] - 2026-01-26
 
 ### 🎧 Audio Experience + NT Quick Insights Generation
 

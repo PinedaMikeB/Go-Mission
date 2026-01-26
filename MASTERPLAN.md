@@ -5,238 +5,359 @@
 ---
 
 ## Vision
-**Making Disciple-Makers** - A mobile-first PWA helping Filipino believers worldwide grow in faith through Bible reading, training, and community.
+**Making Disciple-Making Leaders** - A mobile-first PWA guiding Filipino believers worldwide through a complete discipleship journey: from seeker to multiplier.
 
 ---
 
-## Core Pillars
+## 🚀 THE DISCIPLESHIP JOURNEY
 
-### 1. 📖 Journey (Bible Reading)
-- Daily Bible reading with Quick Insights
-- Bilingual support (English/Tagalog)
-- Reflection journaling
-- Progress tracking
+### Core Concept: Journey-Centric Dashboard
+The app revolves around ONE main card: **"Aking Paglalakbay"** (My Journey). Users always see where they are and what's next. Every feature connects back to helping them take their next step.
 
-### 2. 🎓 Training (Discipleship)
-- Structured training sessions
-- Step-by-step lessons
-- Completion tracking
-- Certificate system
+### The 5 Stages
 
-### 3. 👥 Groups (Community)
-- Upline/Downline structure
-- Video meetings via Jitsi
-- Group chat
-- Join requests with approval
-
-### 4. 📊 Dashboard (Progress)
-- Personal stats
-- Reading streaks
-- Training progress
-- Group activity
-
----
-
-## 🎧 NEW DIRECTION: Audio & Video Experience
-
-### Concept: "Kindle-Style Audio" for Discipleship
-
-**Problem:**
-- Users commuting, driving, or busy can't read
-- Training sessions require focused reading time
-- Install guide requires visual attention
-
-**Solution:**
-- Add audio narration to ALL content
-- Users can LISTEN while driving/commuting
-- Complete training sessions "hands-free"
-- Animated visual guides synced with audio
-
-### Audio Features Roadmap
-
-#### Phase 1: Install Guide Audio ✅ IN PROGRESS
-- [x] English Android install guide script
-- [x] Tagalog Android install guide script
-- [x] English iPhone install guide script
-- [x] Tagalog iPhone install guide script
-- [x] Animated HTML guide with audio sync
-- [ ] Integrate into PWA install flow
-- [ ] Record professional audio files
-
-#### Phase 2: Training Session Audio
-- [ ] Text-to-speech for training content
-- [ ] Pre-recorded audio for each session
-- [ ] Play/pause controls
-- [ ] Progress tracking while listening
-- [ ] Background audio playback
-- [ ] Lock screen controls
-
-#### Phase 3: Bible Reading Audio
-- [ ] Quick Insights audio narration
-- [ ] Verse audio (optional)
-- [ ] Reflection prompts audio
-- [ ] Daily devotion audio mode
-
-#### Phase 4: App-Wide Audio
-- [ ] Welcome/onboarding audio
-- [ ] Navigation audio cues
-- [ ] Achievement celebrations
-- [ ] Group notifications audio
-
-### Audio Implementation Strategy
-
-**Option A: Pre-recorded (Recommended for quality)**
-- Record each training session
-- Store in Firebase Storage or CDN
-- Stream on demand
-- Higher quality, personal touch
-
-**Option B: Text-to-Speech (Faster to implement)**
-- Use Web Speech API or Google TTS
-- Generate on-the-fly
-- Lower storage costs
-- Less personal feel
-
-**Option C: Hybrid Approach**
-- Pre-recorded for training sessions
-- TTS for dynamic content (Quick Insights)
-- Best of both worlds
-
-### Audio File Naming Convention
 ```
-/audio/
-  /install-guide/
-    install-guide-en-android.mp3
-    install-guide-en-iphone.mp3
-    install-guide-tl-android.mp3
-    install-guide-tl-iphone.mp3
+┌─────────────────┐    ┌─────────────┐    ┌────────────────┐    ┌──────────────┐    ┌────────────────┐
+│ NASA PAGLALAKBAY│───▶│   ALAGAD    │───▶│ TAGAPAG-HUBOG  │───▶│ TAGAPAG-TAYO │───▶│ TAGAPAG-PARAMI │
+│    (Seeker)     │    │  (Disciple) │    │(Disciple-Maker)│    │   (Builder)  │    │  (Multiplier)  │
+└─────────────────┘    └─────────────┘    └────────────────┘    └──────────────┘    └────────────────┘
+```
+
+---
+
+## 📍 STAGE 1: NASA PAGLALAKBAY (Seeker)
+
+### Goal
+Know God's love, Accept Christ, Join community
+
+### User Experience
+1. User clicks **"SIMULAN ANG SUSUNOD NA HAKBANG"** (Take the next step)
+2. Modal shows options:
+   - ❤️ **Kilalanin ang Pag-ibig ng Diyos** → Gospel Presentation
+   - 📖 **Maglaan ng Oras sa Diyos** → Conversation with God Guide
+   - 👥 **Sumali sa Mission Group** → Join Group flow
+
+### Gospel Presentation (Interactive)
+- **"Ang Daan Papuntang Langit"** - 4 Truths:
+  1. God Loves You (John 3:16, John 10:10)
+  2. Sin Separates (Romans 3:23, 6:23, Rev 21:8)
+  3. Jesus is the Way (John 14:6, 1 Peter 3:18)
+  4. Believe to be Saved (Ephesians 2:8-9)
+- Interactive formula question
+- Prayer of salvation (saved to Firebase)
+- Assurance verses
+- Audio narration support
+
+### Conversation with God Guide
+After accepting Christ, guide them to daily devotion:
+1. Find a quiet place
+2. Prepare your heart (set aside distractions)
+3. Pray - Thank God, ask for His presence
+4. Listen - Open Bible, read in order (start with John)
+5. Meditate - When a verse strikes, stop and ask:
+   - "What do you mean by this?"
+   - "How does this connect to my life?"
+   - "How can I apply it?"
+6. Use Quick Insights for deeper understanding
+7. Write reflection and prayer requests
+8. Save to journal
+
+### Transition to ALAGAD
+**Requirements:**
+- ✅ Accepted Christ (Gospel completed)
+- ✅ Joined a Mission Group
+
+**Visual:** Journey line turns GOLD when both complete
+
+---
+
+## 📍 STAGE 2: ALAGAD (Disciple)
+
+### Goal
+Grow in relationship with God, Learn foundations
+
+### Dashboard Display
+- Title changes to: **"AKO AY ISANG ALAGAD"**
+- Encouragement message for disciples
+
+### User Experience
+1. Continue daily Quiet Time (Bible reading)
+2. Attend Mission Group weekly
+3. Enroll in **Wednesday Equipping** (Level 1 Training)
+
+### Wednesday Equipping - Level 1 (18 Sessions)
+
+**Format: 6-Day Weekly Cycle**
+
+| Day | Activity |
+|-----|----------|
+| Mon | 📖 Day 1 reading + questions |
+| Tue | 📖 Day 2 reading + questions |
+| Wed | 👥 **Group Processing** (Wednesday Equipping) |
+| Thu | 📖 Day 3 reading + questions |
+| Fri | 📖 Day 4 reading + questions |
+| Sat | 📖 Day 5-6 reading + reflection |
+| Sun | 🙏 Rest / Church |
+
+**Daily Reading Structure:**
+1. **Intro** - Review previous day, introduce today's focus
+2. **Main Topic** - Core teaching point
+3. **Verse** - Scripture foundation
+4. **Story/Illustration** - Relatable example
+5. **Explanation** - Deeper understanding
+6. **Reflection Question** - Personal application
+7. **Outro** - Segue to next topic
+
+**Session Topics (18 weeks):**
+1. God's Way to Heaven (Assurance of Salvation)
+2. Your New Identity in Christ
+3. The Holy Spirit
+4. Prayer - Talking with God
+5. The Bible - God's Word
+6. Obedience - Following Jesus
+7. Fellowship - The Church
+8. Witnessing - Sharing Your Faith
+9. Spiritual Warfare
+10. Stewardship - Time, Talent, Treasure
+11. Worship
+12. Serving Others
+13. Forgiveness
+14. Faith
+15. The Great Commission
+16. Making Disciples
+17. Leading Others
+18. Multiplication Mindset
+
+**Completion:** 18 weeks → Badge earned → Ready to lead
+
+### Transition to TAGAPAG-HUBOG
+**Requirements:**
+- ✅ Completed Level 1 Training (18 sessions)
+
+---
+
+## 📍 STAGE 3: TAGAPAG-HUBOG (Disciple-Maker)
+
+### Goal
+Lead others, Start multiplying
+
+### Dashboard Display
+- Title: **"AKO AY TAGAPAG-HUBOG"**
+
+### User Experience
+1. **Lead a Mission Group** (start your own group)
+2. Enroll in **Level 2 Training** (Builder track)
+3. Guide new disciples through their journey
+
+### Level 2 Training
+- Leadership development
+- Group facilitation skills
+- Multiplication principles
+- Coaching new believers
+
+### Transition to TAGAPAG-TAYO
+**Requirements:**
+- ✅ Leading an active Mission Group
+- ✅ Completed Level 2 Training
+
+---
+
+## 📍 STAGE 4: TAGAPAG-TAYO (Builder)
+
+### Goal
+Build leaders, Develop others to lead
+
+### Dashboard Display
+- Title: **"AKO AY TAGAPAG-TAYO"**
+
+### User Experience
+1. Train group members to become leaders
+2. Help them start their own groups
+3. Enroll in **Level 3 Training**
+4. Coach other Disciple-Makers
+
+### Level 3 Training
+- Movement building
+- Multiplication strategies
+- Leadership coaching
+- Church planting foundations
+
+### Transition to TAGAPAG-PARAMI
+**Requirements:**
+- ✅ Producing leaders who lead groups
+- ✅ Completed Level 3 Training
+
+---
+
+## 📍 STAGE 5: TAGAPAG-PARAMI (Multiplier)
+
+### Goal
+Movement multiplication, Multiple generations
+
+### Dashboard Display
+- Title: **"AKO AY TAGAPAG-PARAMI"**
+
+### User Experience
+1. Oversee multiple generations of disciples
+2. Movement leadership
+3. Strategic planning
+4. Mentoring Builders
+
+---
+
+## 🏆 BADGES & CERTIFICATES
+
+### Completion Badges
+| Badge | Earned When |
+|-------|-------------|
+| 🌱 **Bagong Nilalang** | Accepted Christ |
+| 👥 **Kasama sa Grupo** | Joined a Mission Group |
+| 📖 **Alagad ni Kristo** | Completed Level 1 |
+| ⭐ **Tagapag-Hubog** | Leading a group + Level 2 |
+| 🏗️ **Tagapag-Tayo** | Producing leaders + Level 3 |
+| 🌍 **Tagapag-Parami** | Multiple generations |
+
+### Streak Badges
+- 7-Day Reading Streak
+- 30-Day Reading Streak
+- 100-Day Reading Streak
+
+### Training Certificates
+- Level 1 Completion Certificate
+- Level 2 Completion Certificate
+- Level 3 Completion Certificate
+
+---
+
+## 📊 LEADER DASHBOARD
+
+### What Leaders See
+- Members' progress (which stage, training progress)
+- Who completed daily readings
+- Training session completion rates
+- Prayer requests from members
+- Group activity metrics
+
+---
+
+## 🔊 AUDIO EXPERIENCE
+
+### Audio Features
+1. **Gospel Presentation** - Full audio narration (Mike recording)
+2. **Training Sessions** - Audio for daily readings
+3. **Quick Insights** - TTS or recorded
+4. **Install Guide** - Animated with audio
+
+### Why Audio Matters
+- Filipino commuters have long travel times
+- Training sessions completable while driving/commuting
+- Accessibility for those who prefer listening
+- Personal touch with pastor's voice
+
+---
+
+## 📖 BIBLE READING SYSTEM
+
+### Quick Insights (4 Sections per Verse)
+1. **Understanding This Verse** - Context & meaning
+2. **Living It Out** - Practical application
+3. **See God's Love** - God's character revealed
+4. **Reflection Question** - Personal prompt
+
+### Journal Features
+- Daily reflections saved
+- Prayer requests with tracking
+- Mark prayers as answered
+- Filter by answered/pending
+- Share with group (optional)
+
+---
+
+## 🛠️ TECHNICAL ARCHITECTURE
+
+### Key Modules
+```
+/modules/
+  /gospel/
+    gospel-presentation.js     # Interactive gospel slides
+    README.md
+  /journey/
+    next-steps-modal.js        # Stage-based options modal
+    conversation-guide.js      # Quiet time tutorial (planned)
+  /bible/
+    bible-reader.js            # Bible reading interface
+    /data/
+      /quick-insights/         # JSON files per book
   /training/
-    session-01-en.mp3
-    session-01-tl.mp3
-    session-02-en.mp3
-    ...
-  /insights/
-    GEN-1-1-en.mp3  (or TTS)
-    GEN-1-1-tl.mp3
-    ...
+    training.js                # Training system
+    /content/                   # Session content (planned)
+  /groups/
+    my-groups.js               # Group management
 ```
 
-### Animated Guide System
+### Firebase Collections
+```
+users/
+  {uid}/
+    stage: "seeker" | "disciple" | "disciple-maker" | "builder" | "multiplier"
+    gospelDecision: { prayed: bool, prayedAt: timestamp }
+    trainingProgress: { level1: 0-18, level2: 0-X, level3: 0-X }
+    badges: []
+    stageHistory: { disciple: timestamp, ... }
 
-**Purpose:** Visual tutorials synced with audio narration
-
-**Components:**
-1. Phone mockup showing app screens
-2. Highlight animations on UI elements
-3. Step indicator showing current step
-4. Progress bar synced with audio
-5. Play/pause controls
-
-**Files Created:**
-- `/docs/install-guide-script.md` - Audio recording scripts
-- `/modules/install/install-guide-animated.html` - Animated guide prototype
-
----
-
-## Quick Insights Generation
-
-### Status: OT Complete, NT In Progress
-
-**OT Books:** 37/39 complete
-- Missing: JON (Jonah), HAG (Haggai) - No Tyndale source
-
-**NT Books:** Generation running (25 books)
-- Script: `/scripts/run-nt-generation.sh`
-- Log: `/scripts/logs/nt-full-generation.log`
-- Model: GPT-4o-mini
-- Format: 4-section detailed paragraphs
-
-**Missing Tyndale Sources (4 books):**
-- JON (Jonah)
-- HAG (Haggai)
-- 1TH (1 Thessalonians)
-- 2TH (2 Thessalonians)
+groups/
+  {groupId}/
+    members/
+    requests/
+    
+devotions/
+  {uid}/
+    {date}/
+      passage, reflection, prayerRequests, shared
+```
 
 ---
 
-## Feature Backlog
+## 📅 ROADMAP
 
-### High Priority
+### Phase 1: Foundation (Current)
+- [x] Journey card as main dashboard
+- [x] Next Steps Modal with stage-based options
+- [x] Gospel Presentation (interactive slides)
+- [x] Gospel images downloaded
+- [ ] Audio for Gospel (pending Mike's recording)
+- [ ] Conversation with God guide
+
+### Phase 2: Training System
+- [ ] Level 1 content structure (18 sessions)
+- [ ] Daily reading interface
+- [ ] Wednesday processing tracker
+- [ ] Session completion tracking
 - [ ] Audio for training sessions
-- [ ] Install guide with audio
-- [ ] Complete NT Quick Insights
-- [ ] Find Tyndale sources for missing books
 
-### Medium Priority
-- [ ] Reading streaks
-- [ ] Achievement badges
-- [ ] Share progress feature
-- [ ] Offline mode improvements
+### Phase 3: Progression & Badges
+- [ ] Stage transition logic
+- [ ] Badge system
+- [ ] Certificates
+- [ ] Leader dashboard
+- [ ] Progress tracking for leaders
 
-### Low Priority
-- [ ] Dark mode refinements
-- [ ] Language auto-detection
-- [ ] Social sharing cards
-- [ ] App store listing (future)
-
----
-
-## Technical Debt
-
-- [ ] Consolidate group modules (groups.js vs my-groups.js)
-- [ ] Add error boundaries
-- [ ] Improve offline caching
-- [ ] Add analytics tracking
+### Phase 4: Polish
+- [ ] Celebration animations
+- [ ] Push notifications
+- [ ] Offline support
 - [ ] Performance optimization
 
 ---
 
-## Metrics to Track
+## 📝 NOTES
 
-1. **User Engagement**
-   - Daily active users
-   - Session duration
-   - Training completion rate
-
-2. **Content Consumption**
-   - Chapters read per user
-   - Insights viewed
-   - Audio listen time
-
-3. **Community Health**
-   - Groups created
-   - Meeting attendance
-   - Chat activity
+- **Journey is central** - Everything connects back to "Where am I? What's next?"
+- **Audio is key** - Filipino commuters can learn while traveling
+- **Groups are essential** - No lone-ranger Christianity
+- **Training is structured** - 18 sessions, 6 days/week, Wednesday processing
+- **Leaders see progress** - Shepherding through data
 
 ---
 
-## Timeline
-
-### January 2026
-- ✅ Groups restructure (Upline/Downline)
-- ✅ Join request system
-- ✅ Guest system
-- ✅ Quick Insights OT generation
-- 🔄 Quick Insights NT generation
-- 🔄 Audio install guide prototype
-
-### February 2026
-- [ ] Complete NT Quick Insights
-- [ ] Audio training sessions
-- [ ] Install guide with audio in app
-- [ ] Reading streaks
-
-### March 2026
-- [ ] Bible reading audio
-- [ ] Achievement system
-- [ ] Performance optimization
-- [ ] Beta testing with 70 Mission Groups
-
----
-
-## Notes
-
-- Audio is the KEY differentiator for busy commuters
-- Filipino users often have long commutes - perfect for audio
-- Training sessions should be completable in ~15-20 minutes (commute time)
-- Consider podcast-style delivery for training
+*Last Updated: January 26, 2026*
