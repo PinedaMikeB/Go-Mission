@@ -378,11 +378,6 @@ const GospelPresentation = {
                     </div>
                 `
             },
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">SI HESUS ANG TANGING DAAN</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Siya lang ang tulay patungo sa Diyos</p>
-                    </div>
-                `
-            },
             {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract4.jpg',
