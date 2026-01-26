@@ -422,13 +422,20 @@ const GospelPresentation = {
                 correctFeedback: '🎉 Tama! Si Hesus ay namatay para bayaran ang ating mga kasalanan!',
                 wrongFeedback: 'Ang tamang sagot ay: <strong>Para bayaran ang ating kasalanan.</strong>'
             },
+            {
+                type: 'transition',
+                emoji: '🤔',
+                title: 'Kung ganoon...',
+                text: 'Kung binayaran na ni Hesus ang lahat ng aking kasalanan, ligtas na ba ako?',
+                highlight: 'Hindi pa. Kailangan mong ilagay ang iyong pananampalataya kay Hesus.'
+            },
 
-            // ========== TRUTH 5: BELIEVE TO BE SAVED ==========
+            // ========== TRUTH 4: BELIEVE TO BE SAVED ==========
             {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Panlimang Katotohanan</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pang-apat na Katotohanan</p>
                         <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">SUMAMPALATAYA PARA MALIGTAS</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Ang kaligtasan ay regalo - tanggapin mo lang</p>
                     </div>
