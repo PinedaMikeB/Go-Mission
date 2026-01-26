@@ -462,18 +462,53 @@ const GospelPresentation = {
 
             // ========== DECISION & PRAYER ==========
             {
-                type: 'decision',
+                type: 'decision-choice',
+                render: () => `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <h3 class="gospel-fade-in text-lg font-bold text-white mb-3">Nais mo bang ilagay ang pananampalataya mo sa Panginoong Hesus ngayon?</h3>
+                        <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-3">Ayon sa Bibliya:</p>
+                        <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-3 text-xs mb-4">
+                            <p class="text-[var(--text-color)] mb-1">✅ Mahal ka ng Diyos</p>
+                            <p class="text-[var(--text-color)] mb-1">✅ Lahat tayo ay nagkasala</p>
+                            <p class="text-[var(--text-color)] mb-1">✅ Hindi sapat ang sariling sikap</p>
+                            <p class="text-[var(--text-color)] mb-1">✅ Si Hesus ang tanging daan</p>
+                            <p class="text-[var(--text-color)]">✅ Kailangan mong ilagay ang pananampalataya sa Panginoong Hesus</p>
+                        </div>
+                        <div class="gospel-fade-up delay-3 space-y-2">
+                            <button onclick="GospelPresentation.handleDecision('not-ready')" class="w-full px-4 py-3 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] rounded-xl text-sm">
+                                Hindi pa ako handa
+                            </button>
+                            <button onclick="GospelPresentation.handleDecision('yes')" class="w-full px-4 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm gospel-btn-pulse">
+                                Oo, ibibigay ko na ang aking buhay sa Kanya
+                            </button>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'not-ready',
+                render: () => `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <div class="gospel-fade-in text-4xl mb-3">🙏</div>
+                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-white mb-3">Naiintindihan ko na hindi ka pa handa.</h3>
+                        <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-4 text-sm">
+                            <p class="text-[var(--text-color)] mb-3">Ipagpatuloy mo ang paghahanap mo sa Diyos.</p>
+                            <p class="text-[var(--text-color)] mb-3">📖 Basahin mo ang Bibliya araw-araw mula dito sa ating app.</p>
+                            <p class="text-[var(--text-color)]">At kung nais mo nang isuko ang buhay mo sa Kanya, bumalik ka ulit dito sa ating <strong class="text-[var(--mission-gold)]">"Pagkilala sa Pagmamahal ng Diyos"</strong>.</p>
+                        </div>
+                        <button onclick="GospelPresentation.completeNotReady()" class="gospel-fade-up delay-3 mt-4 px-6 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
+                            Magpatuloy →
+                        </button>
+                    </div>
+                `
+            },
+            {
+                type: 'prayer-intro',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-5xl mb-3">🙏</div>
-                        <h3 class="gospel-fade-up delay-2 text-xl font-bold text-white mb-4">Gusto mo bang tanggapin si Hesus?</h3>
-                        <div class="gospel-fade-up delay-3 text-left bg-[var(--card-bg)] rounded-xl p-4 text-sm">
-                            <p class="text-[var(--text-color)] mb-2">✅ Mahal ka ng Diyos</p>
-                            <p class="text-[var(--text-color)] mb-2">✅ Lahat tayo ay nagkasala</p>
-                            <p class="text-[var(--text-color)] mb-2">✅ Hindi sapat ang sariling sikap</p>
-                            <p class="text-[var(--text-color)] mb-2">✅ Si Hesus ang tanging daan</p>
-                            <p class="text-[var(--text-color)]">✅ Pananampalataya lang ang kailangan</p>
-                        </div>
+                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-white mb-3">Ipahayag mo ang iyong pananampalataya sa Panginoong Hesus</h3>
+                        <p class="gospel-fade-up delay-2 text-sm text-[var(--text-muted)]">Sabihin mo ito sa Kanya ng may buong pananampalataya...</p>
                     </div>
                 `
             },
@@ -481,9 +516,9 @@ const GospelPresentation = {
                 type: 'prayer',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <h3 class="gospel-fade-in text-lg font-bold text-white mb-2">Panalangin ng Pagtanggap</h3>
-                        <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-3">Basahin at ipanalangin nang buong puso:</p>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-4 text-left mb-4">
+                        <h3 class="gospel-fade-in text-base font-bold text-white mb-2">Panalangin ng Pagtanggap</h3>
+                        <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-2">Basahin at ipanalangin nang buong puso:</p>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-left mb-3">
                             <p class="text-[var(--text-color)] leading-relaxed text-sm italic">
                                 "Panginoong Hesus, kinikilala ko na ako ay makasalanan. 
                                 Naniniwala ako na Ikaw ay namatay sa krus para sa aking mga kasalanan 
@@ -491,9 +526,15 @@ const GospelPresentation = {
                                 Pumasok Ka sa aking buhay. Salamat sa buhay na walang hanggan. Amen."
                             </p>
                         </div>
-                        <button onclick="GospelPresentation.recordPrayer()" id="prayerBtn" class="gospel-fade-up delay-4 gospel-btn-pulse px-6 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-base">
-                            🙏 Ipinanalangin Ko Ito
-                        </button>
+                        <p class="gospel-fade-up delay-3 text-sm text-white mb-3">Tinanggap mo ba ang Panginoong Hesus?</p>
+                        <div class="gospel-fade-up delay-4 flex gap-3 justify-center">
+                            <button onclick="GospelPresentation.handlePrayerResponse('no')" class="px-6 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] rounded-xl text-sm">
+                                Hindi
+                            </button>
+                            <button onclick="GospelPresentation.handlePrayerResponse('yes')" class="px-6 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
+                                Oo, tinanggap ko!
+                            </button>
+                        </div>
                     </div>
                 `
             },
@@ -621,8 +662,17 @@ const GospelPresentation = {
                 nextBtn.style.display = 'flex';
                 nextBtn.textContent = 'Next →';
                 break;
+            case 'decision-choice':
+            case 'not-ready':
             case 'prayer':
-            case 'decision':
+                html = slide.render();
+                nextBtn.style.display = 'none';
+                break;
+            case 'prayer-intro':
+                html = slide.render();
+                nextBtn.style.display = 'flex';
+                nextBtn.textContent = 'Next →';
+                break;
             case 'celebration':
             case 'truth-header':
             case 'human-efforts':
@@ -631,7 +681,7 @@ const GospelPresentation = {
             case 'custom':
                 html = slide.render();
                 nextBtn.style.display = slide.type === 'final' ? 'none' : 'flex';
-                nextBtn.textContent = slide.type === 'prayer' ? 'Skip →' : 'Next →';
+                nextBtn.textContent = 'Next →';
                 break;
             default:
                 html = slide.render ? slide.render() : '';
@@ -760,28 +810,110 @@ const GospelPresentation = {
         }
     },
 
-    async recordPrayer() {
-        const btn = document.getElementById('prayerBtn');
-        btn.disabled = true;
-        btn.classList.remove('gospel-btn-pulse');
-        btn.innerHTML = '✓ Naitala na!';
-        btn.classList.remove('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
-        btn.classList.add('bg-green-600', 'text-white');
-        
-        localStorage.setItem('gospelCompleted', 'true');
-        localStorage.setItem('prayerPrayed', 'true');
-        
-        try {
-            const user = window.auth?.currentUser;
-            if (user && window.db) {
-                await window.db.collection('users').doc(user.uid).update({
-                    'gospelDecision.prayed': true,
-                    'gospelDecision.prayedAt': firebase.firestore.FieldValue.serverTimestamp()
-                });
+    /**
+     * Handle decision choice (ready or not ready)
+     */
+    async handleDecision(choice) {
+        if (choice === 'not-ready') {
+            // Record that user is not ready yet
+            try {
+                const user = window.auth?.currentUser;
+                if (user && window.db) {
+                    await window.db.collection('users').doc(user.uid).update({
+                        'gospelDecision.notReadyAt': firebase.firestore.FieldValue.serverTimestamp(),
+                        'gospelDecision.status': 'not-ready'
+                    });
+                }
+            } catch (e) { console.error(e); }
+            
+            localStorage.setItem('gospelStatus', 'not-ready');
+            
+            // Find and go to not-ready slide
+            const notReadyIndex = this.slides.findIndex(s => s.type === 'not-ready');
+            if (notReadyIndex !== -1) {
+                this.showSlide(notReadyIndex);
             }
-        } catch (e) { console.error(e); }
+        } else if (choice === 'yes') {
+            // User is ready - go to prayer intro
+            const prayerIntroIndex = this.slides.findIndex(s => s.type === 'prayer-intro');
+            if (prayerIntroIndex !== -1) {
+                this.showSlide(prayerIntroIndex);
+            }
+        }
+    },
+
+    /**
+     * Complete for not ready users
+     */
+    completeNotReady() {
+        localStorage.setItem('gospelViewed', 'true');
+        this.close();
         
-        setTimeout(() => this.next(), 1500);
+        // Could open Bible reader or just close
+        if (typeof NextStepsModal !== 'undefined') {
+            setTimeout(() => NextStepsModal.open(), 500);
+        }
+    },
+
+    /**
+     * Handle prayer response (yes/no)
+     */
+    async handlePrayerResponse(response) {
+        if (response === 'no') {
+            // Record for follow-up
+            try {
+                const user = window.auth?.currentUser;
+                if (user && window.db) {
+                    await window.db.collection('users').doc(user.uid).update({
+                        'gospelDecision.prayerResponse': 'no',
+                        'gospelDecision.needsFollowUp': true,
+                        'gospelDecision.respondedAt': firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (e) { console.error(e); }
+            
+            localStorage.setItem('gospelStatus', 'needs-followup');
+            
+            // Close and show Next Steps
+            this.close();
+            if (typeof NextStepsModal !== 'undefined') {
+                setTimeout(() => NextStepsModal.open(), 500);
+            }
+        } else if (response === 'yes') {
+            // User accepted Christ!
+            localStorage.setItem('gospelCompleted', 'true');
+            localStorage.setItem('prayerPrayed', 'true');
+            localStorage.setItem('savedDate', new Date().toISOString());
+            
+            try {
+                const user = window.auth?.currentUser;
+                if (user && window.db) {
+                    await window.db.collection('users').doc(user.uid).update({
+                        'gospelDecision.accepted': true,
+                        'gospelDecision.acceptedAt': firebase.firestore.FieldValue.serverTimestamp(),
+                        'gospelDecision.status': 'saved',
+                        'stage': 'disciple'
+                    });
+                    
+                    // Also add to saved count collection for tracking
+                    await window.db.collection('stats').doc('gospel').set({
+                        savedCount: firebase.firestore.FieldValue.increment(1),
+                        lastSavedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
+            } catch (e) { console.error(e); }
+            
+            // Go to celebration slide
+            const celebrationIndex = this.slides.findIndex(s => s.type === 'celebration');
+            if (celebrationIndex !== -1) {
+                this.showSlide(celebrationIndex);
+            }
+        }
+    },
+
+    async recordPrayer() {
+        // Legacy function - kept for compatibility
+        this.handlePrayerResponse('yes');
     },
 
     async complete() {
