@@ -24,10 +24,11 @@ const NextStepsModal = {
                 {
                     id: 'gospel',
                     icon: '❤️',
-                    title: 'Kilalanin ang Pag-ibig ng Diyos',
-                    subtitle: 'Alamin kung gaano ka kamahal ng Diyos',
+                    title: 'Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos',
+                    subtitle: 'Ang pinakamahalagang hakbang sa iyong paglalakbay',
                     action: 'openGospel',
                     requirementKey: 'gospelCompleted',
+                    requiredFirst: true,  // This must be done first
                     priority: 1
                 },
                 {
@@ -37,6 +38,7 @@ const NextStepsModal = {
                     subtitle: 'Matutong makipag-usap sa Diyos araw-araw',
                     action: 'openQuietTimeGuide',
                     requirementKey: null,
+                    requiresGospel: true,  // Locked until gospel completed
                     priority: 2
                 },
                 {
@@ -46,6 +48,7 @@ const NextStepsModal = {
                     subtitle: 'Lumago kasama ang ibang mananampalataya',
                     action: 'openJoinGroup',
                     requirementKey: 'hasUplineGroup',
+                    requiresGospel: true,  // Locked until gospel completed
                     priority: 3
                 }
             ]
@@ -310,26 +313,55 @@ const NextStepsModal = {
      */
     renderOption(option, userProgress) {
         const isCompleted = option.requirementKey && userProgress[option.requirementKey];
+        const isLocked = option.requiresGospel && !userProgress.gospelCompleted;
         
+        // Locked state - disabled until gospel completed
+        if (isLocked) {
+            return `
+                <div class="w-full flex items-center gap-4 p-4 rounded-2xl border bg-[var(--card-bg)] border-[var(--card-border)] opacity-40 cursor-not-allowed">
+                    <span class="text-3xl grayscale">${option.icon}</span>
+                    <div class="flex-1 text-left">
+                        <h3 class="font-bold text-[var(--text-muted)]">${option.title}</h3>
+                        <p class="text-xs text-[var(--text-dim)] mt-1">${option.subtitle}</p>
+                    </div>
+                    <svg class="w-5 h-5 text-[var(--text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+            `;
+        }
+        
+        // Completed state
+        if (isCompleted) {
+            return `
+                <button 
+                    onclick="NextStepsModal.handleAction('${option.action}')" 
+                    class="w-full flex items-center gap-4 p-4 rounded-2xl border bg-green-500/10 border-green-500/30 transition-all active:scale-[0.98]"
+                >
+                    <span class="text-3xl">${option.icon}</span>
+                    <div class="flex-1 text-left">
+                        <h3 class="font-bold text-[var(--text-color)] line-through opacity-60">${option.title}</h3>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">${option.subtitle}</p>
+                    </div>
+                    <span class="text-green-500 text-xl">✓</span>
+                </button>
+            `;
+        }
+        
+        // Active state - clickable
         return `
             <button 
                 onclick="NextStepsModal.handleAction('${option.action}')" 
-                class="w-full flex items-center gap-4 p-4 rounded-2xl border ${isCompleted 
-                    ? 'bg-green-500/10 border-green-500/30' 
-                    : 'bg-[var(--card-bg)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/50'} 
-                transition-all active:scale-[0.98]"
+                class="w-full flex items-center gap-4 p-4 rounded-2xl border bg-[var(--card-bg)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/50 transition-all active:scale-[0.98]"
             >
                 <span class="text-3xl">${option.icon}</span>
                 <div class="flex-1 text-left">
-                    <h3 class="font-bold text-[var(--text-color)] ${isCompleted ? 'line-through opacity-60' : ''}">${option.title}</h3>
+                    <h3 class="font-bold text-[var(--text-color)]">${option.title}</h3>
                     <p class="text-xs text-[var(--text-muted)] mt-1">${option.subtitle}</p>
                 </div>
-                ${isCompleted 
-                    ? '<span class="text-green-500 text-xl">✓</span>' 
-                    : `<svg class="w-5 h-5 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                       </svg>`
-                }
+                <svg class="w-5 h-5 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
             </button>
         `;
     },
