@@ -10,7 +10,66 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.2.0] - 2026-01-24 ⭐ CURRENT
+## [v1.3.0] - 2026-01-26 ⭐ CURRENT
+
+### 🎧 Audio Experience + NT Quick Insights Generation
+
+**Summary:** New direction - adding audio/video narration throughout the app for "Kindle-style" listening experience.
+
+**New Features:**
+
+#### 1. Audio Experience Vision
+- Users can LISTEN to content while commuting/driving
+- Training sessions completable "hands-free"
+- Perfect for busy Filipino believers with long commutes
+- Animated visual guides synced with audio narration
+
+#### 2. Install Guide Audio Scripts
+- Complete scripts for Android & iPhone
+- English and Tagalog versions
+- Tone/emotion guidance for recording
+- Animation timing cues included
+
+**Files Created:**
+- `/docs/install-guide-script.md` - Audio recording scripts (EN/TL)
+- `/MASTERPLAN.md` - Strategic roadmap with audio vision
+
+#### 3. Animated Install Guide Prototype
+- Phone mockup with screen animations
+- Synced to audio timestamps
+- Step-by-step visual highlighting
+- Progress bar and step indicator
+- Success screen with confetti
+
+**File Created:**
+- `install-guide-animated.html` - Animated guide prototype
+
+#### 4. NT Quick Insights Generation
+- Running in background for 25 NT books
+- Uses GPT-4o-mini with detailed paragraphs
+- 4-section format (Understanding, Living It Out, God's Love, Reflection)
+- Bilingual (English + Tagalog)
+
+**Status:**
+- OT: 37/39 complete (missing JON, HAG - no Tyndale)
+- NT: 25 books generating (missing 1TH, 2TH - no Tyndale)
+
+**Monitor:**
+```bash
+tail -f scripts/logs/nt-full-generation.log
+```
+
+**Audio Roadmap:**
+1. Phase 1: Install Guide Audio ← Current
+2. Phase 2: Training Session Audio
+3. Phase 3: Bible Reading Audio (Quick Insights)
+4. Phase 4: App-Wide Audio
+
+**Rollback:** N/A - new feature, no deployment yet
+
+---
+
+## [v1.2.0] - 2026-01-24
 
 ### 🎫 Join Requests + Guest System + Member Management
 

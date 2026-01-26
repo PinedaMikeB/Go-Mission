@@ -11,222 +11,191 @@
 
 ---
 
-## Current Session (2026-01-24)
-- **MODULE**: Group Join Requests + Guest System + Member Management
-- **STATUS**: ✅ Complete
-- **TASK**: Implement join request approval system with member/guest options
+## Current Session (2026-01-26)
+- **MODULE**: Audio/Video Experience + Quick Insights NT Generation
+- **STATUS**: 🔄 In Progress
+- **TASK**: Add audio narration system, animated install guides
 
-### ✅ Join Request & Approval System (COMPLETED)
+### 🎧 NEW DIRECTION: Audio Experience
 
-**Flow:**
-1. User enters invite code → Creates join request (NOT auto-added)
-2. Leader sees "🔔 1 Pending Request" badge on group card
-3. Leader clicks "View Members" → Sees pending requests at TOP
-4. Leader chooses: ✅ Member | 🎫 Guest | ✕ Decline
-5. User gets notified and can access group
+**Vision:** "Kindle-Style Audio" for discipleship - users can LISTEN to training sessions while commuting/driving.
 
-**Features:**
-- Real-time badges via Firestore `onSnapshot`
-- Red badge on Groups nav icon showing total pending requests
-- Red badge on "View Members" button per group
-- Pending requests shown at top of View Members modal
-- Cloud Function sends push notification to leader on new request
+**Why This Matters:**
+- Filipino users often have long commutes
+- Can't read while driving/commuting
+- Training sessions become "hands-free"
+- Perfect for busy believers
 
-### ✅ Guest System (COMPLETED)
+### ✅ Install Guide Audio Scripts (COMPLETED)
 
-**Guest vs Member:**
-| Feature | Member | Guest |
-|---------|--------|-------|
-| Group Chat | ✅ | ✅ |
-| Join Meeting | ✅ | ✅ |
-| View in My Groups | Upline section | Guest Groups section |
-| Invite others | ❌ | ❌ |
-| Leave group | Via leader | Self ("Leave as Guest") |
+**File:** `/docs/install-guide-script.md`
 
-**Guest Groups Section:**
-- New section in My Groups: "🎫 GUEST GROUPS"
-- Blue border on guest group cards
-- "Guest" badge on card header
-- "Leave as Guest" button
+Created complete audio recording scripts:
+- English Android (~58 seconds)
+- English iPhone (~70 seconds)
+- Tagalog Android (~58 seconds)
+- Tagalog iPhone (~70 seconds)
 
-**Firestore Schema:**
+Each script has:
+- Step-by-step narration
+- Tone/emotion guidance for recording
+- Animation timing cues
+
+### ✅ Animated Install Guide Prototype (COMPLETED)
+
+**File:** `/modules/install/install-guide-animated.html`
+
+Features:
+- Phone mockup showing app screens
+- Animations synced to audio timestamps
+- Step 1: Menu dots highlight with pulse
+- Step 2: Dropdown menu, "Add to Home Screen" highlight
+- Step 3: Install popup with button highlight
+- Step 4: Home screen, app icon appears with bounce
+- Step 5: Notification permission dialog
+- Success screen with confetti
+
+**Timeline Configuration:**
 ```javascript
-// goMission_groups/{groupId}
-{
-  members: ["uid1", "uid2"],           // Full members
-  guests: [{                            // Guest visitors
-    odId: "uid3",
-    name: "Guest Name",
-    photo: "url",
-    homeGroupId: "original-group-id",
-    homeGroupName: "Original Group",
-    joinedAsGuestAt: "timestamp"
-  }],
-  joinRequests: [{                      // Pending requests
-    odId: "uid4",
-    name: "Requester Name",
-    email: "email@example.com",
-    photo: "url",
-    requestedAt: "timestamp",
-    hasExistingGroup: true/false,
-    existingGroupId: "group-id",
-    existingGroupName: "Group Name"
-  }]
-}
-
-// goMission_members/{odId}
-{
-  uplineGroupId: "group-id",           // Primary group (as member)
-  guestGroups: ["group-id-1", "group-id-2"]  // Groups visiting as guest
-}
+const timeline = [
+  { time: 0, action: 'intro' },
+  { time: 5, action: 'step1-start' },
+  { time: 6, action: 'highlight-menu' },
+  { time: 13, action: 'step2-start' },
+  // ... adjustable to match audio
+];
 ```
 
-### ✅ Member Management (COMPLETED)
+### 🔄 NT Quick Insights Generation (RUNNING)
 
-**View Members Modal:**
-- Leader shown at top with 👑 crown and gold border
-- "DISCIPLES (X)" section with all members
-- "Remove" button for leader to remove members
-- "🎫 GUESTS (X)" section for guests
+**Status:** Running in background
+**Script:** `/scripts/run-nt-generation.sh`
+**Log:** `/scripts/logs/nt-full-generation.log`
 
-**Remove Member Flow:**
-1. Leader clicks "Remove" next to member
-2. Confirms removal
-3. Member removed from `members[]` array
-4. Member's `uplineGroupId` cleared
-5. Removed member can't access chat/meeting
-6. Removed member sees "You are no longer a member"
+**Books to Generate (25):**
+```
+MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 
+1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV
+```
 
-### ✅ Notifications (COMPLETED)
-
-**Cloud Functions (`functions/index.js`):**
-- `onMemberJoined` trigger detects:
-  - New join requests → Notifies leader
-  - New members → Notifies existing members
-  - New guests → Notifies guest + members
-
-**Files Modified:**
-| File | Changes |
-|------|---------|
-| `/modules/groups/my-groups.js` | Join requests, guests, badges, member management |
-| `/modules/groups/group-chat.js` | Membership verification, showMembers fix |
-| `/functions/index.js` | Guest notifications, logging |
-| `/index.html` | Groups nav badge, guest groups section |
-
----
-
-## 🔄 Background: OT Quick Insights Generation
-
-**Status:** Running in background (independent of Claude)
-**Script:** `/scripts/run-ot-generation.sh`
-**Log:** `/scripts/logs/background-generation.log`
+**Missing (No Tyndale Source):**
+- 1TH (1 Thessalonians)
+- 2TH (2 Thessalonians)
 
 **Monitor:**
 ```bash
-tail -f /Volumes/Wotg\ Drive\ Mike/GitHub/Go-Mission/scripts/logs/background-generation.log
+tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-full-generation.log"
 ```
 
-**Books Being Generated:** 36 OT books
-- Uses GPT-4o-mini
-- Detailed 4-section format (Understanding, Living It Out, God's Love, Reflection)
-- Bilingual (English + Tagalog)
-- Skips verses that already have insights
+### ✅ OT Quick Insights (COMPLETED)
+
+**Status:** 37/39 books complete
+
+**Missing (No Tyndale Source):**
+- JON (Jonah)
+- HAG (Haggai)
+
+---
+
+## 🎯 Audio Feature Roadmap
+
+### Phase 1: Install Guide ← CURRENT
+- [x] Write audio scripts (EN/TL)
+- [x] Create animated HTML prototype
+- [ ] Record audio files
+- [ ] Integrate into app install flow
+
+### Phase 2: Training Sessions
+- [ ] Add audio player to training module
+- [ ] Record/generate audio for each session
+- [ ] Background playback support
+- [ ] Lock screen controls
+
+### Phase 3: Bible Reading
+- [ ] Quick Insights audio (TTS or recorded)
+- [ ] "Listen" button on each verse
+- [ ] Auto-play through chapter
+
+### Phase 4: App-Wide
+- [ ] Onboarding audio
+- [ ] Achievement sounds
+- [ ] Notification audio
+
+---
+
+## Previous Session (2026-01-24)
+
+### ✅ Join Request & Approval System
+- Users request to join (not auto-added)
+- Leader approves as Member or Guest
+- Real-time badges show pending requests
+- Push notifications to leader
+
+### ✅ Guest System
+- Guests can chat and join meetings
+- Separate "Guest Groups" section
+- "Leave as Guest" option
+
+### ✅ Member Management
+- View Members shows pending requests
+- Leader can remove members
+- Membership verification on chat/meeting
 
 ---
 
 ## Key Files Reference
 
+### Audio/Video System (NEW)
+| File | Purpose |
+|------|---------|
+| `/docs/install-guide-script.md` | Audio recording scripts (EN/TL) |
+| `/modules/install/install-guide-animated.html` | Animated guide prototype |
+
+### Quick Insights Generation
+| File | Purpose |
+|------|---------|
+| `/scripts/generate-quick-insights-openai.js` | Main generation script |
+| `/scripts/run-nt-generation.sh` | NT batch runner |
+| `/modules/bible/data/quick-insights/*.json` | Generated insights |
+
 ### Groups System
 | File | Purpose |
 |------|---------|
-| `/modules/groups/my-groups.js` | Upline/Downline/Guest groups, join requests |
-| `/modules/groups/group-chat.js` | Real-time chat with membership checks |
+| `/modules/groups/my-groups.js` | Upline/Downline/Guest groups |
+| `/modules/groups/group-chat.js` | Real-time chat |
 | `/modules/groups/group-meeting.js` | Jitsi video meetings |
-| `/modules/groups/groups.js` | Legacy group management |
-
-### Cloud Functions
-| Function | Trigger |
-|----------|---------|
-| `onMemberJoined` | Group document update - handles join requests, new members, guests |
-| `onNewChatMessage` | New chat message - sends notifications |
-| `sendCustomNotification` | Callable - for manual notifications |
-
-### Firebase Collections
-| Collection | Purpose |
-|------------|---------|
-| `goMission_members` | User profiles, FCM tokens, uplineGroupId, guestGroups |
-| `goMission_groups` | Groups with members[], guests[], joinRequests[] |
-| `goMission_chats` | Group chat messages |
 
 ---
 
-## Recent Changes Summary
+## Quick Commands
 
-### Join Request Flow
-```
-User enters code → joinWithCode() → 
-  Creates joinRequest in group → 
-  Cloud Function notifies leader →
-  Leader sees badge →
-  Leader opens View Members →
-  Leader approves as Member/Guest →
-  User added to members[] or guests[] →
-  Cloud Function notifies user →
-  User can access group
+### Check NT Generation Progress
+```bash
+tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-full-generation.log"
 ```
 
-### Group Access Check
-```javascript
-// Check if user can access group
-const isMember = group.members?.includes(userId);
-const isGuest = group.guests?.some(g => g.odId === userId);
-const canAccess = isMember || isGuest;
+### Count Completed Insights
+```bash
+ls "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/modules/bible/data/quick-insights/" | wc -l
 ```
 
-### Badge System
-```javascript
-// Real-time listener for pending requests
-window.onSnapshot(groupsQuery, (snapshot) => {
-  this.downlineGroups = snapshot.docs.map(...);
-  this.updateBadges();  // Updates nav + button badges
-});
-```
-
----
-
-## Development Notes
-
-### Testing Join Requests
-1. Get invite code from leader's group
-2. Log in as different user
-3. Enter code → Should see "Request sent" message
-4. Leader should see badge appear (real-time)
-5. Leader opens View Members → Approves
-6. User refreshes → Should see group
-
-### Testing Guest Access
-1. Approve user as "Guest" instead of "Member"
-2. User should see group in "Guest Groups" section
-3. User can chat and join meetings
-4. User cannot invite others
-5. User can "Leave as Guest"
-
-### Common Issues
-- **"Group not found"** → Check if `guestGroups` array is being searched
-- **Badge not appearing** → Check `onSnapshot` listener is active
-- **Notification not received** → Check FCM tokens in Firestore
+### Test Animated Install Guide
+1. Open `/modules/install/install-guide-animated.html` in browser
+2. Select audio file (download.wav)
+3. Click "Play Guide"
 
 ---
 
 ## Git Commits This Session
 ```
-56e3207 Fix: Guest users can now join meetings and open group chat
-c6b1b5d Fix: Guest users can now see and access their guest groups
-e7da052 Fix: View Members now shows pending requests at top
-a2c6c68 Add logging to join request Cloud Function for debugging
-772cfa6 Add: Join request badges + real-time updates
-f180eb3 Fix: Group chat members list and count
-8709df8 Fix: Removed member's group card disappears immediately
-0d91da7 Fix: Member management - show names, add remove button, verify membership
-ef28fec Fix: Join requests with member/guest approval + notifications
+2b4452d Add: Install guide audio script for English and Tagalog
+ebfd189 Update HANDOFF and CHANGELOG for join requests, guests, member management
 ```
+
+---
+
+## Next Steps
+1. Record audio files for install guide
+2. Monitor NT generation completion
+3. Integrate animated guide into app
+4. Plan training session audio implementation
