@@ -785,7 +785,7 @@
                         <span id="journeyNextStep">Walk as a Disciple</span>
                     </p>
                     
-                    <button class="mission-button w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                    <button class="mission-button w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2" onclick="openNextStepsModal()">
                         <span id="viewNextStepsBtn">VIEW NEXT STEPS</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -793,6 +793,37 @@
                     </button>
                 </div>
             </div>
+
+            <!-- KNOW HOW MUCH GOD LOVES YOU - Gospel Invitation Button -->
+            <div class="mb-4 animate-fade-up" id="gospelInviteSection">
+                <button onclick="GospelPresentation.open()" class="w-full bg-gradient-to-r from-[#7A0000] to-[#4a0000] hover:from-[#8B0000] hover:to-[#5a0000] text-white rounded-2xl p-5 border border-[var(--mission-gold)]/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="text-3xl">❤️</span>
+                            <div class="text-left">
+                                <h3 class="text-lg font-bold text-white mb-1">Know How Much God Loves You</h3>
+                                <p class="text-xs text-white/70">Discover the greatest love story ever told</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </button>
+            </div>
+
+            <!-- COLLAPSIBLE SECTION: Other Features -->
+            <div class="mb-4 animate-fade-up">
+                <button onclick="toggleOtherFeatures()" class="w-full flex items-center justify-between p-4 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" id="otherFeaturesToggle">
+                    <span class="text-sm font-medium uppercase tracking-wider">More Features</span>
+                    <svg id="otherFeaturesChevron" class="w-5 h-5 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Collapsible Content Container -->
+            <div id="otherFeaturesContent" class="hidden space-y-4">
 
             <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
             <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
@@ -1075,6 +1106,7 @@
                     </div>
                 </div>
             </div>
+            </div> <!-- END of otherFeaturesContent collapsible container -->
         </main>
 
         <!-- Bottom Navigation -->
@@ -2416,6 +2448,42 @@
             alert('Reading Stats feature coming soon!');
             toggleDevotionMenu();
         };
+
+        // ====== Toggle Other Features Section ======
+        window.toggleOtherFeatures = function() {
+            const content = document.getElementById('otherFeaturesContent');
+            const chevron = document.getElementById('otherFeaturesChevron');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+            
+            // Save preference
+            localStorage.setItem('otherFeaturesExpanded', isHidden ? 'true' : 'false');
+        };
+
+        // Initialize other features state on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const expanded = localStorage.getItem('otherFeaturesExpanded') === 'true';
+            if (expanded) {
+                document.getElementById('otherFeaturesContent')?.classList.remove('hidden');
+                document.getElementById('otherFeaturesChevron')?.classList.add('rotate-180');
+            }
+        });
+
+        // ====== Open Next Steps Modal ======
+        window.openNextStepsModal = function() {
+            // For now, show alert - will implement modal later
+            alert('Next Steps feature coming soon! This will guide you on your journey.');
+        };
     </script>
+
+    <!-- Gospel Presentation Module -->
+    <script src="/modules/gospel/gospel-presentation.js"></script>
 </body>
 </html>

@@ -11,191 +11,121 @@
 
 ---
 
-## Current Session (2026-01-26)
-- **MODULE**: Audio/Video Experience + Quick Insights NT Generation
-- **STATUS**: 🔄 In Progress
-- **TASK**: Add audio narration system, animated install guides
+## Current Session (2026-01-26 Evening)
 
-### 🎧 NEW DIRECTION: Audio Experience
+### 🏠 Home Screen Redesign ✅ DONE
+**Changes Made:**
+1. Journey Card remains as the main prominent card
+2. Added "Know How Much God Loves You" button (Gospel invitation)
+3. Other cards (Devotion, My Mission, My Training) wrapped in collapsible "More Features" section
+4. Collapse state saved to localStorage
 
-**Vision:** "Kindle-Style Audio" for discipleship - users can LISTEN to training sessions while commuting/driving.
+**Files Modified:**
+- `/index.html` - Home screen structure and toggle functions
 
-**Why This Matters:**
-- Filipino users often have long commutes
-- Can't read while driving/commuting
-- Training sessions become "hands-free"
-- Perfect for busy believers
+### ❤️ Gospel Presentation Module ✅ CREATED
+**Location:** `/modules/gospel/`
 
-### ✅ Install Guide Audio Scripts (COMPLETED)
+**Features:**
+- Interactive animated slide presentation
+- Based on "Ang Daan Papuntang Langit" (4 Truths)
+- Formula question for engagement
+- Prayer of salvation with decision tracking
+- Assurance verses
+- Saves prayer decision to Firebase
 
-**File:** `/docs/install-guide-script.md`
+**Images Downloaded:**
+- `/assets/images/gospel/gospel_tract1.jpg` through `gospel_tract5.jpg`
 
-Created complete audio recording scripts:
-- English Android (~58 seconds)
-- English iPhone (~70 seconds)
-- Tagalog Android (~58 seconds)
-- Tagalog iPhone (~70 seconds)
-
-Each script has:
-- Step-by-step narration
-- Tone/emotion guidance for recording
-- Animation timing cues
-
-### ✅ Animated Install Guide Prototype (COMPLETED)
-
-**File:** `/modules/install/install-guide-animated.html`
-
-Features:
-- Phone mockup showing app screens
-- Animations synced to audio timestamps
-- Step 1: Menu dots highlight with pulse
-- Step 2: Dropdown menu, "Add to Home Screen" highlight
-- Step 3: Install popup with button highlight
-- Step 4: Home screen, app icon appears with bounce
-- Step 5: Notification permission dialog
-- Success screen with confetti
-
-**Timeline Configuration:**
+**Usage:**
 ```javascript
-const timeline = [
-  { time: 0, action: 'intro' },
-  { time: 5, action: 'step1-start' },
-  { time: 6, action: 'highlight-menu' },
-  { time: 13, action: 'step2-start' },
-  // ... adjustable to match audio
-];
+GospelPresentation.open();  // Open presentation
+GospelPresentation.close(); // Close
 ```
 
-### 🔄 NT Quick Insights Generation (RUNNING)
+**Next Steps for Gospel:**
+1. Mike to record audio narration (one long file)
+2. Claude to split audio by slide timestamps
+3. Build "Conversation with God" guide (ConversationGuide module)
+4. Add journal prayer request tracking feature
 
-**Status:** Running in background
-**Script:** `/scripts/run-nt-generation.sh`
-**Log:** `/scripts/logs/nt-full-generation.log`
+### 🔄 NT Quick Insights Generation (STILL RUNNING)
+**Script:** `/scripts/run-nt-incomplete.sh`
+**Log:** `/scripts/logs/nt-incomplete-generation.log`
 
-**Books to Generate (25):**
+**Books Being Regenerated (19):**
 ```
-MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 
-1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV
+MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 1TI 2TI HEB JAS 1PE 1JN REV
 ```
-
-**Missing (No Tyndale Source):**
-- 1TH (1 Thessalonians)
-- 2TH (2 Thessalonians)
 
 **Monitor:**
 ```bash
-tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-full-generation.log"
+tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-incomplete-generation.log"
 ```
 
-### ✅ OT Quick Insights (COMPLETED)
+---
 
-**Status:** 37/39 books complete
+## Discipleship Flow (Planned)
 
-**Missing (No Tyndale Source):**
-- JON (Jonah)
-- HAG (Haggai)
+```
+1. "Know How Much God Loves You" (Button on Home)
+   ↓
+2. Gospel Presentation (Interactive slides)
+   ↓
+3. Prayer Decision (Saved to Firebase)
+   ↓
+4. "Grow Your Love for God" (Invitation modal)
+   ↓
+5. "Conversation with God" Guide (Quiet Time tutorial)
+   ↓
+6. Daily Bible Reading + Quick Insights
+   ↓
+7. Journal + Prayer Request Tracking
+```
 
 ---
 
-## 🎯 Audio Feature Roadmap
+## Quick Insights Summary
 
-### Phase 1: Install Guide ← CURRENT
-- [x] Write audio scripts (EN/TL)
-- [x] Create animated HTML prototype
-- [ ] Record audio files
-- [ ] Integrate into app install flow
+### Total Bible Books: 66
 
-### Phase 2: Training Sessions
-- [ ] Add audio player to training module
-- [ ] Record/generate audio for each session
-- [ ] Background playback support
-- [ ] Lock screen controls
-
-### Phase 3: Bible Reading
-- [ ] Quick Insights audio (TTS or recorded)
-- [ ] "Listen" button on each verse
-- [ ] Auto-play through chapter
-
-### Phase 4: App-Wide
-- [ ] Onboarding audio
-- [ ] Achievement sounds
-- [ ] Notification audio
-
----
-
-## Previous Session (2026-01-24)
-
-### ✅ Join Request & Approval System
-- Users request to join (not auto-added)
-- Leader approves as Member or Guest
-- Real-time badges show pending requests
-- Push notifications to leader
-
-### ✅ Guest System
-- Guests can chat and join meetings
-- Separate "Guest Groups" section
-- "Leave as Guest" option
-
-### ✅ Member Management
-- View Members shows pending requests
-- Leader can remove members
-- Membership verification on chat/meeting
+| Category | Complete | In Progress | Missing (No Source) |
+|----------|----------|-------------|---------------------|
+| OT (39) | 37 | 0 | 2 (JON, HAG) |
+| NT (27) | 6 | 19 (running) | 2 (1TH, 2TH) |
+| **Total** | **43** | **19** | **4** |
 
 ---
 
 ## Key Files Reference
 
-### Audio/Video System (NEW)
-| File | Purpose |
-|------|---------|
-| `/docs/install-guide-script.md` | Audio recording scripts (EN/TL) |
-| `/modules/install/install-guide-animated.html` | Animated guide prototype |
+### Gospel Module
+- `/modules/gospel/gospel-presentation.js` - Main presentation code
+- `/modules/gospel/README.md` - Documentation
+- `/assets/images/gospel/` - 5 gospel tract images
 
-### Quick Insights Generation
-| File | Purpose |
-|------|---------|
-| `/scripts/generate-quick-insights-openai.js` | Main generation script |
-| `/scripts/run-nt-generation.sh` | NT batch runner |
-| `/modules/bible/data/quick-insights/*.json` | Generated insights |
+### Home Screen
+- `/index.html` - Main app with home screen
 
-### Groups System
-| File | Purpose |
-|------|---------|
-| `/modules/groups/my-groups.js` | Upline/Downline/Guest groups |
-| `/modules/groups/group-chat.js` | Real-time chat |
-| `/modules/groups/group-meeting.js` | Jitsi video meetings |
+### Bible Module  
+- `/modules/bible/data/quick-insights/*.json` - Quick Insights data
+- `/scripts/generate-quick-insights-openai.js` - Generator script
 
 ---
 
-## Quick Commands
+## What's Next
 
-### Check NT Generation Progress
-```bash
-tail -f "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/scripts/logs/nt-full-generation.log"
-```
+### Immediate
+1. Wait for NT generation to complete (2-4 hours)
+2. Test home screen changes
+3. Test Gospel presentation flow
 
-### Count Completed Insights
-```bash
-ls "/Volumes/Wotg Drive Mike/GitHub/Go-Mission/modules/bible/data/quick-insights/" | wc -l
-```
+### When Mike Provides Audio
+1. Receive audio file
+2. Split by slide timestamps
+3. Implement audio playback in Gospel module
 
-### Test Animated Install Guide
-1. Open `/modules/install/install-guide-animated.html` in browser
-2. Select audio file (download.wav)
-3. Click "Play Guide"
-
----
-
-## Git Commits This Session
-```
-2b4452d Add: Install guide audio script for English and Tagalog
-ebfd189 Update HANDOFF and CHANGELOG for join requests, guests, member management
-```
-
----
-
-## Next Steps
-1. Record audio files for install guide
-2. Monitor NT generation completion
-3. Integrate animated guide into app
-4. Plan training session audio implementation
+### Build Next
+1. **ConversationGuide module** - Quiet time tutorial
+2. **Prayer request tracking** - Add to journal
+3. **Answered prayer filtering** - Journal feature
