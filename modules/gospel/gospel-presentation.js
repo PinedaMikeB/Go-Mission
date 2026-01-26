@@ -398,6 +398,13 @@ const GospelPresentation = {
                 wrongFeedback: 'Ang tamang sagot ay: <strong>Si Hesus lamang.</strong>'
             },
             {
+                type: 'transition',
+                emoji: '❓',
+                title: 'Pero bakit?',
+                text: 'Bakit si Hesus LANG ang daan patungong langit?',
+                highlight: 'Ano ang ginawa Niya para sa atin?'
+            },
+            {
                 type: 'verse',
                 verse: {
                     text: '"Sapagkat si Kristo ay namatay para sa mga kasalanan, minsan at magpakailanman, ang matuwid para sa mga hindi matuwid, upang madala niya kayo sa Diyos."',
