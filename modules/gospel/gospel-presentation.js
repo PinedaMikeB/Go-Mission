@@ -262,51 +262,67 @@ const GospelPresentation = {
                 question: 'Ano ang kabayaran ng kasalanan?',
                 options: [
                     { text: 'Kahirapan sa buhay', correct: false },
-                    { text: 'Kamatayan at pagkahiwalay sa Diyos', correct: true },
+                    { text: 'Kamatayan', correct: true },
                     { text: 'Kaparusahan sa lupa', correct: false }
                 ],
-                correctFeedback: '🎉 Tama! Ang kasalanan ay nagdudulot ng kamatayan at pagkahiwalay sa Diyos.',
-                wrongFeedback: 'Ang tamang sagot ay: <strong>Kamatayan at pagkahiwalay sa Diyos.</strong>'
+                correctFeedback: '🎉 Tama! Ang kabayaran ng kasalanan ay KAMATAYAN.',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Kamatayan.</strong>'
             },
-
-            // ========== TRUTH 3: HUMAN EFFORTS FAIL ==========
             {
-                type: 'truth-header',
+                type: 'transition',
+                emoji: '🤔',
+                title: 'Pero sandali...',
+                text: 'Kung kamatayan ang kabayaran ng kasalanan, bakit buhay pa ako?',
+                highlight: 'May dalawang uri ng kamatayan.'
+            },
+            {
+                type: 'custom',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangatlong Katotohanan</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">HINDI SAPAT ANG SARILING SIKAP</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Walang paraan ng tao ang makakaabot sa Diyos</p>
+                        <p class="gospel-fade-in text-sm text-[var(--text-muted)] mb-4">Hindi pisikal na kamatayan ang tinutukoy ng Bibliya...</p>
+                        <div class="gospel-fade-up delay-2 flex justify-center gap-4 mb-4">
+                            <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 text-center w-32">
+                                <p class="text-2xl mb-1">💀</p>
+                                <p class="text-xs text-white font-bold">Pisikal</p>
+                                <p class="text-xs text-[var(--text-muted)]">Katawan</p>
+                            </div>
+                            <div class="bg-[var(--card-bg)] border border-[var(--mission-gold)]/50 rounded-xl p-3 text-center w-32">
+                                <p class="text-2xl mb-1">👻</p>
+                                <p class="text-xs text-[var(--mission-gold)] font-bold">Espirituwal</p>
+                                <p class="text-xs text-[var(--text-muted)]">Kaluluwa</p>
+                            </div>
+                        </div>
+                        <p class="gospel-fade-up delay-4 text-sm text-white">Ang tinutukoy ay <strong class="text-[var(--mission-gold)]">espirituwal na kamatayan</strong>.</p>
+                        <p class="gospel-fade-up delay-5 text-xs text-[var(--text-muted)] mt-2">Basahin natin ang susunod na talata...</p>
                     </div>
                 `
             },
             {
-                type: 'human-efforts',
+                type: 'verse',
+                verse: {
+                    text: '"Subalit para naman sa mga duwag, mga taksil, mga gumagawa ng mga kasuklam-suklam na bagay, mga mamamatay-tao, mga nakikiapid, mga mangkukulam, mga sumasamba sa diyus-diyosan, at sa lahat ng mga sinungaling—ang magiging bahagi nila\'y sa lawa ng nagliliyab na apoy at asupre. Ito ang pangalawang kamatayan."',
+                    ref: 'Revelation 21:8'
+                }
+            },
+            {
+                type: 'question',
+                question: 'Saan ang pangalawang kamatayan?',
+                options: [
+                    { text: 'Sa libingan', correct: false },
+                    { text: 'Sa kalungkutan', correct: false },
+                    { text: 'Sa lawa ng nagliliyab na apoy at asupre', correct: true }
+                ],
+                correctFeedback: '🎉 Tama! Ang pangalawang kamatayan ay sa lawa ng apoy - ito ang impyerno.',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Sa lawa ng nagliliyab na apoy at asupre.</strong> Ito ang impyerno.'
+            },
+
+            // ========== TRUTH 3: HUMAN EFFORTS FAIL ==========
+            {
+                type: 'custom',
                 render: () => `
-                    <div class="flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-center text-sm text-[var(--text-muted)] mb-4">Sinusubukan ng mga tao ang mga ito:</p>
-                        <div class="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-                            <div class="gospel-fade-up delay-1 bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-center">
-                                <div class="text-2xl mb-1">📜</div>
-                                <p class="text-xs text-white">Sampung Utos</p>
-                                <p class="text-xs text-red-400">❌ Hindi sapat</p>
-                            </div>
-                            <div class="gospel-fade-up delay-2 bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-center">
-                                <div class="text-2xl mb-1">⛪</div>
-                                <p class="text-xs text-white">Relihiyon</p>
-                                <p class="text-xs text-red-400">❌ Hindi sapat</p>
-                            </div>
-                            <div class="gospel-fade-up delay-3 bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-center">
-                                <div class="text-2xl mb-1">🤝</div>
-                                <p class="text-xs text-white">Mabuting Gawa</p>
-                                <p class="text-xs text-red-400">❌ Hindi sapat</p>
-                            </div>
-                            <div class="gospel-fade-up delay-4 bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-center">
-                                <div class="text-2xl mb-1">🕯️</div>
-                                <p class="text-xs text-white">Ritwal</p>
-                                <p class="text-xs text-red-400">❌ Hindi sapat</p>
-                            </div>
-                        </div>
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangatlong Katotohanan</p>
+                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">Dahil patay tayo sa espiritu, iniisip ng mga tao na maaari nilang bilhin o pagsikapan ang daan patungong langit...</p>
                     </div>
                 `
             },
@@ -319,22 +335,35 @@ const GospelPresentation = {
                 }
             },
             {
-                type: 'question',
-                question: 'Ano ang makapagliligtas sa iyo?',
-                options: [
-                    { text: 'Sampung Utos at mabuting gawa', correct: false },
-                    { text: 'Relihiyon at ritwal', correct: false },
-                    { text: 'Wala sa mga ito', correct: true }
-                ],
-                correctFeedback: '🎉 Tama! Walang paraan ng tao ang sapat. Kailangan ng ibang paraan...',
-                wrongFeedback: 'Ang tamang sagot ay: <strong>Wala sa mga ito.</strong> Hindi sapat ang sariling sikap.'
+                type: 'custom',
+                render: () => `
+                    <div class="flex flex-col justify-center h-full">
+                        <p class="gospel-fade-in text-center text-sm text-[var(--text-muted)] mb-4">Sinusubukan ng mga tao ang mga ito:</p>
+                        <div class="grid grid-cols-2 gap-2 max-w-xs mx-auto mb-4">
+                            <div class="gospel-fade-up delay-1 bg-red-900/30 border border-red-500/30 rounded-xl p-2 text-center">
+                                <p class="text-xs text-white">📜 Sampung Utos</p>
+                            </div>
+                            <div class="gospel-fade-up delay-2 bg-red-900/30 border border-red-500/30 rounded-xl p-2 text-center">
+                                <p class="text-xs text-white">⛪ Relihiyon</p>
+                            </div>
+                            <div class="gospel-fade-up delay-3 bg-red-900/30 border border-red-500/30 rounded-xl p-2 text-center">
+                                <p class="text-xs text-white">🤝 Mabuting Gawa</p>
+                            </div>
+                            <div class="gospel-fade-up delay-4 bg-red-900/30 border border-red-500/30 rounded-xl p-2 text-center">
+                                <p class="text-xs text-white">🕯️ Ritwal</p>
+                            </div>
+                        </div>
+                        <p class="gospel-fade-up delay-5 text-center text-sm text-red-400">❌ Wala sa mga ito ang makakabayad sa kasalanan.</p>
+                        <p class="gospel-fade-up delay-6 text-center text-xs text-[var(--text-muted)] mt-2">Ang kabayaran ng kasalanan ay kamatayan - hindi mabuting gawa.</p>
+                    </div>
+                `
             },
             {
                 type: 'transition',
-                emoji: '💡',
-                title: 'May Magandang Balita!',
-                text: 'Kung walang paraan ng tao ang makakaabot sa Diyos...',
-                highlight: 'Ang Diyos mismo ang gumawa ng paraan!'
+                emoji: '❓',
+                title: 'Kaya paano?',
+                text: 'Kung lahat tayo ay makasalanan, at hindi tayo maaaring maging perpekto...',
+                highlight: 'Paano tayo maliligtas?'
             },
 
             // ========== TRUTH 4: JESUS IS THE WAY ==========
@@ -342,7 +371,13 @@ const GospelPresentation = {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pang-apat na Katotohanan</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangatlong Katotohanan</p>
+                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">Ang sagot sa ating tanong ay...</p>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">SI HESUS ANG TANGING DAAN</h2>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Siya lang ang tulay patungo sa Diyos</p>
+                    </div>
+                `
+            },
                         <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">SI HESUS ANG TANGING DAAN</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">Siya lang ang tulay patungo sa Diyos</p>
                     </div>
@@ -580,6 +615,7 @@ const GospelPresentation = {
             case 'human-efforts':
             case 'intro':
             case 'final':
+            case 'custom':
                 html = slide.render();
                 nextBtn.style.display = slide.type === 'final' ? 'none' : 'flex';
                 nextBtn.textContent = slide.type === 'prayer' ? 'Skip →' : 'Next →';
