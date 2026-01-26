@@ -1,273 +1,564 @@
 /**
- * Gospel Presentation Module
- * "Know How Much God Loves You" - Interactive Gospel Presentation
+ * Gospel Presentation Module - Interactive Version
+ * "Ang Daan Papuntang Langit" - Interactive Discovery Journey
  * 
- * Based on "Ang Daan Papuntang Langit" (The Way to Heaven)
- * 4 Truths: God Loves You → Sin Separates → Jesus is the Way → Believe to be Saved
+ * Flow: Verse → Question → Feedback → Next Truth
+ * Users discover truths through guided questions
  */
 
 const GospelPresentation = {
     currentSlide: 0,
     totalSlides: 0,
-    userResponses: {},
-    audioElement: null,
-    isPlaying: false,
+    slides: [],
     
-    // Slide content data
-    slides: [
-        // INTRO SLIDE
-        {
-            id: 'intro',
-            type: 'intro',
-            title: 'Ang Daan Papuntang Langit',
-            subtitle: 'May apat na katotohanan na dapat nating malaman upang makapunta tayo sa langit.',
-            image: null,
-            audio: { start: 0, end: 10 }
-        },
-        
-        // TRUTH 1: God Loves You
-        {
-            id: 'truth1-title',
-            type: 'truth-title',
-            truthNumber: 1,
-            title: 'Mahal ka ng Diyos at nais Niya na magkaroon ka ng buhay na walang hanggan.',
-            image: null,
-            audio: { start: 10, end: 20 }
-        },
-        {
-            id: 'truth1-verse1',
-            type: 'verse',
-            verse: '"Sapagkat gayon na lamang ang pag-ibig ng Diyos sa sangkatauhan, kaya\'t ibinigay niya ang kanyang kaisa-isang Anak, upang ang sinumang sumampalataya sa kanya ay hindi mapahamak, kundi magkaroon ng buhay na walang hanggan."',
-            reference: 'John 3:16',
-            image: null,
-            audio: { start: 20, end: 35 }
-        },
-        {
-            id: 'truth1-point',
-            type: 'point',
-            title: 'Nais din Niyang magkaron ka ng buhay na makabuluhan.',
-            verse: '"Dumarating ang magnanakaw para lamang magnakaw, pumatay, at manira. Naparito ako upang ang mga tupa ay magkaroon ng buhay, buhay na masaganang lubos."',
-            reference: 'John 10:10',
-            audio: { start: 35, end: 50 }
-        },
-        {
-            id: 'truth1-question',
-            type: 'question',
-            question: 'Kaya lang maraming tao ang hindi nakakaranas ng buhay na walang hanggan at buhay na makabuluhan sapagkat...',
-            nextHint: 'Pindutin ang SUSUNOD upang malaman',
-            audio: { start: 50, end: 58 }
-        },
-        
-        // TRUTH 2: Sin Separates
-        {
-            id: 'truth2-title',
-            type: 'truth-title',
-            truthNumber: 2,
-            title: 'Likas na makasalanan ang tao kaya napahiwalay siya sa Diyos.',
-            image: '/assets/images/gospel/gospel_tract1.jpg',
-            audio: { start: 58, end: 68 }
-        },
-        {
-            id: 'truth2-verse1',
-            type: 'verse',
-            verse: '"Sapagkat ang lahat ay nagkasala, at walang sinumang nakaabot sa kaluwalhatian ng Diyos."',
-            reference: 'Romans 3:23',
-            image: '/assets/images/gospel/gospel_tract1.jpg',
-            audio: { start: 68, end: 78 }
-        },
-        {
-            id: 'truth2-point1',
-            type: 'point',
-            title: 'Hindi lang sa nagkasala ang lahat ng tao kundi may bayad ang kasalanan at ang bayad ay kamatayan.',
-            verse: '"Sapagkat kamatayan ang kabayaran ng kasalanan..."',
-            reference: 'Romans 6:23',
-            image: '/assets/images/gospel/gospel_tract2.jpg',
-            audio: { start: 78, end: 90 }
-        },
-        {
-            id: 'truth2-point2',
-            type: 'point',
-            title: 'May dalawang klase ng kamatayan ang nasa Biblia ang una ay pisikal at ang pangalawa ay espiritwal.',
-            verse: '"Subalit para naman sa mga duwag, mga taksil, mga gumagawa ng mga kasuklam-suklam na bagay, mga mamamatay-tao, mga nakikiapid, mga mangkukulam, mga sumasamba sa diyus-diyosan, at sa lahat ng mga sinungaling—ang magiging bahagi nila\'y sa lawa ng nagliliyab na apoy at asupre. Ito ang pangalawang kamatayan."',
-            reference: 'Revelation 21:8',
-            image: '/assets/images/gospel/gospel_tract2.jpg',
-            audio: { start: 90, end: 115 }
-        },
-        {
-            id: 'truth2-efforts',
-            type: 'efforts',
-            title: '...inisip ng tao na ang kanyang pagkahiwalay sa Diyos ay masosolusyunan ng...',
-            efforts: ['Sampung Utos', 'Relihiyon', 'Mabuting Gawa', 'Ritwal'],
-            image: '/assets/images/gospel/gospel_tract3.jpg',
-            audio: { start: 115, end: 130 }
-        },
-        {
-            id: 'truth2-fail',
-            type: 'point',
-            title: 'Subalit ang lahat ng ito ay kapos at hindi aabot sa kaluwalhatian ng Diyos dahil ang lahat ay nagkasala.',
-            subtitle: '"Subalit ang malaman lang na namatay ang Panginoong Hesus para sa iyung kasalanan ay hindi sapat..."',
-            image: '/assets/images/gospel/gospel_tract3.jpg',
-            audio: { start: 130, end: 145 }
-        },
-        
-        // TRUTH 3: Jesus is the Way
-        {
-            id: 'truth3-title',
-            type: 'truth-title',
-            truthNumber: 3,
-            title: 'Ang Panginoong Hesus ang tanging daan patungong langit.',
-            image: '/assets/images/gospel/gospel_tract4.jpg',
-            audio: { start: 145, end: 155 }
-        },
-        {
-            id: 'truth3-verse1',
-            type: 'verse',
-            verse: '"Sumagot si Jesus, "Ako ang daan, ang katotohanan, at ang buhay. Walang makakapunta sa Ama kundi sa pamamagitan ko."',
-            reference: 'John 14:6',
-            image: '/assets/images/gospel/gospel_tract4.jpg',
-            audio: { start: 155, end: 168 }
-        },
-        {
-            id: 'truth3-why',
-            type: 'point',
-            title: 'Bakit ang Panginoong Hesus lang ang daan? Dahil. Siya lang nagbayad ng lahat ng iyung kasalanan sa krus.',
-            verse: '"Sapagkat si Cristo na walang kasalanan ay namatay nang minsan para sa inyo na mga makasalanan, upang iharap kayo sa Diyos. Siya\'y pinatay sa laman, at muling binuhay sa espiritu."',
-            reference: '1 Peter 3:18',
-            image: '/assets/images/gospel/gospel_tract4.jpg',
-            audio: { start: 168, end: 188 }
-        },
-        
-        // TRUTH 4: Believe to be Saved
-        {
-            id: 'truth4-title',
-            type: 'truth-title',
-            truthNumber: 4,
-            title: 'Kailangan nating manampalataya sa Panginoong Hesus upang tayo\'y maligtas.',
-            image: null,
-            audio: { start: 188, end: 198 }
-        },
-        {
-            id: 'truth4-verse1',
-            type: 'verse',
-            verse: '"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito\'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya\'t walang maipagmamalaki ang sinuman."',
-            reference: 'Ephesians 2:8-9',
-            image: null,
-            audio: { start: 198, end: 218 }
-        },
-        {
-            id: 'truth4-formula',
-            type: 'formula-question',
-            question: 'Base sa Ephesians 2:8-9, kung ilalagay sa formula ang kaligtasan, alin sa mga sumusunod ang sa tingin mo ay tama?',
-            options: [
-                { id: 1, text: 'Pananampalataya sa Panginoong Hesus + Mabuting Gawa = Kaligtasan', correct: false },
-                { id: 2, text: 'Pananampalataya sa Panginoong Hesus + Sampung Utos = Kaligtasan', correct: false },
-                { id: 3, text: 'Pananampalataya sa Panginoong Hesus + Wala = Kaligtasan', correct: true }
-            ],
-            explanation: '...ang mabuting gawa ay hindi basehan ng kaligtasan kundi ito ay by-product o magiging bunga sa buhay ng taong totoong nanampalataya sa Panginoong Hesus.',
-            audio: { start: 218, end: 245 }
-        },
-        
-        // PRAYER
-        {
-            id: 'prayer-intro',
-            type: 'prayer-intro',
-            title: 'Ipahayag mo ang iyong pananampalataya sa Panginoong Hesus sa pamamagitan ng panalangin...',
-            audio: { start: 245, end: 252 }
-        },
-        {
-            id: 'prayer',
-            type: 'prayer',
-            prayer: 'Panginoong Hesus, Inaamin ko po na ako ay makasalanan. Patawarin mo po ako. Nananampalataya po ako na ikaw ang tanging daan patungo sa langit dahil ikaw ang nagbayad ng aking kasalanan. Ngayon nga ay binubuksan ko na ang aking puso. Pumasok ka at manahan sa akin. Tinatanggap kita bilang aking Panginoon at Tagapagligtas. Simula ngayon ay tatalikdan ko na ang aking kasalanan. Salamat at isang araw ay makakasama kita sa langit. Amen.',
-            audio: { start: 252, end: 290 }
-        },
-        
-        // ASSURANCE
-        {
-            id: 'assurance-intro',
-            type: 'assurance-intro',
-            title: 'Kung nanampalataya ka sa Panginoong Hesus bilang iyong Panginoon at Tagapagligtas:',
-            audio: { start: 290, end: 298 }
-        },
-        {
-            id: 'assurance1',
-            type: 'assurance',
-            point: 'Ikaw ay naging anak na ng Diyos.',
-            verse: '"Subalit ang lahat ng tumanggap at sumampalataya sa kanya ay binigyan niya ng karapatang maging mga anak ng Diyos."',
-            reference: 'John 1:12',
-            audio: { start: 298, end: 310 }
-        },
-        {
-            id: 'assurance2',
-            type: 'assurance',
-            point: 'May buhay na walang hanggan.',
-            verse: '"Kung ang Anak ng Diyos ay nasa isang tao, mayroon siyang buhay na walang hanggan; ngunit kung wala sa kanya ang Anak ng Diyos ay wala siyang buhay na walang hanggan. Isinusulat ko ito sa inyo upang malaman ninyo na kayong sumasampalataya sa Anak ng Diyos ay may buhay na walang hanggan."',
-            reference: '1 John 5:12-13',
-            audio: { start: 310, end: 330 }
-        },
-        {
-            id: 'assurance3',
-            type: 'assurance',
-            point: 'Ikaw ay isa nang bagong nilalang.',
-            verse: '"Kaya\'t kung nakipag-isa na kay Cristo ang isang tao, isa na siyang bagong nilalang. Wala na ang dati niyang pagkatao, sa halip, ito\'y napalitan na ng bago."',
-            reference: '2 Corinthians 5:17',
-            audio: { start: 330, end: 345 }
-        },
-        {
-            id: 'assurance4',
-            type: 'assurance',
-            point: 'Ang lahat ng kasalanan mo ay bayad na.',
-            verse: '"Iniligtas niya tayo sa kapangyarihan ng kadiliman at inilipat tayo sa kaharian ng kanyang minamahal na Anak, na sa kanya ay mayroon tayong katubusan, na siyang kapatawaran ng mga kasalanan."',
-            reference: 'Colossians 1:13-14',
-            audio: { start: 345, end: 360 }
-        },
-        
-        // NEXT STEPS
-        {
-            id: 'next-steps',
-            type: 'next-steps',
-            title: 'Upang lumago sa relasyon mo sa Kanya:',
-            steps: [
-                { icon: '🙏', text: 'Makipag-usap sa Diyos araw-araw', subtext: 'Manalangin ka at makinig sa sasabihin Niya sa iyo sa pamamagitan ng pagbabasa ng Biblia.' },
-                { icon: '👥', text: 'Maging bahagi ng isang discipleship group', subtext: 'Dito mo makakasama ang mga kapatiran na makakatulong sa iyong paglago.' },
-                { icon: '⛪', text: 'Dumalo sa isang Christian church na naniniwala sa Biblia', subtext: 'Upang makapagpuri at magpasalamat sa Diyos.' }
-            ],
-            audio: { start: 360, end: 385 }
-        },
-        
-        // FINAL - Invitation to grow
-        {
-            id: 'grow-invitation',
-            type: 'grow-invitation',
-            title: 'Gusto mo bang palaguin ang pagmamahal mo sa Diyos?',
-            subtitle: 'Ang relasyon ay nangangailangan ng komunikasyon. Gusto ng Diyos na makausap ka araw-araw.',
-            buttonText: 'Oo, gusto kong lumago',
-            audio: { start: 385, end: 400 }
-        }
-    ],
-
     /**
-     * Initialize the Gospel Presentation
+     * Initialize and open the presentation
      */
-    init() {
+    open() {
+        this.currentSlide = 0;
+        this.buildSlides();
         this.totalSlides = this.slides.length;
         this.createModal();
+        this.showSlide(0);
+        document.getElementById('gospelModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
     },
 
     /**
-     * Create the modal HTML
+     * Close the presentation
+     */
+    close() {
+        const modal = document.getElementById('gospelModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    },
+
+    /**
+     * Build all slides with interactive questions
+     */
+    buildSlides() {
+        this.slides = [
+            // ========== INTRO ==========
+            {
+                type: 'intro',
+                content: `
+                    <div class="text-center py-8">
+                        <h1 class="text-3xl font-display font-bold text-[var(--mission-gold)] mb-4">Ang Daan Papuntang Langit</h1>
+                        <p class="text-lg text-[var(--text-color)] mb-6">Tuklasin mo ngayon kung gaano ka kamahal ng Diyos</p>
+                        <div class="text-6xl mb-6">❤️</div>
+                        <p class="text-sm text-[var(--text-muted)]">Isang maikling paglalakbay na magbabago ng iyong buhay</p>
+                    </div>
+                `
+            },
+
+            // ========== TRUTH 1: GOD LOVES YOU ==========
+            {
+                type: 'truth-header',
+                content: `
+                    <div class="text-center py-8">
+                        <p class="text-sm uppercase tracking-wider text-[var(--mission-gold)] mb-2">Unang Katotohanan</p>
+                        <h2 class="text-2xl font-bold text-white mb-4">MAHAL KA NG DIYOS</h2>
+                        <p class="text-[var(--text-muted)]">At may magandang plano Siya para sa iyo</p>
+                    </div>
+                `
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Sapagkat gayon na lamang ang pag-ibig ng Diyos sa sangkatauhan, kaya't ibinigay niya ang kanyang kaisa-isang Anak, upang ang sinumang sumampalataya sa kanya ay hindi mapahamak, kundi magkaroon ng buhay na walang hanggan."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">John 3:16</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Paano pinatunayan ng Diyos na mahal ka Niya?',
+                options: [
+                    { text: 'Binigyan Niya ako ng magandang buhay', correct: false },
+                    { text: 'Pinayagan Niya akong mabuhay', correct: false },
+                    { text: 'Ibinigay Niya ang Kanyang Anak para sa akin', correct: true }
+                ],
+                correctFeedback: 'Tama! Ibinigay ng Diyos ang Kanyang pinakamamahal na Anak para sa iyo. Iyan ang pinakamatinding pagpapakita ng pag-ibig!',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Ibinigay Niya ang Kanyang Anak para sa akin.</strong> Ito ang pinakamatinding pagpapakita ng pag-ibig ng Diyos - ibinigay Niya ang Kanyang sariling Anak!'
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Ako'y naparito upang sila'y magkaroon ng buhay, at magkaroon ng kasaganaan nito."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">John 10:10</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Ano ang gusto ng Diyos para sa iyo?',
+                options: [
+                    { text: 'Relihiyon at ritwal', correct: false },
+                    { text: 'Mabuting gawa lamang', correct: false },
+                    { text: 'Buhay na walang hanggan at kasaganaan', correct: true }
+                ],
+                correctFeedback: 'Tama! Gusto ng Diyos na magkaroon ka ng buhay na walang hanggan - hindi lang buhay pagkatapos ng kamatayan, kundi masagana at makabuluhang buhay ngayon!',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Buhay na walang hanggan at kasaganaan.</strong> Hindi relihiyon o mabuting gawa lang ang gusto ng Diyos - kundi tunay na buhay na puno ng kahulugan!'
+            },
+            {
+                type: 'transition',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-4xl mb-4">🤔</div>
+                        <h3 class="text-xl font-bold text-white mb-4">Pero bakit...</h3>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed">
+                            Kung mahal tayo ng Diyos at gusto Niya tayong magkaroon ng buhay na walang hanggan...
+                        </p>
+                        <p class="text-xl text-[var(--mission-gold)] font-bold mt-4">
+                            Bakit karamihan sa atin ay hindi ito nararanasan?
+                        </p>
+                    </div>
+                `
+            },
+
+            // ========== TRUTH 2: SIN SEPARATES ==========
+            {
+                type: 'truth-header',
+                content: `
+                    <div class="text-center py-8">
+                        <p class="text-sm uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangalawang Katotohanan</p>
+                        <h2 class="text-2xl font-bold text-white mb-4">TAYONG LAHAT AY MAKASALANAN</h2>
+                        <p class="text-[var(--text-muted)]">At nahiwalay tayo sa Diyos</p>
+                    </div>
+                `
+            },
+            {
+                type: 'verse-with-image',
+                image: '/assets/images/gospel/gospel_tract1.jpg',
+                content: `
+                    <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                        <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                            "Sapagkat ang lahat ay nagkasala, at hindi nakakaabot sa kaluwalhatian ng Diyos."
+                        </p>
+                        <p class="text-right text-[var(--mission-gold)] font-bold mt-4">Romans 3:23</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Sino ang nagkasala?',
+                options: [
+                    { text: 'Ang masasamang tao lamang', correct: false },
+                    { text: 'Ang lahat ng tao', correct: true },
+                    { text: 'Ang mga hindi relihiyoso', correct: false }
+                ],
+                correctFeedback: 'Tama! LAHAT tayo ay nagkasala - walang kahit isa na perpekto. Ito ang katotohanan na kailangan nating tanggapin.',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Ang lahat ng tao.</strong> Ayon sa Bibliya, walang sinuman ang hindi nagkasala - lahat tayo ay nagkulang.'
+            },
+            {
+                type: 'verse-with-image',
+                image: '/assets/images/gospel/gospel_tract2.jpg',
+                content: `
+                    <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                        <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                            "Sapagkat ang kabayaran ng kasalanan ay kamatayan..."
+                        </p>
+                        <p class="text-right text-[var(--mission-gold)] font-bold mt-4">Romans 6:23a</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Ano ang kabayaran ng kasalanan?',
+                options: [
+                    { text: 'Kahirapan sa buhay', correct: false },
+                    { text: 'Kamatayan at pagkahiwalay sa Diyos', correct: true },
+                    { text: 'Kaparusahan sa lupa', correct: false }
+                ],
+                correctFeedback: 'Tama! Ang kabayaran ng kasalanan ay kamatayan - hindi lang pisikal na kamatayan, kundi walang hanggang pagkahiwalay sa Diyos.',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Kamatayan at pagkahiwalay sa Diyos.</strong> Ito ang seryosong konsekwensya ng kasalanan - walang hanggang pagkahiwalay sa Diyos.'
+            },
+            {
+                type: 'transition',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-4xl mb-4">😔</div>
+                        <h3 class="text-xl font-bold text-white mb-4">Ang Problema</h3>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed mb-4">
+                            Dahil sa kasalanan, may malaking agwat sa pagitan natin at ng Diyos.
+                        </p>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed">
+                            Maraming tao ang sumusubok na tulay itong agwat sa sarili nilang paraan...
+                        </p>
+                    </div>
+                `
+            },
+
+            // ========== TRUTH 3: HUMAN EFFORTS FAIL ==========
+            {
+                type: 'truth-header',
+                content: `
+                    <div class="text-center py-8">
+                        <p class="text-sm uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangatlong Katotohanan</p>
+                        <h2 class="text-2xl font-bold text-white mb-4">HINDI SAPAT ANG SARILING SIKAP</h2>
+                        <p class="text-[var(--text-muted)]">Walang paraan ng tao ang makakaabot sa Diyos</p>
+                    </div>
+                `
+            },
+            {
+                type: 'human-efforts',
+                content: `
+                    <div class="py-4">
+                        <p class="text-center text-[var(--text-muted)] mb-6">Sinusubukan ng mga tao ang mga ito:</p>
+                        <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto">
+                            <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-center">
+                                <div class="text-2xl mb-2">📜</div>
+                                <p class="text-sm text-white">Sampung Utos</p>
+                                <p class="text-xs text-red-400 mt-1">Hindi sapat</p>
+                            </div>
+                            <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-center">
+                                <div class="text-2xl mb-2">⛪</div>
+                                <p class="text-sm text-white">Relihiyon</p>
+                                <p class="text-xs text-red-400 mt-1">Hindi sapat</p>
+                            </div>
+                            <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-center">
+                                <div class="text-2xl mb-2">🤝</div>
+                                <p class="text-sm text-white">Mabuting Gawa</p>
+                                <p class="text-xs text-red-400 mt-1">Hindi sapat</p>
+                            </div>
+                            <div class="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-center">
+                                <div class="text-2xl mb-2">🕯️</div>
+                                <p class="text-sm text-white">Ritwal</p>
+                                <p class="text-xs text-red-400 mt-1">Hindi sapat</p>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'verse-with-image',
+                image: '/assets/images/gospel/gospel_tract3.jpg',
+                content: `
+                    <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                        <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                            "Mayroong daang tila matuwid sa paningin ng tao, ngunit ang dulo nito ay kamatayan."
+                        </p>
+                        <p class="text-right text-[var(--mission-gold)] font-bold mt-4">Kawikaan 14:12</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Ano ang makapagliligtas sa iyo?',
+                options: [
+                    { text: 'Pagsunod sa Sampung Utos', correct: false },
+                    { text: 'Relihiyon at mabuting gawa', correct: false },
+                    { text: 'Wala sa mga ito - kailangan ng ibang paraan', correct: true }
+                ],
+                correctFeedback: 'Tama! Kahit gaano kaganda ang ating ginagawa, hindi ito sapat para maabot ang Diyos. Kailangan natin ng ibang paraan...',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Wala sa mga ito.</strong> Kahit ang Sampung Utos, relihiyon, at mabuting gawa - hindi sapat para tulay ang agwat sa pagitan natin at ng Diyos.'
+            },
+            {
+                type: 'transition',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-4xl mb-4">💡</div>
+                        <h3 class="text-xl font-bold text-white mb-4">May Magandang Balita!</h3>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed">
+                            Kung walang paraan ng tao ang makakaabot sa Diyos...
+                        </p>
+                        <p class="text-xl text-[var(--mission-gold)] font-bold mt-4">
+                            Ang Diyos mismo ang gumawa ng paraan!
+                        </p>
+                    </div>
+                `
+            },
+
+            // ========== TRUTH 4: JESUS IS THE WAY ==========
+            {
+                type: 'truth-header',
+                content: `
+                    <div class="text-center py-8">
+                        <p class="text-sm uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pang-apat na Katotohanan</p>
+                        <h2 class="text-2xl font-bold text-white mb-4">SI HESUS ANG TANGING DAAN</h2>
+                        <p class="text-[var(--text-muted)]">Siya lang ang tulay sa pagitan mo at ng Diyos</p>
+                    </div>
+                `
+            },
+            {
+                type: 'verse-with-image',
+                image: '/assets/images/gospel/gospel_tract4.jpg',
+                content: `
+                    <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                        <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                            "Ako ang daan, ang katotohanan, at ang buhay. Walang makakapunta sa Ama kundi sa pamamagitan ko."
+                        </p>
+                        <p class="text-right text-[var(--mission-gold)] font-bold mt-4">John 14:6</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Sino ang TANGING daan patungo sa Diyos?',
+                options: [
+                    { text: 'Ang mga santo at mga banal', correct: false },
+                    { text: 'Ang mga pari at pastor', correct: false },
+                    { text: 'Si Hesus lamang', correct: true }
+                ],
+                correctFeedback: 'Tama! Si Hesus lang ang daan. Hindi ang mga santo, hindi ang mga pari - si Hesus lamang ang makapagdadala sa iyo sa Ama.',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Si Hesus lamang.</strong> Sabi ni Hesus mismo - "Walang makakapunta sa Ama kundi sa pamamagitan ko."'
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Sapagkat si Kristo ay namatay para sa mga kasalanan, minsan at magpakailanman, ang matuwid para sa mga hindi matuwid, upang madala niya kayo sa Diyos."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">1 Peter 3:18</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                question: 'Bakit namatay si Hesus sa krus?',
+                options: [
+                    { text: 'Dahil siya ay makasalanan din', correct: false },
+                    { text: 'Para bayaran ang ating mga kasalanan', correct: true },
+                    { text: 'Dahil natalo siya ng mga kaaway', correct: false }
+                ],
+                correctFeedback: 'Tama! Si Hesus, na walang kasalanan, ay namatay para bayaran ang ating mga kasalanan. Ginawa Niya ito dahil mahal ka Niya!',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Para bayaran ang ating mga kasalanan.</strong> Si Hesus ay walang kasalanan, pero kusang-loob Niyang ibinigay ang Kanyang buhay para sa atin.'
+            },
+            {
+                type: 'transition',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-4xl mb-4">✝️</div>
+                        <h3 class="text-xl font-bold text-white mb-4">Ang Krus - Ang Tulay</h3>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed mb-4">
+                            Sa krus, binayaran ni Hesus ang lahat ng kasalanan mo.
+                        </p>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed">
+                            Pero may isang tanong pa: <strong class="text-white">Paano mo matatanggap ang kaligtasang ito?</strong>
+                        </p>
+                    </div>
+                `
+            },
+
+            // ========== TRUTH 5: BELIEVE TO BE SAVED ==========
+            {
+                type: 'truth-header',
+                content: `
+                    <div class="text-center py-8">
+                        <p class="text-sm uppercase tracking-wider text-[var(--mission-gold)] mb-2">Panlimang Katotohanan</p>
+                        <h2 class="text-2xl font-bold text-white mb-4">SUMAMPALATAYA KA PARA MALIGTAS</h2>
+                        <p class="text-[var(--text-muted)]">Ang kaligtasan ay regalo - tanggapin mo lang</p>
+                    </div>
+                `
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Sapagkat sa biyaya kayo ay naligtas, sa pamamagitan ng pananampalataya; at ito'y hindi sa inyong sarili, ito'y kaloob ng Diyos; hindi sa pamamagitan ng mga gawa, upang walang sinumang magmapuri."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">Ephesians 2:8-9</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'formula-question',
+                question: 'Ano ang formula ng kaligtasan?',
+                options: [
+                    { text: 'Pananampalataya + Mabuting Gawa = Kaligtasan', correct: false },
+                    { text: 'Relihiyon + Ritwal = Kaligtasan', correct: false },
+                    { text: 'Pananampalataya + Wala = Kaligtasan', correct: true }
+                ],
+                correctFeedback: 'Tama! Pananampalataya LANG. Walang idadagdag. Ang kaligtasan ay libreng regalo - tanggapin mo lang sa pamamagitan ng pananampalataya!',
+                wrongFeedback: 'Ang tamang sagot ay: <strong>Pananampalataya + Wala = Kaligtasan.</strong> Hindi kailangan ng mabuting gawa o ritwal - pananampalataya lang kay Hesus!'
+            },
+            {
+                type: 'decision',
+                content: `
+                    <div class="text-center py-6">
+                        <div class="text-5xl mb-4">🙏</div>
+                        <h3 class="text-xl font-bold text-white mb-4">Ang Pinakamahalagang Tanong</h3>
+                        <p class="text-lg text-[var(--text-muted)] leading-relaxed mb-6">
+                            Narinig mo na ang mga katotohanan:
+                        </p>
+                        <div class="text-left bg-[var(--card-bg)] rounded-xl p-4 mb-6 max-w-sm mx-auto">
+                            <p class="text-sm text-[var(--text-color)] mb-2">✓ Mahal ka ng Diyos</p>
+                            <p class="text-sm text-[var(--text-color)] mb-2">✓ Lahat tayo ay nagkasala</p>
+                            <p class="text-sm text-[var(--text-color)] mb-2">✓ Hindi sapat ang sariling sikap</p>
+                            <p class="text-sm text-[var(--text-color)] mb-2">✓ Si Hesus ang tanging daan</p>
+                            <p class="text-sm text-[var(--text-color)]">✓ Pananampalataya lang ang kailangan</p>
+                        </div>
+                        <p class="text-xl text-[var(--mission-gold)] font-bold">
+                            Gusto mo bang tanggapin si Hesus ngayon?
+                        </p>
+                    </div>
+                `
+            },
+            {
+                type: 'prayer',
+                content: `
+                    <div class="text-center py-4">
+                        <h3 class="text-xl font-bold text-white mb-4">Panalangin ng Pagtanggap</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-6">Kung handa ka nang tanggapin si Hesus, basahin at ipanalangin ito nang buong puso:</p>
+                        <div class="bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-2xl p-5 max-w-md mx-auto text-left">
+                            <p class="text-[var(--text-color)] leading-relaxed text-sm">
+                                "Panginoong Hesus, kinikilala ko na ako ay makasalanan. 
+                                Naniniwala ako na Ikaw ay namatay sa krus para sa aking mga kasalanan 
+                                at muling nabuhay. Ngayon, tinatanggap Kita bilang aking Panginoon at Tagapagligtas. 
+                                Pumasok Ka sa aking buhay at baguhin Mo ako. 
+                                Salamat sa kaloob Mong buhay na walang hanggan. Amen."
+                            </p>
+                        </div>
+                        <button onclick="GospelPresentation.recordPrayer()" id="prayerBtn" class="mt-6 px-8 py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-lg hover:bg-yellow-400 transition-all">
+                            🙏 Ipinanalangin Ko Ito
+                        </button>
+                        <p class="text-xs text-[var(--text-muted)] mt-3">Pindutin kung taos-puso mong nanalangin</p>
+                    </div>
+                `
+            },
+
+            // ========== ASSURANCE ==========
+            {
+                type: 'assurance-header',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-5xl mb-4">🎉</div>
+                        <h2 class="text-2xl font-bold text-[var(--mission-gold)] mb-4">Maligayang Bati!</h2>
+                        <p class="text-lg text-white">Ikaw ay bagong nilalang kay Kristo!</p>
+                        <p class="text-[var(--text-muted)] mt-2">Narito ang mga katiyakan mula sa Diyos:</p>
+                    </div>
+                `
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <p class="text-sm text-[var(--mission-gold)] mb-3">Katiyakan #1: Ikaw ay Anak na ng Diyos</p>
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Ngunit sa lahat ng tumanggap at nanalig sa kanya, binigyan niya sila ng karapatang maging mga anak ng Diyos."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">John 1:12</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <p class="text-sm text-[var(--mission-gold)] mb-3">Katiyakan #2: Ikaw ay may Buhay na Walang Hanggan</p>
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "At ito ang patotoo: binigyan tayo ng Diyos ng buhay na walang hanggan, at ang buhay na ito ay nasa kanyang Anak. Ang sinumang nasa kanya ang Anak ay may buhay."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">1 John 5:11-12</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'verse',
+                content: `
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <p class="text-sm text-[var(--mission-gold)] mb-3">Katiyakan #3: Ikaw ay Bagong Nilalang</p>
+                        <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 max-w-md">
+                            <p class="text-lg italic text-[var(--text-color)] leading-relaxed">
+                                "Kaya't kung ang sinuman ay na kay Kristo, siya'y bagong nilalang; ang mga lumang bagay ay lumipas na, tingnan ninyo, ang lahat ay naging bago."
+                            </p>
+                            <p class="text-right text-[var(--mission-gold)] font-bold mt-4">2 Corinthians 5:17</p>
+                        </div>
+                    </div>
+                `
+            },
+
+            // ========== NEXT STEPS ==========
+            {
+                type: 'next-steps',
+                content: `
+                    <div class="text-center py-6">
+                        <h3 class="text-xl font-bold text-white mb-4">Ano ang Susunod?</h3>
+                        <p class="text-[var(--text-muted)] mb-6">Ang pagtanggap kay Hesus ay simula pa lang. Narito ang mga susunod na hakbang:</p>
+                        <div class="space-y-3 max-w-sm mx-auto">
+                            <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 flex items-center gap-3">
+                                <span class="text-2xl">📖</span>
+                                <div class="text-left">
+                                    <p class="font-bold text-white">Maglaan ng Oras sa Diyos</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Basahin ang Bibliya araw-araw</p>
+                                </div>
+                            </div>
+                            <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 flex items-center gap-3">
+                                <span class="text-2xl">🙏</span>
+                                <div class="text-left">
+                                    <p class="font-bold text-white">Manalangin Araw-araw</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Makipag-usap sa Diyos</p>
+                                </div>
+                            </div>
+                            <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 flex items-center gap-3">
+                                <span class="text-2xl">👥</span>
+                                <div class="text-left">
+                                    <p class="font-bold text-white">Sumali sa Mission Group</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Lumago kasama ang iba</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                type: 'final',
+                content: `
+                    <div class="text-center py-8">
+                        <div class="text-6xl mb-4">🌟</div>
+                        <h2 class="text-2xl font-bold text-[var(--mission-gold)] mb-4">Simula Pa Lang Ito!</h2>
+                        <p class="text-lg text-white mb-2">Maligayang pagdating sa pamilya ng Diyos!</p>
+                        <p class="text-[var(--text-muted)] mb-6">Handa ka nang magsimula sa iyong paglalakbay bilang alagad ni Kristo.</p>
+                        <button onclick="GospelPresentation.complete()" class="px-8 py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-lg hover:bg-yellow-400 transition-all">
+                            Simulan ang Paglalakbay →
+                        </button>
+                    </div>
+                `
+            }
+        ];
+    },
+
+    /**
+     * Create the modal container
      */
     createModal() {
+        // Remove existing modal if any
+        const existing = document.getElementById('gospelModal');
+        if (existing) existing.remove();
+
         const modal = document.createElement('div');
-        modal.id = 'gospelPresentationModal';
+        modal.id = 'gospelModal';
         modal.className = 'fixed inset-0 z-[100] bg-[var(--bg-color)] hidden flex flex-col';
         modal.innerHTML = `
             <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">❤️</span>
-                    <h2 class="text-sm font-bold text-[var(--text-color)]">Know How Much God Loves You</h2>
+                    <span class="font-bold text-[var(--text-color)]">Know How Much God Loves You</span>
                 </div>
-                <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)]">
+                <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -276,64 +567,173 @@ const GospelPresentation = {
             
             <!-- Progress Bar -->
             <div class="h-1 bg-[var(--card-border)]">
-                <div id="gospelProgressBar" class="h-full bg-[var(--mission-gold)] transition-all duration-500" style="width: 0%"></div>
+                <div id="gospelProgress" class="h-full bg-[var(--mission-gold)] transition-all duration-300" style="width: 0%"></div>
             </div>
             
-            <!-- Slide Content -->
-            <div id="gospelSlideContent" class="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
-                <!-- Dynamic slide content -->
+            <!-- Content Area -->
+            <div id="gospelContent" class="flex-1 overflow-y-auto p-4">
+                <!-- Slide content will be inserted here -->
             </div>
             
             <!-- Navigation -->
-            <div class="p-4 border-t border-[var(--card-border)] flex items-center justify-between gap-4">
-                <button id="gospelPrevBtn" onclick="GospelPresentation.prev()" class="px-6 py-3 rounded-xl border border-[var(--card-border)] text-[var(--text-muted)] font-medium disabled:opacity-30" disabled>
+            <div class="p-4 border-t border-[var(--card-border)] flex items-center justify-between">
+                <button onclick="GospelPresentation.prev()" id="gospelPrevBtn" class="px-4 py-2 bg-[var(--card-bg)] text-[var(--text-color)] rounded-lg flex items-center gap-2">
                     ← Back
                 </button>
-                
-                <!-- Audio Controls -->
-                <button id="gospelAudioBtn" onclick="GospelPresentation.toggleAudio()" class="p-3 rounded-full bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)]">
+                <button onclick="GospelPresentation.toggleAudio()" class="p-2 text-[var(--text-muted)]">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
                     </svg>
                 </button>
-                
-                <button id="gospelNextBtn" onclick="GospelPresentation.next()" class="px-6 py-3 rounded-xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold">
+                <button onclick="GospelPresentation.next()" id="gospelNextBtn" class="px-6 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-lg flex items-center gap-2">
                     Next →
                 </button>
             </div>
         `;
+        
         document.body.appendChild(modal);
     },
 
     /**
-     * Open the Gospel Presentation
+     * Show a specific slide
      */
-    open() {
-        this.currentSlide = 0;
-        this.userResponses = {};
+    showSlide(index) {
+        if (index < 0 || index >= this.totalSlides) return;
         
-        const modal = document.getElementById('gospelPresentationModal');
-        if (!modal) {
-            this.init();
+        this.currentSlide = index;
+        const slide = this.slides[index];
+        const content = document.getElementById('gospelContent');
+        const progress = document.getElementById('gospelProgress');
+        const prevBtn = document.getElementById('gospelPrevBtn');
+        const nextBtn = document.getElementById('gospelNextBtn');
+        
+        // Update progress bar
+        const progressPercent = ((index + 1) / this.totalSlides) * 100;
+        progress.style.width = progressPercent + '%';
+        
+        // Show/hide prev button
+        prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+        
+        // Render slide based on type
+        let html = '';
+        
+        switch (slide.type) {
+            case 'question':
+            case 'formula-question':
+                html = this.renderQuestion(slide);
+                nextBtn.style.display = 'none'; // Hide next until answered
+                break;
+            case 'verse-with-image':
+                html = this.renderVerseWithImage(slide);
+                nextBtn.style.display = 'flex';
+                break;
+            case 'prayer':
+                html = slide.content;
+                nextBtn.textContent = 'Skip →';
+                nextBtn.style.display = 'flex';
+                break;
+            case 'final':
+                html = slide.content;
+                nextBtn.style.display = 'none';
+                break;
+            default:
+                html = slide.content;
+                nextBtn.innerHTML = 'Next →';
+                nextBtn.style.display = 'flex';
         }
         
-        document.getElementById('gospelPresentationModal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        content.innerHTML = `<div class="max-w-lg mx-auto">${html}</div>`;
         
-        this.renderSlide();
-        this.updateNavigation();
+        // Scroll to top
+        content.scrollTop = 0;
     },
 
     /**
-     * Close the Gospel Presentation
+     * Render a question slide
      */
-    close() {
-        document.getElementById('gospelPresentationModal').classList.add('hidden');
-        document.body.style.overflow = '';
+    renderQuestion(slide) {
+        const optionsHtml = slide.options.map((opt, i) => `
+            <button 
+                onclick="GospelPresentation.answerQuestion(${i}, ${opt.correct})"
+                class="question-option w-full text-left p-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl hover:border-[var(--mission-gold)]/50 transition-all mb-3"
+                data-index="${i}"
+            >
+                <span class="inline-block w-6 h-6 rounded-full bg-[var(--card-border)] text-center text-sm mr-3">${String.fromCharCode(65 + i)}</span>
+                ${opt.text}
+            </button>
+        `).join('');
         
-        if (this.audioElement) {
-            this.audioElement.pause();
+        return `
+            <div class="py-6">
+                <p class="text-sm text-[var(--mission-gold)] mb-2">Tanong:</p>
+                <h3 class="text-xl font-bold text-white mb-6">${slide.question}</h3>
+                <div id="questionOptions">
+                    ${optionsHtml}
+                </div>
+                <div id="questionFeedback" class="hidden mt-4 p-4 rounded-xl"></div>
+            </div>
+        `;
+    },
+
+    /**
+     * Render verse with image
+     */
+    renderVerseWithImage(slide) {
+        return `
+            <div class="flex flex-col items-center justify-center py-4">
+                <img src="${slide.image}" alt="Gospel illustration" class="max-w-full h-auto rounded-xl mb-4 max-h-48 object-contain" onerror="this.style.display='none'">
+                ${slide.content}
+            </div>
+        `;
+    },
+
+    /**
+     * Handle question answer
+     */
+    answerQuestion(selectedIndex, isCorrect) {
+        const slide = this.slides[this.currentSlide];
+        const options = document.querySelectorAll('.question-option');
+        const feedback = document.getElementById('questionFeedback');
+        const nextBtn = document.getElementById('gospelNextBtn');
+        
+        // Disable all options
+        options.forEach((opt, i) => {
+            opt.disabled = true;
+            opt.classList.remove('hover:border-[var(--mission-gold)]/50');
+            
+            if (i === selectedIndex) {
+                if (isCorrect) {
+                    opt.classList.add('border-green-500', 'bg-green-500/10');
+                } else {
+                    opt.classList.add('border-red-500', 'bg-red-500/10');
+                }
+            }
+            
+            // Highlight correct answer
+            if (slide.options[i].correct) {
+                opt.classList.add('border-green-500');
+            }
+        });
+        
+        // Show feedback
+        feedback.classList.remove('hidden');
+        if (isCorrect) {
+            feedback.className = 'mt-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30';
+            feedback.innerHTML = `
+                <p class="text-green-400 font-bold mb-1">✓ Tama!</p>
+                <p class="text-[var(--text-color)] text-sm">${slide.correctFeedback}</p>
+            `;
+        } else {
+            feedback.className = 'mt-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/30';
+            feedback.innerHTML = `
+                <p class="text-orange-400 font-bold mb-1">Hindi eksakto...</p>
+                <p class="text-[var(--text-color)] text-sm">${slide.wrongFeedback}</p>
+            `;
         }
+        
+        // Show next button
+        nextBtn.style.display = 'flex';
+        nextBtn.innerHTML = 'Continue →';
     },
 
     /**
@@ -341,9 +741,7 @@ const GospelPresentation = {
      */
     next() {
         if (this.currentSlide < this.totalSlides - 1) {
-            this.currentSlide++;
-            this.renderSlide();
-            this.updateNavigation();
+            this.showSlide(this.currentSlide + 1);
         }
     },
 
@@ -352,350 +750,83 @@ const GospelPresentation = {
      */
     prev() {
         if (this.currentSlide > 0) {
-            this.currentSlide--;
-            this.renderSlide();
-            this.updateNavigation();
+            this.showSlide(this.currentSlide - 1);
         }
     },
 
     /**
-     * Update navigation buttons
+     * Toggle audio (placeholder)
      */
-    updateNavigation() {
-        const prevBtn = document.getElementById('gospelPrevBtn');
-        const nextBtn = document.getElementById('gospelNextBtn');
-        const progressBar = document.getElementById('gospelProgressBar');
-        
-        prevBtn.disabled = this.currentSlide === 0;
-        
-        const slide = this.slides[this.currentSlide];
-        
-        // Change button text on last slide
-        if (slide.type === 'grow-invitation') {
-            nextBtn.innerHTML = '🙏 Start Growing';
-            nextBtn.onclick = () => this.finishPresentation();
-        } else {
-            nextBtn.innerHTML = 'Next →';
-            nextBtn.onclick = () => this.next();
-        }
-        
-        // Update progress bar
-        const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
-        progressBar.style.width = `${progress}%`;
+    toggleAudio() {
+        // TODO: Implement audio playback
+        console.log('Audio toggle - to be implemented');
     },
 
     /**
-     * Render current slide
+     * Record prayer decision
      */
-    renderSlide() {
-        const container = document.getElementById('gospelSlideContent');
-        const slide = this.slides[this.currentSlide];
+    async recordPrayer() {
+        const btn = document.getElementById('prayerBtn');
+        btn.disabled = true;
+        btn.innerHTML = '✓ Naitala na!';
+        btn.classList.remove('bg-[var(--mission-gold)]');
+        btn.classList.add('bg-green-600');
         
-        // Apply random transition
-        container.style.opacity = '0';
-        container.style.transform = 'translateX(20px)';
+        // Save to localStorage
+        localStorage.setItem('gospelCompleted', 'true');
+        localStorage.setItem('prayerPrayed', 'true');
+        localStorage.setItem('prayerDate', new Date().toISOString());
         
-        setTimeout(() => {
-            container.innerHTML = this.getSlideHTML(slide);
-            container.style.opacity = '1';
-            container.style.transform = 'translateX(0)';
-        }, 150);
-    },
-
-    /**
-     * Get HTML for a slide based on its type
-     */
-    getSlideHTML(slide) {
-        switch (slide.type) {
-            case 'intro':
-                return this.renderIntro(slide);
-            case 'truth-title':
-                return this.renderTruthTitle(slide);
-            case 'verse':
-                return this.renderVerse(slide);
-            case 'point':
-                return this.renderPoint(slide);
-            case 'question':
-                return this.renderQuestion(slide);
-            case 'efforts':
-                return this.renderEfforts(slide);
-            case 'formula-question':
-                return this.renderFormulaQuestion(slide);
-            case 'prayer-intro':
-                return this.renderPrayerIntro(slide);
-            case 'prayer':
-                return this.renderPrayer(slide);
-            case 'assurance-intro':
-                return this.renderAssuranceIntro(slide);
-            case 'assurance':
-                return this.renderAssurance(slide);
-            case 'next-steps':
-                return this.renderNextSteps(slide);
-            case 'grow-invitation':
-                return this.renderGrowInvitation(slide);
-            default:
-                return `<p>Unknown slide type: ${slide.type}</p>`;
-        }
-    },
-
-    // ===== SLIDE RENDERERS =====
-    
-    renderIntro(slide) {
-        return `
-            <div class="text-center max-w-md animate-fade-up">
-                <h1 class="text-3xl font-display font-bold text-[var(--mission-gold)] mb-6">${slide.title}</h1>
-                <p class="text-lg text-[var(--text-color)] leading-relaxed">${slide.subtitle}</p>
-            </div>
-        `;
-    },
-
-    renderTruthTitle(slide) {
-        return `
-            <div class="text-center max-w-md animate-fade-up">
-                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-[var(--mission-gold)] flex items-center justify-center">
-                    <span class="text-2xl font-bold text-[var(--mission-red-deep)]">${slide.truthNumber}</span>
-                </div>
-                <h2 class="text-2xl font-bold text-[var(--text-color)] leading-relaxed">${slide.title}</h2>
-                ${slide.image ? `<img src="${slide.image}" alt="" class="mt-6 rounded-xl max-h-48 mx-auto object-contain">` : ''}
-            </div>
-        `;
-    },
-
-    renderVerse(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                ${slide.image ? `<img src="${slide.image}" alt="" class="mb-6 rounded-xl max-h-40 mx-auto object-contain">` : ''}
-                <div class="bg-[var(--card-bg)] rounded-2xl p-6 border border-[var(--card-border)]">
-                    <p class="text-lg italic text-[var(--text-color)] leading-relaxed mb-4">${slide.verse}</p>
-                    <p class="text-[var(--mission-gold)] font-bold text-right">${slide.reference}</p>
-                </div>
-            </div>
-        `;
-    },
-
-    renderPoint(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                ${slide.image ? `<img src="${slide.image}" alt="" class="mb-6 rounded-xl max-h-40 mx-auto object-contain">` : ''}
-                <div class="bg-black/40 rounded-2xl p-5 mb-4">
-                    <p class="text-lg font-medium text-[var(--text-color)] leading-relaxed">${slide.title}</p>
-                </div>
-                ${slide.verse ? `
-                <div class="border-l-2 border-[var(--mission-gold)]/40 pl-4">
-                    <p class="text-base italic text-[var(--text-muted)] leading-relaxed mb-2">${slide.verse}</p>
-                    <p class="text-[var(--mission-gold)] font-bold text-sm">${slide.reference}</p>
-                </div>
-                ` : ''}
-                ${slide.subtitle ? `<p class="text-sm text-[var(--text-muted)] italic mt-4">${slide.subtitle}</p>` : ''}
-            </div>
-        `;
-    },
-
-    renderQuestion(slide) {
-        return `
-            <div class="max-w-md animate-fade-up text-center">
-                <div class="bg-amber-500/10 rounded-2xl p-6 border border-amber-500/30">
-                    <p class="text-xl text-[var(--text-color)] leading-relaxed mb-4">${slide.question}</p>
-                    <p class="text-sm text-[var(--mission-gold)]">${slide.nextHint}</p>
-                </div>
-            </div>
-        `;
-    },
-
-    renderEfforts(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                ${slide.image ? `<img src="${slide.image}" alt="" class="mb-6 rounded-xl max-h-48 mx-auto object-contain">` : ''}
-                <div class="bg-amber-500/10 rounded-2xl p-5 mb-4">
-                    <p class="text-base text-[var(--text-color)] leading-relaxed">${slide.title}</p>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    ${slide.efforts.map(e => `
-                        <div class="bg-[var(--card-bg)] rounded-xl p-3 text-center border border-[var(--card-border)]">
-                            <span class="text-[var(--text-muted)]">${e}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    },
-
-    renderFormulaQuestion(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                <div class="bg-amber-500/10 rounded-2xl p-5 mb-6 border border-amber-500/30">
-                    <p class="text-base text-[var(--text-color)] leading-relaxed">${slide.question}</p>
-                </div>
-                <div class="space-y-3" id="formulaOptions">
-                    ${slide.options.map((opt, idx) => `
-                        <button onclick="GospelPresentation.selectFormula(${idx}, ${opt.correct})" class="formula-option w-full text-left p-4 rounded-xl border-2 border-[var(--card-border)] bg-[var(--card-bg)] hover:border-[var(--mission-gold)]/50 transition-all" data-index="${idx}">
-                            <div class="flex items-start gap-3">
-                                <span class="w-8 h-8 rounded-full bg-[var(--card-border)] flex items-center justify-center text-sm font-bold">${idx + 1}</span>
-                                <span class="text-[var(--text-color)] flex-1">${opt.text}</span>
-                            </div>
-                        </button>
-                    `).join('')}
-                </div>
-                <div id="formulaExplanation" class="hidden mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                    <p class="text-green-400">${slide.explanation}</p>
-                </div>
-            </div>
-        `;
-    },
-
-    selectFormula(index, correct) {
-        const options = document.querySelectorAll('.formula-option');
-        options.forEach((opt, i) => {
-            opt.classList.remove('border-[var(--mission-gold)]', 'border-green-500', 'border-red-500');
-            if (i === index) {
-                opt.classList.add(correct ? 'border-green-500' : 'border-red-500');
-            }
-        });
-        
-        if (correct) {
-            document.getElementById('formulaExplanation').classList.remove('hidden');
-            this.userResponses.formulaCorrect = true;
-        }
-    },
-
-    renderPrayerIntro(slide) {
-        return `
-            <div class="max-w-md animate-fade-up text-center">
-                <span class="text-5xl mb-6 block">🙏</span>
-                <p class="text-xl text-[var(--text-color)] leading-relaxed">${slide.title}</p>
-            </div>
-        `;
-    },
-
-    renderPrayer(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                <div class="bg-amber-500/5 rounded-2xl p-6 border border-amber-500/20">
-                    <p class="text-lg italic text-[var(--text-color)] leading-loose">${slide.prayer}</p>
-                </div>
-                <div class="mt-6 text-center">
-                    <button onclick="GospelPresentation.prayerDecision(true)" class="px-8 py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-lg">
-                        🙏 Amen - I Prayed This
-                    </button>
-                    <button onclick="GospelPresentation.prayerDecision(false)" class="block mx-auto mt-4 text-[var(--text-muted)] text-sm hover:text-[var(--text-color)]">
-                        I'm not ready yet
-                    </button>
-                </div>
-            </div>
-        `;
-    },
-
-    prayerDecision(prayed) {
-        this.userResponses.prayed = prayed;
-        this.userResponses.prayedAt = prayed ? new Date().toISOString() : null;
-        this.next();
-        
-        // Save to Firebase if user prayed
-        if (prayed && window.auth?.currentUser) {
-            this.savePrayerDecision();
-        }
-    },
-
-    async savePrayerDecision() {
+        // Save to Firebase if logged in
         try {
-            const user = window.auth.currentUser;
-            if (!user) return;
-            
-            await window.db.collection('users').doc(user.uid).update({
-                gospelDecision: {
-                    prayed: true,
-                    prayedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }
-            });
-            console.log('Prayer decision saved!');
+            const user = window.auth?.currentUser;
+            if (user && window.db) {
+                await window.db.collection('users').doc(user.uid).update({
+                    'gospelDecision.prayed': true,
+                    'gospelDecision.prayedAt': firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log('Prayer decision saved to Firebase');
+            }
         } catch (error) {
             console.error('Error saving prayer decision:', error);
         }
-    },
-
-    renderAssuranceIntro(slide) {
-        return `
-            <div class="max-w-md animate-fade-up text-center">
-                <span class="text-5xl mb-6 block">🎉</span>
-                <h2 class="text-2xl font-bold text-[var(--mission-gold)] mb-4">${slide.title}</h2>
-            </div>
-        `;
-    },
-
-    renderAssurance(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                <div class="bg-green-500/10 rounded-2xl p-5 mb-4 border border-green-500/30">
-                    <p class="text-lg font-medium text-green-400">${slide.point}</p>
-                </div>
-                <div class="border-l-2 border-[var(--mission-gold)]/40 pl-4">
-                    <p class="text-base italic text-[var(--text-muted)] leading-relaxed mb-2">${slide.verse}</p>
-                    <p class="text-[var(--mission-gold)] font-bold text-sm">${slide.reference}</p>
-                </div>
-            </div>
-        `;
-    },
-
-    renderNextSteps(slide) {
-        return `
-            <div class="max-w-md animate-fade-up">
-                <h2 class="text-xl font-bold text-[var(--text-color)] mb-6 text-center">${slide.title}</h2>
-                <div class="space-y-4">
-                    ${slide.steps.map(step => `
-                        <div class="flex items-start gap-4 p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)]">
-                            <span class="text-2xl">${step.icon}</span>
-                            <div>
-                                <p class="font-bold text-[var(--text-color)]">${step.text}</p>
-                                <p class="text-sm text-[var(--text-muted)] mt-1">${step.subtext}</p>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    },
-
-    renderGrowInvitation(slide) {
-        return `
-            <div class="max-w-md animate-fade-up text-center">
-                <span class="text-6xl mb-6 block">💖</span>
-                <h2 class="text-2xl font-bold text-[var(--mission-gold)] mb-4">${slide.title}</h2>
-                <p class="text-base text-[var(--text-muted)] leading-relaxed mb-8">${slide.subtitle}</p>
-            </div>
-        `;
+        
+        // Auto-advance after 2 seconds
+        setTimeout(() => this.next(), 2000);
     },
 
     /**
-     * Finish presentation and transition to grow phase
+     * Complete the gospel presentation
      */
-    finishPresentation() {
+    async complete() {
+        // Mark gospel as completed
+        localStorage.setItem('gospelCompleted', 'true');
+        
+        // Save to Firebase
+        try {
+            const user = window.auth?.currentUser;
+            if (user && window.db) {
+                await window.db.collection('users').doc(user.uid).update({
+                    'gospelDecision.completed': true,
+                    'gospelDecision.completedAt': firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        } catch (error) {
+            console.error('Error saving completion:', error);
+        }
+        
+        // Close modal
         this.close();
         
-        // Open the "Grow Your Love" / Conversation with God guide
-        if (typeof ConversationGuide !== 'undefined') {
-            ConversationGuide.open();
-        } else {
-            // Fallback - open Bible reader
-            if (typeof BibleReader !== 'undefined') {
-                BibleReader.enterFullscreen();
-            }
+        // Show celebration or redirect
+        if (typeof NextStepsModal !== 'undefined') {
+            // Refresh the Next Steps modal to show unlocked options
+            setTimeout(() => {
+                NextStepsModal.open();
+            }, 500);
         }
-    },
-
-    /**
-     * Toggle audio playback
-     */
-    toggleAudio() {
-        // Audio feature - to be implemented when audio file is provided
-        alert('Audio will be available soon! Pastor Mike is recording the narration.');
     }
 };
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-    GospelPresentation.init();
-});
-
-// Make it globally available
+// Make globally available
 window.GospelPresentation = GospelPresentation;
