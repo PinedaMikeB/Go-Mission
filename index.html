@@ -9,7 +9,7 @@
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
         // Auto-generated build timestamp - changes on every deployment
-        const BUILD_TIMESTAMP = '1769515079000';
+        const BUILD_TIMESTAMP = '1769515283000';
     </script>
     <script src="/modules/core/auto-update.js"></script>
     
@@ -2219,9 +2219,11 @@
         window.toggleMainMenu = function() {
             const modal = document.getElementById('mainMenuModal');
             if (modal) {
-                modal.classList.toggle('hidden');
+                // Remove modal completely so it recreates with fresh language values
+                modal.remove();
             } else {
-                // Create menu modal if doesn't exist
+                // Create menu modal with current language
+                const currentLang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
                 const menuHTML = `
                     <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
                         <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-64 mt-16 mr-2 overflow-hidden shadow-2xl">
@@ -2231,8 +2233,8 @@
                             </div>
                             <div class="p-2">
                                 <button onclick="i18n.setLang(i18n.getLang() === 'en' ? 'tl' : 'en'); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
-                                    <span class="text-lg">${i18n.getLang() === 'en' ? '🇵🇭' : '🇺🇸'}</span>
-                                    <span class="text-sm text-[var(--text-color)]">${i18n.getLang() === 'en' ? 'Switch to Tagalog' : 'Switch to English'}</span>
+                                    <span class="text-lg">${currentLang === 'tl' ? '🇺🇸' : '🇵🇭'}</span>
+                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog'}</span>
                                 </button>
                                 <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🌓</span>
