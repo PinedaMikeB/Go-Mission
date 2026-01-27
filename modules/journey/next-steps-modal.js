@@ -34,7 +34,7 @@ const NextStepsModal = {
                 {
                     id: 'quietTime',
                     icon: '📖',
-                    title: 'Maglaan ng Oras sa Diyos',
+                    title: 'Makipag-usap sa Diyos Araw-araw',
                     subtitle: 'Matutong makipag-usap sa Diyos araw-araw',
                     action: 'openQuietTimeGuide',
                     requirementKey: null,
@@ -64,7 +64,7 @@ const NextStepsModal = {
                 {
                     id: 'quietTime',
                     icon: '📖',
-                    title: 'Maglaan ng Oras sa Diyos',
+                    title: 'Makipag-usap sa Diyos Araw-araw',
                     subtitle: 'Ipagpatuloy ang iyong conversation with God',
                     action: 'openBibleReader',
                     requirementKey: null,
