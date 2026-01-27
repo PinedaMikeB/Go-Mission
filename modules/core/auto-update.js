@@ -4,9 +4,9 @@
  * 
  * Features:
  * - Silent service worker updates
- * - Automatic updates when app is idle
- * - Force refresh on major updates
- * - No user interaction required
+ * - Updates ONLY when app is opened (not during active use)
+ * - No refresh while user is actively using the app
+ * - Force refresh on major version mismatch at app open
  * 
  * NOTE: Service worker registration is handled by push-notifications.js
  * This module focuses on update detection and activation
@@ -16,38 +16,42 @@ const AutoUpdate = {
     // Version is auto-generated from build timestamp - no manual changes needed!
     VERSION: BUILD_TIMESTAMP || Date.now().toString(),
     VERSION_KEY: 'goMission_appVersion',
+    UPDATE_PENDING_KEY: 'goMission_updatePending',
     registration: null,
+    updatePending: false,
     
     /**
      * Initialize auto-update system
+     * Called when app opens - this is when we apply updates
      */
     init() {
         console.log('[AutoUpdate] Initializing v' + this.VERSION);
         
-        // Check for version mismatch (force update)
+        // Check for version mismatch (force update on app open)
         this.checkVersionMismatch();
+        
+        // Check if there's a pending update from last session
+        this.applyPendingUpdate();
         
         // Setup update listeners (SW is registered by push-notifications.js)
         this.setupServiceWorkerListeners();
         
-        // Setup periodic update checks
-        this.setupPeriodicChecks();
+        // Setup background update checks (no refresh during use)
+        this.setupBackgroundChecks();
         
-        // Setup visibility-based updates
-        this.setupVisibilityUpdate();
-        
-        console.log('[AutoUpdate] Ready');
+        console.log('[AutoUpdate] Ready - updates apply on next app open');
     },
     
     /**
      * Check if app version changed (requires hard refresh)
+     * Only called at app initialization (app open)
      */
     checkVersionMismatch() {
         const storedVersion = localStorage.getItem(this.VERSION_KEY);
         
         if (storedVersion && storedVersion !== this.VERSION) {
             console.log('[AutoUpdate] Version mismatch! Stored:', storedVersion, 'Current:', this.VERSION);
-            // Clear old caches and reload
+            // Clear old caches and reload - this is at app open so it's safe
             this.forceUpdate();
         } else {
             localStorage.setItem(this.VERSION_KEY, this.VERSION);
@@ -56,7 +60,25 @@ const AutoUpdate = {
     },
     
     /**
+     * Apply any pending update from previous session
+     * Called at app open
+     */
+    applyPendingUpdate() {
+        const pending = localStorage.getItem(this.UPDATE_PENDING_KEY);
+        if (pending === 'true') {
+            console.log('[AutoUpdate] Pending update found - applying now...');
+            localStorage.removeItem(this.UPDATE_PENDING_KEY);
+            
+            // Activate waiting service worker if any
+            if (this.registration?.waiting) {
+                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+        }
+    },
+    
+    /**
      * Force clear caches and reload
+     * Only called at app initialization
      */
     async forceUpdate() {
         console.log('[AutoUpdate] Forcing update...');
@@ -75,6 +97,7 @@ const AutoUpdate = {
             
             // Update version before reload
             localStorage.setItem(this.VERSION_KEY, this.VERSION);
+            localStorage.removeItem(this.UPDATE_PENDING_KEY);
             
             // Hard reload
             console.log('[AutoUpdate] Reloading page...');
@@ -82,13 +105,13 @@ const AutoUpdate = {
             
         } catch (error) {
             console.error('[AutoUpdate] Force update error:', error);
-            // Still try to reload
             window.location.reload(true);
         }
     },
     
     /**
      * Setup listeners for service worker updates
+     * Updates are detected but NOT applied until next app open
      */
     setupServiceWorkerListeners() {
         if (!('serviceWorker' in navigator)) {
@@ -101,13 +124,13 @@ const AutoUpdate = {
             this.registration = registration;
             console.log('[AutoUpdate] Got SW registration:', registration.scope);
             
-            // Check for waiting worker
+            // If there's a waiting worker at app open, activate it now
             if (registration.waiting) {
-                console.log('[AutoUpdate] Found waiting SW - activating...');
+                console.log('[AutoUpdate] Found waiting SW at startup - activating...');
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
             
-            // Listen for new workers
+            // Listen for new workers (but don't auto-refresh during use)
             registration.addEventListener('updatefound', () => {
                 console.log('[AutoUpdate] New SW found!');
                 const newWorker = registration.installing;
@@ -117,9 +140,11 @@ const AutoUpdate = {
                         console.log('[AutoUpdate] SW state:', newWorker.state);
                         
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New SW ready - activate it immediately (no prompt)
-                            console.log('[AutoUpdate] New SW installed - activating silently...');
-                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            // New SW ready - mark as pending, don't refresh now
+                            console.log('[AutoUpdate] New SW installed - will apply on next app open');
+                            this.updatePending = true;
+                            localStorage.setItem(this.UPDATE_PENDING_KEY, 'true');
+                            // DO NOT call skipWaiting or reload here - user is active
                         }
                     });
                 }
@@ -128,58 +153,79 @@ const AutoUpdate = {
             console.log('[AutoUpdate] SW ready error:', err);
         });
         
-        // Listen for controller change (new SW activated)
+        // Listen for controller change - only reload if this is app initialization
+        let isInitialLoad = true;
+        setTimeout(() => { isInitialLoad = false; }, 5000); // 5 second grace period
+        
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            console.log('[AutoUpdate] New SW controlling - refreshing for updates...');
-            // Reload to get new content
-            window.location.reload();
+            if (isInitialLoad) {
+                console.log('[AutoUpdate] New SW controlling at startup - refreshing...');
+                window.location.reload();
+            } else {
+                console.log('[AutoUpdate] New SW controlling - will refresh on next app open');
+                localStorage.setItem(this.UPDATE_PENDING_KEY, 'true');
+            }
         });
     },
     
     /**
-     * Setup periodic update checks (every 5 minutes)
+     * Setup background update checks
+     * Checks for updates but NEVER refreshes during active use
      */
-    setupPeriodicChecks() {
-        setInterval(() => {
-            this.checkForUpdates();
-        }, 5 * 60 * 1000); // 5 minutes
-        
-        console.log('[AutoUpdate] Periodic checks enabled (every 5 min)');
-    },
-    
-    /**
-     * Check for updates when app becomes visible
-     */
-    setupVisibilityUpdate() {
+    setupBackgroundChecks() {
+        // Check for updates when app becomes visible (returning to app)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 console.log('[AutoUpdate] App visible - checking for updates...');
-                this.checkForUpdates();
+                this.checkForUpdatesOnly();
+                
+                // If there's a pending update and user just opened app, apply it
+                if (this.updatePending || localStorage.getItem(this.UPDATE_PENDING_KEY) === 'true') {
+                    console.log('[AutoUpdate] Applying pending update on app return...');
+                    localStorage.removeItem(this.UPDATE_PENDING_KEY);
+                    this.updatePending = false;
+                    
+                    if (this.registration?.waiting) {
+                        this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        // This will trigger controllerchange and reload
+                    }
+                }
             }
         });
         
-        // Also check on focus (mobile apps)
-        window.addEventListener('focus', () => {
-            this.checkForUpdates();
-        });
-        
-        // Check on page show (back/forward navigation)
+        // Check on page show (opening app from background)
         window.addEventListener('pageshow', (event) => {
             if (event.persisted) {
-                console.log('[AutoUpdate] Page restored from cache - checking updates...');
-                this.checkForUpdates();
+                console.log('[AutoUpdate] App restored from cache - checking updates...');
+                this.checkForUpdatesOnly();
+                
+                // Apply pending update
+                if (this.updatePending || localStorage.getItem(this.UPDATE_PENDING_KEY) === 'true') {
+                    console.log('[AutoUpdate] Applying pending update...');
+                    localStorage.removeItem(this.UPDATE_PENDING_KEY);
+                    this.updatePending = false;
+                    
+                    if (this.registration?.waiting) {
+                        this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                }
             }
         });
         
-        console.log('[AutoUpdate] Visibility-based updates enabled');
+        // Periodic background check (every 10 minutes) - just check, don't apply
+        setInterval(() => {
+            this.checkForUpdatesOnly();
+        }, 10 * 60 * 1000); // 10 minutes
+        
+        console.log('[AutoUpdate] Background checks enabled');
     },
     
     /**
-     * Check for updates
+     * Check for updates only (no refresh)
+     * Just downloads new SW, doesn't activate it
      */
-    async checkForUpdates() {
+    async checkForUpdatesOnly() {
         if (!this.registration) {
-            // Try to get registration
             if ('serviceWorker' in navigator) {
                 try {
                     this.registration = await navigator.serviceWorker.ready;
@@ -192,12 +238,7 @@ const AutoUpdate = {
         if (this.registration) {
             try {
                 await this.registration.update();
-                
-                // If there's a waiting worker, activate it
-                if (this.registration.waiting) {
-                    console.log('[AutoUpdate] Activating waiting SW...');
-                    this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
+                console.log('[AutoUpdate] Update check complete');
             } catch (e) {
                 // Update check failed (offline?) - ignore
             }
@@ -211,7 +252,8 @@ const AutoUpdate = {
         return {
             app: this.VERSION,
             stored: localStorage.getItem(this.VERSION_KEY),
-            hasSW: !!this.registration
+            hasSW: !!this.registration,
+            updatePending: this.updatePending || localStorage.getItem(this.UPDATE_PENDING_KEY) === 'true'
         };
     }
 };
