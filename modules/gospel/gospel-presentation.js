@@ -608,14 +608,17 @@ const GospelPresentation = {
                 render: () => `
                     <div class="text-center">
                         <div class="gospel-bounce text-3xl mb-2">🌟</div>
-                        <h2 class="gospel-scale-in delay-1 text-lg font-bold text-[var(--mission-gold)] mb-3">Umpisa Pa Lang Ito!</h2>
-                        <p class="gospel-fade-up delay-2 text-xs text-[var(--text-color)] mb-3">Bilang bagong anak ng Diyos, nais Niya na ikaw ay lumago. Kailangan dito ang <strong class="text-[var(--mission-gold)]">komunikasyon</strong>.</p>
-                        <div class="gospel-fade-up delay-3 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-xs text-left mb-4">
-                            <p class="text-[var(--mission-gold)] font-bold mb-1">Next step:</p>
-                            <p class="text-[var(--text-color)]">1. Bumalik sa Home</p>
-                            <p class="text-[var(--text-color)]">2. Pindutin "Humakbang Ngayon"</p>
-                            <p class="text-[var(--text-color)]">3. Piliin "Makipag-usap sa Diyos"</p>
+                        <h2 class="gospel-scale-in delay-1 text-lg font-bold text-[var(--mission-gold)] mb-2">Ang Buhay na Mayroon Ka Ngayon ay Umpisa Pa Lang!</h2>
+                        <p class="gospel-fade-up delay-2 text-xs text-[var(--text-color)] mb-2">Bilang bagong anak ng Diyos, nais Niya na ikaw ay lumago at makilala pa Siya nang lubusan. Hindi lang ito isang one-time event; ito ay simula ng isang relasyon. At gaya ng anumang relasyon, kailangan dito ang <strong class="text-[var(--mission-gold)]">komunikasyon</strong>.</p>
+                        <p class="gospel-fade-up delay-2 text-xs text-[var(--text-muted)] mb-2">Pero paano nga ba ito gawin?</p>
+                        <div class="gospel-fade-up delay-3 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-xs text-left mb-2">
+                            <p class="text-[var(--mission-gold)] font-bold mb-1">Narito ang iyong next step:</p>
+                            <p class="text-[var(--text-color)]">1. Bumalik sa Home screen ng app na ito.</p>
+                            <p class="text-[var(--text-color)]">2. Pindutin ang button na "Humakbang Ngayon".</p>
+                            <p class="text-[var(--text-color)]">3. Piliin ang "Makipag-usap sa Diyos araw-araw".</p>
                         </div>
+                        <p class="gospel-fade-up delay-3 text-xs text-[var(--text-muted)] mb-2">Dito, tuturuan ka namin kung paano magkaroon ng Conversation Time with God. Malalaman mo kung paano magbasa ng Bible at manalangin sa paraang simple at personal.</p>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--mission-gold)] font-bold mb-3">Excited na ang Diyos na makipag-usap sa'yo araw-araw!</p>
                         <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-4 w-full py-4 bg-yellow-500 text-black font-bold rounded-xl text-lg shadow-lg">
                             BUMALIK SA HOME →
                         </button>
