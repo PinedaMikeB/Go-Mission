@@ -84,7 +84,8 @@ const GospelPresentation = {
     },
 
     buildSlides() {
-        const c = (key) => this.c(key);
+        // Note: c() must be called inside render functions to get current language
+        const self = this;
         
         this.slides = [
             // ========== SLIDE 1: INTRO ==========
@@ -93,9 +94,9 @@ const GospelPresentation = {
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-6xl mb-4">❤️</div>
-                        <h1 class="gospel-fade-up delay-2 text-2xl font-display font-bold text-[var(--mission-gold)] mb-3">${c('intro.title')}</h1>
-                        <p class="gospel-fade-up delay-3 text-base text-[var(--text-color)] mb-4">${c('intro.subtitle')}</p>
-                        <p class="gospel-fade-up delay-4 text-xs text-[var(--text-muted)]">${c('intro.description')}</p>
+                        <h1 class="gospel-fade-up delay-2 text-2xl font-display font-bold text-[var(--mission-gold)] mb-3">${self.c('intro.title')}</h1>
+                        <p class="gospel-fade-up delay-3 text-base text-[var(--text-color)] mb-4">${self.c('intro.subtitle')}</p>
+                        <p class="gospel-fade-up delay-4 text-xs text-[var(--text-muted)]">${self.c('intro.description')}</p>
                     </div>
                 `
             },
@@ -105,9 +106,9 @@ const GospelPresentation = {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${c('truth1.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${c('truth1.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${c('truth1.subtitle')}</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth1.label')}</p>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth1.title')}</h2>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth1.subtitle')}</p>
                     </div>
                 `
             },
@@ -141,10 +142,10 @@ const GospelPresentation = {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${c('truth2.label')}</p>
-                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${c('truth2.intro')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${c('truth2.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${c('truth2.subtitle')}</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth2.label')}</p>
+                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${self.c('truth2.intro')}</p>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth2.title')}</h2>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth2.subtitle')}</p>
                     </div>
                 `
             },
@@ -230,8 +231,8 @@ const GospelPresentation = {
                 type: 'custom',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${c('truth3.label')}</p>
-                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${c('truth3.intro')}</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth3.label')}</p>
+                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${self.c('truth3.intro')}</p>
                     </div>
                 `
             },
@@ -275,10 +276,10 @@ const GospelPresentation = {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${c('truth3.label')}</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth3.label')}</p>
                         <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${this.lang() === 'tl' ? 'Ang sagot sa ating tanong ay...' : 'The answer to our question is...'}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${c('truth3.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${c('truth3.subtitle')}</p>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth3.title')}</h2>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth3.subtitle')}</p>
                     </div>
                 `
             },
@@ -325,9 +326,9 @@ const GospelPresentation = {
                 type: 'truth-header',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${c('truth4.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${c('truth4.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${c('truth4.subtitle')}</p>
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth4.label')}</p>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth4.title')}</h2>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth4.subtitle')}</p>
                     </div>
                 `
             },
