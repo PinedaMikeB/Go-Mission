@@ -116,25 +116,25 @@ const GospelPresentation = {
             // ========== SLIDE 3: JOHN 3:16 ==========
             {
                 type: 'verse',
-                getData: () => c('truth1.verse')
+                getData: () => self.c('truth1.verse')
             },
 
             // ========== SLIDE 4: QUESTION 1 ==========
             {
                 type: 'question',
-                getData: () => c('truth1.q1')
+                getData: () => self.c('truth1.q1')
             },
 
             // ========== SLIDE 5: QUESTION 2 ==========
             {
                 type: 'question',
-                getData: () => c('truth1.q2')
+                getData: () => self.c('truth1.q2')
             },
 
             // ========== SLIDE 6: TRANSITION ==========
             {
                 type: 'transition',
-                getData: () => c('truth1.transition')
+                getData: () => self.c('truth1.transition')
             },
 
             // ========== SLIDE 7: TRUTH 2 HEADER ==========
@@ -154,38 +154,38 @@ const GospelPresentation = {
             {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract1.jpg',
-                getData: () => c('truth2.verse1')
+                getData: () => self.c('truth2.verse1')
             },
 
             // ========== SLIDE 9: QUESTION - WHO SINNED ==========
             {
                 type: 'question',
-                getData: () => c('truth2.q1')
+                getData: () => self.c('truth2.q1')
             },
 
             // ========== SLIDE 10: TRANSITION - PRICE ==========
             {
                 type: 'transition',
-                getData: () => c('truth2.transition1')
+                getData: () => self.c('truth2.transition1')
             },
 
             // ========== SLIDE 11: ROMANS 6:23 ==========
             {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract2.jpg',
-                getData: () => c('truth2.verse2')
+                getData: () => self.c('truth2.verse2')
             },
 
             // ========== SLIDE 12: QUESTION - PAYMENT ==========
             {
                 type: 'question',
-                getData: () => c('truth2.q2')
+                getData: () => self.c('truth2.q2')
             },
 
             // ========== SLIDE 13: TRANSITION - TWO DEATHS ==========
             {
                 type: 'transition',
-                getData: () => c('truth2.transition2')
+                getData: () => self.c('truth2.transition2')
             },
 
             // ========== SLIDE 14: TWO KINDS OF DEATH ==========
@@ -217,13 +217,13 @@ const GospelPresentation = {
             // ========== SLIDE 15: REVELATION 21:8 ==========
             {
                 type: 'verse',
-                getData: () => c('truth2.verse3')
+                getData: () => self.c('truth2.verse3')
             },
 
             // ========== SLIDE 16: QUESTION - SECOND DEATH ==========
             {
                 type: 'question',
-                getData: () => c('truth2.q3')
+                getData: () => self.c('truth2.q3')
             },
 
             // ========== SLIDE 17: TRUTH 3 INTRO ==========
@@ -241,7 +241,7 @@ const GospelPresentation = {
             {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract3.jpg',
-                getData: () => c('truth3.verseHumanEffort')
+                getData: () => self.c('truth3.verseHumanEffort')
             },
 
             // ========== SLIDE 19: HUMAN EFFORTS FAIL ==========
@@ -268,7 +268,7 @@ const GospelPresentation = {
             // ========== SLIDE 20: TRANSITION - HOW ==========
             {
                 type: 'transition',
-                getData: () => c('truth3.transition')
+                getData: () => self.c('truth3.transition')
             },
 
             // ========== SLIDE 21: JESUS IS THE WAY HEADER ==========
@@ -288,37 +288,37 @@ const GospelPresentation = {
             {
                 type: 'verse',
                 image: '/assets/images/gospel/gospel_tract4.jpg',
-                getData: () => c('truth3.verse1')
+                getData: () => self.c('truth3.verse1')
             },
 
             // ========== SLIDE 23: QUESTION - ONLY WAY ==========
             {
                 type: 'question',
-                getData: () => c('truth3.q1')
+                getData: () => self.c('truth3.q1')
             },
 
             // ========== SLIDE 24: TRANSITION - WHY JESUS ==========
             {
                 type: 'transition',
-                getData: () => c('truth3.transition2')
+                getData: () => self.c('truth3.transition2')
             },
 
             // ========== SLIDE 25: 1 PETER 3:18 ==========
             {
                 type: 'verse',
-                getData: () => c('truth3.verse2')
+                getData: () => self.c('truth3.verse2')
             },
 
             // ========== SLIDE 26: QUESTION - WHY DIED ==========
             {
                 type: 'question',
-                getData: () => c('truth3.q2')
+                getData: () => self.c('truth3.q2')
             },
 
             // ========== SLIDE 27: TRANSITION - SAVED YET? ==========
             {
                 type: 'transition',
-                getData: () => c('truth3.transition3')
+                getData: () => self.c('truth3.transition3')
             },
 
             // ========== SLIDE 28: TRUTH 4 HEADER ==========
@@ -336,13 +336,13 @@ const GospelPresentation = {
             // ========== SLIDE 29: EPHESIANS 2:8-9 ==========
             {
                 type: 'verse',
-                getData: () => c('truth4.verse')
+                getData: () => self.c('truth4.verse')
             },
 
             // ========== SLIDE 30: FORMULA QUESTION ==========
             {
                 type: 'formula-question',
-                getData: () => c('truth4.formulaQ')
+                getData: () => self.c('truth4.formulaQ')
             },
 
             // ========== SLIDE 31: DECISION CHOICE ==========
