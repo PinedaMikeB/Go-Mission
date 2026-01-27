@@ -490,40 +490,84 @@ const MyGroups = {
         const code = document.getElementById('joinCodeInput')?.value?.trim().toUpperCase();
         const errorEl = document.getElementById('joinError');
         
-        if (!code || code.length !== 6) {
+        if (!code || code.length < 4) {
             if (errorEl) {
-                errorEl.textContent = 'Please enter a 6-digit code';
+                errorEl.textContent = 'Please enter a valid code';
                 errorEl.classList.remove('hidden');
             }
             return;
         }
         
         try {
-            // Find group by invite code
-            const groupQuery = window.query(
-                window.collection(window.db, 'goMission_groups'),
-                window.where('inviteCode', '==', code)
-            );
-            const snapshot = await window.getDocs(groupQuery);
+            let groupDoc = null;
+            let groupData = null;
             
-            if (snapshot.empty) {
-                if (errorEl) {
-                    errorEl.textContent = 'Invalid invite code';
-                    errorEl.classList.remove('hidden');
+            // Method 1: Check goMission_groupInviteCodes collection (new system)
+            const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code);
+            const codeDoc = await window.getDoc(codeRef);
+            
+            if (codeDoc.exists()) {
+                const codeData = codeDoc.data();
+                
+                // Check if code expired
+                if (codeData.expiresAt && new Date(codeData.expiresAt) < new Date()) {
+                    if (errorEl) {
+                        errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
                 }
-                return;
-            }
-            
-            const groupDoc = snapshot.docs[0];
-            const groupData = groupDoc.data();
-            
-            // Check if invite code has expired
-            if (groupData.inviteCodeExpiresAt && new Date(groupData.inviteCodeExpiresAt) < new Date()) {
-                if (errorEl) {
-                    errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
-                    errorEl.classList.remove('hidden');
+                
+                // Check usage limit
+                if (codeData.maxUses && codeData.usedCount >= codeData.maxUses) {
+                    if (errorEl) {
+                        errorEl.textContent = 'This invite code has reached its usage limit.';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
                 }
-                return;
+                
+                // Get the group
+                const groupRef = window.doc(window.db, 'goMission_groups', codeData.groupId);
+                groupDoc = await window.getDoc(groupRef);
+                
+                if (!groupDoc.exists()) {
+                    if (errorEl) {
+                        errorEl.textContent = 'Group not found';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+                
+                groupData = groupDoc.data();
+                
+            } else {
+                // Method 2: Check inviteCode field directly on groups (legacy system)
+                const groupQuery = window.query(
+                    window.collection(window.db, 'goMission_groups'),
+                    window.where('inviteCode', '==', code)
+                );
+                const snapshot = await window.getDocs(groupQuery);
+                
+                if (snapshot.empty) {
+                    if (errorEl) {
+                        errorEl.textContent = 'Invalid invite code';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+                
+                groupDoc = snapshot.docs[0];
+                groupData = groupDoc.data();
+                
+                // Check if legacy invite code has expired
+                if (groupData.inviteCodeExpiresAt && new Date(groupData.inviteCodeExpiresAt) < new Date()) {
+                    if (errorEl) {
+                        errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
             }
             
             // Check if already a member
@@ -560,6 +604,7 @@ const MyGroups = {
                 email: window.currentUser.email || '',
                 photo: window.currentUser.photoURL || '',
                 requestedAt: new Date().toISOString(),
+                inviteCode: code,
                 // Include existing group info if they have one
                 hasExistingGroup: !!this.uplineGroup,
                 existingGroupId: this.uplineGroup?.id || null,
@@ -574,6 +619,15 @@ const MyGroups = {
                 { merge: true }
             );
             
+            // Update code usage count if using new system
+            if (codeDoc && codeDoc.exists()) {
+                await window.setDoc(codeRef, {
+                    usedCount: (codeDoc.data().usedCount || 0) + 1,
+                    lastUsedAt: new Date().toISOString(),
+                    lastUsedBy: window.currentUser.uid
+                }, { merge: true });
+            }
+            
             // Note: Cloud Function (onMemberJoined) will automatically send push notification to leader
             
             // Close modal and show success
@@ -584,7 +638,7 @@ const MyGroups = {
         } catch (error) {
             console.error('[MyGroups] Join request error:', error);
             if (errorEl) {
-                errorEl.textContent = 'Failed to send request';
+                errorEl.textContent = 'Failed to send request. Please try again.';
                 errorEl.classList.remove('hidden');
             }
         }
