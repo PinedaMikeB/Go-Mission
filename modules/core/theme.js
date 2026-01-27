@@ -2,20 +2,20 @@
  * Go Mission - Theme Module
  * Handles dark/light mode switching with persistence
  * 
- * Dark Mode (default):
- * - Deep maroon/burgundy backgrounds
- * - Gold accents
- * - Off-white text
- * 
- * Light Mode:
+ * Light Mode (default):
  * - Warm cream backgrounds
  * - Maroon accents
  * - Dark text
+ * 
+ * Dark Mode:
+ * - Deep maroon/burgundy backgrounds
+ * - Gold accents
+ * - Off-white text
  */
 
 const Theme = {
   // Current theme: 'dark' or 'light'
-  currentTheme: 'dark',
+  currentTheme: 'light',
   
   // Storage key
   STORAGE_KEY: 'goMission_theme',
