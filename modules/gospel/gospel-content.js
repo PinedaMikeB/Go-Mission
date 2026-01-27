@@ -210,9 +210,12 @@ const GospelContent = {
                 correctIndex: 2,
                 correctFeedback: '🎉 Tama! Pananampalataya + Wala = Kaligtasan. Ang kaligtasan ay regalo ng Diyos - tanggapin mo lang sa pamamagitan ng pananampalataya!',
                 wrongExplanation: `
+                    <p class="text-[var(--text-muted)] mb-2">Ulitin nating basahin ang talata:</p>
+                    <p class="italic text-[var(--text-color)] mb-2">"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya't walang maipagmamalaki ang sinuman."</p>
+                    <p class="text-[var(--mission-gold)] text-right text-xs mb-3">— Efeso 2:8-9</p>
                     <p class="mb-2">Ayon sa talata, ang kaligtasan ay <strong>regalo ng Diyos</strong> at hindi galing sa ating sarili o mabubuting gawa.</p>
                     <p class="text-[var(--mission-gold)] font-bold mb-2">Kaya ang tamang sagot ay C: Pananampalataya + Wala = Kaligtasan.</p>
-                    <p class="text-[var(--text-muted)] text-xs">Ang paggawa ng mabuti ay mahalaga, pero hindi ito ang basehan ng kaligtasan—kundi ang ginawa lamang ni Hesus.</p>
+                    <p class="text-[var(--text-muted)] text-xs">Ang paggawa ng mabuti ay mahalaga, pero hindi ito ang basehan ng kaligtasan kundi ang ginawa lamang ni Hesus.</p>
                 `
             }
         },
@@ -511,6 +514,9 @@ const GospelContent = {
                 correctIndex: 2,
                 correctFeedback: '🎉 Correct! Faith + Nothing = Salvation. Salvation is God\'s gift - just receive it through faith!',
                 wrongExplanation: `
+                    <p class="text-[var(--text-muted)] mb-2">Let's read the verse again:</p>
+                    <p class="italic text-[var(--text-color)] mb-2">"For by grace you have been saved through faith. And this is not your own doing; it is the gift of God, not a result of works, so that no one may boast."</p>
+                    <p class="text-[var(--mission-gold)] text-right text-xs mb-3">— Ephesians 2:8-9</p>
                     <p class="mb-2">According to this verse, salvation is <strong>God's gift</strong> and not from ourselves or our good works.</p>
                     <p class="text-[var(--mission-gold)] font-bold mb-2">Therefore, the correct answer is C: Faith + Nothing = Salvation.</p>
                     <p class="text-[var(--text-muted)] text-xs">Doing good is important, but it's not the basis for salvation—only what Jesus did for us.</p>
