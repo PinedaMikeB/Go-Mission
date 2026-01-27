@@ -9,7 +9,7 @@
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
         // Auto-generated build timestamp - changes on every deployment
-        const BUILD_TIMESTAMP = '1769516618000';
+        const BUILD_TIMESTAMP = '1769519705000';
     </script>
     <script src="/modules/core/auto-update.js"></script>
     
@@ -2224,6 +2224,7 @@
             } else {
                 // Create menu modal with current language
                 const currentLang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+                const updateInfo = (typeof AutoUpdate !== 'undefined') ? AutoUpdate.CURRENT_UPDATE : { version: '2.0.0', date: '2026-01-27' };
                 const menuHTML = `
                     <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
                         <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-64 mt-16 mr-2 overflow-hidden shadow-2xl">
@@ -2239,6 +2240,13 @@
                                 <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
+                                </button>
+                                <button onclick="AutoUpdate.showUpdateDetails(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">🔄</span>
+                                    <div class="flex-1">
+                                        <span class="text-sm text-[var(--text-color)] block">${currentLang === 'tl' ? 'I-update ang App' : 'Update App'}</span>
+                                        <span class="text-[10px] text-[var(--text-muted)]">v${updateInfo.version} • ${updateInfo.date}</span>
+                                    </div>
                                 </button>
                                 <button onclick="signOut(auth); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left text-red-400">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
