@@ -429,7 +429,25 @@ const GospelPresentation = {
                 `}
             },
 
-            // ========== SLIDE 35: CELEBRATION ==========
+            // ========== SLIDE 35: NOT ACCEPTED (shown when user clicks "No") ==========
+            {
+                type: 'not-accepted',
+                render: () => {
+                    const p = self.c('prayer.notAccepted');
+                    return `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <div class="gospel-bounce text-4xl mb-3">🙏</div>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] rounded-xl p-4 text-sm mb-4">
+                            <p class="text-[var(--text-color)] leading-relaxed">${p.message}</p>
+                        </div>
+                        <button onclick="GospelPresentation.next()" class="gospel-fade-up delay-3 px-6 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
+                            ${p.continueBtn}
+                        </button>
+                    </div>
+                `}
+            },
+
+            // ========== SLIDE 36: CELEBRATION ==========
             {
                 type: 'celebration',
                 render: () => {
@@ -622,6 +640,7 @@ const GospelPresentation = {
             case 'decision-choice':
             case 'not-ready':
             case 'prayer':
+            case 'not-accepted':
                 html = slide.render();
                 nextBtn.style.display = 'none';
                 break;
@@ -807,10 +826,9 @@ const GospelPresentation = {
             } catch (e) { console.error(e); }
             
             localStorage.setItem('gospelStatus', 'needs-followup');
-            this.close();
-            if (typeof NextStepsModal !== 'undefined') {
-                setTimeout(() => NextStepsModal.open(), 500);
-            }
+            // Show the not-accepted slide instead of closing
+            const notAcceptedIndex = this.slides.findIndex(s => s.type === 'not-accepted');
+            if (notAcceptedIndex !== -1) this.showSlide(notAcceptedIndex);
         } else if (response === 'yes') {
             localStorage.setItem('gospelCompleted', 'true');
             localStorage.setItem('prayerPrayed', 'true');

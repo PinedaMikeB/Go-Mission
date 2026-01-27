@@ -253,7 +253,11 @@ const GospelContent = {
             text: '"Panginoong Hesus, Inaamin ko po na ako ay makasalanan. Patawarin Niyo po ako. Nananampalataya po ako na Ikaw ang nagbayad ng aking kasalanan sa krus. Ngayon nga ay binubuksan ko na ang aking puso. Pumasok Ka at manahan sa akin. Tinatanggap Kita bilang aking Panginoon at Tagapagligtas. Salamat sapagkat balang araw ay makakasama Kita sa langit. Simula ngayon ay tatalikdan ko ang aking kasalanan. Sinusuko ko na ang aking buhay sa Iyo. Amen."',
             confirmQ: 'Tinanggap mo ba ang Panginoong Hesus?',
             noBtn: 'Hindi',
-            yesBtn: 'Oo, tinanggap ko!'
+            yesBtn: 'Oo, tinanggap ko!',
+            notAccepted: {
+                message: 'Salamat sa iyong oras kaibigan. Tandaan mo lang na mahal na mahal ka ng Diyos. Kahit hindi ka pa handang tanggapin Siya ngayon, mananatiling bukas ang Kanyang mga kamay para sa iyo. Patuloy mong gamitin ang app na ito. Magsimula ka kilalanin Siya sa pamamagitan ng pagbabasa ng Bibliya at pagsali sa ating mission group. Sa home page ay pwede ka mamili sa susunod na hakbang mo. Pagpalain ka ng ating Panginoong Hesus.',
+                continueBtn: 'Magpatuloy →'
+            }
         },
         
         // CELEBRATION
@@ -557,7 +561,11 @@ const GospelContent = {
             text: '"Lord Jesus, I admit that I am a sinner. Please forgive me. I believe that You paid for my sins on the cross. Right now, I open my heart. Come in and dwell in me. I receive You as my Lord and Savior. Thank You that one day I will be with You in heaven. From now on, I will turn away from my sin. I surrender my life to You. Amen."',
             confirmQ: 'Did you receive the Lord Jesus?',
             noBtn: 'No',
-            yesBtn: 'Yes, I received Him!'
+            yesBtn: 'Yes, I received Him!',
+            notAccepted: {
+                message: 'Thank you for your time, friend. Just remember that God loves you so much. Even if you\'re not ready to receive Him now, His arms remain open for you. Continue using this app. Start getting to know Him by reading the Bible and joining our mission group. On the home page, you can choose your next step. May our Lord Jesus bless you.',
+                continueBtn: 'Continue →'
+            }
         },
         
         // CELEBRATION
