@@ -751,6 +751,10 @@ const GospelPresentation = {
         if (isCorrect) {
             feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-green-500/10 border border-green-500/30 text-green-300';
             feedback.innerHTML = data.correctFeedback;
+            // Play correct answer audio
+            if (window.GospelAudio) {
+                window.GospelAudio.playCorrect(this.currentSlide);
+            }
         } else {
             if (data.wrongExplanation) {
                 feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-xs bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] max-h-48 overflow-y-auto';
@@ -758,6 +762,10 @@ const GospelPresentation = {
             } else {
                 feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-orange-500/10 border border-orange-500/30 text-orange-300';
                 feedback.innerHTML = data.wrongFeedback;
+            }
+            // Play wrong answer audio
+            if (window.GospelAudio) {
+                window.GospelAudio.playWrong(this.currentSlide);
             }
         }
         

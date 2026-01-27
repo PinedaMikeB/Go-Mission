@@ -1,5 +1,6 @@
 /**
  * Gospel Presentation Audio Controller
+ * Supports bilingual audio (Tagalog/English)
  * One audio file per slide - plays when slide is shown
  * 
  * Usage:
@@ -18,16 +19,189 @@ const GospelAudio = {
     currentSlide: null,
     isMuted: false,
     
-    // Audio files mapped to slide index
-    // Add entries as audio files become available
-    slideAudio: {
-        0: '/assets/audio/gospel/slide_0.wav',  // Intro
-        1: '/assets/audio/gospel/slide_1.wav',  // Truth 1 header
-        2: '/assets/audio/gospel/slide_2.wav',  // John 3:16
-        // Add more as recorded:
-        // 3: '/assets/audio/gospel/slide_3.wav',  // Question 1
-        // 4: '/assets/audio/gospel/slide_4.wav',  // Question 2
-        // ...
+    // Base path for audio files
+    basePath: '/assets/audio/gospel/',
+    
+    // Tagalog audio files mapped to slide index
+    // Slide index (0-based) → filename
+    slideAudioTL: {
+        // SLIDE 1: Intro
+        0: 'Gospel Slide 1.wav',
+        
+        // SLIDE 2: Truth 1 Header
+        1: 'Gospel Slide 2.wav',
+        
+        // SLIDE 3: John 3:16
+        2: 'Gospel Slide 3.wav',
+        
+        // SLIDE 4: Question 1
+        3: { 
+            question: 'Gospel Slide 4 Question.wav',
+            correct: 'Gospel Slide 4 Correct Answer.wav',
+            wrong: 'Gospel Slide 4 Wrong Answer.wav'
+        },
+        
+        // SLIDE 5: Question 2
+        4: {
+            question: 'Gospel Slide 5 Question.wav',
+            correct: 'Gospel Slide 5 Correct Answer.wav',
+            wrong: 'Gospel Slide 5 Wrong Answer.wav'
+        },
+        
+        // SLIDE 6: Transition
+        5: 'Gospel Slide 6.wav',
+        
+        // SLIDE 7: Truth 2 Header
+        6: 'Gospel Slide 7.wav',
+        
+        // SLIDE 8: Romans 3:23
+        7: 'Gospel Slide 8.wav',
+        
+        // SLIDE 9: Question 3
+        8: {
+            question: 'Gospel Slide 9 Question.wav',
+            correct: 'Gospel Slide 9 Correct Answer.wav',
+            wrong: 'Gospel Slide 9 Wrong Answer.wav'
+        },
+        
+        // SLIDE 10: Transition
+        9: 'Gospel Slide 10.wav',
+        
+        // SLIDE 11: Romans 6:23a
+        10: 'Gospel Slide 11.wav',
+        
+        // SLIDE 12: Question 4
+        11: {
+            question: 'Gospel Slide 12 Question.wav',
+            correct: 'Gospel Slide 12 Correct Answer.wav',
+            wrong: 'Gospel Slide 12 Wrong Answer.wav'
+        },
+        
+        // SLIDE 13: Transition
+        12: 'Gospel Slide 13.wav',
+        
+        // SLIDE 14: Two Deaths
+        13: 'Gospel Slide 14.wav',
+        
+        // SLIDE 15: Revelation 21:8
+        14: 'Gospel Slide 15.wav',
+        
+        // SLIDE 16: Question 5
+        15: {
+            question: 'Gospel Slide 16 Question.wav',
+            correct: 'Gopel Slide 16 Correct Answer.wav',  // Note: typo in filename
+            wrong: 'Gospel Slide 16 Wrong Answer.wav'
+        },
+        
+        // SLIDE 17: Truth 3 Intro
+        16: 'Gospel Slide 17.wav',
+        
+        // SLIDE 18: Proverbs 14:12
+        17: 'Gospel Slide 18.wav',
+        
+        // SLIDE 19: Human Efforts
+        18: 'Gospel Slide 19.wav',
+        
+        // SLIDE 20: Transition
+        19: 'Gospel Slide 20.wav',
+        
+        // SLIDE 21: Jesus is the Way Header
+        20: 'Gospel Slide 21.wav',
+        
+        // SLIDE 22: John 14:6
+        21: 'Gospel Slide 22.wav',
+        
+        // SLIDE 23: Question 6
+        22: {
+            question: 'Gospel Slide 23 Question.wav',
+            correct: 'Gospel Slide 23 Correct Answer.wav',
+            wrong: 'Gospel Slide 23 Wrong Answer.wav'
+        },
+        
+        // SLIDE 24: Transition
+        23: 'Gospel Slide 24.wav',
+        
+        // SLIDE 25: 1 Peter 3:18
+        24: 'Gospel Slide 25.wav',
+        
+        // SLIDE 26: Question 7
+        25: {
+            question: 'Gospel Slide 26 Question.wav',
+            correct: 'Gospel Slide 26 Correct Answer.wav',
+            wrong: 'Gospel Slide 26 Wrong Answer.wav'
+        },
+        
+        // SLIDE 27: Transition
+        26: 'Gospel Slide 27.wav',
+        
+        // SLIDE 28: Truth 4 Header
+        27: 'Gospel Slide 28.wav',
+        
+        // SLIDE 29: Ephesians 2:8-9
+        28: 'Gospel Slide 29.wav',
+        
+        // SLIDE 30: Formula Question
+        29: {
+            question: 'Gospel Slide 30 Question.wav',
+            correct: 'Gospel Slide 30 Correct Answer.wav',
+            wrong: 'Gospel Slide 30 Wrong Answer.wav'
+        },
+        
+        // SLIDE 31: Decision Choice (no audio - user reads)
+        // 30: null,
+        
+        // SLIDE 32: Not Ready (no audio for now)
+        // 31: null,
+        
+        // SLIDE 33: Prayer Intro (no audio for now)
+        // 32: null,
+        
+        // SLIDE 34: Prayer
+        33: {
+            prayer: 'Gospel Slide 34 Prayer.wav',
+            notAccepted: 'Gospel Slide 34 Button Hindi.wav'
+        },
+        
+        // SLIDE 35: Not Accepted (uses Button Hindi audio)
+        34: 'Gospel Slide 34 Button Hindi.wav',
+        
+        // SLIDE 36: Celebration
+        35: 'Gospel Slide 35.wav',
+        
+        // SLIDE 37: Promise 1
+        36: 'Gospel Slide 36.wav',
+        
+        // SLIDE 38: Promise 2
+        37: 'Gospel Slide 37.wav',
+        
+        // SLIDE 39: Promise 3
+        38: 'Gospel Slide 38.wav',
+        
+        // SLIDE 40: Final
+        39: 'Gospel Slide 39.wav'
+    },
+    
+    // English audio files (to be added)
+    slideAudioEN: {
+        // Add English audio files here when available
+        // Same structure as slideAudioTL
+    },
+    
+    /**
+     * Get current language
+     */
+    getLang() {
+        if (window.i18n && window.i18n.currentLang) {
+            return window.i18n.currentLang;
+        }
+        return localStorage.getItem('goMission_language') || 'tl';
+    },
+    
+    /**
+     * Get audio mapping for current language
+     */
+    getAudioMap() {
+        return this.getLang() === 'en' ? this.slideAudioEN : this.slideAudioTL;
     },
     
     /**
@@ -46,26 +220,53 @@ const GospelAudio = {
         this.isMuted = localStorage.getItem('gospelAudioMuted') === 'true';
         this.audio.muted = this.isMuted;
         
-        console.log('[GospelAudio] Initialized - slide-per-slide mode');
+        console.log('[GospelAudio] Initialized - bilingual mode');
     },
     
     /**
      * Play audio for a specific slide
      * Called by GospelPresentation.showSlide()
      */
-    playForSlide(slideIndex) {
+    playForSlide(slideIndex, audioType = 'default') {
         // Stop any currently playing audio
         this.stop();
         
-        // Check if this slide has audio
-        const audioFile = this.slideAudio[slideIndex];
-        if (!audioFile) {
+        const audioMap = this.getAudioMap();
+        const slideAudio = audioMap[slideIndex];
+        
+        if (!slideAudio) {
             console.log(`[GospelAudio] No audio for slide ${slideIndex}`);
             return;
         }
         
+        let audioFile;
+        
+        // Handle different audio types for the same slide
+        if (typeof slideAudio === 'string') {
+            audioFile = slideAudio;
+        } else if (typeof slideAudio === 'object') {
+            // For slides with multiple audio options (questions, prayer)
+            if (audioType === 'correct' && slideAudio.correct) {
+                audioFile = slideAudio.correct;
+            } else if (audioType === 'wrong' && slideAudio.wrong) {
+                audioFile = slideAudio.wrong;
+            } else if (audioType === 'prayer' && slideAudio.prayer) {
+                audioFile = slideAudio.prayer;
+            } else if (audioType === 'notAccepted' && slideAudio.notAccepted) {
+                audioFile = slideAudio.notAccepted;
+            } else {
+                // Default to question audio for question slides
+                audioFile = slideAudio.question || slideAudio.prayer || Object.values(slideAudio)[0];
+            }
+        }
+        
+        if (!audioFile) {
+            console.log(`[GospelAudio] No ${audioType} audio for slide ${slideIndex}`);
+            return;
+        }
+        
         this.currentSlide = slideIndex;
-        this.audio.src = audioFile;
+        this.audio.src = this.basePath + encodeURIComponent(audioFile);
         this.audio.load();
         
         if (!this.isMuted) {
@@ -73,7 +274,7 @@ const GospelAudio = {
                 .then(() => {
                     this.isPlaying = true;
                     this.updateUI();
-                    console.log(`[GospelAudio] Playing slide ${slideIndex}`);
+                    console.log(`[GospelAudio] Playing slide ${slideIndex} (${audioType}): ${audioFile}`);
                 })
                 .catch(e => {
                     console.warn('[GospelAudio] Autoplay blocked:', e.message);
@@ -83,10 +284,24 @@ const GospelAudio = {
     },
     
     /**
+     * Play correct answer audio
+     */
+    playCorrect(slideIndex) {
+        this.playForSlide(slideIndex, 'correct');
+    },
+    
+    /**
+     * Play wrong answer audio
+     */
+    playWrong(slideIndex) {
+        this.playForSlide(slideIndex, 'wrong');
+    },
+    
+    /**
      * Replay current slide's audio
      */
     replay() {
-        if (this.currentSlide !== null && this.slideAudio[this.currentSlide]) {
+        if (this.currentSlide !== null) {
             this.audio.currentTime = 0;
             this.audio.play()
                 .then(() => {
@@ -154,7 +369,7 @@ const GospelAudio = {
         this.updateUI();
         
         // If unmuting and on a slide with audio, play it
-        if (!this.isMuted && this.currentSlide !== null && this.slideAudio[this.currentSlide]) {
+        if (!this.isMuted && this.currentSlide !== null) {
             this.replay();
         }
     },
@@ -182,7 +397,6 @@ const GospelAudio = {
      */
     showPlayPrompt() {
         this.updateUI();
-        // User can click the audio button to start
     },
     
     /**
@@ -192,7 +406,8 @@ const GospelAudio = {
         const audioBtn = document.getElementById('gospelAudioBtn');
         if (!audioBtn) return;
         
-        const hasAudio = this.currentSlide !== null && this.slideAudio[this.currentSlide];
+        const audioMap = this.getAudioMap();
+        const hasAudio = this.currentSlide !== null && audioMap[this.currentSlide];
         
         if (this.isMuted) {
             audioBtn.innerHTML = `
@@ -233,7 +448,7 @@ const GospelAudio = {
         return `
             <button 
                 id="gospelAudioBtn" 
-                onclick="GospelAudio.toggle()" 
+                onclick="GospelAudio.toggleMute()" 
                 class="p-2 text-[var(--text-muted)] hover:text-[var(--mission-gold)] transition-colors"
                 title="Toggle audio narration"
             >
@@ -249,7 +464,8 @@ const GospelAudio = {
      * Check if audio exists for a slide
      */
     hasAudioForSlide(slideIndex) {
-        return !!this.slideAudio[slideIndex];
+        const audioMap = this.getAudioMap();
+        return !!audioMap[slideIndex];
     }
 };
 
