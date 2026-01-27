@@ -31,6 +31,10 @@ const GospelPresentation = {
             modal.classList.add('hidden');
             document.body.style.overflow = '';
         }
+        // Stop audio when closing
+        if (window.GospelAudio) {
+            window.GospelAudio.stop();
+        }
     },
 
     /**
@@ -579,17 +583,24 @@ const GospelPresentation = {
         const modal = document.createElement('div');
         modal.id = 'gospelModal';
         modal.className = 'fixed inset-0 z-[100] bg-[var(--bg-color)] hidden flex flex-col';
+        
+        // Get audio button HTML if audio controller is available
+        const audioBtn = window.GospelAudio ? window.GospelAudio.getButtonHTML() : '';
+        
         modal.innerHTML = `
             <div class="flex items-center justify-between p-3 border-b border-[var(--card-border)]">
                 <div class="flex items-center gap-2">
                     <span class="text-lg">❤️</span>
                     <span class="font-bold text-sm text-[var(--text-color)]">Ang Pag-ibig ng Diyos</span>
                 </div>
-                <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1">
+                    ${audioBtn}
+                    <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="h-1 bg-[var(--card-border)]">
                 <div id="gospelProgress" class="h-full bg-[var(--mission-gold)] transition-all duration-500" style="width: 0%"></div>
@@ -637,6 +648,11 @@ const GospelPresentation = {
         progress.style.width = ((index + 1) / this.totalSlides * 100) + '%';
         slideNum.textContent = `${index + 1}/${this.totalSlides}`;
         prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+        
+        // Trigger audio for this slide if audio controller is available
+        if (window.GospelAudio) {
+            window.GospelAudio.playForSlide(index);
+        }
         
         let html = '';
         

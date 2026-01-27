@@ -13,48 +13,70 @@
 
 ---
 
-## Current Session (2026-01-26 Late Night)
+## Current Session (2026-01-27)
 
-### ✅ COMPLETED TODAY
+### ✅ COMPLETED: Gospel Audio Narration (Slides 0-2)
 
-#### 1. Interactive Gospel Presentation (Complete Overhaul)
-**Location:** `/modules/gospel/gospel-presentation.js`
+**Files Created/Modified:**
+- ✅ `/modules/gospel/gospel-audio.js` (new - 314 lines)
+- ✅ `/modules/gospel/gospel-presentation.js` (modified - audio integration)
+- ✅ `/index.html` (modified - added script)
+- ✅ `/assets/audio/gospel/slide_1_to_3.wav` (1.7MB audio file)
 
-**Features Implemented:**
+**Audio System Features:**
+- 🔊 Audio button in modal header (speaker icon)
+- 🎵 Auto-plays when entering slides 0-2 (Intro, Truth 1 header, John 3:16)
+- ⏸️ Click to toggle play/pause
+- 🔇 Mute preference saved to localStorage
+- 📱 Handles browser autoplay restrictions gracefully
+- ⏹️ Audio stops when closing modal
+
+**How the system works:**
+```javascript
+// GospelAudio.tracks[] defines slide ranges
+tracks: [{
+    id: 'intro-truth1',
+    start: 0,  // Intro slide
+    end: 2,    // John 3:16 verse slide  
+    file: '/assets/audio/gospel/slide_1_to_3.wav',
+    cues: [...]  // Optional timing for auto-advance
+}]
+```
+
+When `GospelPresentation.showSlide(index)` is called:
+1. Triggers `GospelAudio.playForSlide(index)`
+2. If slide is within a track's range, audio plays
+3. If outside all tracks, audio stops
+
+---
+
+### 📋 Next Steps
+
+**To add more audio tracks:**
+1. Record voiceover audio files
+2. Add entries to `GospelAudio.tracks[]` in `/modules/gospel/gospel-audio.js`
+3. Place audio files in `/assets/audio/gospel/`
+
+**Example for adding slide 4 audio:**
+```javascript
+{
+    id: 'truth1-questions',
+    start: 3,  
+    end: 5,    
+    file: '/assets/audio/gospel/slide_4_to_6.wav',
+    cues: []
+}
+```
+
+---
+
+## Previous Session (2026-01-26 Late Night)
+
+### ✅ COMPLETED: Interactive Gospel Presentation
 - 34 animated slides with smooth transitions
-- Staggered element animations (bounce, fade-up, scale-in)
 - Question-based discovery learning
 - Two-path decision flow (ready / not ready)
 - Firebase tracking for salvation decisions
-- Detailed wrong-answer explanations
-
-**Flow Structure:**
-1. Intro → Truth 1 (God Loves You) → John 3:16 + 2 Questions
-2. Transition "Pero bakit..." → Truth 2 (All Sinners) → Romans 3:23 + Question
-3. "May Kabayaran" transition → Romans 6:23 + Question
-4. "Dalawang Kamatayan" (Physical vs Spiritual) → Revelation 21:8 + Question
-5. Truth 3 intro → Kawikaan 14:12 → Human efforts grid (fail)
-6. "Paano maliligtas?" → Truth 3 (Jesus is the Way) → John 14:6 + Question
-7. "Pero bakit si Hesus?" → 1 Peter 3:18 + Question
-8. "Kung binayaran na..." transition → Truth 4 (Believe) → Ephesians 2:8-9
-9. Formula question with detailed explanation for wrong answers
-10. Decision: "Nais mo bang ilagay ang pananampalataya mo?" (2 buttons)
-11. If Yes → Prayer intro → Prayer → "Tinanggap mo ba?" → Celebration
-12. If No → Encouragement → Continue to Bible reading
-
-**Firebase Tracking:**
-- `gospelDecision.status`: 'not-ready', 'needs-followup', 'saved'
-- `gospelDecision.acceptedAt`: timestamp for saved users
-- `stats/gospel.savedCount`: incremented on each salvation
-
-#### 2. Home Screen Updates
-- Button text: **"HUMAKBANG NGAYON"** (Take a step today)
-- Journey-centric dashboard with 5-stage progress
-
-#### 3. Next Steps Modal
-**Location:** `/modules/journey/next-steps-modal.js`
-- Sequential locking (Gospel must complete first)
-- Stage-appropriate options
 
 ---
 
@@ -62,47 +84,34 @@
 
 | File | Purpose |
 |------|---------|
-| `/modules/gospel/gospel-presentation.js` | Complete interactive Gospel (934 lines) |
+| `/modules/gospel/gospel-presentation.js` | Interactive Gospel (~950 lines) |
+| `/modules/gospel/gospel-audio.js` | Audio narration controller (314 lines) |
+| `/assets/audio/gospel/` | Gospel voiceover audio files |
 | `/modules/journey/next-steps-modal.js` | Stage-based options modal |
-| `/assets/images/gospel/gospel_tract1-5.jpg` | Gospel tract images |
 | `/index.html` | Main app with journey card |
 | `/MASTERPLAN.md` | Full 5-stage discipleship system |
-| `/INTERACTIVE-PRESENTATION-PATTERN.md` | Reusable pattern for future presentations |
 
 ---
 
-## Testing the Gospel Presentation
+## Testing the Audio Sync
 
-1. Go to https://gomission.netlify.app
+1. Go to https://gomission.netlify.app (after deployment)
 2. Click "HUMAKBANG NGAYON"
 3. Click "Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos"
-4. Go through all slides, answer questions
-5. Test both paths: "Hindi pa ako handa" and "Oo, ibibigay ko na"
-6. Check Firebase for recorded decisions
+4. Audio should auto-play on slides 0-2
+5. Look for speaker icon 🔊 in top-right header
+6. Click speaker to pause/play
+7. Audio automatically stops past slide 2
 
 ---
 
-## Next Development Priorities
+## Development Priorities
 
-1. **Wednesday Equipping Level 1** - 18 sessions, 6-day reading cycle
-2. **Quiet Time Guide** - "Conversation with God" module
-3. **Group Joining** - Mission Groups feature
-4. **Audio narration** - For Gospel presentation
+1. **🔊 Record Remaining Audio** - Slides 3-33
+2. **Wednesday Equipping Level 1** - 18 sessions, 6-day reading cycle
+3. **Quiet Time Guide** - "Conversation with God" module
+4. **Group Joining** - Mission Groups feature
 5. **Admin Dashboard** - View saved count, follow-up list
-
----
-
-## Firebase Collections
-
-```
-users/{uid}
-  - gospelDecision: { status, acceptedAt, needsFollowUp }
-  - stage: 'seeker' | 'disciple' | 'disciple-maker' | 'builder' | 'multiplier'
-
-stats/gospel
-  - savedCount: number
-  - lastSavedAt: timestamp
-```
 
 ---
 
@@ -110,9 +119,10 @@ stats/gospel
 
 ```bash
 # Check for JS errors
+node --check modules/gospel/gospel-audio.js
 node --check modules/gospel/gospel-presentation.js
 
-# Push changes
+# Deploy
 cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
-git add -A && git commit -m "message" && git push origin main
+git add -A && git commit -m "Add gospel audio sync for slides 0-2" && git push origin main
 ```

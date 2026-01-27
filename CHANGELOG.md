@@ -10,7 +10,43 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v1.5.0] - 2026-01-26 Late Night ⭐ CURRENT
+## [v1.5.1] - 2026-01-27 ⭐ CURRENT
+
+### 🔊 Gospel Audio Narration System
+
+**Summary:** Added voiceover audio sync for Gospel presentation slides 0-2 (Intro through John 3:16).
+
+**New Features:**
+
+#### Audio Controller (`/modules/gospel/gospel-audio.js`)
+- Speaker icon in modal header for play/pause toggle
+- Auto-plays when entering audio-enabled slides
+- Mute preference persisted to localStorage
+- Graceful handling of browser autoplay restrictions
+- Stops audio when modal closes
+
+#### Audio Integration
+- `GospelPresentation.showSlide()` triggers `GospelAudio.playForSlide()`
+- Track-based system for mapping audio files to slide ranges
+- Optional timing cues for future auto-advance feature
+
+**Files Created:**
+- `/modules/gospel/gospel-audio.js` (314 lines)
+- `/assets/audio/gospel/slide_1_to_3.wav` (1.7MB)
+
+**Files Modified:**
+- `/modules/gospel/gospel-presentation.js` (audio integration)
+- `/index.html` (added script reference)
+
+**Rollback:**
+```bash
+git revert HEAD
+# Or remove gospel-audio.js script from index.html
+```
+
+---
+
+## [v1.5.0] - 2026-01-26 Late Night
 
 ### 🎬 Interactive Gospel Presentation - Complete Overhaul
 
