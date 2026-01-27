@@ -127,7 +127,7 @@ const GospelContent = {
         
         // TRUTH 3: HUMAN EFFORTS FAIL / JESUS IS THE WAY
         truth3: {
-            label: 'Pangatlong Katotohanan',
+            label: 'Maling Isipin Patungkol sa Kaligtasan',
             intro: 'Dahil patay tayo sa espiritu, iniisip ng mga tao na maaari nilang bilhin o pagsikapan ang daan patungong langit...',
             verseHumanEffort: {
                 text: '"Mayroong daang tila matuwid sa paningin ng tao, ngunit ang dulo nito ay kamatayan."',
@@ -432,7 +432,7 @@ const GospelContent = {
         
         // TRUTH 3: HUMAN EFFORTS FAIL / JESUS IS THE WAY
         truth3: {
-            label: 'Third Truth',
+            label: 'Wrong Thinking About Salvation',
             intro: 'Because we are spiritually dead, people think they can buy or work their way to heaven...',
             verseHumanEffort: {
                 text: '"There is a way that seems right to a man, but its end is the way to death."',
