@@ -198,11 +198,15 @@ const i18n = {
    * Initialize language system
    */
   init() {
-    // Load from localStorage first (immediate)
+    // Force Tagalog for all users (January 2025 update)
+    // Remove any saved English preference
     const saved = localStorage.getItem(this.STORAGE_KEY);
-    if (saved && (saved === 'en' || saved === 'tl')) {
-      this.currentLang = saved;
+    if (saved === 'en') {
+      localStorage.removeItem(this.STORAGE_KEY);
     }
+    
+    // Always default to Tagalog now
+    this.currentLang = 'tl';
     
     // Update UI toggle state
     this.updateToggleUI();
