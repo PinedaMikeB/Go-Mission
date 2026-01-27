@@ -9,7 +9,7 @@
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
         // Auto-generated build timestamp - changes on every deployment
-        const BUILD_TIMESTAMP = '1769512061000';
+        const BUILD_TIMESTAMP = '1769514334000';
     </script>
     <script src="/modules/core/auto-update.js"></script>
     
@@ -743,10 +743,19 @@
             
             <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) -->
             <div class="mission-card rounded-3xl p-6 mb-4 animate-fade-up">
-                <div class="flex items-center gap-2 mb-6">
-                    <span class="text-[var(--accent-active)] text-sm">★</span>
-                    <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
+                <!-- Collapsible Header -->
+                <div class="flex items-center justify-between cursor-pointer" onclick="toggleJourneyCard()">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[var(--accent-active)] text-sm">★</span>
+                        <h2 class="text-lg font-bold text-[var(--text-color)] tracking-tight" id="journeyCardTitle">My Journey</h2>
+                    </div>
+                    <svg id="journeyCardChevron" class="w-5 h-5 text-[var(--text-muted)] transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
                 </div>
+                
+                <!-- Collapsible Content - Hidden by default for new users -->
+                <div id="journeyCardContent" class="hidden mt-6">
                 
                 <!-- Journey Stepper - Stitch Style -->
                 <div class="relative px-2 mb-8">
@@ -799,6 +808,7 @@
                         </svg>
                     </button>
                 </div>
+                </div><!-- End journeyCardContent -->
             </div>
 
             <!-- Other Dashboard Cards -->
@@ -2426,6 +2436,24 @@
             toggleDevotionMenu();
         };
 
+        // ====== Toggle Journey Card Section ======
+        window.toggleJourneyCard = function() {
+            const content = document.getElementById('journeyCardContent');
+            const chevron = document.getElementById('journeyCardChevron');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+            
+            // Save preference
+            localStorage.setItem('journeyCardExpanded', isHidden ? 'true' : 'false');
+        };
+
         // ====== Toggle Other Features Section ======
         window.toggleOtherFeatures = function() {
             const content = document.getElementById('otherFeaturesContent');
@@ -2446,6 +2474,14 @@
 
         // Initialize other features state on load
         document.addEventListener('DOMContentLoaded', function() {
+            // Journey card - collapsed by default, only expand if user previously expanded it
+            const journeyExpanded = localStorage.getItem('journeyCardExpanded') === 'true';
+            if (journeyExpanded) {
+                document.getElementById('journeyCardContent')?.classList.remove('hidden');
+                document.getElementById('journeyCardChevron')?.classList.add('rotate-180');
+            }
+            
+            // Other features
             const expanded = localStorage.getItem('otherFeaturesExpanded') === 'true';
             if (expanded) {
                 document.getElementById('otherFeaturesContent')?.classList.remove('hidden');

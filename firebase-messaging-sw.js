@@ -15,7 +15,7 @@
 // ============================================
 // 🔥 AUTO-UPDATING VERSION - Changes every deploy
 // ============================================
-const CACHE_VERSION = 'v20260127-1907';
+const CACHE_VERSION = 'v20260127-1945';
 const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
 
 // Files to cache for offline
