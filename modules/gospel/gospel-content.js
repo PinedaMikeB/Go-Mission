@@ -631,7 +631,15 @@ const GospelContent = {
      * Get current language
      */
     getLang() {
-        return window.i18n?.currentLang || 'tl';
+        // Check multiple sources for language
+        if (window.i18n && window.i18n.currentLang) {
+            return window.i18n.currentLang;
+        }
+        // Fallback to localStorage
+        const stored = localStorage.getItem('goMission_language');
+        if (stored) return stored;
+        // Default to Tagalog
+        return 'tl';
     },
     
     /**
