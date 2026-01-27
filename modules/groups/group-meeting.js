@@ -20,8 +20,10 @@ const GroupMeeting = {
   joinedAt: null,
   participants: [],
   
-  // Self-hosted Jitsi configuration (FAST - your own server!)
-  JITSI_DOMAIN: 'meet.wotgonline.com',
+  // Jitsi configuration - try self-hosted first, fallback to public
+  JITSI_DOMAIN: 'meet.jit.si', // Public Jitsi - most reliable
+  JITSI_SELF_HOSTED: 'meet.wotgonline.com', // Self-hosted backup
+  useSelfHosted: false, // Set to true to use self-hosted
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -39,7 +41,7 @@ const GroupMeeting = {
   },
   
   /**
-   * Load Jitsi Meet External API script (Self-hosted)
+   * Load Jitsi Meet External API script
    */
   loadJitsiScript() {
     return new Promise((resolve, reject) => {
@@ -48,17 +50,25 @@ const GroupMeeting = {
         return;
       }
       
+      const domain = this.useSelfHosted ? this.JITSI_SELF_HOSTED : this.JITSI_DOMAIN;
       const script = document.createElement('script');
-      // Use self-hosted Jitsi external API
-      script.src = `https://${this.JITSI_DOMAIN}/external_api.js`;
+      script.src = `https://${domain}/external_api.js`;
       script.async = true;
       script.onload = () => {
-        console.log('[GroupMeeting] Jitsi API loaded from', this.JITSI_DOMAIN);
+        console.log('[GroupMeeting] Jitsi API loaded from', domain);
         resolve();
       };
       script.onerror = () => {
-        console.error('[GroupMeeting] Failed to load Jitsi API');
-        reject(new Error('Failed to load Jitsi API'));
+        console.error('[GroupMeeting] Failed to load Jitsi API from', domain);
+        // Try fallback to public Jitsi if self-hosted fails
+        if (this.useSelfHosted) {
+          console.log('[GroupMeeting] Trying public Jitsi fallback...');
+          this.useSelfHosted = false;
+          script.remove();
+          this.loadJitsiScript().then(resolve).catch(reject);
+        } else {
+          reject(new Error('Failed to load Jitsi API'));
+        }
       };
       document.head.appendChild(script);
     });
@@ -154,142 +164,76 @@ const GroupMeeting = {
    * Start/Join a meeting
    */
   async joinMeeting(groupId, groupName, userName, userEmail, isLeader = false) {
-    if (!window.JitsiMeetExternalAPI) {
-      await this.init();
-    }
-    
-    // Create meeting modal
-    this.showMeetingModal(groupName);
-    
-    const roomName = this.generateRoomName(groupId, groupName);
-    this.currentGroupId = groupId;
-    this.joinedAt = new Date();
-    
-    console.log('[GroupMeeting] Joining room:', roomName);
-    
-    // Create Jitsi instance with OPTIMIZED settings
-    const options = {
-      roomName: roomName,
-      width: '100%',
-      height: '100%',
-      parentNode: document.getElementById('jitsi-container'),
-      userInfo: {
-        displayName: userName || 'Guest',
-        email: userEmail || ''
-      },
-      configOverwrite: {
-        // === DISABLE RECORDING (fixes Camera Recording popup) ===
-        fileRecordingsEnabled: false,
-        liveStreamingEnabled: false,
-        recordingService: {
-          enabled: false,
-          sharingEnabled: false
-        },
-        localRecording: {
-          enabled: false
-        },
-        
-        // === PERFORMANCE OPTIMIZATIONS ===
-        disableDeepLinking: true,
-        prejoinPageEnabled: false,
-        enableWelcomePage: false,
-        enableClosePage: false,
-        
-        // Start with audio/video ON for faster join
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        
-        // === DISABLE UNNECESSARY FEATURES ===
-        disableModeratorIndicator: true,
-        disableInviteFunctions: true,
-        disablePolls: true,
-        disableReactions: true,
-        disableSelfView: false,
-        disableSelfViewSettings: true,
-        hideConferenceSubject: true,
-        hideConferenceTimer: true,
-        
-        // Disable lobby
-        enableLobby: false,
-        
-        // Disable annoying prompts
-        enableInsecureRoomNameWarning: false,
-        requireDisplayName: false,
-        enableNoAudioDetection: false,
-        enableNoisyMicDetection: false,
-        
-        // Disable transcription/subtitles
-        transcription: {
-          enabled: false,
-          autoTranscribeOnRecord: false
-        },
-        
-        // Disable breakout rooms
-        breakoutRooms: {
-          hideAddRoomButton: true,
-          hideAutoAssignButton: true,
-          hideJoinRoomButton: true
-        },
-        
-        // Video quality (lower for mobile performance)
-        resolution: 480,
-        constraints: {
-          video: {
-            height: { ideal: 480, max: 720 }
-          }
-        },
-        
-        // Disable virtual backgrounds (performance)
-        disableVirtualBackground: true,
-        
-        // P2P for small groups (faster)
-        p2p: {
-          enabled: true
-        }
-      },
-      interfaceConfigOverwrite: {
-        // === MINIMAL TOOLBAR (only essentials) ===
-        TOOLBAR_BUTTONS: [
-          'microphone', 
-          'camera', 
-          'tileview',
-          'hangup'
-        ],
-        
-        // === HIDE ALL BRANDING ===
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        SHOW_BRAND_WATERMARK: false,
-        BRAND_WATERMARK_LINK: '',
-        SHOW_POWERED_BY: false,
-        SHOW_PROMOTIONAL_CLOSE_PAGE: false,
-        
-        // === CLEAN UI ===
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-        MOBILE_APP_PROMO: false,
-        HIDE_INVITE_MORE_HEADER: true,
-        HIDE_DEEP_LINKING_LOGO: true,
-        DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
-        DISABLE_FOCUS_INDICATOR: true,
-        DISABLE_PRESENCE_STATUS: true,
-        DISABLE_TRANSCRIPTION_SUBTITLES: true,
-        
-        // Tile view settings
-        TILE_VIEW_MAX_COLUMNS: 2,
-        VERTICAL_FILMSTRIP: false,
-        FILM_STRIP_MAX_HEIGHT: 100,
-        
-        // Settings
-        SETTINGS_SECTIONS: ['devices'],
-        
-        // Disable video quality label
-        DISABLE_VIDEO_BACKGROUND: true,
-        DEFAULT_BACKGROUND: '#000000'
-      }
-    };
-    
     try {
-      this.api = new JitsiMeetExternalAPI(this.JITSI_DOMAIN, options);
+      // Load Jitsi API if not loaded
+      if (!window.JitsiMeetExternalAPI) {
+        await this.init();
+      }
+      
+      if (!window.JitsiMeetExternalAPI) {
+        throw new Error('Jitsi API not available');
+      }
+      
+      // Create meeting modal first
+      this.showMeetingModal(groupName);
+      
+      const roomName = this.generateRoomName(groupId, groupName);
+      this.currentGroupId = groupId;
+      this.joinedAt = new Date();
+      
+      const domain = this.useSelfHosted ? this.JITSI_SELF_HOSTED : this.JITSI_DOMAIN;
+      console.log('[GroupMeeting] Joining room:', roomName, 'on', domain);
+      
+      // Simpler Jitsi configuration for reliability
+      const options = {
+        roomName: roomName,
+        parentNode: document.getElementById('jitsi-container'),
+        width: '100%',
+        height: '100%',
+        userInfo: {
+          displayName: userName || 'Guest',
+          email: userEmail || ''
+        },
+        configOverwrite: {
+          // Basic settings
+          prejoinPageEnabled: false,
+          startWithAudioMuted: false,
+          startWithVideoMuted: false,
+          disableDeepLinking: true,
+          
+          // Disable features that cause issues
+          enableWelcomePage: false,
+          enableClosePage: false,
+          enableLobby: false,
+          
+          // Disable recording features
+          fileRecordingsEnabled: false,
+          liveStreamingEnabled: false,
+          localRecording: { enabled: false },
+          
+          // Performance
+          resolution: 480,
+          p2p: { enabled: true }
+        },
+        interfaceConfigOverwrite: {
+          // Minimal toolbar
+          TOOLBAR_BUTTONS: ['microphone', 'camera', 'tileview', 'hangup'],
+          
+          // Hide branding
+          SHOW_JITSI_WATERMARK: false,
+          SHOW_WATERMARK_FOR_GUESTS: false,
+          SHOW_BRAND_WATERMARK: false,
+          SHOW_POWERED_BY: false,
+          MOBILE_APP_PROMO: false,
+          
+          // Clean UI
+          DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+          HIDE_INVITE_MORE_HEADER: true,
+          SETTINGS_SECTIONS: ['devices']
+        }
+      };
+      
+      this.api = new JitsiMeetExternalAPI(domain, options);
       
       // Event listeners
       this.api.addListener('videoConferenceJoined', (data) => {
