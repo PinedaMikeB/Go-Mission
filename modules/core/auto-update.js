@@ -3,34 +3,40 @@
  * Ensures elderly users get updates automatically without any prompts
  * 
  * Features:
- * - Silent service worker registration
+ * - Silent service worker updates
  * - Automatic updates when app is idle
  * - Force refresh on major updates
  * - No user interaction required
+ * 
+ * NOTE: Service worker registration is handled by push-notifications.js
+ * This module focuses on update detection and activation
  */
 
 const AutoUpdate = {
     // Current app version - increment on major updates
     VERSION: '2.0.0',
     VERSION_KEY: 'goMission_appVersion',
+    registration: null,
     
     /**
      * Initialize auto-update system
      */
-    async init() {
+    init() {
         console.log('[AutoUpdate] Initializing v' + this.VERSION);
         
         // Check for version mismatch (force update)
         this.checkVersionMismatch();
         
-        // Register service worker
-        await this.registerServiceWorker();
+        // Setup update listeners (SW is registered by push-notifications.js)
+        this.setupServiceWorkerListeners();
         
         // Setup periodic update checks
         this.setupPeriodicChecks();
         
         // Setup visibility-based updates
         this.setupVisibilityUpdate();
+        
+        console.log('[AutoUpdate] Ready');
     },
     
     /**
@@ -45,6 +51,7 @@ const AutoUpdate = {
             this.forceUpdate();
         } else {
             localStorage.setItem(this.VERSION_KEY, this.VERSION);
+            console.log('[AutoUpdate] Version OK:', this.VERSION);
         }
     },
     
@@ -66,17 +73,6 @@ const AutoUpdate = {
                 );
             }
             
-            // Unregister old service workers
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                await Promise.all(
-                    registrations.map(reg => {
-                        console.log('[AutoUpdate] Unregistering SW:', reg.scope);
-                        return reg.unregister();
-                    })
-                );
-            }
-            
             // Update version before reload
             localStorage.setItem(this.VERSION_KEY, this.VERSION);
             
@@ -92,66 +88,63 @@ const AutoUpdate = {
     },
     
     /**
-     * Register service worker with auto-update
+     * Setup listeners for service worker updates
      */
-    async registerServiceWorker() {
+    setupServiceWorkerListeners() {
         if (!('serviceWorker' in navigator)) {
             console.log('[AutoUpdate] Service workers not supported');
             return;
         }
         
-        try {
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-                scope: '/'
-            });
+        // Get existing registration when ready
+        navigator.serviceWorker.ready.then((registration) => {
+            this.registration = registration;
+            console.log('[AutoUpdate] Got SW registration:', registration.scope);
             
-            console.log('[AutoUpdate] SW registered:', registration.scope);
+            // Check for waiting worker
+            if (registration.waiting) {
+                console.log('[AutoUpdate] Found waiting SW - activating...');
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
             
-            // Check for updates immediately
-            registration.update();
-            
-            // Handle updates
+            // Listen for new workers
             registration.addEventListener('updatefound', () => {
                 console.log('[AutoUpdate] New SW found!');
                 const newWorker = registration.installing;
                 
-                newWorker.addEventListener('statechange', () => {
-                    console.log('[AutoUpdate] SW state:', newWorker.state);
-                    
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // New SW ready - activate it immediately
-                        console.log('[AutoUpdate] New SW installed - activating...');
-                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                    }
-                });
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        console.log('[AutoUpdate] SW state:', newWorker.state);
+                        
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New SW ready - activate it immediately (no prompt)
+                            console.log('[AutoUpdate] New SW installed - activating silently...');
+                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                }
             });
-            
-            // Listen for controller change (new SW activated)
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('[AutoUpdate] New SW controlling - reloading for fresh content');
-                // Soft reload to get new content
-                window.location.reload();
-            });
-            
-            // Store registration for later use
-            this.registration = registration;
-            
-        } catch (error) {
-            console.error('[AutoUpdate] SW registration failed:', error);
-        }
+        }).catch(err => {
+            console.log('[AutoUpdate] SW ready error:', err);
+        });
+        
+        // Listen for controller change (new SW activated)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('[AutoUpdate] New SW controlling - refreshing for updates...');
+            // Reload to get new content
+            window.location.reload();
+        });
     },
     
     /**
      * Setup periodic update checks (every 5 minutes)
      */
     setupPeriodicChecks() {
-        // Check for updates every 5 minutes
         setInterval(() => {
-            if (this.registration) {
-                console.log('[AutoUpdate] Periodic update check...');
-                this.registration.update();
-            }
-        }, 5 * 60 * 1000);
+            this.checkForUpdates();
+        }, 5 * 60 * 1000); // 5 minutes
+        
+        console.log('[AutoUpdate] Periodic checks enabled (every 5 min)');
     },
     
     /**
@@ -161,60 +154,69 @@ const AutoUpdate = {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 console.log('[AutoUpdate] App visible - checking for updates...');
-                
-                // Check SW updates
-                if (this.registration) {
-                    this.registration.update();
-                }
-                
-                // If there's a waiting worker, activate it
-                if (this.registration?.waiting) {
-                    console.log('[AutoUpdate] Activating waiting SW...');
-                    this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
+                this.checkForUpdates();
             }
         });
         
-        // Also check on focus
+        // Also check on focus (mobile apps)
         window.addEventListener('focus', () => {
-            if (this.registration) {
-                this.registration.update();
+            this.checkForUpdates();
+        });
+        
+        // Check on page show (back/forward navigation)
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                console.log('[AutoUpdate] Page restored from cache - checking updates...');
+                this.checkForUpdates();
             }
         });
+        
+        console.log('[AutoUpdate] Visibility-based updates enabled');
     },
     
     /**
-     * Manual update check (can be called from settings)
+     * Check for updates
      */
     async checkForUpdates() {
-        console.log('[AutoUpdate] Manual update check...');
-        
-        if (this.registration) {
-            await this.registration.update();
-            
-            if (this.registration.waiting) {
-                // Update available - apply it
-                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                return true;
+        if (!this.registration) {
+            // Try to get registration
+            if ('serviceWorker' in navigator) {
+                try {
+                    this.registration = await navigator.serviceWorker.ready;
+                } catch (e) {
+                    return;
+                }
             }
         }
         
-        return false;
+        if (this.registration) {
+            try {
+                await this.registration.update();
+                
+                // If there's a waiting worker, activate it
+                if (this.registration.waiting) {
+                    console.log('[AutoUpdate] Activating waiting SW...');
+                    this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            } catch (e) {
+                // Update check failed (offline?) - ignore
+            }
+        }
     },
     
     /**
-     * Get current version info
+     * Get current version info (for debugging)
      */
     getVersionInfo() {
         return {
             app: this.VERSION,
             stored: localStorage.getItem(this.VERSION_KEY),
-            sw: this.registration?.active?.scriptURL || 'none'
+            hasSW: !!this.registration
         };
     }
 };
 
-// Initialize on page load
+// Initialize after DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => AutoUpdate.init());
 } else {
