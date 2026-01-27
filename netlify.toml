@@ -1,0 +1,35 @@
+# Go Mission - Netlify Configuration
+
+[build]
+  # Run version bump script before publishing
+  command = "bash scripts/bump-version.sh"
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Headers for PWA and caching
+[[headers]]
+  for = "/firebase-messaging-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    
+[[headers]]
+  for = "/modules/core/auto-update.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

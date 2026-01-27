@@ -13,8 +13,8 @@
  */
 
 const AutoUpdate = {
-    // Current app version - increment on major updates
-    VERSION: '2.0.0',
+    // Version is auto-generated from build timestamp - no manual changes needed!
+    VERSION: BUILD_TIMESTAMP || Date.now().toString(),
     VERSION_KEY: 'goMission_appVersion',
     registration: null,
     
