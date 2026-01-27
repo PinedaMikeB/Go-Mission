@@ -210,13 +210,9 @@ const GospelContent = {
                 correctIndex: 2,
                 correctFeedback: '🎉 Tama! Pananampalataya + Wala = Kaligtasan. Ang kaligtasan ay regalo ng Diyos - tanggapin mo lang sa pamamagitan ng pananampalataya!',
                 wrongExplanation: `
-                    <p class="italic text-[var(--text-muted)] mb-2">"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya't walang maipagmamalaki ang sinuman."</p>
-                    <p class="text-[var(--mission-gold)] text-right text-xs mb-3">— Efeso 2:8-9</p>
-                    <p class="mb-2">Ayon sa talata, ang kaligtasan ay <strong>hindi bunga ng mabubuting gawa</strong> kaya ang Letter A at B ay hindi tama.</p>
-                    <p class="mb-2">Pangalawa, ayon sa talata <strong>hindi ito mula sa sarili kundi ito ay kaloob ng Diyos</strong>. Ang kaligtasan ay regalo ng Diyos at hindi binabayaran ng pagsunod sa sampung utos, pagsali sa relihiyon o paggawa ng mabuting gawa.</p>
-                    <p class="mb-2">Ang kaligtasan ay tinatanggap lamang natin mula sa <strong>kagandahang-loob ng Diyos (grace)</strong>.</p>
-                    <p class="text-[var(--mission-gold)] font-bold">Kaya ang tamang sagot ay Letter C - Pananampalataya + Wala = Kaligtasan.</p>
-                    <p class="text-[var(--text-muted)] mt-2 text-xs">Ang paggawa ng mabuti at pagsunod sa utos ng Diyos ay mabuti pero hindi natin ito babasehan ng Diyos para sa ating kaligtasan kundi ang ginawa lamang ng Panginoong Hesus para sa atin.</p>
+                    <p class="mb-2">Ayon sa talata, ang kaligtasan ay <strong>regalo ng Diyos</strong> at hindi galing sa ating sarili o mabubuting gawa.</p>
+                    <p class="text-[var(--mission-gold)] font-bold mb-2">Kaya ang tamang sagot ay C: Pananampalataya + Wala = Kaligtasan.</p>
+                    <p class="text-[var(--text-muted)] text-xs">Ang paggawa ng mabuti ay mahalaga, pero hindi ito ang basehan ng kaligtasan—kundi ang ginawa lamang ni Hesus.</p>
                 `
             }
         },
@@ -515,13 +511,9 @@ const GospelContent = {
                 correctIndex: 2,
                 correctFeedback: '🎉 Correct! Faith + Nothing = Salvation. Salvation is God\'s gift - just receive it through faith!',
                 wrongExplanation: `
-                    <p class="italic text-[var(--text-muted)] mb-2">"For by grace you have been saved through faith. And this is not your own doing; it is the gift of God, not a result of works, so that no one may boast."</p>
-                    <p class="text-[var(--mission-gold)] text-right text-xs mb-3">— Ephesians 2:8-9</p>
-                    <p class="mb-2">According to this verse, salvation is <strong>not a result of works</strong>, so options A and B are incorrect.</p>
-                    <p class="mb-2">Second, the verse says <strong>it is not your own doing; it is the gift of God</strong>. Salvation is God's gift and cannot be earned by following the Ten Commandments, joining a religion, or doing good works.</p>
-                    <p class="mb-2">Salvation is received only through <strong>God's grace</strong>.</p>
-                    <p class="text-[var(--mission-gold)] font-bold">Therefore, the correct answer is C - Faith + Nothing = Salvation.</p>
-                    <p class="text-[var(--text-muted)] mt-2 text-xs">Doing good and following God's commands are good things, but they are not the basis for our salvation - only what Jesus did for us matters.</p>
+                    <p class="mb-2">According to this verse, salvation is <strong>God's gift</strong> and not from ourselves or our good works.</p>
+                    <p class="text-[var(--mission-gold)] font-bold mb-2">Therefore, the correct answer is C: Faith + Nothing = Salvation.</p>
+                    <p class="text-[var(--text-muted)] text-xs">Doing good is important, but it's not the basis for salvation—only what Jesus did for us.</p>
                 `
             }
         },
