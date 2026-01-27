@@ -618,7 +618,8 @@ const GospelContent = {
      * Get content for current language
      */
     get(key) {
-        const lang = window.i18n?.currentLang || 'tl';
+        const lang = this.getLang();
+        console.log('[GospelContent] get() lang:', lang, 'key:', key);
         const keys = key.split('.');
         let value = this[lang];
         for (const k of keys) {
@@ -633,12 +634,17 @@ const GospelContent = {
     getLang() {
         // Check multiple sources for language
         if (window.i18n && window.i18n.currentLang) {
+            console.log('[GospelContent] getLang from i18n:', window.i18n.currentLang);
             return window.i18n.currentLang;
         }
         // Fallback to localStorage
         const stored = localStorage.getItem('goMission_language');
-        if (stored) return stored;
+        if (stored) {
+            console.log('[GospelContent] getLang from localStorage:', stored);
+            return stored;
+        }
         // Default to Tagalog
+        console.log('[GospelContent] getLang default: tl');
         return 'tl';
     },
     
