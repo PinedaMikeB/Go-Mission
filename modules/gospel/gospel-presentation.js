@@ -540,35 +540,88 @@ const GospelPresentation = {
                 `
             },
 
-            // ========== CELEBRATION ==========
+            // ========== SLIDE 35: CELEBRATION ==========
             {
                 type: 'celebration',
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-6xl mb-3">🎉</div>
-                        <h2 class="gospel-scale-in delay-2 text-2xl font-bold text-[var(--mission-gold)] mb-2">MALIGAYANG BATI!</h2>
-                        <p class="gospel-fade-up delay-3 text-lg text-white mb-4">Ikaw ay bagong nilalang kay Kristo!</p>
-                        <div class="gospel-fade-up delay-4 bg-[var(--card-bg)] rounded-xl p-4 text-left text-sm">
-                            <p class="text-[var(--mission-gold)] font-bold mb-2">Mga Katiyakan mula sa Diyos:</p>
-                            <p class="text-[var(--text-color)] mb-1">✨ Ikaw ay ANAK na ng Diyos <span class="text-xs text-[var(--text-muted)]">(John 1:12)</span></p>
-                            <p class="text-[var(--text-color)] mb-1">✨ May BUHAY NA WALANG HANGGAN ka <span class="text-xs text-[var(--text-muted)]">(1 John 5:11)</span></p>
-                            <p class="text-[var(--text-color)]">✨ Ikaw ay BAGONG NILALANG <span class="text-xs text-[var(--text-muted)]">(2 Cor 5:17)</span></p>
+                        <h2 class="gospel-scale-in delay-2 text-2xl font-bold text-[var(--mission-gold)] mb-2">CONGRATULATIONS!</h2>
+                        <p class="gospel-fade-up delay-3 text-lg text-white mb-4">Welcome sa Pamilya ng Diyos!</p>
+                        <div class="gospel-fade-up delay-4 bg-[var(--card-bg)] rounded-xl p-4 text-sm">
+                            <p class="text-[var(--text-color)] leading-relaxed">Ang pagtanggap mo kay Hesus ang pinakamahalagang desisyon sa iyong buhay.</p>
+                            <p class="text-[var(--text-muted)] mt-3 text-xs">Narito ang mga pangako mismo ng Diyos mula sa Kanyang Salita para sa iyo:</p>
                         </div>
                     </div>
                 `
             },
 
-            // ========== FINAL ==========
+            // ========== SLIDE 36: PROMISE 1 - ANAK NG DIYOS ==========
+            {
+                type: 'promise',
+                render: () => `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangako #1</p>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">IKAW AY ANAK NA NG DIYOS</h2>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
+                            <p class="text-base italic text-[var(--text-color)] leading-relaxed">"Subalit ang lahat ng tumanggap at sumampalataya sa kanya ay binigyan niya ng karapatang maging mga anak ng Diyos."</p>
+                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">— Juan 1:12</p>
+                        </div>
+                    </div>
+                `
+            },
+
+            // ========== SLIDE 37: PROMISE 2 - BUHAY NA WALANG HANGGAN ==========
+            {
+                type: 'promise',
+                render: () => `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangako #2</p>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">MAYROON KA NA NG BUHAY NA WALANG HANGGAN</h2>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 text-left">
+                            <p class="text-sm italic text-[var(--text-color)] leading-relaxed">"At ito ang patotoo: ipinagkaloob sa atin ng Diyos ang buhay na walang hanggan at ito'y makakamtan natin sa pamamagitan ng kanyang Anak. Kung ang Anak ng Diyos ay nasa isang tao, mayroon siyang buhay na walang hanggan; ngunit kung wala sa kanya ang Anak ng Diyos ay wala siyang buhay na walang hanggan. Isinusulat ko ito sa inyo upang malaman ninyo na kayong sumasampalataya sa Anak ng Diyos ay may buhay na walang hanggan."</p>
+                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">— 1 Juan 5:11-13</p>
+                        </div>
+                    </div>
+                `
+            },
+
+            // ========== SLIDE 38: PROMISE 3 - BAGONG NILALANG ==========
+            {
+                type: 'promise',
+                render: () => `
+                    <div class="text-center flex flex-col justify-center h-full">
+                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">Pangako #3</p>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">IKAW AY ISA NANG BAGONG NILALANG</h2>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
+                            <p class="text-base italic text-[var(--text-color)] leading-relaxed">"Kaya't kung nakipag-isa na kay Cristo ang sinuman, isa na siyang bagong nilalang. Wala na ang dati niyang pagkatao; binago na siya."</p>
+                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">— 2 Corinto 5:17</p>
+                        </div>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)] mt-4">Ang luma ay lumipas na. Magsimula ka nang lumakad sa iyong bagong buhay kasama si Lord!</p>
+                    </div>
+                `
+            },
+
+            // ========== SLIDE 39: FINAL ==========
             {
                 type: 'final',
                 render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-bounce text-5xl mb-3">🌟</div>
-                        <h2 class="gospel-scale-in delay-2 text-2xl font-bold text-[var(--mission-gold)] mb-2">Simula Pa Lang Ito!</h2>
-                        <p class="gospel-fade-up delay-3 text-base text-white mb-1">Maligayang pagdating sa pamilya ng Diyos!</p>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)] mb-6">Handa ka nang magsimula sa iyong paglalakbay bilang alagad.</p>
-                        <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-5 gospel-btn-pulse px-8 py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-base">
-                            Simulan ang Paglalakbay →
+                    <div class="flex flex-col justify-center h-full">
+                        <div class="gospel-bounce text-4xl mb-3 text-center">🌟</div>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--mission-gold)] mb-3 text-center">Ang Buhay na Mayroon Ka Ngayon ay Umpisa Pa Lang!</h2>
+                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] rounded-xl p-4 text-sm mb-4">
+                            <p class="text-[var(--text-color)] leading-relaxed mb-3">Bilang bagong anak ng Diyos, nais Niya na ikaw ay lumago at makilala pa Siya nang lubusan. Hindi lang ito isang one-time event; ito ay simula ng isang relasyon.</p>
+                            <p class="text-[var(--text-color)] leading-relaxed">At gaya ng anumang relasyon, kailangan dito ang <strong class="text-[var(--mission-gold)]">komunikasyon</strong>.</p>
+                        </div>
+                        <div class="gospel-fade-up delay-3 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-4 text-sm mb-4">
+                            <p class="text-[var(--mission-gold)] font-bold mb-2">Narito ang iyong next step:</p>
+                            <p class="text-[var(--text-color)] mb-1">1. Bumalik sa Home screen ng app na ito.</p>
+                            <p class="text-[var(--text-color)] mb-1">2. Pindutin ang button na "Humakbang Ngayon".</p>
+                            <p class="text-[var(--text-color)]">3. Piliin ang "Makipag-usap sa Diyos araw-araw".</p>
+                        </div>
+                        <p class="gospel-fade-up delay-4 text-xs text-[var(--text-muted)] text-center mb-4">Dito, tuturuan ka namin kung paano magkaroon ng Conversation Time with God.</p>
+                        <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-5 gospel-btn-pulse w-full px-6 py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-base">
+                            Bumalik sa Home Screen →
                         </button>
                     </div>
                 `
@@ -687,6 +740,7 @@ const GospelPresentation = {
                 nextBtn.textContent = 'Next →';
                 break;
             case 'celebration':
+            case 'promise':
             case 'truth-header':
             case 'human-efforts':
             case 'intro':

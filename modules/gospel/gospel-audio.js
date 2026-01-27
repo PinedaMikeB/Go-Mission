@@ -1,10 +1,10 @@
 /**
  * Gospel Presentation Audio Controller
- * Syncs voiceover narration with slide transitions
+ * One audio file per slide - plays when slide is shown
  * 
  * Usage:
  *   GospelAudio.init() - Initialize audio system
- *   GospelAudio.playForSlide(slideIndex) - Play audio for specific slide range
+ *   GospelAudio.playForSlide(slideIndex) - Play audio for specific slide
  *   GospelAudio.pause() - Pause current audio
  *   GospelAudio.toggle() - Toggle play/pause
  */
@@ -15,56 +15,38 @@ const GospelAudio = {
     
     // Current state
     isPlaying: false,
-    currentTrack: null,
+    currentSlide: null,
     isMuted: false,
     
-    // Audio tracks mapped to slide ranges
-    // Format: { start: slideIndex, end: slideIndex, file: 'filename.wav', cues: [...] }
-    tracks: [
-        {
-            id: 'intro-truth1',
-            start: 0,  // Intro slide
-            end: 2,    // John 3:16 verse slide
-            file: '/assets/audio/gospel/slide_1_to_3.wav',
-            // Timing cues in seconds for auto-advance (optional)
-            cues: [
-                { time: 0, slide: 0 },      // Intro
-                { time: 8, slide: 1 },      // Truth 1 header (adjust based on actual audio)
-                { time: 15, slide: 2 }      // John 3:16 verse (adjust based on actual audio)
-            ]
-        }
-        // Add more tracks as they become available:
-        // { id: 'truth2', start: 6, end: 15, file: '/assets/audio/gospel/truth2.wav', cues: [...] }
-    ],
+    // Audio files mapped to slide index
+    // Add entries as audio files become available
+    slideAudio: {
+        0: '/assets/audio/gospel/slide_0.wav',  // Intro
+        1: '/assets/audio/gospel/slide_1.wav',  // Truth 1 header
+        2: '/assets/audio/gospel/slide_2.wav',  // John 3:16
+        // Add more as recorded:
+        // 3: '/assets/audio/gospel/slide_3.wav',  // Question 1
+        // 4: '/assets/audio/gospel/slide_4.wav',  // Question 2
+        // ...
+    },
     
     /**
      * Initialize audio system
      */
     init() {
-        // Create audio element if not exists
         if (!this.audio) {
             this.audio = new Audio();
             this.audio.preload = 'auto';
             
-            // Event listeners
             this.audio.addEventListener('ended', () => this.onTrackEnd());
-            this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
             this.audio.addEventListener('error', (e) => this.onError(e));
-            this.audio.addEventListener('canplaythrough', () => this.onCanPlay());
         }
         
         // Load mute preference
         this.isMuted = localStorage.getItem('gospelAudioMuted') === 'true';
         this.audio.muted = this.isMuted;
         
-        console.log('[GospelAudio] Initialized');
-    },
-    
-    /**
-     * Find track for a given slide index
-     */
-    getTrackForSlide(slideIndex) {
-        return this.tracks.find(t => slideIndex >= t.start && slideIndex <= t.end);
+        console.log('[GospelAudio] Initialized - slide-per-slide mode');
     },
     
     /**
@@ -72,51 +54,46 @@ const GospelAudio = {
      * Called by GospelPresentation.showSlide()
      */
     playForSlide(slideIndex) {
-        const track = this.getTrackForSlide(slideIndex);
+        // Stop any currently playing audio
+        this.stop();
         
-        if (!track) {
-            // No audio for this slide, stop any playing audio
-            this.stop();
+        // Check if this slide has audio
+        const audioFile = this.slideAudio[slideIndex];
+        if (!audioFile) {
+            console.log(`[GospelAudio] No audio for slide ${slideIndex}`);
             return;
         }
         
-        // If same track is already playing, don't restart
-        if (this.currentTrack?.id === track.id && this.isPlaying) {
-            return;
-        }
-        
-        // If different track or not playing, start new track
-        this.loadAndPlay(track, slideIndex);
-    },
-    
-    /**
-     * Load and play a track
-     */
-    loadAndPlay(track, startSlide) {
-        this.currentTrack = track;
-        
-        // Check if we need to seek to a specific position
-        const cue = track.cues?.find(c => c.slide === startSlide);
-        const startTime = cue?.time || 0;
-        
-        if (this.audio.src !== window.location.origin + track.file) {
-            this.audio.src = track.file;
-            this.audio.load();
-        }
-        
-        this.audio.currentTime = startTime;
+        this.currentSlide = slideIndex;
+        this.audio.src = audioFile;
+        this.audio.load();
         
         if (!this.isMuted) {
             this.audio.play()
                 .then(() => {
                     this.isPlaying = true;
                     this.updateUI();
-                    console.log(`[GospelAudio] Playing: ${track.id} from ${startTime}s`);
+                    console.log(`[GospelAudio] Playing slide ${slideIndex}`);
                 })
                 .catch(e => {
-                    console.warn('[GospelAudio] Autoplay blocked, user interaction needed:', e);
-                    this.showPlayButton();
+                    console.warn('[GospelAudio] Autoplay blocked:', e.message);
+                    this.showPlayPrompt();
                 });
+        }
+    },
+    
+    /**
+     * Replay current slide's audio
+     */
+    replay() {
+        if (this.currentSlide !== null && this.slideAudio[this.currentSlide]) {
+            this.audio.currentTime = 0;
+            this.audio.play()
+                .then(() => {
+                    this.isPlaying = true;
+                    this.updateUI();
+                })
+                .catch(e => console.warn('[GospelAudio] Replay failed:', e));
         }
     },
     
@@ -135,7 +112,7 @@ const GospelAudio = {
      * Resume audio
      */
     play() {
-        if (this.audio && this.currentTrack) {
+        if (this.audio && this.currentSlide !== null) {
             this.audio.play()
                 .then(() => {
                     this.isPlaying = true;
@@ -164,8 +141,6 @@ const GospelAudio = {
             this.audio.pause();
             this.audio.currentTime = 0;
             this.isPlaying = false;
-            this.currentTrack = null;
-            this.updateUI();
         }
     },
     
@@ -178,8 +153,9 @@ const GospelAudio = {
         localStorage.setItem('gospelAudioMuted', this.isMuted);
         this.updateUI();
         
-        if (this.isMuted) {
-            this.pause();
+        // If unmuting and on a slide with audio, play it
+        if (!this.isMuted && this.currentSlide !== null && this.slideAudio[this.currentSlide]) {
+            this.replay();
         }
     },
     
@@ -189,54 +165,24 @@ const GospelAudio = {
     onTrackEnd() {
         this.isPlaying = false;
         this.updateUI();
-        console.log('[GospelAudio] Track ended');
-    },
-    
-    /**
-     * Handle time updates for auto-advance (optional feature)
-     */
-    onTimeUpdate() {
-        // Optional: Auto-advance slides based on audio cues
-        // Disabled by default - uncomment to enable
-        /*
-        if (!this.currentTrack?.cues) return;
-        
-        const currentTime = this.audio.currentTime;
-        const nextCue = this.currentTrack.cues.find(c => 
-            c.time > currentTime - 0.5 && c.time < currentTime + 0.5
-        );
-        
-        if (nextCue && window.GospelPresentation) {
-            const currentSlide = window.GospelPresentation.currentSlide;
-            if (nextCue.slide !== currentSlide) {
-                window.GospelPresentation.showSlide(nextCue.slide);
-            }
-        }
-        */
+        console.log(`[GospelAudio] Slide ${this.currentSlide} audio ended`);
     },
     
     /**
      * Handle audio errors
      */
     onError(e) {
-        console.error('[GospelAudio] Error loading audio:', e);
+        console.warn('[GospelAudio] Error loading audio:', e);
         this.isPlaying = false;
         this.updateUI();
     },
     
     /**
-     * Handle canplaythrough
+     * Show prompt when autoplay is blocked
      */
-    onCanPlay() {
-        console.log('[GospelAudio] Audio ready to play');
-    },
-    
-    /**
-     * Show manual play button (when autoplay is blocked)
-     */
-    showPlayButton() {
-        // The UI button will show play state, user can click to start
+    showPlayPrompt() {
         this.updateUI();
+        // User can click the audio button to start
     },
     
     /**
@@ -245,6 +191,8 @@ const GospelAudio = {
     updateUI() {
         const audioBtn = document.getElementById('gospelAudioBtn');
         if (!audioBtn) return;
+        
+        const hasAudio = this.currentSlide !== null && this.slideAudio[this.currentSlide];
         
         if (this.isMuted) {
             audioBtn.innerHTML = `
@@ -255,7 +203,8 @@ const GospelAudio = {
                           d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
                 </svg>
             `;
-            audioBtn.title = 'Audio Muted - Click to unmute';
+            audioBtn.classList.remove('text-[var(--mission-gold)]');
+            audioBtn.classList.add('text-[var(--text-muted)]');
         } else if (this.isPlaying) {
             audioBtn.innerHTML = `
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +212,8 @@ const GospelAudio = {
                           d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
                 </svg>
             `;
-            audioBtn.title = 'Playing - Click to pause';
+            audioBtn.classList.add('text-[var(--mission-gold)]');
+            audioBtn.classList.remove('text-[var(--text-muted)]');
         } else {
             audioBtn.innerHTML = `
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,13 +221,13 @@ const GospelAudio = {
                           d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
                 </svg>
             `;
-            audioBtn.title = 'Click to play audio';
+            audioBtn.classList.remove('text-[var(--mission-gold)]');
+            audioBtn.classList.add(hasAudio ? 'text-[var(--text-color)]' : 'text-[var(--text-muted)]');
         }
     },
     
     /**
      * Create audio control button HTML
-     * To be injected into the modal header
      */
     getButtonHTML() {
         return `
@@ -296,14 +246,14 @@ const GospelAudio = {
     },
     
     /**
-     * Check if audio exists for current slide range
+     * Check if audio exists for a slide
      */
     hasAudioForSlide(slideIndex) {
-        return !!this.getTrackForSlide(slideIndex);
+        return !!this.slideAudio[slideIndex];
     }
 };
 
-// Auto-initialize when DOM is ready
+// Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => GospelAudio.init());
 } else {
