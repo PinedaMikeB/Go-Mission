@@ -24,11 +24,15 @@ const Theme = {
    * Initialize theme system
    */
   init() {
-    // Load from localStorage
+    // Force light mode for all users (January 2025 update)
+    // Remove any saved dark mode preference
     const saved = localStorage.getItem(this.STORAGE_KEY);
-    if (saved && (saved === 'dark' || saved === 'light')) {
-      this.currentTheme = saved;
+    if (saved === 'dark') {
+      localStorage.removeItem(this.STORAGE_KEY);
     }
+    
+    // Always default to light mode now
+    this.currentTheme = 'light';
     
     // Apply theme
     this.applyTheme();
