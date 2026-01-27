@@ -15,114 +15,146 @@
 
 ## Current Session (2026-01-27)
 
-### ✅ COMPLETED: Gospel Audio Narration (Slides 0-2)
+### ✅ COMPLETED TODAY
 
-**Files Created/Modified:**
-- ✅ `/modules/gospel/gospel-audio.js` (new - 314 lines)
-- ✅ `/modules/gospel/gospel-presentation.js` (modified - audio integration)
-- ✅ `/index.html` (modified - added script)
-- ✅ `/assets/audio/gospel/slide_1_to_3.wav` (1.7MB audio file)
+#### 1. Bilingual Gospel Presentation
+- **NEW FILE:** `/modules/gospel/gospel-content.js` (666 lines)
+- Complete English translation of all 40 slides
+- Dynamic language switching via `GospelContent.get(key)`
+- Fixed blank slides issue (self.c() pattern)
 
-**Audio System Features:**
-- 🔊 Audio button in modal header (speaker icon)
-- 🎵 Auto-plays when entering slides 0-2 (Intro, Truth 1 header, John 3:16)
-- ⏸️ Click to toggle play/pause
-- 🔇 Mute preference saved to localStorage
-- 📱 Handles browser autoplay restrictions gracefully
-- ⏹️ Audio stops when closing modal
+#### 2. Full Audio Narration (All 40 Slides)
+- **UPDATED:** `/modules/gospel/gospel-audio.js` (480 lines)
+- 54 audio files mapped to slides
+- Question/Correct/Wrong audio support
+- Auto-plays on slide entry
+- Bilingual-ready (slideAudioEN prepared)
 
-**How the system works:**
-```javascript
-// GospelAudio.tracks[] defines slide ranges
-tracks: [{
-    id: 'intro-truth1',
-    start: 0,  // Intro slide
-    end: 2,    // John 3:16 verse slide  
-    file: '/assets/audio/gospel/slide_1_to_3.wav',
-    cues: [...]  // Optional timing for auto-advance
-}]
-```
+**Audio Path:** `/assets/audio/gospel/`
 
-When `GospelPresentation.showSlide(index)` is called:
-1. Triggers `GospelAudio.playForSlide(index)`
-2. If slide is within a track's range, audio plays
-3. If outside all tracks, audio stops
+#### 3. Auto-Update System for Elderly Users
+- **NEW FILE:** `/modules/core/auto-update.js` (227 lines)
+- **NEW FILE:** `/netlify.toml` - Netlify build config
+- **NEW FILE:** `/scripts/bump-version.sh` - Auto-version bumping
+- Silent updates, no prompts required
+- Version auto-increments on every deploy
 
----
+#### 4. UI/UX Changes
+- **Collapsible cards:** Other features hidden below Journey card
+- **Default light mode:** Forced for all users
+- **Default Tagalog:** Forced for all users
+- **Menu fix:** Language toggle shows correct option
 
-### 📋 Next Steps
-
-**To add more audio tracks:**
-1. Record voiceover audio files
-2. Add entries to `GospelAudio.tracks[]` in `/modules/gospel/gospel-audio.js`
-3. Place audio files in `/assets/audio/gospel/`
-
-**Example for adding slide 4 audio:**
-```javascript
-{
-    id: 'truth1-questions',
-    start: 3,  
-    end: 5,    
-    file: '/assets/audio/gospel/slide_4_to_6.wav',
-    cues: []
-}
-```
-
----
-
-## Previous Session (2026-01-26 Late Night)
-
-### ✅ COMPLETED: Interactive Gospel Presentation
-- 34 animated slides with smooth transitions
-- Question-based discovery learning
-- Two-path decision flow (ready / not ready)
-- Firebase tracking for salvation decisions
+#### 5. Content Updates
+- Slide 17: "Wrong Thinking About Salvation"
+- Slide 30: Improved wrong answer explanation
+- Slide 35: NEW "Not Accepted" encouraging response
+- Next Steps Modal: Bilingual support
 
 ---
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `/modules/gospel/gospel-presentation.js` | Interactive Gospel (~950 lines) |
-| `/modules/gospel/gospel-audio.js` | Audio narration controller (314 lines) |
-| `/assets/audio/gospel/` | Gospel voiceover audio files |
-| `/modules/journey/next-steps-modal.js` | Stage-based options modal |
-| `/index.html` | Main app with journey card |
-| `/MASTERPLAN.md` | Full 5-stage discipleship system |
+| File | Purpose | Lines |
+|------|---------|-------|
+| `/modules/gospel/gospel-presentation.js` | Interactive Gospel slides | 889 |
+| `/modules/gospel/gospel-content.js` | Bilingual content | 666 |
+| `/modules/gospel/gospel-audio.js` | Audio controller | 480 |
+| `/modules/journey/next-steps-modal.js` | Stage-based options | 499 |
+| `/modules/core/auto-update.js` | Silent updates | 227 |
+| `/modules/core/theme.js` | Light/dark mode | 206 |
+| `/modules/core/i18n.js` | Language switching | 464 |
+| `/index.html` | Main app | ~2500 |
 
 ---
 
-## Testing the Audio Sync
+## Audio System
 
-1. Go to https://gomission.netlify.app (after deployment)
-2. Click "HUMAKBANG NGAYON"
-3. Click "Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos"
-4. Audio should auto-play on slides 0-2
-5. Look for speaker icon 🔊 in top-right header
-6. Click speaker to pause/play
-7. Audio automatically stops past slide 2
+**Path:** `/assets/audio/gospel/`
+
+**Naming Convention:**
+- `Gospel Slide N.wav` - Main narration
+- `Gospel Slide N Question.wav` - Question audio
+- `Gospel Slide N Correct Answer.wav` - Correct feedback
+- `Gospel Slide N Wrong Answer.wav` - Wrong feedback
+
+**To add English audio:**
+1. Record English versions with same naming + `_EN` suffix
+2. Add to `slideAudioEN` object in `gospel-audio.js`
+3. System will auto-detect language and play correct audio
 
 ---
 
-## Development Priorities
+## Gospel Decision Tracking
 
-1. **🔊 Record Remaining Audio** - Slides 3-33
-2. **Wednesday Equipping Level 1** - 18 sessions, 6-day reading cycle
-3. **Quiet Time Guide** - "Conversation with God" module
-4. **Group Joining** - Mission Groups feature
-5. **Admin Dashboard** - View saved count, follow-up list
+**Firebase Collections:**
+```javascript
+// Who accepted
+db.collection('users').where('gospelDecision.accepted', '==', true)
+
+// Who needs follow-up
+db.collection('users').where('gospelDecision.needsFollowUp', '==', true)
+
+// Total saved count
+db.collection('stats').doc('gospel') // has savedCount
+```
+
+---
+
+## Auto-Update System
+
+**How it works:**
+1. Push to GitHub
+2. Netlify runs `scripts/bump-version.sh`
+3. Timestamps update automatically
+4. Users get updates silently
+
+**No manual version changes needed!**
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Check for JS errors
-node --check modules/gospel/gospel-audio.js
-node --check modules/gospel/gospel-presentation.js
-
-# Deploy
+# Navigate to project
 cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
-git add -A && git commit -m "Add gospel audio sync for slides 0-2" && git push origin main
+
+# Check for JS errors
+node --check modules/gospel/gospel-presentation.js
+node --check modules/gospel/gospel-audio.js
+node --check modules/gospel/gospel-content.js
+
+# Bump version and deploy
+bash scripts/bump-version.sh
+git add -A && git commit -m "Your message" && git push origin main
 ```
+
+---
+
+## Development Priorities
+
+1. ✅ ~~Gospel Audio (Tagalog)~~ - DONE
+2. ✅ ~~Bilingual Gospel~~ - DONE  
+3. ✅ ~~Auto-Update System~~ - DONE
+4. 🔲 **English Audio Recording** - Pending
+5. 🔲 **NT Quick Insights Completion** - Check status
+6. 🔲 **Wednesday Equipping Level 1** - 18 sessions
+7. 🔲 **Quiet Time Guide** - Conversation with God module
+8. 🔲 **Admin Dashboard** - View saved/follow-up lists
+
+---
+
+## Testing Checklist
+
+- [ ] Open https://gomission.netlify.app
+- [ ] Check console for `[AutoUpdate] Initializing v2.0.0`
+- [ ] Verify light mode default
+- [ ] Verify Tagalog default
+- [ ] Click "HUMAKBANG NGAYON" → Gospel loads
+- [ ] Audio plays on slides
+- [ ] Toggle language → content changes
+- [ ] Complete Gospel → decision recorded in Firebase
+
+---
+
+*Last Updated: January 27, 2026*
