@@ -20,10 +20,10 @@ const GroupMeeting = {
   joinedAt: null,
   participants: [],
   
-  // Jitsi configuration - try self-hosted first, fallback to public
-  JITSI_DOMAIN: 'meet.jit.si', // Public Jitsi - most reliable
-  JITSI_SELF_HOSTED: 'meet.wotgonline.com', // Self-hosted backup
-  useSelfHosted: false, // Set to true to use self-hosted
+  // Jitsi configuration - self-hosted is faster
+  JITSI_DOMAIN: 'meet.wotgonline.com', // Self-hosted - FAST
+  JITSI_PUBLIC: 'meet.jit.si', // Public fallback
+  useSelfHosted: true, // Use self-hosted (faster)
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -50,7 +50,7 @@ const GroupMeeting = {
         return;
       }
       
-      const domain = this.useSelfHosted ? this.JITSI_SELF_HOSTED : this.JITSI_DOMAIN;
+      const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       const script = document.createElement('script');
       script.src = `https://${domain}/external_api.js`;
       script.async = true;
@@ -181,7 +181,7 @@ const GroupMeeting = {
       this.currentGroupId = groupId;
       this.joinedAt = new Date();
       
-      const domain = this.useSelfHosted ? this.JITSI_SELF_HOSTED : this.JITSI_DOMAIN;
+      const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       console.log('[GroupMeeting] Joining room:', roomName, 'on', domain);
       
       // Simpler Jitsi configuration for reliability
