@@ -192,7 +192,7 @@ const GospelPresentation = {
             {
                 type: 'custom',
                 render: () => {
-                    const d = c('truth2.twoDeaths');
+                    const d = self.c('truth2.twoDeaths');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-sm text-[var(--text-muted)] mb-4">${d.intro}</p>
@@ -248,7 +248,7 @@ const GospelPresentation = {
             {
                 type: 'custom',
                 render: () => {
-                    const h = c('truth3.humanEfforts');
+                    const h = self.c('truth3.humanEfforts');
                     return `
                     <div class="flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-center text-sm text-[var(--text-muted)] mb-4">${h.intro}</p>
@@ -349,7 +349,7 @@ const GospelPresentation = {
             {
                 type: 'decision-choice',
                 render: () => {
-                    const d = c('decision');
+                    const d = self.c('decision');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <h3 class="gospel-fade-in text-lg font-bold text-white mb-3">${d.question}</h3>
@@ -373,7 +373,7 @@ const GospelPresentation = {
             {
                 type: 'not-ready',
                 render: () => {
-                    const n = c('notReady');
+                    const n = self.c('notReady');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-fade-in text-4xl mb-3">🙏</div>
@@ -394,7 +394,7 @@ const GospelPresentation = {
             {
                 type: 'prayer-intro',
                 render: () => {
-                    const p = c('prayer');
+                    const p = self.c('prayer');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-5xl mb-3">🙏</div>
@@ -408,7 +408,7 @@ const GospelPresentation = {
             {
                 type: 'prayer',
                 render: () => {
-                    const p = c('prayer');
+                    const p = self.c('prayer');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <h3 class="gospel-fade-in text-base font-bold text-white mb-2">${p.title}</h3>
@@ -433,7 +433,7 @@ const GospelPresentation = {
             {
                 type: 'celebration',
                 render: () => {
-                    const cel = c('celebration');
+                    const cel = self.c('celebration');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-6xl mb-3">🎉</div>
@@ -451,7 +451,7 @@ const GospelPresentation = {
             {
                 type: 'promise',
                 render: () => {
-                    const p = c('promise1');
+                    const p = self.c('promise1');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
@@ -468,7 +468,7 @@ const GospelPresentation = {
             {
                 type: 'promise',
                 render: () => {
-                    const p = c('promise2');
+                    const p = self.c('promise2');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
@@ -485,7 +485,7 @@ const GospelPresentation = {
             {
                 type: 'promise',
                 render: () => {
-                    const p = c('promise3');
+                    const p = self.c('promise3');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
@@ -503,7 +503,7 @@ const GospelPresentation = {
             {
                 type: 'final',
                 render: () => {
-                    const f = c('final');
+                    const f = self.c('final');
                     return `
                     <div class="text-center">
                         <div class="gospel-bounce text-3xl mb-2">🌟</div>
