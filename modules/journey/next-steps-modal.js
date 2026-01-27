@@ -1,17 +1,132 @@
 /**
- * Next Steps Modal Module
+ * Next Steps Modal Module - Bilingual
  * Dynamic modal that shows stage-appropriate next steps for the user's journey
- * 
- * Stage Progression:
- * 1. NASA PAGLALAKBAY (Seeker) → Accept Christ + Join Group → ALAGAD
- * 2. ALAGAD (Disciple) → Complete Level 1 Training → TAGAPAG-HUBOG
- * 3. TAGAPAG-HUBOG (Disciple-Maker) → Lead Group + Level 2 → TAGAPAG-TAYO
- * 4. TAGAPAG-TAYO (Builder) → Produce Leaders + Level 3 → TAGAPAG-PARAMI
- * 5. TAGAPAG-PARAMI (Multiplier) → Movement multiplication
  */
 
 const NextStepsModal = {
     
+    // Bilingual content
+    content: {
+        en: {
+            title: 'What\'s your next step?',
+            subtitle: 'Choose your next step',
+            footer: 'Every step brings you closer to God',
+            options: {
+                gospel: {
+                    title: 'Discover How Much God Loves You',
+                    subtitle: 'The most important step in your journey'
+                },
+                quietTime: {
+                    title: 'Talk to God Daily',
+                    subtitle: 'Learn to talk to God every day'
+                },
+                quietTimeContinue: {
+                    title: 'Talk to God Daily',
+                    subtitle: 'Continue your conversation with God'
+                },
+                joinGroup: {
+                    title: 'Join a Mission Group',
+                    subtitle: 'Grow together with other believers'
+                },
+                training: {
+                    title: 'Enroll in Wednesday Equipping',
+                    subtitle: 'Level 1: 18 sessions of discipleship'
+                },
+                todayLesson: {
+                    title: 'Read Today\'s Lesson',
+                    subtitle: 'Continue your training'
+                },
+                leadGroup: {
+                    title: 'Lead a Mission Group',
+                    subtitle: 'Start your own group'
+                },
+                level2: {
+                    title: 'Level 2 Training',
+                    subtitle: 'Builder training for leaders'
+                },
+                developLeaders: {
+                    title: 'Develop Leaders',
+                    subtitle: 'Teach others to lead'
+                },
+                level3: {
+                    title: 'Level 3 Training',
+                    subtitle: 'Multiplication and movement building'
+                },
+                movement: {
+                    title: 'Expand the Movement',
+                    subtitle: 'Multiple generations of disciples'
+                }
+            }
+        },
+        tl: {
+            title: 'Ano ang susunod mong hakbang?',
+            subtitle: 'Piliin ang iyong susunod na hakbang',
+            footer: 'Bawat hakbang ay nagdadala sa iyo palapit sa Diyos',
+            options: {
+                gospel: {
+                    title: 'Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos',
+                    subtitle: 'Ang pinakamahalagang hakbang sa iyong paglalakbay'
+                },
+                quietTime: {
+                    title: 'Makipag-usap sa Diyos Araw-araw',
+                    subtitle: 'Matutong makipag-usap sa Diyos araw-araw'
+                },
+                quietTimeContinue: {
+                    title: 'Makipag-usap sa Diyos Araw-araw',
+                    subtitle: 'Ipagpatuloy ang iyong conversation with God'
+                },
+                joinGroup: {
+                    title: 'Sumali sa Mission Group',
+                    subtitle: 'Lumago kasama ang ibang mananampalataya'
+                },
+                training: {
+                    title: 'Mag-enroll sa Wednesday Equipping',
+                    subtitle: 'Level 1: 18 sessions ng paghubog'
+                },
+                todayLesson: {
+                    title: 'Basahin ang Lesson Ngayon',
+                    subtitle: 'Ipagpatuloy ang iyong training'
+                },
+                leadGroup: {
+                    title: 'Mamuno ng Mission Group',
+                    subtitle: 'Simulan ang iyong sariling grupo'
+                },
+                level2: {
+                    title: 'Level 2 Training',
+                    subtitle: 'Builder training para sa mga lider'
+                },
+                developLeaders: {
+                    title: 'Mag-develop ng mga Lider',
+                    subtitle: 'Turuan ang iba na mamuno'
+                },
+                level3: {
+                    title: 'Level 3 Training',
+                    subtitle: 'Multiplication at movement building'
+                },
+                movement: {
+                    title: 'Palawakin ang Movement',
+                    subtitle: 'Multiple generations ng mga alagad'
+                }
+            }
+        }
+    },
+    
+    // Get current language
+    getLang() {
+        return window.i18n?.currentLang || 'tl';
+    },
+    
+    // Get translated text
+    t(key) {
+        const lang = this.getLang();
+        const keys = key.split('.');
+        let value = this.content[lang];
+        for (const k of keys) {
+            value = value?.[k];
+        }
+        return value || key;
+    },
+
     // Stage definitions with requirements
     stages: {
         'seeker': {
@@ -24,31 +139,28 @@ const NextStepsModal = {
                 {
                     id: 'gospel',
                     icon: '❤️',
-                    title: 'Tuklasin Ngayon Kung Gaano ka Kamahal ng Diyos',
-                    subtitle: 'Ang pinakamahalagang hakbang sa iyong paglalakbay',
+                    contentKey: 'gospel',
                     action: 'openGospel',
                     requirementKey: 'gospelCompleted',
-                    requiredFirst: true,  // This must be done first
+                    requiredFirst: true,
                     priority: 1
                 },
                 {
                     id: 'quietTime',
                     icon: '📖',
-                    title: 'Makipag-usap sa Diyos Araw-araw',
-                    subtitle: 'Matutong makipag-usap sa Diyos araw-araw',
+                    contentKey: 'quietTime',
                     action: 'openQuietTimeGuide',
                     requirementKey: null,
-                    requiresGospel: true,  // Locked until gospel completed
+                    requiresGospel: true,
                     priority: 2
                 },
                 {
                     id: 'joinGroup',
                     icon: '👥',
-                    title: 'Sumali sa Mission Group',
-                    subtitle: 'Lumago kasama ang ibang mananampalataya',
+                    contentKey: 'joinGroup',
                     action: 'openJoinGroup',
                     requirementKey: 'hasUplineGroup',
-                    requiresGospel: true,  // Locked until gospel completed
+                    requiresGospel: true,
                     priority: 3
                 }
             ]
@@ -64,8 +176,7 @@ const NextStepsModal = {
                 {
                     id: 'quietTime',
                     icon: '📖',
-                    title: 'Makipag-usap sa Diyos Araw-araw',
-                    subtitle: 'Ipagpatuloy ang iyong conversation with God',
+                    contentKey: 'quietTimeContinue',
                     action: 'openBibleReader',
                     requirementKey: null,
                     priority: 1
@@ -73,8 +184,7 @@ const NextStepsModal = {
                 {
                     id: 'training',
                     icon: '🎯',
-                    title: 'Mag-enroll sa Wednesday Equipping',
-                    subtitle: 'Level 1: 18 sessions ng paghubog',
+                    contentKey: 'training',
                     action: 'openTrainingEnroll',
                     requirementKey: 'level1Completed',
                     priority: 2
@@ -82,8 +192,7 @@ const NextStepsModal = {
                 {
                     id: 'todayLesson',
                     icon: '📝',
-                    title: 'Basahin ang Lesson Ngayon',
-                    subtitle: 'Ipagpatuloy ang iyong training',
+                    contentKey: 'todayLesson',
                     action: 'openTodayLesson',
                     requirementKey: null,
                     showIf: 'inTraining',
@@ -102,8 +211,7 @@ const NextStepsModal = {
                 {
                     id: 'leadGroup',
                     icon: '👥',
-                    title: 'Mamuno ng Mission Group',
-                    subtitle: 'Simulan ang iyong sariling grupo',
+                    contentKey: 'leadGroup',
                     action: 'openCreateGroup',
                     requirementKey: 'leadsGroup',
                     priority: 1
@@ -111,8 +219,7 @@ const NextStepsModal = {
                 {
                     id: 'level2',
                     icon: '🎯',
-                    title: 'Level 2 Training',
-                    subtitle: 'Builder training para sa mga lider',
+                    contentKey: 'level2',
                     action: 'openLevel2Training',
                     requirementKey: 'level2Completed',
                     priority: 2
@@ -130,8 +237,7 @@ const NextStepsModal = {
                 {
                     id: 'developLeaders',
                     icon: '🌱',
-                    title: 'Mag-develop ng mga Lider',
-                    subtitle: 'Turuan ang iba na mamuno',
+                    contentKey: 'developLeaders',
                     action: 'openLeaderDevelopment',
                     requirementKey: 'producingLeaders',
                     priority: 1
@@ -139,8 +245,7 @@ const NextStepsModal = {
                 {
                     id: 'level3',
                     icon: '🎯',
-                    title: 'Level 3 Training',
-                    subtitle: 'Multiplication at movement building',
+                    contentKey: 'level3',
                     action: 'openLevel3Training',
                     requirementKey: 'level3Completed',
                     priority: 2
@@ -158,8 +263,7 @@ const NextStepsModal = {
                 {
                     id: 'movement',
                     icon: '🌍',
-                    title: 'Palawakin ang Movement',
-                    subtitle: 'Multiple generations ng mga alagad',
+                    contentKey: 'movement',
                     action: 'openMovementDashboard',
                     requirementKey: null,
                     priority: 1
@@ -168,18 +272,11 @@ const NextStepsModal = {
         }
     },
 
-    /**
-     * Initialize the modal
-     */
     init() {
         this.createModal();
     },
 
-    /**
-     * Create the modal HTML structure
-     */
     createModal() {
-        // Check if modal already exists
         if (document.getElementById('nextStepsModal')) return;
         
         const modal = document.createElement('div');
@@ -187,11 +284,10 @@ const NextStepsModal = {
         modal.className = 'fixed inset-0 z-[80] bg-black/80 hidden flex items-end justify-center';
         modal.innerHTML = `
             <div class="bg-[var(--card-bg-solid)] w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up">
-                <!-- Header -->
                 <div class="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
                     <div>
-                        <h2 class="text-lg font-bold text-[var(--text-color)]" id="nextStepsTitle">Ano ang susunod mong hakbang?</h2>
-                        <p class="text-xs text-[var(--text-muted)] mt-1" id="nextStepsSubtitle">Piliin ang iyong susunod na hakbang</p>
+                        <h2 class="text-lg font-bold text-[var(--text-color)]" id="nextStepsTitle"></h2>
+                        <p class="text-xs text-[var(--text-muted)] mt-1" id="nextStepsSubtitle"></p>
                     </div>
                     <button onclick="NextStepsModal.close()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)]">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,92 +295,75 @@ const NextStepsModal = {
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Options List -->
-                <div class="flex-1 overflow-y-auto p-4 space-y-3" id="nextStepsOptions">
-                    <!-- Dynamic options will be inserted here -->
-                </div>
-                
-                <!-- Footer -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-3" id="nextStepsOptions"></div>
                 <div class="p-4 border-t border-[var(--card-border)]">
-                    <p class="text-xs text-center text-[var(--text-muted)]">
+                    <p class="text-xs text-center text-[var(--text-muted)]" id="nextStepsFooter">
                         <span class="text-[var(--mission-gold)]">★</span> 
-                        Bawat hakbang ay nagdadala sa iyo palapit sa Diyos
+                        <span id="nextStepsFooterText"></span>
                     </p>
                 </div>
             </div>
         `;
         
-        // Close on backdrop click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) this.close();
         });
         
         document.body.appendChild(modal);
         
-        // Add slide-up animation
         const style = document.createElement('style');
         style.textContent = `
             @keyframes slideUp {
                 from { transform: translateY(100%); opacity: 0; }
                 to { transform: translateY(0); opacity: 1; }
             }
-            .animate-slide-up {
-                animation: slideUp 0.3s ease-out forwards;
-            }
+            .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
         `;
         document.head.appendChild(style);
     },
 
-    /**
-     * Open the modal with stage-appropriate options
-     */
     open() {
         this.init();
         
         const modal = document.getElementById('nextStepsModal');
         const optionsContainer = document.getElementById('nextStepsOptions');
+        const titleEl = document.getElementById('nextStepsTitle');
+        const subtitleEl = document.getElementById('nextStepsSubtitle');
+        const footerEl = document.getElementById('nextStepsFooterText');
         
-        // Get current user stage and progress
+        // Update text based on current language
+        titleEl.textContent = this.t('title');
+        subtitleEl.textContent = this.t('subtitle');
+        footerEl.textContent = this.t('footer');
+        
         const userStage = window.currentUserStage || 'seeker';
         const userProgress = this.getUserProgress();
         
-        // Get stage config
         const stageConfig = this.stages[userStage];
         if (!stageConfig) {
             console.error('Unknown stage:', userStage);
             return;
         }
         
-        // Build options HTML
         const options = this.getAvailableOptions(stageConfig, userProgress);
         optionsContainer.innerHTML = options.map(opt => this.renderOption(opt, userProgress)).join('');
         
-        // Show modal
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
 
-    /**
-     * Close the modal
-     */
     close() {
         const modal = document.getElementById('nextStepsModal');
         modal.classList.add('hidden');
         document.body.style.overflow = '';
     },
 
-    /**
-     * Get user's progress from Firebase or local state
-     */
     getUserProgress() {
-        // This will be populated from Firebase
-        // For now, return defaults or cached values
         return {
             gospelCompleted: localStorage.getItem('gospelCompleted') === 'true',
             hasUplineGroup: window.userHasUplineGroup || false,
             level1Completed: false,
-            level1Progress: 0, // 0-18 sessions
+            level1Progress: 0,
             inTraining: false,
             leadsGroup: window.userLeadsGroup || false,
             level2Completed: false,
@@ -293,36 +372,27 @@ const NextStepsModal = {
         };
     },
 
-    /**
-     * Get available options for current stage
-     */
     getAvailableOptions(stageConfig, userProgress) {
         return stageConfig.options
             .filter(opt => {
-                // Filter by showIf condition if present
-                if (opt.showIf) {
-                    return userProgress[opt.showIf];
-                }
+                if (opt.showIf) return userProgress[opt.showIf];
                 return true;
             })
             .sort((a, b) => a.priority - b.priority);
     },
 
-    /**
-     * Render a single option button
-     */
     renderOption(option, userProgress) {
         const isCompleted = option.requirementKey && userProgress[option.requirementKey];
         const isLocked = option.requiresGospel && !userProgress.gospelCompleted;
+        const content = this.t(`options.${option.contentKey}`);
         
-        // Locked state - disabled until gospel completed
         if (isLocked) {
             return `
                 <div class="w-full flex items-center gap-4 p-4 rounded-2xl border bg-[var(--card-bg)] border-[var(--card-border)] opacity-40 cursor-not-allowed">
                     <span class="text-3xl grayscale">${option.icon}</span>
                     <div class="flex-1 text-left">
-                        <h3 class="font-bold text-[var(--text-muted)]">${option.title}</h3>
-                        <p class="text-xs text-[var(--text-dim)] mt-1">${option.subtitle}</p>
+                        <h3 class="font-bold text-[var(--text-muted)]">${content.title}</h3>
+                        <p class="text-xs text-[var(--text-dim)] mt-1">${content.subtitle}</p>
                     </div>
                     <svg class="w-5 h-5 text-[var(--text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
@@ -331,7 +401,6 @@ const NextStepsModal = {
             `;
         }
         
-        // Completed state
         if (isCompleted) {
             return `
                 <button 
@@ -340,15 +409,14 @@ const NextStepsModal = {
                 >
                     <span class="text-3xl">${option.icon}</span>
                     <div class="flex-1 text-left">
-                        <h3 class="font-bold text-[var(--text-color)] line-through opacity-60">${option.title}</h3>
-                        <p class="text-xs text-[var(--text-muted)] mt-1">${option.subtitle}</p>
+                        <h3 class="font-bold text-[var(--text-color)]">${content.title}</h3>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">${content.subtitle}</p>
                     </div>
                     <span class="text-green-500 text-xl">✓</span>
                 </button>
             `;
         }
         
-        // Active state - clickable
         return `
             <button 
                 onclick="NextStepsModal.handleAction('${option.action}')" 
@@ -356,8 +424,8 @@ const NextStepsModal = {
             >
                 <span class="text-3xl">${option.icon}</span>
                 <div class="flex-1 text-left">
-                    <h3 class="font-bold text-[var(--text-color)]">${option.title}</h3>
-                    <p class="text-xs text-[var(--text-muted)] mt-1">${option.subtitle}</p>
+                    <h3 class="font-bold text-[var(--text-color)]">${content.title}</h3>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">${content.subtitle}</p>
                 </div>
                 <svg class="w-5 h-5 text-[var(--mission-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -366,9 +434,6 @@ const NextStepsModal = {
         `;
     },
 
-    /**
-     * Handle action button clicks
-     */
     handleAction(action) {
         this.close();
         
@@ -376,157 +441,58 @@ const NextStepsModal = {
             case 'openGospel':
                 if (typeof GospelPresentation !== 'undefined') {
                     GospelPresentation.open();
-                } else {
-                    console.error('GospelPresentation module not loaded');
                 }
                 break;
-                
             case 'openQuietTimeGuide':
-                // Will open Conversation with God guide
                 if (typeof ConversationGuide !== 'undefined') {
                     ConversationGuide.open();
+                } else if (typeof BibleReader !== 'undefined') {
+                    BibleReader.enterFullscreen();
                 } else {
-                    // Fallback to Bible reader
-                    if (typeof BibleReader !== 'undefined') {
-                        BibleReader.enterFullscreen();
-                    } else {
-                        alert('Quiet Time guide coming soon!');
-                    }
+                    alert('Coming soon!');
                 }
                 break;
-                
             case 'openJoinGroup':
                 if (typeof MyGroups !== 'undefined') {
                     MyGroups.showJoinModal();
                 } else {
-                    alert('Join Group feature loading...');
+                    alert('Coming soon!');
                 }
                 break;
-                
             case 'openBibleReader':
                 if (typeof BibleReader !== 'undefined') {
                     BibleReader.enterFullscreen();
                 }
                 break;
-                
             case 'openTrainingEnroll':
                 if (typeof Training !== 'undefined') {
                     Training.openFullScreen();
                 } else {
-                    alert('Training enrollment coming soon!');
+                    alert('Coming soon!');
                 }
                 break;
-                
             case 'openTodayLesson':
                 if (typeof Training !== 'undefined') {
                     Training.openTodayLesson();
                 } else {
-                    alert('Today\'s lesson coming soon!');
+                    alert('Coming soon!');
                 }
                 break;
-                
             case 'openCreateGroup':
                 if (typeof MyGroups !== 'undefined') {
                     MyGroups.showCreateModal();
                 } else {
-                    alert('Create Group feature coming soon!');
+                    alert('Coming soon!');
                 }
                 break;
-                
-            case 'openLevel2Training':
-            case 'openLevel3Training':
-            case 'openLeaderDevelopment':
-            case 'openMovementDashboard':
-                alert('This feature is coming soon!');
-                break;
-                
             default:
-                console.warn('Unknown action:', action);
+                alert('This feature is coming soon!');
         }
-    },
-
-    /**
-     * Update user's stage after completing requirements
-     * Called when user completes a key milestone
-     */
-    async checkAndUpdateStage() {
-        const userStage = window.currentUserStage || 'seeker';
-        const progress = this.getUserProgress();
-        const stageConfig = this.stages[userStage];
-        
-        if (!stageConfig || !stageConfig.nextStage) return;
-        
-        // Check if all requirements are met
-        const allRequirementsMet = stageConfig.requirements.every(req => progress[req]);
-        
-        if (allRequirementsMet) {
-            await this.promoteToNextStage(stageConfig.nextStage);
-        }
-    },
-
-    /**
-     * Promote user to next stage
-     */
-    async promoteToNextStage(newStage) {
-        try {
-            const user = window.auth?.currentUser;
-            if (!user) return;
-            
-            await window.db.collection('users').doc(user.uid).update({
-                stage: newStage,
-                stageUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                [`stageHistory.${newStage}`]: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Update local state
-            window.currentUserStage = newStage;
-            
-            // Update UI
-            if (typeof updateJourneyDisplay === 'function') {
-                updateJourneyDisplay(newStage);
-            }
-            
-            // Show celebration
-            this.showStageUpCelebration(newStage);
-            
-            console.log('User promoted to stage:', newStage);
-        } catch (error) {
-            console.error('Error promoting user:', error);
-        }
-    },
-
-    /**
-     * Show celebration when user advances to next stage
-     */
-    showStageUpCelebration(newStage) {
-        const stageConfig = this.stages[newStage];
-        if (!stageConfig) return;
-        
-        // Create celebration modal
-        const celebration = document.createElement('div');
-        celebration.className = 'fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4';
-        celebration.innerHTML = `
-            <div class="text-center animate-fade-up">
-                <div class="text-6xl mb-6">🎉</div>
-                <h2 class="text-2xl font-bold text-[var(--mission-gold)] mb-2">Congratulations!</h2>
-                <p class="text-lg text-white mb-2">Ikaw na ngayon ay</p>
-                <h3 class="text-3xl font-display font-bold text-white mb-6">${stageConfig.displayName || stageConfig.name}</h3>
-                <button onclick="this.parentElement.parentElement.remove()" class="px-8 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl">
-                    Magpatuloy
-                </button>
-            </div>
-        `;
-        document.body.appendChild(celebration);
-        
-        // Auto-remove after 10 seconds
-        setTimeout(() => celebration.remove(), 10000);
     }
 };
 
-// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     NextStepsModal.init();
 });
 
-// Make globally available
 window.NextStepsModal = NextStepsModal;
