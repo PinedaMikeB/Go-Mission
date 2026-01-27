@@ -8,7 +8,7 @@
     <style>
         body { background: #1a0a0a; color: #f5f5f4; font-family: 'Inter', sans-serif; }
         .card { background: rgba(45, 15, 15, 0.85); border: 1px solid rgba(120, 113, 108, 0.15); }
-        input, select { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
+        input, select, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 <body class="min-h-screen p-4">
@@ -21,7 +21,7 @@
         </div>
         
         <!-- Force Update Section -->
-        <div class="card rounded-xl p-6 mb-6">
+        <div id="forceUpdateSection" class="card rounded-xl p-6 mb-6 hidden">
             <h2 class="text-lg font-bold text-white mb-4">🔄 Force Update All Users</h2>
             
             <div class="space-y-4">
@@ -53,7 +53,7 @@
         </div>
         
         <!-- Current Force Update Status -->
-        <div class="card rounded-xl p-6 mb-6">
+        <div id="statusSection" class="card rounded-xl p-6 mb-6 hidden">
             <h2 class="text-lg font-bold text-white mb-4">📊 Current Force Update Status</h2>
             <div id="forceUpdateStatus">
                 <p class="text-slate-400">Loading...</p>
@@ -61,11 +61,31 @@
         </div>
         
         <!-- Stats -->
-        <div class="card rounded-xl p-6">
+        <div id="statsSection" class="card rounded-xl p-6 hidden">
             <h2 class="text-lg font-bold text-white mb-4">📈 App Stats</h2>
             <div id="appStats">
                 <p class="text-slate-400">Loading...</p>
             </div>
+        </div>
+        
+        <!-- Firebase Rules Help -->
+        <div id="rulesHelp" class="card rounded-xl p-6 hidden">
+            <h2 class="text-lg font-bold text-amber-500 mb-4">⚠️ Firebase Rules Required</h2>
+            <p class="text-slate-300 text-sm mb-4">Add these rules to your Firebase Firestore to enable admin features:</p>
+            <pre class="bg-black/50 p-4 rounded-lg text-xs text-green-400 overflow-x-auto">
+// Add to your Firestore Rules
+match /goMission_config/{document} {
+  allow read: if true;
+  allow write: if request.auth != null && 
+    request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
+match /stats/{document} {
+  allow read: if true;
+  allow write: if request.auth != null;
+}
+            </pre>
+            <p class="text-slate-400 text-xs mt-3">Go to Firebase Console → Firestore → Rules</p>
         </div>
     </div>
     
@@ -73,7 +93,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
@@ -88,15 +108,13 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Admin UIDs (add your UID here)
+        // Admin UIDs
         const ADMIN_UIDS = [
             '9zVKHJ11zaXD0f4GI6P7LHD6re32' // Mike Pineda
         ];
         
         window.db = db;
-        window.doc = doc;
-        window.getDoc = getDoc;
-        window.setDoc = setDoc;
+        window.auth = auth;
         
         // Toggle schedule options
         document.getElementById('updateType').addEventListener('change', (e) => {
@@ -110,7 +128,7 @@
             if (!user) {
                 authStatus.innerHTML = `
                     <p class="text-red-400">❌ Not signed in</p>
-                    <p class="text-sm text-slate-400 mt-2">Please sign in at <a href="/" class="text-amber-500">gomission.netlify.app</a> first</p>
+                    <p class="text-sm text-slate-400 mt-2">Please sign in at <a href="/" class="text-amber-500 underline">gomission.netlify.app</a> first, then come back here.</p>
                 `;
                 return;
             }
@@ -118,7 +136,8 @@
             if (!ADMIN_UIDS.includes(user.uid)) {
                 authStatus.innerHTML = `
                     <p class="text-red-400">❌ Access Denied</p>
-                    <p class="text-sm text-slate-400 mt-2">You are not an admin. Your UID: ${user.uid}</p>
+                    <p class="text-sm text-slate-400 mt-2">You are not an admin.</p>
+                    <p class="text-xs text-slate-500 mt-1">Your UID: <code class="bg-black/30 px-1 rounded">${user.uid}</code></p>
                 `;
                 return;
             }
@@ -126,72 +145,117 @@
             authStatus.innerHTML = `
                 <p class="text-green-400">✅ Signed in as Admin</p>
                 <p class="text-sm text-slate-400">${user.email}</p>
+                <p class="text-xs text-slate-500">UID: ${user.uid}</p>
             `;
             
-            // Load force update status
+            // Show admin sections
+            document.getElementById('forceUpdateSection').classList.remove('hidden');
+            document.getElementById('statusSection').classList.remove('hidden');
+            document.getElementById('statsSection').classList.remove('hidden');
+            
+            // Load data
             loadForceUpdateStatus();
             loadAppStats();
         });
         
         // Load current force update status
         async function loadForceUpdateStatus() {
+            const statusEl = document.getElementById('forceUpdateStatus');
+            
             try {
                 const configRef = doc(db, 'goMission_config', 'forceUpdate');
                 const configDoc = await getDoc(configRef);
-                
-                const statusEl = document.getElementById('forceUpdateStatus');
                 
                 if (configDoc.exists()) {
                     const data = configDoc.data();
                     statusEl.innerHTML = `
                         <div class="space-y-2 text-sm">
-                            <p><span class="text-slate-400">Status:</span> <span class="${data.enabled ? 'text-green-400' : 'text-slate-500'}">${data.enabled ? 'Active' : 'Inactive'}</span></p>
+                            <p><span class="text-slate-400">Status:</span> <span class="${data.enabled ? 'text-green-400' : 'text-slate-500'}">${data.enabled ? '🟢 Active' : '⚫ Inactive'}</span></p>
                             <p><span class="text-slate-400">Last Triggered:</span> ${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
-                            ${data.scheduledFor ? `<p><span class="text-slate-400">Scheduled For:</span> ${new Date(data.scheduledFor).toLocaleString()}</p>` : ''}
-                            <p><span class="text-slate-400">Details:</span> ${data.details || 'None'}</p>
+                            ${data.scheduledFor ? `<p><span class="text-slate-400">Scheduled For:</span> <span class="text-amber-400">${new Date(data.scheduledFor).toLocaleString()}</span></p>` : ''}
+                            ${data.details ? `<p><span class="text-slate-400">Details:</span> ${data.details}</p>` : ''}
+                            ${data.triggeredBy ? `<p><span class="text-slate-400">By:</span> ${data.triggeredBy}</p>` : ''}
                             
-                            <button onclick="disableForceUpdate()" class="mt-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
-                                Disable Force Update
-                            </button>
+                            ${data.enabled ? `
+                                <button onclick="disableForceUpdate()" class="mt-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
+                                    ⏹️ Disable Force Update
+                                </button>
+                            ` : ''}
                         </div>
                     `;
                 } else {
-                    statusEl.innerHTML = '<p class="text-slate-500">No force update configured</p>';
+                    statusEl.innerHTML = '<p class="text-slate-500">No force update configured yet</p>';
                 }
+                
+                // Hide rules help if successful
+                document.getElementById('rulesHelp').classList.add('hidden');
+                
             } catch (error) {
                 console.error('Error loading status:', error);
+                statusEl.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+                
+                // Show rules help
+                if (error.message.includes('permission')) {
+                    document.getElementById('rulesHelp').classList.remove('hidden');
+                }
             }
         }
         window.loadForceUpdateStatus = loadForceUpdateStatus;
         
         // Load app stats
         async function loadAppStats() {
+            const statsEl = document.getElementById('appStats');
+            
             try {
-                // Get gospel stats
-                const gospelRef = doc(db, 'stats', 'gospel');
-                const gospelDoc = await getDoc(gospelRef);
-                
-                // Get user count (approximate)
+                // Get user count
                 const membersRef = collection(db, 'goMission_members');
                 const membersSnap = await getDocs(membersRef);
                 
-                const statsEl = document.getElementById('appStats');
-                const gospelData = gospelDoc.exists() ? gospelDoc.data() : {};
+                // Get gospel stats
+                let savedCount = 0;
+                try {
+                    const gospelRef = doc(db, 'stats', 'gospel');
+                    const gospelDoc = await getDoc(gospelRef);
+                    if (gospelDoc.exists()) {
+                        savedCount = gospelDoc.data().savedCount || 0;
+                    }
+                } catch (e) {
+                    console.log('Could not load gospel stats');
+                }
+                
+                // Get groups count
+                let groupsCount = 0;
+                try {
+                    const groupsRef = collection(db, 'goMission_groups');
+                    const groupsSnap = await getDocs(groupsRef);
+                    groupsCount = groupsSnap.size;
+                } catch (e) {
+                    console.log('Could not load groups');
+                }
                 
                 statsEl.innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div class="card rounded-lg p-3">
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                        <div class="bg-black/30 rounded-lg p-3 text-center">
                             <p class="text-2xl font-bold text-amber-500">${membersSnap.size}</p>
-                            <p class="text-slate-400">Total Users</p>
+                            <p class="text-slate-400 text-xs">Users</p>
                         </div>
-                        <div class="card rounded-lg p-3">
-                            <p class="text-2xl font-bold text-green-400">${gospelData.savedCount || 0}</p>
-                            <p class="text-slate-400">Salvations</p>
+                        <div class="bg-black/30 rounded-lg p-3 text-center">
+                            <p class="text-2xl font-bold text-green-400">${savedCount}</p>
+                            <p class="text-slate-400 text-xs">Salvations</p>
+                        </div>
+                        <div class="bg-black/30 rounded-lg p-3 text-center">
+                            <p class="text-2xl font-bold text-blue-400">${groupsCount}</p>
+                            <p class="text-slate-400 text-xs">Groups</p>
                         </div>
                     </div>
                 `;
             } catch (error) {
                 console.error('Error loading stats:', error);
+                statsEl.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+                
+                if (error.message.includes('permission')) {
+                    document.getElementById('rulesHelp').classList.remove('hidden');
+                }
             }
         }
         
@@ -201,7 +265,15 @@
             const details = document.getElementById('updateDetails').value;
             const scheduleTime = document.getElementById('scheduleTime').value;
             
-            if (!confirm('⚠️ This will force ALL users to update their app. Continue?')) {
+            let confirmMsg = '⚠️ This will force ALL users to update their app.\n\n';
+            if (updateType === 'scheduled' && scheduleTime) {
+                confirmMsg += `Scheduled for: ${new Date(scheduleTime).toLocaleString()}\n\n`;
+            } else {
+                confirmMsg += 'Update will happen immediately when users open the app.\n\n';
+            }
+            confirmMsg += 'Continue?';
+            
+            if (!confirm(confirmMsg)) {
                 return;
             }
             
@@ -217,21 +289,29 @@
                 
                 if (updateType === 'scheduled' && scheduleTime) {
                     updateData.scheduledFor = new Date(scheduleTime).toISOString();
+                } else {
+                    updateData.scheduledFor = null;
                 }
                 
                 await setDoc(configRef, updateData);
                 
-                alert('✅ Force update triggered successfully!');
+                alert('✅ Force update triggered successfully!\n\nUsers will update when they open the app.');
                 loadForceUpdateStatus();
                 
             } catch (error) {
                 console.error('Error:', error);
                 alert('❌ Error: ' + error.message);
+                
+                if (error.message.includes('permission')) {
+                    document.getElementById('rulesHelp').classList.remove('hidden');
+                }
             }
         };
         
         // Disable force update
         window.disableForceUpdate = async function() {
+            if (!confirm('Disable force update?')) return;
+            
             try {
                 const configRef = doc(db, 'goMission_config', 'forceUpdate');
                 await setDoc(configRef, { enabled: false }, { merge: true });
