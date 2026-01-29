@@ -835,12 +835,24 @@
                 <div class="devotion-content-area p-4 cursor-pointer transition-colors" onclick="BibleReader.enterFullscreen()">
                     <!-- Passage Header -->
                     <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-1 text-[var(--text-color)] font-bold">
-                            <span class="text-lg">📖</span>
-                            <span id="passageTitle">John 1</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
+                        <div class="flex items-center gap-2">
+                            <!-- Clickable Title - Opens Book/Chapter Picker -->
+                            <button onclick="event.stopPropagation(); BiblePicker.open();" class="flex items-center gap-1 text-[var(--text-color)] font-bold hover:text-amber-400 transition-colors">
+                                <span class="text-lg">📖</span>
+                                <span id="passageTitle">John 1</span>
+                                <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            
+                            <!-- Translation Dropdown - Bible only, not global -->
+                            <select id="bibleTranslationPreview" 
+                                    onclick="event.stopPropagation();"
+                                    onchange="event.stopPropagation(); BibleReader.setBibleTranslation(this.value);"
+                                    class="text-xs px-2 py-1 rounded bg-[var(--input-bg)] text-[var(--text-color)] border border-[var(--card-border)] cursor-pointer">
+                                <option value="tl">TL</option>
+                                <option value="en">EN</option>
+                            </select>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-[10px] text-[var(--text-muted)] uppercase font-medium" id="chapterProgress"></span>

@@ -21,6 +21,10 @@ const BibleReader = {
   quickInsightsData: null,
   tyndaleData: null,
   
+  // Bible translation (independent of global language)
+  // This only affects the Bible text, NOT insights/reflect
+  bibleTranslation: 'tl',     // 'en' or 'tl' - default Tagalog
+  
   // Reading preferences
   preferences: {
     fontSize: 16,           // Base font size in pixels
@@ -189,6 +193,12 @@ const BibleReader = {
       console.log('[BibleReader] No saved preferences');
     }
     
+    // Load Bible translation preference (separate from global language)
+    const savedTranslation = localStorage.getItem('goMission_bibleTranslation');
+    if (savedTranslation && (savedTranslation === 'en' || savedTranslation === 'tl')) {
+      this.bibleTranslation = savedTranslation;
+    }
+    
     // Apply saved preferences
     this.applyFontSize();
   },
@@ -277,7 +287,8 @@ const BibleReader = {
     overlay.id = 'bibleFullscreenOverlay';
     overlay.className = 'fixed inset-0 z-50 bg-[var(--bg-color)] flex flex-col transition-all duration-300';
     
-    const bookName = this.chapterData?.bookName || this.currentBook;
+    // Get book name in the current Bible translation
+    const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     const hasHighlights = this.highlightedVerses.length > 0;
     const isMobile = window.innerWidth < 768;
@@ -292,7 +303,24 @@ const BibleReader = {
           <span class="text-sm font-medium hidden md:inline">Close</span>
         </button>
         
-        <h2 class="text-base md:text-lg font-bold text-[var(--text-color)]">📖 ${bookName} ${this.currentChapter}</h2>
+        <!-- Clickable Title + Translation Dropdown -->
+        <div class="flex items-center gap-2">
+          <button onclick="BiblePicker.open()" class="flex items-center gap-1 text-base md:text-lg font-bold text-[var(--text-color)] hover:text-amber-400 transition-colors">
+            <span>📖</span>
+            <span id="fullscreenBookTitle">${bookName} ${this.currentChapter}</span>
+            <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          
+          <!-- Translation Dropdown -->
+          <select id="bibleTranslationSelect" 
+                  onchange="BibleReader.setBibleTranslation(this.value)"
+                  class="text-xs px-2 py-1 rounded bg-[var(--input-bg)] text-[var(--text-color)] border border-[var(--card-border)] cursor-pointer">
+            <option value="tl" ${this.bibleTranslation === 'tl' ? 'selected' : ''}>TL</option>
+            <option value="en" ${this.bibleTranslation === 'en' ? 'selected' : ''}>EN</option>
+          </select>
+        </div>
         
         <div class="flex items-center gap-1 md:gap-2">
           <!-- Font Size Controls -->
@@ -494,7 +522,7 @@ const BibleReader = {
   updateFullscreenContent() {
     setTimeout(() => {
       const fullscreenText = document.getElementById('fullscreenBibleText');
-      const headerTitle = document.querySelector('#bibleFullscreenOverlay h2');
+      const bookTitleEl = document.getElementById('fullscreenBookTitle');
       const commentaryContent = document.getElementById('fullscreenCommentaryContent');
       const commentaryBtn = document.getElementById('fullscreenCommentaryBtn');
       const commentaryCount = document.getElementById('fullscreenCommentaryCount');
@@ -504,9 +532,10 @@ const BibleReader = {
         fullscreenText.style.fontSize = `${this.preferences.fontSize}px`;
       }
       
-      if (headerTitle) {
-        const bookName = this.chapterData?.bookName || this.currentBook;
-        headerTitle.textContent = `📖 ${bookName} ${this.currentChapter}`;
+      // Update book title with correct translation
+      if (bookTitleEl) {
+        const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
+        bookTitleEl.textContent = `${bookName} ${this.currentChapter}`;
       }
       
       // Update commentary panel
@@ -611,12 +640,10 @@ const BibleReader = {
     this.currentChapter = chapter;
     this.highlightedVerses = [];
     
-    // Get current language
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
-    
+    // Use Bible-specific translation (not global language)
     // Load chapter data using BibleLoader
     if (typeof BibleLoader !== 'undefined') {
-      this.chapterData = await BibleLoader.getChapter(bookId, chapter, lang);
+      this.chapterData = await BibleLoader.getChapter(bookId, chapter, this.bibleTranslation);
     }
     
     if (!this.chapterData) {
@@ -643,20 +670,61 @@ const BibleReader = {
   },
 
   /**
-   * Reload chapter when language changes - preserves highlighted verses
+   * Reload when global language changes - only affects Quick Insights, NOT Bible text
+   * Bible text stays in the selected translation (bibleTranslation)
    */
   async reloadChapterForLanguageChange() {
-    console.log(`[BibleReader] Reloading for language change, preserving ${this.highlightedVerses.length} highlights`);
+    console.log(`[BibleReader] Global language changed, reloading insights only (Bible stays in ${this.bibleTranslation})`);
     
-    // Save current highlights
+    // Bible text does NOT change - it uses bibleTranslation, not global language
+    // Only reload insights in the new global language if verses are highlighted
+    if (this.highlightedVerses.length > 0) {
+      await this.loadCommentary();
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+    }
+  },
+
+  /**
+   * Render passage title with picker trigger (for collapsed view)
+   * Note: This is the main title that opens BiblePicker
+   */
+  renderPassageTitle() {
+    if (!this.elements.passageTitle) return;
+    
+    // Get book name in the current Bible translation
+    const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
+    
+    this.elements.passageTitle.textContent = `${bookName} ${this.currentChapter}`;
+    
+    // Sync the preview dropdown
+    const previewDropdown = document.getElementById('bibleTranslationPreview');
+    if (previewDropdown) {
+      previewDropdown.value = this.bibleTranslation;
+    }
+  },
+  
+  /**
+   * Switch Bible translation (EN/TL) - only affects Bible text, NOT insights
+   */
+  async setBibleTranslation(lang) {
+    if (lang !== 'en' && lang !== 'tl') return;
+    if (lang === this.bibleTranslation) return;
+    
+    console.log(`[BibleReader] Switching Bible translation to ${lang}`);
+    this.bibleTranslation = lang;
+    
+    // Save preference
+    localStorage.setItem('goMission_bibleTranslation', lang);
+    
+    // Reload chapter in new translation (keep highlights)
     const savedHighlights = [...this.highlightedVerses];
     
-    // Get new language
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
-    
-    // Reload chapter data in new language
     if (typeof BibleLoader !== 'undefined') {
-      this.chapterData = await BibleLoader.getChapter(this.currentBook, this.currentChapter, lang);
+      this.chapterData = await BibleLoader.getChapter(this.currentBook, this.currentChapter, this.bibleTranslation);
     }
     
     if (!this.chapterData) {
@@ -670,33 +738,27 @@ const BibleReader = {
     // Update UI
     this.renderPassageTitle();
     this.renderVerses();
-    this.renderProgress();
-    this.updateNavButtons();
     
-    // Reload insights in new language if verses are highlighted
-    if (this.highlightedVerses.length > 0) {
-      await this.loadCommentary();
-    } else {
-      this.clearCommentary();
+    // Update fullscreen if open
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+      this.updateTranslationDropdown();
     }
   },
-
+  
   /**
-   * Render passage title with picker trigger
+   * Update translation dropdown UI (both preview and fullscreen)
    */
-  renderPassageTitle() {
-    if (!this.elements.passageTitle) return;
+  updateTranslationDropdown() {
+    const previewDropdown = document.getElementById('bibleTranslationPreview');
+    const fullscreenDropdown = document.getElementById('bibleTranslationSelect');
     
-    const bookName = this.chapterData.bookName || this.currentBook;
-    
-    this.elements.passageTitle.innerHTML = `
-      <button onclick="BiblePicker.open()" class="flex items-center gap-2 hover:text-amber-400 transition-colors">
-        <span>📖 ${bookName} ${this.currentChapter}</span>
-        <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
-      </button>
-    `;
+    if (previewDropdown) {
+      previewDropdown.value = this.bibleTranslation;
+    }
+    if (fullscreenDropdown) {
+      fullscreenDropdown.value = this.bibleTranslation;
+    }
   },
 
   /**
