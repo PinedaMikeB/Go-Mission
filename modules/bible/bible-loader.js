@@ -340,8 +340,21 @@ const BibleLoader = {
     
     for (const verseNum of verses) {
       const verseInsight = chapterData.verses[verseNum.toString()];
-      if (verseInsight && verseInsight[l]) {
-        result.verses[verseNum] = verseInsight[l];
+      if (verseInsight) {
+        // Try requested language first
+        let insight = verseInsight[l];
+        
+        // Fallback to English if requested language is empty or missing
+        if (!insight || !insight.understanding || insight.understanding === '') {
+          insight = verseInsight['en'];
+          if (insight && insight.understanding) {
+            console.log(`[BibleLoader] Falling back to EN for ${bookId} ${chapter}:${verseNum}`);
+          }
+        }
+        
+        if (insight && insight.understanding) {
+          result.verses[verseNum] = insight;
+        }
       }
     }
     
