@@ -12,24 +12,28 @@ Each entry includes rollback instructions.
 
 ## [v2.1.0] - 2026-01-29 ⭐ CURRENT
 
-### 🔊 English Audio Narration Complete (Slides 1-34)
+### 🔊 English Audio Narration Complete (All 40 Slides)
 
 **Summary:** Added English audio sync for Gospel presentation, matching the Tagalog audio system.
 
 **File Updated:**
-- `/modules/gospel/gospel-audio.js` - Added `slideAudioEN` mapping
+- `/modules/gospel/gospel-audio.js` - Added `slideAudioEN` mapping + fixed path encoding
 
-**Audio Files (49 total):**
+**Audio Files (55 total):**
 - Location: `/assets/audio/gospel/Gospel Audio English/`
-- Regular slides: 1-3, 6-8, 10-11, 13-15, 17-22, 24-25, 27-29, 31-33
+- Regular slides: 1-3, 6-8, 10-11, 13-15, 17-22, 24-25, 27-33, 35-40
 - Question slides (8): 4, 5, 9, 12, 16, 23, 26, 30 (each with Q/Correct/Wrong)
 - Prayer: Slide 34
+
+**Bug Fix:**
+- Fixed `encodeURIComponent` encoding path slashes - now only encodes filenames
 
 **Audio Coverage:**
 | Slide Range | Status |
 |-------------|--------|
-| Slides 1-34 | ✅ Complete |
-| Slides 35-39 | ❌ Pending (Celebration, Promises, Final) |
+| Slides 1-40 | ✅ Complete |
+| Question audio | ✅ Complete |
+| Celebration/Promises | ✅ Complete |
 
 **How It Works:**
 - System auto-detects language via `window.i18n.currentLang`
