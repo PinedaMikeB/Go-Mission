@@ -27,13 +27,16 @@
 - **Fixed:** Path encoding bug - now encodes filename only, not path slashes
 - Audio path: `/assets/audio/gospel/Gospel Audio English/`
 
-**English Audio Coverage:**
-| Slide Type | Status |
-|------------|--------|
-| Regular slides (1-40) | ✅ Complete |
-| Question Q/C/W audio | ✅ 8 slides complete |
-| Prayer audio | ✅ Complete |
-| Celebration/Promises | ✅ Complete |
+#### 2. Quick Insights Status Verified
+- **63/66 books** now have bilingual Quick Insights (EN + TL)
+- Each verse has 4 sections: Understanding, Living It Out, God's Love, Reflection
+- Properly synced to Bible reader via `bible-loader.js`
+
+**Missing Quick Insights (4 books):**
+- 1 Thessalonians (1TH)
+- 2 Thessalonians (2TH)  
+- Haggai (HAG)
+- Jonah (JON)
 
 ---
 
@@ -159,10 +162,11 @@ git add -A && git commit -m "Your message" && git push origin main
 2. ✅ ~~Bilingual Gospel~~ - DONE  
 3. ✅ ~~Auto-Update System~~ - DONE
 4. ✅ ~~English Audio (All 40 Slides)~~ - DONE
-5. 🔲 **NT Quick Insights Completion** - 17/66 books done
-6. 🔲 **Wednesday Equipping Level 1** - 18 sessions
-7. 🔲 **Quiet Time Guide** - Conversation with God module
-8. 🔲 **Admin Dashboard** - View saved/follow-up lists
+5. ✅ ~~Quick Insights Generation~~ - 63/66 books DONE
+6. 🔲 **Quick Insights (4 remaining)** - 1TH, 2TH, HAG, JON
+7. 🔲 **Wednesday Equipping Level 1** - 18 sessions
+8. 🔲 **Quiet Time Guide** - Conversation with God module
+9. 🔲 **Admin Dashboard** - View saved/follow-up lists
 
 ---
 
