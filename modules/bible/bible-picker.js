@@ -246,14 +246,14 @@ const BiblePicker = {
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="BiblePicker.close()"></div>
       
-      <!-- Modal Content -->
-      <div class="absolute inset-x-4 top-20 bottom-20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md bg-gradient-to-b from-[#2a0505] to-[#1a0303] rounded-2xl border border-amber-900/30 shadow-2xl flex flex-col overflow-hidden">
+      <!-- Modal Content - Uses theme variables -->
+      <div class="absolute inset-x-4 top-20 bottom-20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] shadow-2xl flex flex-col overflow-hidden">
         
         <!-- Header -->
-        <div class="p-4 border-b border-amber-900/20">
+        <div class="p-4 border-b border-[var(--card-border)]">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-bold text-amber-400">📖 Select Passage</h3>
-            <button onclick="BiblePicker.close()" class="text-amber-500/60 hover:text-amber-500 p-1">
+            <h3 class="text-lg font-bold text-amber-500">📖 Select Passage</h3>
+            <button onclick="BiblePicker.close()" class="text-[var(--text-muted)] hover:text-amber-500 p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
@@ -265,7 +265,7 @@ const BiblePicker = {
             <input type="text" 
                    id="bibleSearchInput" 
                    placeholder="Search book... (e.g., John, Juan, Genesis)"
-                   class="w-full bg-black/40 border border-amber-900/30 rounded-xl px-4 py-3 pl-10 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                   class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 pl-10 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
                    oninput="BiblePicker.onSearch(this.value)"
                    autocomplete="off">
             <svg class="w-5 h-5 text-amber-500/50 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,19 +281,19 @@ const BiblePicker = {
           <div id="pickerBookList" class="flex-1 overflow-y-auto custom-scrollbar">
             
             <!-- Recent Readings -->
-            <div id="pickerRecent" class="p-3 border-b border-amber-900/20">
-              <p class="text-[10px] font-bold text-amber-500/60 uppercase tracking-wider mb-2">Recent</p>
+            <div id="pickerRecent" class="p-3 border-b border-[var(--card-border)]">
+              <p class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Recent</p>
               <div id="pickerRecentList" class="flex flex-wrap gap-2">
                 <!-- Populated dynamically -->
               </div>
             </div>
             
             <!-- Testament Tabs -->
-            <div class="flex border-b border-amber-900/20">
+            <div class="flex border-b border-[var(--card-border)]">
               <button id="tabOT" onclick="BiblePicker.showTestament('OT')" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider text-amber-500 border-b-2 border-amber-500">
                 Old Testament
               </button>
-              <button id="tabNT" onclick="BiblePicker.showTestament('NT')" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 border-b-2 border-transparent hover:text-slate-300">
+              <button id="tabNT" onclick="BiblePicker.showTestament('NT')" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] border-b-2 border-transparent hover:text-[var(--text-color)]">
                 New Testament
               </button>
             </div>
@@ -307,15 +307,15 @@ const BiblePicker = {
           
           <!-- Chapter Selector View (hidden by default) -->
           <div id="pickerChapterView" class="hidden flex-1 overflow-y-auto custom-scrollbar">
-            <div class="p-4 border-b border-amber-900/20 flex items-center gap-3">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center gap-3">
               <button onclick="BiblePicker.backToBooks()" class="text-amber-500 hover:text-amber-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
               </button>
               <div>
-                <p class="text-lg font-bold text-amber-400" id="pickerSelectedBookName">John</p>
-                <p class="text-[10px] text-slate-500" id="pickerChapterCount">21 chapters</p>
+                <p class="text-lg font-bold text-amber-500" id="pickerSelectedBookName">John</p>
+                <p class="text-[10px] text-[var(--text-muted)]" id="pickerChapterCount">21 chapters</p>
               </div>
             </div>
             <div id="pickerChapterGrid" class="p-3 grid grid-cols-5 gap-2">
@@ -413,9 +413,9 @@ const BiblePicker = {
     
     grid.innerHTML = bookIds.map(bookId => `
       <button onclick="BiblePicker.selectBook('${bookId}')" 
-              class="p-3 bg-black/30 hover:bg-amber-500/20 border border-amber-900/20 hover:border-amber-500/40 rounded-xl text-center transition-all">
-        <p class="text-sm font-bold text-slate-200 truncate">${this.getBookName(bookId)}</p>
-        <p class="text-[10px] text-slate-500">${this.books[bookId].chapters} ch</p>
+              class="p-3 bg-[var(--input-bg)] hover:bg-amber-500/20 border border-[var(--card-border)] hover:border-amber-500/40 rounded-xl text-center transition-all">
+        <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.getBookName(bookId)}</p>
+        <p class="text-[10px] text-[var(--text-muted)]">${this.books[bookId].chapters} ch</p>
       </button>
     `).join('');
   },
@@ -430,14 +430,14 @@ const BiblePicker = {
     
     if (testament === 'OT') {
       tabOT.classList.add('text-amber-500', 'border-amber-500');
-      tabOT.classList.remove('text-slate-500', 'border-transparent');
+      tabOT.classList.remove('text-[var(--text-muted)]', 'border-transparent');
       tabNT.classList.remove('text-amber-500', 'border-amber-500');
-      tabNT.classList.add('text-slate-500', 'border-transparent');
+      tabNT.classList.add('text-[var(--text-muted)]', 'border-transparent');
     } else {
       tabNT.classList.add('text-amber-500', 'border-amber-500');
-      tabNT.classList.remove('text-slate-500', 'border-transparent');
+      tabNT.classList.remove('text-[var(--text-muted)]', 'border-transparent');
       tabOT.classList.remove('text-amber-500', 'border-amber-500');
-      tabOT.classList.add('text-slate-500', 'border-transparent');
+      tabOT.classList.add('text-[var(--text-muted)]', 'border-transparent');
     }
     
     // Filter books
@@ -490,7 +490,7 @@ const BiblePicker = {
     
     grid.innerHTML = Array.from({ length: chapters }, (_, i) => i + 1).map(ch => `
       <button onclick="BiblePicker.selectChapter('${bookId}', ${ch})" 
-              class="aspect-square flex items-center justify-center bg-black/30 hover:bg-amber-500/20 border border-amber-900/20 hover:border-amber-500/40 rounded-xl text-sm font-bold text-slate-200 transition-all">
+              class="aspect-square flex items-center justify-center bg-[var(--input-bg)] hover:bg-amber-500/20 border border-[var(--card-border)] hover:border-amber-500/40 rounded-xl text-sm font-bold text-[var(--text-color)] transition-all">
         ${ch}
       </button>
     `).join('');

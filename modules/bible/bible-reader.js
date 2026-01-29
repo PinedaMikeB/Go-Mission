@@ -376,7 +376,7 @@ const BibleReader = {
           Prev
         </button>
         
-        <span class="text-sm text-[var(--text-muted)]">Chapter ${this.currentChapter}</span>
+        <span id="fullscreenChapterLabel" class="text-sm text-[var(--text-muted)]">Chapter ${this.currentChapter}</span>
         
         <button onclick="BibleReader.nextChapter(); BibleReader.updateFullscreenContent();" 
                 class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400">
@@ -538,6 +538,15 @@ const BibleReader = {
         bookTitleEl.textContent = `${bookName} ${this.currentChapter}`;
       }
       
+      // Update chapter label in navigation
+      const chapterLabel = document.getElementById('fullscreenChapterLabel');
+      if (chapterLabel) {
+        chapterLabel.textContent = `Chapter ${this.currentChapter}`;
+      }
+      
+      // Update translation dropdown
+      this.updateTranslationDropdown();
+      
       // Update commentary panel
       if (commentaryContent) {
         commentaryContent.innerHTML = this.generateCommentaryHTML();
@@ -666,6 +675,11 @@ const BibleReader = {
     // Add to recent readings in BiblePicker
     if (typeof BiblePicker !== 'undefined') {
       BiblePicker.addRecentReading(bookId, chapter);
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
     }
   },
 
