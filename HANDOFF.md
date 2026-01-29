@@ -38,6 +38,16 @@
 - Haggai (HAG)
 - Jonah (JON)
 
+#### 3. Bible Reader UI Improvements
+- **Clickable Book Title:** "📖 Juan 1" now opens BiblePicker to select books/chapters
+- **Translation Dropdown (TL/EN):** Added beside title, switches Bible text only
+- **Independent of Global Language:** Bible translation does NOT affect:
+  - Quick Insights (follows global language)
+  - Reflect section (follows global language)
+  - App UI (follows global language)
+- **Use Case:** User can read Bible in Tagalog while seeing English insights, or vice versa
+- **Persistence:** Translation preference saved in `localStorage` as `goMission_bibleTranslation`
+
 ---
 
 ## Previous Session (2026-01-27)
@@ -183,4 +193,4 @@ git add -A && git commit -m "Your message" && git push origin main
 
 ---
 
-*Last Updated: January 29, 2026*
+*Last Updated: January 30, 2026*
