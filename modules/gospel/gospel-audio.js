@@ -181,10 +181,161 @@ const GospelAudio = {
         39: 'Gospel Slide 39.wav'
     },
     
-    // English audio files (to be added)
+    // English audio files - Located in /assets/audio/gospel/Gospel Audio English/
     slideAudioEN: {
-        // Add English audio files here when available
-        // Same structure as slideAudioTL
+        // SLIDE 1: Intro
+        0: 'Gospel Audio English/Gospel Slide 1 EN.wav',
+        
+        // SLIDE 2: Truth 1 Header
+        1: 'Gospel Audio English/Gospel Slide 2 EN.wav',
+        
+        // SLIDE 3: John 3:16
+        2: 'Gospel Audio English/Gospel Slide 3 EN.wav',
+        
+        // SLIDE 4: Question 1
+        3: { 
+            question: 'Gospel Audio English/Gospel Slide 4 EN Question .wav',
+            correct: 'Gospel Audio English/Gospel Slide 4 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 4 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 5: Question 2
+        4: {
+            question: 'Gospel Audio English/Gospel Slide 5 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 5 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 5 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 6: Transition
+        5: 'Gospel Audio English/Gospel Slide  6 EN.wav',
+        
+        // SLIDE 7: Truth 2 Header
+        6: 'Gospel Audio English/Gospel Slide 7 EN.wav',
+        
+        // SLIDE 8: Romans 3:23
+        7: 'Gospel Audio English/Gospel Slide 8 EN.wav',
+        
+        // SLIDE 9: Question 3
+        8: {
+            question: 'Gospel Audio English/Gospel Slide 9 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 9 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 9 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 10: Transition
+        9: 'Gospel Audio English/Gospel Slide 10 EN.wav',
+        
+        // SLIDE 11: Romans 6:23a
+        10: 'Gospel Audio English/Gospel Slide 11 EN.wav',
+        
+        // SLIDE 12: Question 4
+        11: {
+            question: 'Gospel Audio English/Gospel Slide 12 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 12 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 12 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 13: Transition
+        12: 'Gospel Audio English/Gospel Slide 13 EN.wav',
+        
+        // SLIDE 14: Two Deaths
+        13: 'Gospel Audio English/Gospel Slide 14 EN.wav',
+        
+        // SLIDE 15: Revelation 21:8
+        14: 'Gospel Audio English/Gospel Slide 15 EN.wav',
+        
+        // SLIDE 16: Question 5
+        15: {
+            question: 'Gospel Audio English/Gospel Slide 16 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 16 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 16 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 17: Truth 3 Intro
+        16: 'Gospel Audio English/Gospel Slide 17 EN.wav',
+        
+        // SLIDE 18: Proverbs 14:12
+        17: 'Gospel Audio English/Gospel Slide 18 EN.wav',
+        
+        // SLIDE 19: Human Efforts
+        18: 'Gospel Audio English/Gospel Slide 19 EN.wav',
+        
+        // SLIDE 20: Transition
+        19: 'Gospel Audio English/Gospel Slide 20 EN.wav',
+        
+        // SLIDE 21: Jesus is the Way Header
+        20: 'Gospel Audio English/Gospel Slide 21 EN.wav',
+        
+        // SLIDE 22: John 14:6
+        21: 'Gospel Audio English/Gospel Slide 22 EN.wav',
+        
+        // SLIDE 23: Question 6
+        22: {
+            question: 'Gospel Audio English/Gospel Slide 23 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 23 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 23 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 24: Transition
+        23: 'Gospel Audio English/Gospel Slide 24 EN .wav',
+        
+        // SLIDE 25: 1 Peter 3:18
+        24: 'Gospel Audio English/Gospel Slide 25 EN.wav',
+        
+        // SLIDE 26: Question 7
+        25: {
+            question: 'Gospel Audio English/Gospel Slide 26 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 26 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 26 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 27: Transition
+        26: 'Gospel Audio English/Gospel Slide 27 EN .wav',
+        
+        // SLIDE 28: Truth 4 Header
+        27: 'Gospel Audio English/Gospel Slide 28 EN.wav',
+        
+        // SLIDE 29: Ephesians 2:8-9
+        28: 'Gospel Audio English/Gospel Slide 29 EN.wav',
+        
+        // SLIDE 30: Formula Question
+        29: {
+            question: 'Gospel Audio English/Gospel Slide 30 EN Question.wav',
+            correct: 'Gospel Audio English/Gospel Slide 30 EN Correct Answer.wav',
+            wrong: 'Gospel Audio English/Gospel Slide 30 EN Wrong Answer.wav'
+        },
+        
+        // SLIDE 31: Decision Choice
+        30: 'Gospel Audio English/Gospel Slide 31 EN.wav',
+        
+        // SLIDE 32: Not Ready
+        31: 'Gospel Audio English/Gospel Slide 32 EN.wav',
+        
+        // SLIDE 33: Prayer Intro
+        32: 'Gospel Audio English/Gospel Slide 33 EN.wav',
+        
+        // SLIDE 34: Prayer
+        33: {
+            prayer: 'Gospel Audio English/Gospel Slide 34 EN Prayer.wav'
+        },
+        
+        // SLIDE 35: Not Accepted
+        34: 'Gospel Audio English/Gospel Slide 35 EN.wav',
+        
+        // SLIDE 36: Celebration
+        35: 'Gospel Audio English/Gospel Slide 36 EN.wav',
+        
+        // SLIDE 37: Promise 1
+        36: 'Gospel Audio English/Gospel Slide 37 EN.wav',
+        
+        // SLIDE 38: Promise 2
+        37: 'Gospel Audio English/Gospel Slide 38 EN.wav',
+        
+        // SLIDE 39: Promise 3
+        38: 'Gospel Audio English/Gospel Slide 39 EN.wav',
+        
+        // SLIDE 40: Final
+        39: 'Gospel Audio English/Gospel Slide 40 EN.wav'
     },
     
     /**
@@ -266,7 +417,9 @@ const GospelAudio = {
         }
         
         this.currentSlide = slideIndex;
-        this.audio.src = this.basePath + encodeURIComponent(audioFile);
+        // Encode only the filename parts (spaces), not the path slashes
+        const encodedPath = audioFile.split('/').map(part => encodeURIComponent(part)).join('/');
+        this.audio.src = this.basePath + encodedPath;
         this.audio.load();
         
         if (!this.isMuted) {

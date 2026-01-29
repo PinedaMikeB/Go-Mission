@@ -10,7 +10,35 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v2.0.0] - 2026-01-27 ⭐ CURRENT
+## [v2.1.0] - 2026-01-29 ⭐ CURRENT
+
+### 🔊 English Audio Narration Complete (Slides 1-34)
+
+**Summary:** Added English audio sync for Gospel presentation, matching the Tagalog audio system.
+
+**File Updated:**
+- `/modules/gospel/gospel-audio.js` - Added `slideAudioEN` mapping
+
+**Audio Files (49 total):**
+- Location: `/assets/audio/gospel/Gospel Audio English/`
+- Regular slides: 1-3, 6-8, 10-11, 13-15, 17-22, 24-25, 27-29, 31-33
+- Question slides (8): 4, 5, 9, 12, 16, 23, 26, 30 (each with Q/Correct/Wrong)
+- Prayer: Slide 34
+
+**Audio Coverage:**
+| Slide Range | Status |
+|-------------|--------|
+| Slides 1-34 | ✅ Complete |
+| Slides 35-39 | ❌ Pending (Celebration, Promises, Final) |
+
+**How It Works:**
+- System auto-detects language via `window.i18n.currentLang`
+- English audio plays when user switches to English
+- Same controls as Tagalog (mute toggle, auto-play)
+
+---
+
+## [v2.0.0] - 2026-01-27
 
 ### 🚀 Major Release: Bilingual + Audio + Auto-Update
 
