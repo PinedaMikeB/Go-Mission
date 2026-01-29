@@ -241,7 +241,7 @@ const BiblePicker = {
   createModalHTML() {
     const modal = document.createElement('div');
     modal.id = 'biblePickerModal';
-    modal.className = 'fixed inset-0 z-50 hidden';
+    modal.className = 'fixed inset-0 z-[60] hidden';  // z-60 to appear above fullscreen (z-50)
     modal.innerHTML = `
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="BiblePicker.close()"></div>
