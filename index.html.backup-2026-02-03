@@ -48,10 +48,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    
-    <!-- Design System - Single source of truth for all styles -->
-    <link rel="stylesheet" href="./modules/core/design-system.css">
-    
     <style>
         :root {
             /* ============================================
@@ -294,151 +290,6 @@
         .light-mode .journey-phase-card {
             background: #F5F2EE;              /* Warm cream for light mode */
             border-color: rgba(123, 0, 0, 0.08);
-        }
-        
-        /* === EXACT COPY FROM PROTOTYPE - STAGE NODE === */
-        .stage-node {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, #8B4513 0%, #D2691E 50%, #CD853F 100%);
-            border: 5px solid rgba(139, 69, 19, 0.3);
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            box-shadow: 0 4px 12px rgba(205, 133, 63, 0.4);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-            margin-bottom: 1rem;
-            z-index: 2;
-        }
-        
-        .stage-node:hover {
-            transform: scale(1.08) translateY(-5px);
-        }
-        
-        /* Current Stage - EXACT FROM PROTOTYPE */
-        .stage.current .stage-node {
-            background: linear-gradient(135deg, #D94A00 0%, #fbbf24 100%);
-            border-color: #fbbf24;
-            border-width: 6px;
-            animation: currentPulse 2s ease-in-out infinite;
-            box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
-        }
-        
-        @keyframes currentPulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); }
-            50% { transform: scale(1.05); box-shadow: 0 0 35px rgba(251, 191, 36, 0.7); }
-        }
-        
-        /* Completed Stage */
-        .stage.completed .stage-node {
-            border-color: #10b981;
-        }
-        
-        .stage.completed .stage-node::after {
-            content: '✓';
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 32px;
-            height: 32px;
-            background: #10b981;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-        
-        /* === PATH LINE - EXACT FROM PROTOTYPE === */
-        .path-wrapper {
-            position: relative;
-            padding: 2rem 0 1rem;
-        }
-        
-        .path-line-container {
-            position: absolute;
-            top: 80px;
-            left: 0;
-            right: 0;
-            height: 8px;
-            z-index: 0;
-            overflow: visible;
-            padding: 0 2rem;
-        }
-        
-        .path-line {
-            position: relative;
-            width: 100%;
-            height: 8px;
-            background: linear-gradient(to right, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.6) 50%, #fbbf24 100%);
-            border-radius: 10px;
-        }
-        
-        .path-line::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to right, transparent 0%, rgba(251, 191, 36, 0.6) 50%, transparent 100%);
-            background-size: 200px 100%;
-            animation: flowRight 3s linear infinite;
-            border-radius: 10px;
-        }
-        
-        @keyframes flowRight {
-            from { background-position: -200px 0; }
-            to { background-position: calc(100% + 200px) 0; }
-        }
-        
-        .path-line::after {
-            content: '▶';
-            position: absolute;
-            right: -15px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.5rem;
-            color: #fbbf24;
-            animation: slideRight 2s ease-in-out infinite;
-        }
-        
-        @keyframes slideRight {
-            0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
-            50% { transform: translateY(-50%) translateX(8px); opacity: 0.7; }
-        }
-        
-        /* === STAGES SCROLL - EXACT FROM PROTOTYPE === */
-        .stages-scroll {
-            display: flex;
-            gap: 1.25rem;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-            padding: 0 1rem 1rem;
-            scrollbar-width: none;
-        }
-        
-        .stages-scroll::-webkit-scrollbar {
-            display: none;
-        }
-        
-        /* === STAGE ITEM - EXACT FROM PROTOTYPE === */
-        .stage {
-            flex: 0 0 auto;
-            width: calc(50% - 0.75rem);
-            min-width: 160px;
-            max-width: 180px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            scroll-snap-align: start;
         }
         
         /* Journey text colors */
@@ -1546,98 +1397,105 @@
         <!-- Dashboard Content -->
         <main class="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pb-6">
             
-            <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) - New Design -->
-            <div class="journey-card-container mb-4 animate-fade-up" id="journeyCard">
+            <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) -->
+            <div class="mission-card rounded-3xl p-6 mb-4 animate-fade-up" id="journeyCard">
                 <!-- Header with Title and Subtitle -->
-                <div class="text-center mb-4 pt-2">
-                    <h2 class="journey-title" id="journeyCardTitle">
-                        <span>◆</span>
-                        <span id="journeyTitleText">MY JOURNEY</span>
-                        <span>◆</span>
-                    </h2>
-                    <p class="journey-subtitle" id="journeySubtitle">"The path of the righteous is like the morning sun, shining ever brighter"</p>
-                    <p class="journey-verse-ref">— Proverbs 4:18</p>
+                <div class="text-center mb-4">
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <span class="text-[var(--mission-gold)]">◆</span>
+                        <h2 class="journey-path-title" id="journeyCardTitle" data-i18n="myJourney">MY JOURNEY</h2>
+                        <span class="text-[var(--mission-gold)]">◆</span>
+                    </div>
+                    <p class="journey-path-subtitle" id="journeySubtitle">
+                        <span data-i18n="journeyVerse">"The path of the righteous is like the morning sun, shining ever brighter"</span>
+                        <span class="journey-path-verse-ref"> — <span data-i18n="journeyVerseRef">Proverbs 4:18</span></span>
+                    </p>
                 </div>
                 
-                <!-- Journey Path Wrapper -->
-                <div class="path-wrapper">
-                    <!-- Path Line (behind circles) -->
-                    <div class="path-line-container">
-                        <div class="path-line" id="journeyProgressLine"></div>
+                <!-- Journey Path with 5 Stage Nodes -->
+                <div class="relative px-4 mb-10 overflow-x-auto pb-8">
+                    <!-- Progress Line -->
+                    <div class="journey-path-line">
+                        <div class="journey-path-line-progress" id="journeyProgressLine" style="width: 0%"></div>
+                        <span class="journey-path-arrow">▶</span>
                     </div>
                     
-                    <!-- Stages Horizontal Scroll -->
-                    <div class="stages-scroll scrollbar-hide" id="journeyStagesScroll">
+                    <!-- Stage Nodes -->
+                    <div class="flex justify-between relative z-10 min-w-[500px]">
                         <!-- Stage 1: Seeker -->
-                        <div class="stage current" id="stage-1-container" data-stage="1">
-                            <div class="stage-node" id="node-seeker">
-                                <span class="stage-number">1</span>
-                                <span class="stage-icon">🌱</span>
+                        <div class="flex flex-col items-center relative" id="stage-1-container">
+                            <div class="journey-stage-node current" id="node-seeker">
+                                <span class="journey-stage-number">1</span>
+                                <span class="journey-stage-icon">🌱</span>
                             </div>
-                            <div class="stage-content card-bordered">
-                                <h3 class="stage-title">SEEKER</h3>
-                                <p class="stage-description">Know God's love. Talk to God daily.</p>
-                                <!-- Button inside current stage card -->
-                                <button class="btn btn-primary btn-full mt-4 take-step-btn" onclick="NextStepsModal.open()">
-                                    <span>TAKE THE NEXT STEP TODAY</span>
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="you-are-here-container">
-                                <span class="badge badge-current" id="youAreHere">YOU ARE HERE</span>
-                            </div>
+                            <span class="journey-stage-label" id="label-seeker" data-i18n="stageSeeker">SEEKER</span>
+                            <span class="journey-stage-desc" id="desc-seeker" data-i18n="stageSeekerDesc">Know God's love. Talk to God daily.</span>
+                            <div class="journey-you-are-here" id="youAreHere" data-i18n="youAreHere">YOU ARE HERE</div>
                         </div>
                         
                         <!-- Stage 2: Disciple -->
-                        <div class="stage" id="stage-2-container" data-stage="2">
-                            <div class="stage-node" id="node-disciple">
-                                <span class="stage-number">2</span>
-                                <span class="stage-icon">📖</span>
+                        <div class="flex flex-col items-center relative" id="stage-2-container">
+                            <div class="journey-stage-node" id="node-disciple">
+                                <span class="journey-stage-number">2</span>
+                                <span class="journey-stage-icon">📖</span>
                             </div>
-                            <div class="stage-content card-bordered">
-                                <h3 class="stage-title">DISCIPLE</h3>
-                                <p class="stage-description">Grow in your Mission Group. Be trained and love others.</p>
-                            </div>
+                            <span class="journey-stage-label" id="label-disciple" data-i18n="stageDisciple">DISCIPLE</span>
+                            <span class="journey-stage-desc" id="desc-disciple" data-i18n="stageDiscipleDesc">Grow in your Mission Group. Be trained and love others.</span>
                         </div>
                         
                         <!-- Stage 3: Disciple-Maker -->
-                        <div class="stage" id="stage-3-container" data-stage="3">
-                            <div class="stage-node" id="node-disciple-maker">
-                                <span class="stage-number">3</span>
-                                <span class="stage-icon">🤝</span>
+                        <div class="flex flex-col items-center relative" id="stage-3-container">
+                            <div class="journey-stage-node" id="node-disciple-maker">
+                                <span class="journey-stage-number">3</span>
+                                <span class="journey-stage-icon">🤝</span>
                             </div>
-                            <div class="stage-content card-bordered">
-                                <h3 class="stage-title">DISCIPLE-MAKER</h3>
-                                <p class="stage-description">Lead others to follow Jesus.</p>
-                            </div>
+                            <span class="journey-stage-label" id="label-disciple-maker" data-i18n="stageDiscipleMaker">DISCIPLE-MAKER</span>
+                            <span class="journey-stage-desc" id="desc-disciple-maker" data-i18n="stageDiscipleMakerDesc">Lead others to follow Jesus.</span>
                         </div>
                         
                         <!-- Stage 4: Builder -->
-                        <div class="stage" id="stage-4-container" data-stage="4">
-                            <div class="stage-node" id="node-builder">
-                                <span class="stage-number">4</span>
-                                <span class="stage-icon">🏗️</span>
+                        <div class="flex flex-col items-center relative" id="stage-4-container">
+                            <div class="journey-stage-node" id="node-builder">
+                                <span class="journey-stage-number">4</span>
+                                <span class="journey-stage-icon">🏗️</span>
                             </div>
-                            <div class="stage-content card-bordered">
-                                <h3 class="stage-title">BUILDER</h3>
-                                <p class="stage-description">Build mission groups. Raise disciple-makers.</p>
-                            </div>
+                            <span class="journey-stage-label" id="label-builder" data-i18n="stageBuilder">BUILDER</span>
+                            <span class="journey-stage-desc" id="desc-builder" data-i18n="stageBuilderDesc">Build mission groups. Raise disciple-makers.</span>
                         </div>
                         
                         <!-- Stage 5: Multiplier -->
-                        <div class="stage" id="stage-5-container" data-stage="5">
-                            <div class="stage-node" id="node-multiplier">
-                                <span class="stage-number">5</span>
-                                <span class="stage-icon">🌟</span>
+                        <div class="flex flex-col items-center relative" id="stage-5-container">
+                            <div class="journey-stage-node" id="node-multiplier">
+                                <span class="journey-stage-number">5</span>
+                                <span class="journey-stage-icon">🌟</span>
                             </div>
-                            <div class="stage-content card-bordered">
-                                <h3 class="stage-title">MULTIPLIER</h3>
-                                <p class="stage-description">Multiply movements across generations.</p>
-                            </div>
+                            <span class="journey-stage-label" id="label-multiplier" data-i18n="stageMultiplier">MULTIPLIER</span>
+                            <span class="journey-stage-desc" id="desc-multiplier" data-i18n="stageMultiplierDesc">Multiply movements across generations.</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Journey Phase Card - Current Stage Details -->
+                <div class="journey-phase-card rounded-2xl p-5 border border-[var(--card-border)]">
+                    <p class="text-[10px] font-bold text-[var(--accent-active)] uppercase tracking-widest mb-1" id="journeyStageLabel" data-i18n="whereGodHasYou">WHERE GOD HAS YOU TODAY</p>
+                    <h3 class="font-display text-2xl font-bold text-[var(--text-color)] mb-4" id="journeyPhaseName" data-i18n="stageSeeker">SEEKER</h3>
+                    
+                    <!-- Encouragement Message -->
+                    <div class="border-l-2 border-[var(--accent-active)]/40 pl-4 mb-4">
+                        <p class="text-sm italic leading-relaxed journey-quote" id="journeyEncouragement" data-i18n="seekerEncouragement">"God drew you to Himself. He sees your seeking heart and delights in it."</p>
+                    </div>
+                    
+                    <p class="text-sm mb-6 journey-next">
+                        <span class="font-medium" id="journeyNextLabel" data-i18n="next">Next:</span> 
+                        <span id="journeyNextStep" data-i18n="walkAsDisciple">Walk as a Disciple</span>
+                    </p>
+                    
+                    <button class="mission-button w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2" onclick="NextStepsModal.open()">
+                        <span id="viewNextStepsBtn" data-i18n="takeNextStepToday">TAKE THE NEXT STEP TODAY</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 

@@ -631,8 +631,8 @@ const Training = {
     const groupId = Groups?.currentGroup?.id || 'general';
     const roomName = `gomission-session${sessionNumber}-${groupId}`;
     
-    // Open Jitsi meeting
-    const jitsiUrl = `https://meet.jit.si/${roomName}`;
+    // Open Jitsi meeting (self-hosted)
+    const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
     window.open(jitsiUrl, '_blank');
   },
   

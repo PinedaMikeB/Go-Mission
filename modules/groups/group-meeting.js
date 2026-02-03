@@ -21,7 +21,7 @@ const GroupMeeting = {
   participants: [],
   
   // Jitsi configuration - self-hosted is faster
-  JITSI_DOMAIN: 'meet.wotgonline.com', // Self-hosted - FAST
+  JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
   

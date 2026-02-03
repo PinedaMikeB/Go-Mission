@@ -10,7 +10,76 @@ Each entry includes rollback instructions.
 
 ---
 
-## [v2.1.0] - 2026-01-29 ⭐ CURRENT
+## [v2.2.1] - 2026-02-03 🔄 Jitsi Migration
+
+### 🔄 Jitsi Domain Migration
+
+**Summary:** Migrated video calls from `meet.wotgonline.com` to `call.wotgonline.com` (new VPS)
+
+**Files Modified:**
+- `/modules/groups/group-meeting.js` - Changed `JITSI_DOMAIN` to `call.wotgonline.com`
+- `/modules/training/training.js` - Changed Jitsi URL to `call.wotgonline.com`
+
+**Infrastructure:**
+- New VPS: 147.93.81.200 (Hostinger KVM 2, Indonesia)
+- Control Panel: HestiaCP
+- Jitsi: https://call.wotgonline.com
+
+**Rollback:**
+```bash
+# Revert to old domain
+# In group-meeting.js line 22, change:
+JITSI_DOMAIN: 'meet.wotgonline.com'
+# In training.js line 635, change:
+const jitsiUrl = `https://meet.jit.si/${roomName}`;
+```
+
+---
+
+## [v2.2.0] - 2026-02-03 🎨 IN PROGRESS
+
+### 🎨 Journey Card Redesign + Design System
+
+**Summary:** Redesigning journey card with new 3D scrollable stages. Created comprehensive CSS design system.
+
+**Status:** IN PROGRESS - Path line showing through circles (CSS issue)
+
+**Files Created/Modified:**
+- `/modules/core/design-system.css` - NEW! Comprehensive CSS design system (1400+ lines)
+- `/index.html` - Journey card HTML restructured + inline CSS for stages
+
+**Design System Includes:**
+- CSS Variables for colors, typography, spacing
+- Button components (primary, secondary, ghost)
+- Card components
+- Journey stage components
+- Path line with animation
+- Badge components
+
+**Journey Card Changes:**
+- Old: Small nodes in a row
+- New: Large 3D scrollable cards (2 visible on mobile)
+- "TAKE THE NEXT STEP TODAY" button inside current stage card
+- "YOU ARE HERE" badge below current stage
+- Animated path line with arrow
+
+**Prototype Reference:**
+- Working prototype: `/Users/mike/Downloads/go-mission-home-v2.html`
+
+**Known Issue:**
+- Circles 2-5 show path line through them (should be solid)
+- CSS specificity issue between inline styles and design-system.css
+
+**Backup:**
+```bash
+# Rollback
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+bash rollback-2026-02-03.sh
+```
+
+---
+
+## [v2.1.0] - 2026-01-29 ⭐ STABLE
 
 ### 🔊 English Audio Narration Complete (All 40 Slides)
 

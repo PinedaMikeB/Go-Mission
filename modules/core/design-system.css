@@ -1,0 +1,1453 @@
+/**
+ * ============================================================================
+ * GO MISSION - DESIGN SYSTEM
+ * ============================================================================
+ * Single source of truth for all design tokens and component styles.
+ * Supports dark mode (default) and light mode.
+ * 
+ * Usage: 
+ * - Import this file in index.html
+ * - Use CSS variables throughout the app
+ * - Toggle theme by adding/removing 'light-mode' class on body
+ * 
+ * Last Updated: 2026-02-03
+ * ============================================================================
+ */
+
+/* ============================================================================
+   1. CSS VARIABLES - DESIGN TOKENS
+   ============================================================================ */
+
+/* ---------- DARK MODE (Default) ---------- */
+:root {
+    /* Background Colors */
+    --bg-primary: linear-gradient(to bottom, #1a1a1a 0%, #2d0808 100%);
+    --bg-solid: #1a1a1a;
+    --bg-card: rgba(0, 0, 0, 0.4);
+    --bg-card-solid: #1a0a0a;
+    --bg-card-hover: rgba(0, 0, 0, 0.5);
+    --bg-input: rgba(0, 0, 0, 0.3);
+    --bg-overlay: rgba(0, 0, 0, 0.85);
+    --bg-texture: rgba(251, 191, 36, 0.03);
+    
+    /* Text Colors */
+    --text-primary: #fef3e2;
+    --text-secondary: #e8e8e8;
+    --text-accent: #fbbf24;
+    --text-muted: #a8a29e;
+    --text-dim: #78716c;
+    --text-inverse: #1a1a1a;
+    
+    /* Brand Colors */
+    --color-gold: #fbbf24;
+    --color-gold-dim: rgba(251, 191, 36, 0.6);
+    --color-gold-glow: rgba(251, 191, 36, 0.3);
+    --color-burnt-orange: #D94A00;
+    --color-burnt-orange-dark: #b33d00;
+    
+    /* Semantic Colors */
+    --color-success: #10b981;
+    --color-success-bg: rgba(16, 185, 129, 0.15);
+    --color-error: #ef4444;
+    --color-error-bg: rgba(239, 68, 68, 0.15);
+    --color-warning: #f59e0b;
+    --color-warning-bg: rgba(245, 158, 11, 0.15);
+    --color-info: #3b82f6;
+    --color-info-bg: rgba(59, 130, 246, 0.15);
+    
+    /* Border Colors */
+    --border-primary: rgba(251, 191, 36, 0.15);
+    --border-accent: #fbbf24;
+    --border-muted: rgba(255, 255, 255, 0.1);
+    
+    /* Node/Circle Colors (Journey) - ALL SOLID, NO TRANSPARENCY */
+    --node-bg: #CD853F;
+    --node-border: #8B4513;
+    --node-shadow: rgba(205, 133, 63, 0.4);
+    --node-current: linear-gradient(135deg, #D94A00 0%, #fbbf24 100%);
+    --node-completed: #10b981;
+    
+    /* Path Line */
+    --path-line: linear-gradient(to right, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.6) 50%, #fbbf24 100%);
+    --path-glow: rgba(251, 191, 36, 0.6);
+    
+    /* Button Colors */
+    --btn-primary-bg: linear-gradient(135deg, #D94A00 0%, #b33d00 100%);
+    --btn-primary-shadow: rgba(217, 74, 0, 0.4);
+    --btn-secondary-bg: transparent;
+    --btn-secondary-border: #fbbf24;
+    --btn-ghost-bg: rgba(251, 191, 36, 0.1);
+    --btn-ghost-hover: rgba(251, 191, 36, 0.2);
+    
+    /* Shadow */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(251, 191, 36, 0.3);
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+    
+    /* Typography */
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Instrument Serif', serif;
+    --font-system: system-ui, -apple-system, sans-serif;
+    
+    /* Font Sizes */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.5rem;
+    
+    /* Letter Spacing */
+    --tracking-tight: 0.02em;
+    --tracking-normal: 0.05em;
+    --tracking-wide: 0.1em;
+    --tracking-wider: 0.15em;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    --transition-bounce: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ---------- LIGHT MODE (Override) ---------- */
+body.light-mode {
+    /* Background Colors */
+    --bg-primary: linear-gradient(to bottom, #fef3e2 0%, #fff8ed 50%, #fef3e2 100%);
+    --bg-solid: #fef3e2;
+    --bg-card: #ffffff;
+    --bg-card-solid: #ffffff;
+    --bg-card-hover: #fffbf5;
+    --bg-input: #ffffff;
+    --bg-overlay: rgba(0, 0, 0, 0.6);
+    --bg-texture: rgba(217, 74, 0, 0.03);
+    
+    /* Text Colors */
+    --text-primary: #4a0404;
+    --text-secondary: #5a3825;
+    --text-accent: #D94A00;
+    --text-muted: #78716c;
+    --text-dim: #a8a29e;
+    --text-inverse: #fef3e2;
+    
+    /* Brand Colors - adjusted for light mode */
+    --color-gold: #D94A00;
+    --color-gold-dim: rgba(217, 74, 0, 0.6);
+    --color-gold-glow: rgba(217, 74, 0, 0.2);
+    
+    /* Semantic Colors */
+    --color-success: #28a745;
+    --color-success-bg: rgba(40, 167, 69, 0.1);
+    --color-error: #dc3545;
+    --color-error-bg: rgba(220, 53, 69, 0.1);
+    --color-warning: #ffc107;
+    --color-warning-bg: rgba(255, 193, 7, 0.1);
+    --color-info: #007bff;
+    --color-info-bg: rgba(0, 123, 255, 0.1);
+    
+    /* Border Colors */
+    --border-primary: rgba(217, 74, 0, 0.15);
+    --border-accent: #D94A00;
+    --border-muted: rgba(0, 0, 0, 0.1);
+    
+    /* Node/Circle Colors (Journey) */
+    --node-bg: linear-gradient(135deg, #ffffff 0%, #fff8ed 50%, #fef3e2 100%);
+    --node-border: #D2691E;
+    --node-shadow: rgba(210, 105, 30, 0.15);
+    --node-current: linear-gradient(135deg, #fff5e6 0%, #ffe5b4 50%, #ffd580 100%);
+    --node-completed: #28a745;
+    
+    /* Path Line */
+    --path-line: linear-gradient(to right, #D2691E 0%, #D94A00 50%, #fbbf24 100%);
+    --path-glow: rgba(255, 255, 255, 0.8);
+    
+    /* Button Colors */
+    --btn-secondary-border: #D94A00;
+    --btn-ghost-bg: rgba(217, 74, 0, 0.1);
+    --btn-ghost-hover: rgba(217, 74, 0, 0.15);
+    
+    /* Shadow */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --shadow-glow: 0 0 20px rgba(217, 74, 0, 0.2);
+}
+
+
+/* ============================================================================
+   2. BASE STYLES
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    transition: background var(--transition-normal), color var(--transition-normal);
+}
+
+
+/* ============================================================================
+   3. TYPOGRAPHY
+   ============================================================================ */
+
+/* Display / Headings - Bebas Neue */
+.text-display,
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-wide);
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+
+.text-display-accent {
+    font-family: var(--font-display);
+    color: var(--text-accent);
+    letter-spacing: var(--tracking-wider);
+}
+
+/* Body Text - Instrument Serif */
+.text-body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.text-body-italic {
+    font-family: var(--font-body);
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Muted Text */
+.text-muted {
+    color: var(--text-muted);
+}
+
+/* Accent Text */
+.text-accent {
+    color: var(--text-accent);
+}
+
+
+/* ============================================================================
+   4. BUTTONS
+   ============================================================================ */
+
+/* Base Button */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-wide);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Primary Button - Burnt Orange Gradient */
+.btn-primary {
+    background: var(--btn-primary-bg);
+    color: white;
+    box-shadow: 0 4px 12px var(--btn-primary-shadow);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px var(--btn-primary-shadow);
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Secondary Button - Outlined */
+.btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: var(--text-accent);
+    border: 2px solid var(--btn-secondary-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--btn-ghost-bg);
+    transform: translateY(-2px);
+}
+
+/* Ghost Button - Subtle */
+.btn-ghost {
+    background: var(--btn-ghost-bg);
+    color: var(--text-accent);
+    border: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: var(--btn-ghost-hover);
+}
+
+/* Icon Button */
+.btn-icon {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: var(--radius-full);
+    background: var(--btn-ghost-bg);
+    color: var(--text-muted);
+    border: none;
+}
+
+.btn-icon:hover:not(:disabled) {
+    background: var(--btn-ghost-hover);
+    color: var(--text-accent);
+}
+
+/* Button Sizes */
+.btn-sm {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--text-xs);
+}
+
+.btn-lg {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: var(--text-base);
+}
+
+.btn-full {
+    width: 100%;
+}
+
+
+/* ============================================================================
+   5. CARDS
+   ============================================================================ */
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: all var(--transition-normal);
+}
+
+.card-bordered {
+    border-top: 4px solid var(--border-accent);
+}
+
+.card:hover {
+    background: var(--bg-card-hover);
+}
+
+body.light-mode .card {
+    box-shadow: var(--shadow-sm);
+}
+
+body.light-mode .card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Card Header */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.card-title {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-accent);
+}
+
+body.light-mode .card-title {
+    color: var(--text-primary);
+}
+
+/* Card Body */
+.card-body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+}
+
+
+/* ============================================================================
+   6. MODALS
+   ============================================================================ */
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-overlay);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-normal);
+}
+
+.modal-overlay.active,
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Modal Card */
+.modal-card {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    max-width: 400px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform var(--transition-bounce);
+}
+
+.modal-overlay.active .modal-card,
+.modal-overlay.show .modal-card {
+    transform: scale(1) translateY(0);
+}
+
+body.light-mode .modal-card {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Modal Header */
+.modal-header {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.modal-icon {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--spacing-md);
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-accent);
+    margin-bottom: var(--spacing-sm);
+}
+
+.modal-subtitle {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Modal Body */
+.modal-body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Modal Footer */
+.modal-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.modal-footer-row {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* Modal Close Button */
+.modal-close {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: var(--btn-ghost-bg);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--btn-ghost-hover);
+    color: var(--text-accent);
+}
+
+
+/* ============================================================================
+   7. FORMS & INPUTS
+   ============================================================================ */
+
+/* Input Base */
+.input {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 2px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    transition: all var(--transition-fast);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px var(--color-gold-glow);
+}
+
+.input::placeholder {
+    color: var(--text-dim);
+}
+
+body.light-mode .input {
+    border-color: var(--border-muted);
+}
+
+body.light-mode .input:focus {
+    border-color: var(--border-accent);
+}
+
+/* Label */
+.label {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-xs);
+}
+
+/* Select */
+.select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a8a29e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-md) center;
+    background-size: 20px;
+    padding-right: calc(var(--spacing-md) + 28px);
+}
+
+/* Checkbox & Radio */
+.checkbox-wrapper,
+.radio-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+}
+
+.checkbox,
+.radio {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-burnt-orange);
+    cursor: pointer;
+}
+
+
+/* ============================================================================
+   8. BADGES
+   ============================================================================ */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-wide);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+}
+
+/* Badge Variants */
+.badge-primary {
+    background: var(--color-burnt-orange);
+    color: white;
+}
+
+.badge-success {
+    background: var(--color-success);
+    color: white;
+}
+
+.badge-warning {
+    background: var(--color-warning);
+    color: var(--text-inverse);
+}
+
+.badge-error {
+    background: var(--color-error);
+    color: white;
+}
+
+.badge-muted {
+    background: var(--btn-ghost-bg);
+    color: var(--text-accent);
+}
+
+/* You Are Here Badge */
+.badge-current {
+    background: var(--color-burnt-orange);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: var(--text-xs);
+    animation: badge-bounce 2s ease-in-out infinite;
+}
+
+@keyframes badge-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+/* Notification Badge */
+.badge-notification {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 0.65rem;
+    background: var(--color-error);
+    color: white;
+    border: 2px solid var(--bg-solid);
+}
+
+
+/* ============================================================================
+   9. HEADER & NAVIGATION
+   ============================================================================ */
+
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--bg-card-solid);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-primary);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+body.light-mode .app-header {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.header-logo-icon {
+    color: var(--text-accent);
+    font-size: var(--text-lg);
+}
+
+.header-logo-text {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-wider);
+    color: var(--text-primary);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* Footer Navigation */
+.footer-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--bg-card-solid);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-primary);
+    padding: var(--spacing-md);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+body.light-mode .footer-nav {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-normal);
+    transition: color var(--transition-fast);
+    cursor: pointer;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    color: var(--text-accent);
+}
+
+.nav-item svg {
+    width: 22px;
+    height: 22px;
+}
+
+
+/* ============================================================================
+   10. JOURNEY PATH COMPONENTS
+   ============================================================================ */
+
+/* Journey Title */
+.journey-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 5vw, 2.5rem);
+    color: var(--text-accent);
+    letter-spacing: var(--tracking-wider);
+    text-align: center;
+}
+
+.journey-subtitle {
+    font-family: var(--font-body);
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    max-width: 320px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+.journey-verse-ref {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* Stage Node (Circle) - SOLID BACKGROUND, NO TRANSPARENCY */
+.stage-node {
+    width: 100px;
+    height: 100px;
+    background-color: #CD853F;
+    background-image: linear-gradient(135deg, #8B4513 0%, #D2691E 50%, #CD853F 100%);
+    border: 5px solid #8B4513;
+    border-radius: var(--radius-full);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(205, 133, 63, 0.4);
+    transition: all var(--transition-bounce);
+    cursor: pointer;
+    z-index: 10;
+}
+
+body.light-mode .stage-node {
+    box-shadow: 
+        0 4px 12px rgba(139, 69, 19, 0.15),
+        0 8px 24px rgba(210, 105, 30, 0.1),
+        inset 0 2px 4px rgba(255, 255, 255, 0.8);
+}
+
+.stage-node:hover {
+    transform: scale(1.08) translateY(-5px);
+}
+
+.stage-number {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    color: var(--text-accent);
+    line-height: 1;
+}
+
+.stage-icon {
+    font-size: 1.4rem;
+    margin-top: 0.15rem;
+}
+
+/* Completed Stage */
+.stage.completed .stage-node {
+    border-color: var(--node-completed);
+}
+
+body.light-mode .stage.completed .stage-node {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 50%, #b1dfbb 100%);
+}
+
+.stage.completed .stage-node::after {
+    content: '✓';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: var(--node-completed);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    animation: check-pop 0.6s var(--transition-bounce);
+}
+
+body.light-mode .stage.completed .stage-node::after {
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* Current Stage */
+.stage.current .stage-node {
+    background: var(--node-current);
+    border-color: var(--color-gold);
+    border-width: 6px;
+    animation: node-pulse 2s ease-in-out infinite;
+    box-shadow: var(--shadow-glow);
+}
+
+/* Stage Content Card */
+.stage-content {
+    text-align: center;
+    padding: var(--spacing-lg) var(--spacing-md);
+    background: var(--bg-card);
+    border-top: 4px solid var(--border-accent);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+    width: 100%;
+}
+
+body.light-mode .stage-content {
+    border: 2px solid #e8e8e8;
+    border-top: 4px solid var(--border-accent);
+    box-shadow: var(--shadow-sm);
+}
+
+.stage-content:hover {
+    background: var(--bg-card-hover);
+    transform: translateY(-3px);
+}
+
+.stage-title {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    color: var(--text-accent);
+    letter-spacing: var(--tracking-normal);
+    margin-bottom: var(--spacing-sm);
+}
+
+body.light-mode .stage-title {
+    color: var(--text-primary);
+}
+
+.stage-description {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-style: italic;
+}
+
+/* Path Line */
+.path-line {
+    position: relative;
+    height: 8px;
+    background: var(--path-line);
+    border-radius: 10px;
+}
+
+.path-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, var(--path-glow) 50%, transparent 100%);
+    background-size: 200px 100%;
+    animation: path-flow 3s linear infinite;
+    border-radius: 10px;
+}
+
+.path-arrow {
+    position: absolute;
+    right: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: var(--text-accent);
+    animation: arrow-slide 2s ease-in-out infinite;
+}
+
+
+/* ============================================================================
+   11. ANIMATIONS
+   ============================================================================ */
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-down {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+    from { opacity: 0; transform: scale(0.5) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes node-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); }
+    50% { transform: scale(1.05); box-shadow: 0 0 35px rgba(251, 191, 36, 0.7); }
+}
+
+@keyframes check-pop {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    50% { transform: scale(1.2) rotate(10deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes path-flow {
+    from { background-position: -200px 0; }
+    to { background-position: calc(100% + 200px) 0; }
+}
+
+@keyframes arrow-slide {
+    0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+    50% { transform: translateY(-50%) translateX(8px); opacity: 0.7; }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.1); }
+    50% { transform: scale(1); }
+    75% { transform: scale(1.05); }
+}
+
+@keyframes glow-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+
+/* ============================================================================
+   12. UTILITY CLASSES
+   ============================================================================ */
+
+/* Display */
+.hidden { display: none !important; }
+.block { display: block; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+
+/* Flexbox */
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+
+/* Text Alignment */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* Spacing */
+.m-0 { margin: 0; }
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+
+.p-0 { padding: 0; }
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+
+/* Width */
+.w-full { width: 100%; }
+.max-w-sm { max-width: 320px; }
+.max-w-md { max-width: 400px; }
+.max-w-lg { max-width: 500px; }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+
+/* Position */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+
+/* Z-Index */
+.z-10 { z-index: 10; }
+.z-50 { z-index: 50; }
+.z-100 { z-index: 100; }
+
+
+/* ============================================================================
+   13. SCROLLBAR STYLING
+   ============================================================================ */
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-card);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-dim);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+
+/* ============================================================================
+   14. JOURNEY CARD SPECIFIC STYLES (New Design)
+   ============================================================================ */
+
+/* Journey Card Container */
+.journey-card-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-lg);
+    position: relative;
+    overflow: visible;
+}
+
+body.light-mode .journey-card-container {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+}
+
+/* Journey Path Wrapper */
+.path-wrapper,
+.journey-path-wrapper {
+    position: relative;
+    padding: 2rem 0 1rem;
+}
+
+/* === PATH LINE (between circles) === */
+.path-line-container,
+.journey-path-line-container {
+    position: absolute;
+    top: 80px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    z-index: 0;
+    overflow: visible;
+    padding: 0 2rem;
+}
+
+.path-line-container .path-line,
+.journey-path-line-container .path-line {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to right, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.6) 50%, #fbbf24 100%);
+    border-radius: 10px;
+}
+
+.path-line-container .path-line::before,
+.journey-path-line-container .path-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, rgba(251, 191, 36, 0.6) 50%, transparent 100%);
+    background-size: 200px 100%;
+    animation: flowRight 3s linear infinite;
+    border-radius: 10px;
+}
+
+@keyframes flowRight {
+    from { background-position: -200px 0; }
+    to { background-position: calc(100% + 200px) 0; }
+}
+
+.path-line-container .path-arrow,
+.journey-path-line-container .path-arrow {
+    position: absolute;
+    right: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: #fbbf24;
+    animation: slideRight 2s ease-in-out infinite;
+}
+
+@keyframes slideRight {
+    0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+    50% { transform: translateY(-50%) translateX(8px); opacity: 0.7; }
+}
+
+/* Stages Horizontal Scroll */
+.stages-scroll,
+.journey-stages-scroll {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 1rem 1rem;
+    scrollbar-width: none;
+    position: relative;
+    z-index: 2;
+}
+
+.stages-scroll::-webkit-scrollbar,
+.journey-stages-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual Stage */
+.journey-stage {
+    flex: 0 0 auto;
+    width: calc(50% - 1rem);
+    min-width: 155px;
+    max-width: 175px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    scroll-snap-align: start;
+    opacity: 0;
+    animation: fade-in-scale 0.8s ease-out forwards;
+}
+
+.journey-stage:nth-child(1) { animation-delay: 0.1s; }
+.journey-stage:nth-child(2) { animation-delay: 0.2s; }
+.journey-stage:nth-child(3) { animation-delay: 0.3s; }
+.journey-stage:nth-child(4) { animation-delay: 0.4s; }
+.journey-stage:nth-child(5) { animation-delay: 0.5s; }
+
+/* Stage Node (Circle) - Override for journey context */
+.journey-stage .stage-node {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 1rem;
+    z-index: 3;
+    position: relative;
+    background: var(--node-bg);
+    border: 5px solid var(--node-border);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px var(--node-shadow);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+}
+
+body.light-mode .journey-stage .stage-node {
+    box-shadow: 
+        0 4px 12px rgba(139, 69, 19, 0.15),
+        0 8px 24px rgba(210, 105, 30, 0.1),
+        inset 0 2px 4px rgba(255, 255, 255, 0.8);
+}
+
+.journey-stage .stage-node:hover {
+    transform: scale(1.08) translateY(-5px);
+}
+
+.journey-stage .stage-number {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    color: var(--text-accent);
+    line-height: 1;
+}
+
+.journey-stage .stage-icon {
+    font-size: 1.4rem;
+    margin-top: 0.15rem;
+}
+
+/* Stage Content Card */
+.journey-stage .stage-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.journey-stage .stage-content.card-bordered {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-top: 4px solid var(--border-accent);
+    border-radius: var(--radius-md);
+    padding: 1rem 0.75rem;
+}
+
+body.light-mode .journey-stage .stage-content.card-bordered {
+    background: #ffffff;
+    border: 2px solid #e8e8e8;
+    border-top: 4px solid var(--border-accent);
+    box-shadow: var(--shadow-sm);
+}
+
+.journey-stage .stage-content:hover {
+    background: var(--bg-card-hover);
+    transform: translateY(-3px);
+}
+
+.journey-stage .stage-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--text-accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+    line-height: 1.2;
+}
+
+body.light-mode .journey-stage .stage-title {
+    color: var(--text-primary);
+}
+
+.journey-stage .stage-description {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+    font-style: italic;
+    margin-bottom: 0;
+}
+
+/* Current Stage Styling */
+.journey-stage.current .stage-node {
+    background: var(--node-current);
+    border-color: var(--color-gold);
+    border-width: 6px;
+    animation: node-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+}
+
+.journey-stage.current .stage-content {
+    min-height: auto;
+}
+
+.journey-stage.current .stage-description {
+    margin-bottom: 0.75rem;
+}
+
+/* Completed Stage Styling */
+.journey-stage.completed .stage-node {
+    border-color: var(--node-completed);
+}
+
+body.light-mode .journey-stage.completed .stage-node {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 50%, #b1dfbb 100%);
+}
+
+.journey-stage.completed .stage-node::after {
+    content: '✓';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: var(--node-completed);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    animation: check-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+body.light-mode .journey-stage.completed .stage-node::after {
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* You Are Here Container */
+.you-are-here-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+}
+
+/* Take Step Button inside card */
+.journey-stage .take-step-btn {
+    margin-top: auto;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.65rem;
+}
+
+/* Future stage styling (not current, not completed) */
+.journey-stage:not(.current):not(.completed) .stage-node {
+    opacity: 0.6;
+}
+
+.journey-stage:not(.current):not(.completed) .stage-content {
+    opacity: 0.7;
+}
+
+/* Responsive adjustments */
+@media (min-width: 400px) {
+    .journey-stage {
+        width: calc(50% - 1rem);
+        min-width: 165px;
+        max-width: 185px;
+    }
+    
+    .journey-stage .stage-node {
+        width: 105px;
+        height: 105px;
+    }
+    
+    .journey-stage .stage-number {
+        font-size: 2.4rem;
+    }
+    
+    .journey-stage .stage-icon {
+        font-size: 1.5rem;
+    }
+    
+    .journey-path-line-container {
+        top: 88px;
+    }
+}
+
+@media (min-width: 768px) {
+    .journey-stages-scroll {
+        justify-content: center;
+    }
+    
+    .journey-stage {
+        width: 180px;
+        max-width: 200px;
+    }
+    
+    .journey-stage .stage-node {
+        width: 115px;
+        height: 115px;
+    }
+    
+    .journey-stage .stage-number {
+        font-size: 2.6rem;
+    }
+    
+    .journey-path-line-container {
+        top: 92px;
+    }
+}
