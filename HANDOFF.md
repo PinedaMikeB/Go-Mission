@@ -10,43 +10,70 @@
 
 ---
 
-## Current Session (2026-02-03) - JITSI MIGRATION
+## 🚨 URGENT - Push Required (2026-02-04)
 
-### ✅ COMPLETED - Jitsi Domain Migration
+### Problem Found
+**Quick Insights not displaying** - The deployed Netlify version is BEHIND the local repo!
 
-**Task**: Migrate Jitsi video calls from `meet.wotgonline.com` to `call.wotgonline.com`
+**Root Cause:** Recent commits with Quick Insights data were never pushed to GitHub/Netlify.
 
-**Files Updated**:
-1. `/modules/groups/group-meeting.js` - Line 22: Changed `JITSI_DOMAIN` from `meet.wotgonline.com` to `call.wotgonline.com`
-2. `/modules/training/training.js` - Line 635: Changed Jitsi URL from `meet.jit.si` to `call.wotgonline.com`
+**Local has:**
+- `97687ca` Migrate Jitsi (latest)
+- `8219018` Leader Dashboard  
+- `d1aac71` Complete Romans Quick Insights ← **HAS THE TL DATA**
 
-**New VPS Setup**:
-- New VPS: 147.93.81.200 (Hostinger KVM 2, Indonesia)
-- Control Panel: HestiaCP (https://147.93.81.200:8083)
-- Jitsi: https://call.wotgonline.com
+**Netlify only has:**
+- `3c09bd8` Fix BiblePicker theming (OLD)
+
+### FIX - Run This Command:
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git push origin main
+```
+
+After pushing, Netlify will auto-deploy and insights will work.
 
 ---
 
-### 🔄 PREVIOUS - Journey Card Redesign (On Hold)
+## Current Session (2026-02-04) - QUICK INSIGHTS DEBUG
 
-**Problem**: The path line shows THROUGH the circles instead of BEHIND them.
-- Prototype (working): `/Users/mike/Downloads/go-mission-home-v2.html`
-- Current (broken): Circles 2-5 appear transparent
+### ✅ DIAGNOSIS COMPLETE
 
-**Root Cause Identified**:
-The prototype uses CSS variables that resolve to solid gradients. Our implementation may have CSS specificity issues or the design-system.css is overriding the inline styles.
+**Issue**: Quick Insights panel shows headers (Pag-unawa, Isabuhay, Pag-ibig ng Diyos) but NO content text.
 
-### What Was Done (Journey Card)
+**Investigation Results:**
+1. ✅ Local JSON files have FULL bilingual content (EN + TL)
+2. ✅ BibleLoader.js code is correct
+3. ✅ BibleReader.js rendering code is correct
+4. ❌ **Deployed Netlify version has EMPTY TL strings**
+5. ❌ **Git remote is 4 commits behind local**
 
-1. **Changed HTML class names** to match prototype
-2. **Copied EXACT CSS from prototype** into index.html inline styles
-3. **Path line with arrow** added
+**Proof:**
+- Local ROM.json verse 5 TL: 978 chars ✅
+- Deployed ROM.json verse 5 TL: 0 chars ❌
 
-### TODO (Journey Card - when resumed)
+### 📊 Quick Insights Coverage Status
 
-1. Debug why circles 2-5 still show line through them
-2. Check if `design-system.css` has conflicting rules
-3. Once circles are solid, verify animations
+| Category | Status |
+|----------|--------|
+| Books with insights file | 63/66 |
+| Missing books (no file) | 1TH, 2TH, HAG, JON |
+| Books with partial verses | Many (see analysis below) |
+
+**After push, these insights will work:**
+- Romans - all 16 chapters with full bilingual content
+- Matthew - working (already on Netlify)
+- All other books that have files
+
+---
+
+## Previous Session (2026-02-03) - Jitsi Migration ✅
+
+**Task**: Migrated Jitsi from `meet.wotgonline.com` to `call.wotgonline.com`
+
+**Files Updated**:
+- `/modules/groups/group-meeting.js` - Changed `JITSI_DOMAIN`
+- `/modules/training/training.js` - Changed Jitsi URL
 
 ---
 
@@ -54,41 +81,27 @@ The prototype uses CSS variables that resolve to solid gradients. Our implementa
 
 | File | Purpose |
 |------|---------|
-| `/modules/groups/group-meeting.js` | Jitsi integration for group meetings |
-| `/modules/training/training.js` | Training sessions with video call |
-| `/index.html` | Main app - Journey card HTML & inline CSS |
-| `/modules/core/design-system.css` | Design system CSS variables |
+| `/modules/bible/bible-loader.js` | Loads Quick Insights JSON |
+| `/modules/bible/bible-reader.js` | Renders insights in sidebar |
+| `/modules/bible/data/quick-insights/*.json` | Insight data (63 books) |
 
 ---
 
-## Infrastructure
+## Quick Insights System
 
-### VPS (New - 2026-02-03)
-- **Provider**: Hostinger KVM 2
-- **IP**: 147.93.81.200
-- **Location**: Indonesia
-- **OS**: Ubuntu 22.04 LTS
-- **Panel**: HestiaCP (https://147.93.81.200:8083)
-- **User**: pinedamikeb
+### Working Flow:
+1. User taps verse → highlights it
+2. BibleLoader.getQuickInsights() fetches from JSON
+3. Returns `{understanding, livingItOut, godsLove, reflection}` for language
+4. BibleReader.renderCommentary() displays in sidebar
 
-### Domains on New VPS
-- `call.wotgonline.com` → Jitsi Meet (video calls)
-
-### Old VPS (Expiring)
-- 145.223.75.230 - `meet.wotgonline.com` (don't renew)
-- 62.72.26.131 - (expired 2026-01-29)
-
----
-
-## Journey Stages Data
-
-| # | Name | Description | Icon |
-|---|------|-------------|------|
-| 1 | SEEKER | Know God's love. Talk to God daily. | 🌱 |
-| 2 | DISCIPLE | Grow in your Mission Group. Be trained and love others. | 📖 |
-| 3 | DISCIPLE-MAKER | Lead others to follow Jesus. | 🤝 |
-| 4 | BUILDER | Build mission groups. Raise disciple-makers. | 🏗️ |
-| 5 | MULTIPLIER | Multiply movements across generations. | 🌟 |
+### 4-Section Format (Bilingual)
+| Section | English | Tagalog |
+|---------|---------|---------|
+| 1 | Understanding This Verse | Unawain ang Talata |
+| 2 | Living It Out | Isabuhay Ito |
+| 3 | See God's Love | Makita ang Pag-ibig ng Diyos |
+| 4 | Reflection Question | Pagnilayan at Gawin |
 
 ---
 
@@ -99,8 +112,7 @@ The prototype uses CSS variables that resolve to solid gradients. Our implementa
 | Colors | Random greens, blues, purples | `var(--color-gold)`, `var(--mission-red-bright)` |
 | Buttons | Green buttons, blue buttons | `btn-primary` (burnt orange gradient) |
 | Fonts | Arial, Inter, Roboto, system-ui | `var(--font-display)`, `var(--font-body)` |
-| Styling | Inline colors, random hex codes | CSS variables from design-system.css |
 
 ---
 
-*Last Updated: February 3, 2026 - 7:58 PM*
+*Last Updated: February 4, 2026 - Quick Insights Debug Complete - NEEDS PUSH*

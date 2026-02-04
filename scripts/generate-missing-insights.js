@@ -9,7 +9,8 @@ const fs = require('fs');
 const path = require('path');
 
 // OpenAI API Configuration
-const OPENAI_API_KEY = 'YOUR_API_KEY_HERE';
+// Set OPENAI_API_KEY environment variable before running
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'YOUR_API_KEY_HERE';
 const MODEL = 'gpt-4o-mini';
 
 // Paths

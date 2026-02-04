@@ -5,7 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const OPENAI_API_KEY = 'YOUR_API_KEY_HERE';
+// Set OPENAI_API_KEY environment variable before running
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'YOUR_API_KEY_HERE';
 const MODEL = 'gpt-4o-mini';
 
 const INSIGHTS_PATH = '/Volumes/Wotg Drive Mike/GitHub/Go-Mission/modules/bible/data/quick-insights/ROM.json';
