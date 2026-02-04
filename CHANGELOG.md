@@ -10,6 +10,46 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.2] - 2026-02-04 🐛 UI/UX Fixes
+
+### 🐛 Welcome/Onboarding Modal Fixes
+
+**Summary:** Fixed multiple UI issues with welcome and onboarding modals.
+
+**Issues Fixed:**
+1. **Git Push & API Key** - Removed exposed OpenAI API key from history, pushed 4 pending commits
+2. **Welcome Modal Spacing** - Button was below viewport, reduced spacing to fit
+3. **Onboarding Modal Spacing** - "START YOUR JOURNEY" button cut off, reduced padding
+4. **Carousel Cards** - Fixed untranslated i18n keys showing "stageSeeker" etc.
+5. **Loading Sequence Flash** - Dashboard flashed before welcome modal, fixed timing
+
+**Files Modified:**
+- `/modules/install/install-modal.js` - Reduced spacing (padding, margins, logo size)
+- `/index.html` - Welcome modal spacing + carousel content + loading sequence fix
+- `/scripts/generate-*.js` - Removed hardcoded API keys
+
+**Carousel Content (Bilingual):**
+- First set: SEEKER, DISCIPLE, DISCIPLE-MAKER, BUILDER, MULTIPLIER (English)
+- Second set: NAGHAHANAP, ALAGAD, TAGAPAG-HUBOG, TAGAPAG-TAYO, TAGAPAG-PARAMI (Tagalog)
+
+**Loading Sequence Change:**
+```javascript
+// Before: mainApp shown → then WelcomeModal.init() (caused flash)
+// After: Check goMission_welcomeSeen first
+if (shouldShowWelcome) {
+    WelcomeModal.show();  // Keep mainApp hidden
+} else {
+    mainApp.classList.remove('hidden');  // Show directly
+}
+```
+
+**Rollback:**
+```bash
+git revert HEAD~4  # Reverts last 4 commits
+```
+
+---
+
 ## [v2.2.1] - 2026-02-03 🔄 Jitsi Migration
 
 ### 🔄 Jitsi Domain Migration

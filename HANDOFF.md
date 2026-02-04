@@ -10,60 +10,50 @@
 
 ---
 
-## 🚨 URGENT - Push Required (2026-02-04)
+## ✅ COMPLETED - Session 2026-02-04
 
-### Problem Found
-**Quick Insights not displaying** - The deployed Netlify version is BEHIND the local repo!
+### 1. Git Push & API Key Fix ✅
+- **Problem**: Netlify was 4 commits behind, Quick Insights showing empty
+- **Fix**: Removed exposed OpenAI API key from git history using `git filter-branch`
+- **Result**: Successfully pushed all commits to GitHub/Netlify
 
-**Root Cause:** Recent commits with Quick Insights data were never pushed to GitHub/Netlify.
+### 2. Welcome Modal Spacing ✅
+- **Problem**: Button was below viewport, required scrolling
+- **Fix**: Reduced spacing in `/modules/install/install-modal.js`
+- Padding, margins, logo size all reduced to fit in one view
 
-**Local has:**
-- `97687ca` Migrate Jitsi (latest)
-- `8219018` Leader Dashboard  
-- `d1aac71` Complete Romans Quick Insights ← **HAS THE TL DATA**
+### 3. Onboarding Modal Spacing ✅
+- **Problem**: "START YOUR JOURNEY" button cut off at bottom
+- **Fix**: Reduced spacing in `index.html` welcome modal styles
+- Content padding: 2rem → 1rem
+- Header padding-top: 3rem → 1.5rem
+- CTA section padding: 1rem 1.5rem 3rem → 0.75rem 1.5rem 1.5rem
 
-**Netlify only has:**
-- `3c09bd8` Fix BiblePicker theming (OLD)
+### 4. Carousel Cards Content ✅
+- **Problem**: Second set showed "stageSeeker", "stageDiscipleDesc" (untranslated i18n keys)
+- **Fix**: Removed broken `data-i18n` attributes, hardcoded bilingual content
+- First set: English (SEEKER, DISCIPLE, DISCIPLE-MAKER, BUILDER, MULTIPLIER)
+- Second set: Tagalog (NAGHAHANAP, ALAGAD, TAGAPAG-HUBOG, TAGAPAG-TAYO, TAGAPAG-PARAMI)
 
-### FIX - Run This Command:
-```bash
-cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
-git push origin main
-```
-
-After pushing, Netlify will auto-deploy and insights will work.
+### 5. Loading Sequence Flash Fix ✅
+- **Problem**: Dashboard flashed briefly before welcome modal appeared
+- **Root Cause**: mainApp shown before WelcomeModal.init() called
+- **Fix**: Check `goMission_welcomeSeen` before showing mainApp
+  - If NOT seen → Show welcome modal, keep mainApp hidden
+  - If seen → Show mainApp directly
+  - On "START YOUR JOURNEY" click → Show mainApp, then hide modal
 
 ---
 
-## Current Session (2026-02-04) - QUICK INSIGHTS DEBUG
+## Loading Sequence (VERIFIED CORRECT)
 
-### ✅ DIAGNOSIS COMPLETE
-
-**Issue**: Quick Insights panel shows headers (Pag-unawa, Isabuhay, Pag-ibig ng Diyos) but NO content text.
-
-**Investigation Results:**
-1. ✅ Local JSON files have FULL bilingual content (EN + TL)
-2. ✅ BibleLoader.js code is correct
-3. ✅ BibleReader.js rendering code is correct
-4. ❌ **Deployed Netlify version has EMPTY TL strings**
-5. ❌ **Git remote is 4 commits behind local**
-
-**Proof:**
-- Local ROM.json verse 5 TL: 978 chars ✅
-- Deployed ROM.json verse 5 TL: 0 chars ❌
-
-### 📊 Quick Insights Coverage Status
-
-| Category | Status |
-|----------|--------|
-| Books with insights file | 63/66 |
-| Missing books (no file) | 1TH, 2TH, HAG, JON |
-| Books with partial verses | Many (see analysis below) |
-
-**After push, these insights will work:**
-- Romans - all 16 chapters with full bilingual content
-- Matthew - working (already on Netlify)
-- All other books that have files
+1. **Loading animation** shows (HTML default visible)
+2. `auto-update.js` initializes during loading (checks updates silently)
+3. Firebase initializes
+4. `onAuthStateChanged` fires → Loading hides
+5. If new user → Welcome/Onboarding modal (mainApp stays hidden)
+6. If returning user → mainApp shows directly
+7. User clicks "START YOUR JOURNEY" → mainApp shows, modal fades
 
 ---
 
@@ -77,17 +67,16 @@ After pushing, Netlify will auto-deploy and insights will work.
 
 ---
 
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `/modules/bible/bible-loader.js` | Loads Quick Insights JSON |
-| `/modules/bible/bible-reader.js` | Renders insights in sidebar |
-| `/modules/bible/data/quick-insights/*.json` | Insight data (63 books) |
-
----
-
 ## Quick Insights System
+
+### Coverage Status
+| Category | Count |
+|----------|-------|
+| Total Bible verses | 31,133 |
+| Verses with insights | 15,864 (51%) |
+| Missing verses | 15,269 (49%) |
+| Books with files | 63/66 |
+| Missing books | 1TH, 2TH, HAG, JON |
 
 ### Working Flow:
 1. User taps verse → highlights it
@@ -95,24 +84,28 @@ After pushing, Netlify will auto-deploy and insights will work.
 3. Returns `{understanding, livingItOut, godsLove, reflection}` for language
 4. BibleReader.renderCommentary() displays in sidebar
 
-### 4-Section Format (Bilingual)
-| Section | English | Tagalog |
-|---------|---------|---------|
-| 1 | Understanding This Verse | Unawain ang Talata |
-| 2 | Living It Out | Isabuhay Ito |
-| 3 | See God's Love | Makita ang Pag-ibig ng Diyos |
-| 4 | Reflection Question | Pagnilayan at Gawin |
+---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `index.html` | Main app, welcome modal, auth flow |
+| `/modules/install/install-modal.js` | PWA install modal |
+| `/modules/core/auto-update.js` | Silent update system |
+| `/modules/bible/bible-loader.js` | Loads Quick Insights JSON |
+| `/modules/bible/bible-reader.js` | Renders insights in sidebar |
+| `/modules/bible/data/quick-insights/*.json` | Insight data (63 books) |
 
 ---
 
-## 🚫 BANNED (Do Not Use)
+## Git Push Command (if needed)
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git push origin main
+```
 
-| Category | Banned | Use Instead |
-|----------|--------|-------------|
-| Colors | Random greens, blues, purples | `var(--color-gold)`, `var(--mission-red-bright)` |
-| Buttons | Green buttons, blue buttons | `btn-primary` (burnt orange gradient) |
-| Fonts | Arial, Inter, Roboto, system-ui | `var(--font-display)`, `var(--font-body)` |
-
----
-
-*Last Updated: February 4, 2026 - Quick Insights Debug Complete - NEEDS PUSH*
+Note: If authentication fails, use Personal Access Token:
+```bash
+git push https://TOKEN@github.com/PinedaMikeB/Go-Mission.git main
+```
