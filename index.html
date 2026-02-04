@@ -2228,17 +2228,30 @@
                 
                 await ensureUserExists(user);
                 loginScreen.classList.add('hidden');
-                mainApp.classList.remove('hidden');
+                
+                // Check if should show welcome modal BEFORE showing mainApp
+                const shouldShowWelcome = !localStorage.getItem('goMission_welcomeSeen');
+                
+                if (shouldShowWelcome) {
+                    // Show welcome modal immediately, keep mainApp hidden
+                    if (typeof WelcomeModal !== 'undefined') {
+                        WelcomeModal.show();
+                    }
+                } else {
+                    // User has seen welcome, show mainApp directly
+                    mainApp.classList.remove('hidden');
+                }
                 
                 await loadUserData(user.uid);
                 initializeDevotion();
                 await loadTodaysEntry(user.uid);
                 await loadWeekProgress(user.uid);
                 
-                // Show Welcome Modal for new users
-                if (typeof WelcomeModal !== 'undefined') {
-                    WelcomeModal.init();
-                }
+                // Show Welcome Modal for new users (already shown above if needed)
+                // This init is now just a no-op since we handle it above
+                // if (typeof WelcomeModal !== 'undefined') {
+                //     WelcomeModal.init();
+                // }
                 
                 // Clear app badge when user opens app
                 if (typeof PushNotifications !== 'undefined') {
@@ -3389,6 +3402,10 @@
             startJourney: function() {
                 // Mark as seen
                 localStorage.setItem('goMission_welcomeSeen', 'true');
+                
+                // Show mainApp now that user is starting
+                const mainApp = document.getElementById('mainApp');
+                if (mainApp) mainApp.classList.remove('hidden');
                 
                 // Hide modal
                 this.hide();
