@@ -302,7 +302,7 @@ const InstallModal = {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 20px;
+                padding: 12px;
             }
             #welcomeModal .welcome-overlay {
                 position: absolute;
@@ -313,21 +313,23 @@ const InstallModal = {
                 position: relative;
                 background: linear-gradient(135deg, #1a0505 0%, #2a0a0a 100%);
                 border: 2px solid rgba(251, 191, 36, 0.4);
-                border-radius: 28px;
-                padding: 32px 24px;
-                max-width: 380px;
+                border-radius: 24px;
+                padding: 20px 20px 24px;
+                max-width: 360px;
                 width: 100%;
                 text-align: center;
                 color: #fff;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(251, 191, 36, 0.1);
+                max-height: calc(100vh - 24px);
+                overflow-y: auto;
             }
             #welcomeModal .welcome-icon {
-                margin-bottom: 20px;
+                margin-bottom: 12px;
             }
             #welcomeModal .welcome-logo {
-                width: 100px;
-                height: 100px;
-                border-radius: 24px;
+                width: 72px;
+                height: 72px;
+                border-radius: 18px;
                 box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4);
                 animation: pulse-glow 2s infinite;
             }
@@ -339,35 +341,35 @@ const InstallModal = {
                 font-size: 24px;
                 font-weight: 800;
                 color: #f59e0b;
-                margin: 0 0 8px 0;
+                margin: 0 0 4px 0;
             }
             #welcomeModal .welcome-subtitle {
                 font-size: 16px;
                 color: #e2e8f0;
-                margin: 0 0 24px 0;
+                margin: 0 0 16px 0;
             }
             #welcomeModal .welcome-app-preview {
                 background: rgba(255,255,255,0.05);
                 border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 16px;
-                padding: 16px;
-                margin-bottom: 20px;
+                border-radius: 14px;
+                padding: 12px;
+                margin-bottom: 12px;
             }
             #welcomeModal .welcome-find-text {
                 font-size: 13px;
                 color: #94a3b8;
-                margin: 0 0 12px 0;
+                margin: 0 0 8px 0;
             }
             #welcomeModal .welcome-app-icon {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
             }
             #welcomeModal .welcome-app-icon img {
-                width: 64px;
-                height: 64px;
-                border-radius: 16px;
+                width: 52px;
+                height: 52px;
+                border-radius: 14px;
             }
             #welcomeModal .welcome-app-icon span {
                 font-size: 14px;
@@ -378,15 +380,15 @@ const InstallModal = {
                 font-size: 18px;
                 font-weight: 600;
                 color: #4ade80;
-                margin: 0 0 24px 0;
-                line-height: 1.4;
+                margin: 0 0 16px 0;
+                line-height: 1.3;
             }
             #welcomeModal .welcome-btn {
                 width: 100%;
-                padding: 18px;
+                padding: 16px;
                 background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                 border: none;
-                border-radius: 16px;
+                border-radius: 14px;
                 color: #1a0505;
                 font-size: 18px;
                 font-weight: 800;
