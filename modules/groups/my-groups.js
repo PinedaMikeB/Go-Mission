@@ -432,9 +432,9 @@ const MyGroups = {
     /**
      * Collect meeting metrics for mission dashboard
      */
-    async getDashboardMeetingData(groupIds) {
-        const uid = window.currentUser?.uid;
-        if (!uid || !window.db || !groupIds.length) {
+	    async getDashboardMeetingData(groupIds) {
+	        const uid = window.currentUser?.uid;
+	        if (!uid || !window.db || !groupIds.length) {
             return {
                 attendanceRate: 0,
                 attendedThisMonth: 0,
@@ -445,40 +445,51 @@ const MyGroups = {
             };
         }
 
-        const allMeetings = [];
-        const perGroupLastMeeting = {};
-        const monthKey = new Date().toISOString().slice(0, 7);
+	        const allMeetings = [];
+	        const perGroupLastMeeting = {};
+	        const monthKey = new Date().toISOString().slice(0, 7);
+	        const isPermissionDenied = (err) => (
+	            err?.code === 'permission-denied' ||
+	            /missing or insufficient permissions/i.test(err?.message || '')
+	        );
 
         for (const groupId of groupIds) {
             let meetings = [];
 
-            try {
-                const meetingsRef = window.collection(window.db, 'goMission_meetings');
-                const q = window.query(
-                    meetingsRef,
-                    window.where('groupId', '==', groupId),
-                    window.orderBy('date', 'desc'),
-                    window.limit(15)
-                );
-                const snapshot = await window.getDocs(q);
-                meetings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            } catch (error) {
-                // Fallback for environments lacking index support
-                try {
-                    const meetingsRef = window.collection(window.db, 'goMission_meetings');
-                    const qFallback = window.query(
-                        meetingsRef,
+	            try {
+	                const meetingsRef = window.collection(window.db, 'goMission_meetings');
+	                const q = window.query(
+	                    meetingsRef,
+	                    window.where('groupId', '==', groupId),
+	                    window.orderBy('date', 'desc'),
+	                    window.limit(15)
+	                );
+	                const snapshot = await window.getDocs(q);
+	                meetings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+	            } catch (error) {
+	                // If Firestore rules deny reads, keep metrics empty without spamming console.
+	                if (isPermissionDenied(error)) {
+	                    meetings = [];
+	                    continue;
+	                }
+	                // Fallback for environments lacking index support
+	                try {
+	                    const meetingsRef = window.collection(window.db, 'goMission_meetings');
+	                    const qFallback = window.query(
+	                        meetingsRef,
                         window.where('groupId', '==', groupId),
                         window.limit(25)
                     );
-                    const fallbackSnapshot = await window.getDocs(qFallback);
-                    meetings = fallbackSnapshot.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() }))
-                        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                } catch (fallbackError) {
-                    console.warn('[MyGroups] Meeting metrics fallback failed for group', groupId, fallbackError);
-                }
-            }
+	                    const fallbackSnapshot = await window.getDocs(qFallback);
+	                    meetings = fallbackSnapshot.docs
+	                        .map(doc => ({ id: doc.id, ...doc.data() }))
+	                        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+	                } catch (fallbackError) {
+	                    if (!isPermissionDenied(fallbackError)) {
+	                        console.warn('[MyGroups] Meeting metrics fallback failed for group', groupId, fallbackError);
+	                    }
+	                }
+	            }
 
             meetings.forEach((meeting) => {
                 const attended = (meeting.attendees || []).some((attendee) => attendee.odId === uid);
