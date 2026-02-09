@@ -192,6 +192,10 @@ const GroupMeeting = {
    */
   async joinMeeting(groupId, groupName, userName, userEmail, isLeader = false) {
     try {
+      // Show UI immediately so users see something happening even if the API load is slow/fails.
+      this.showMeetingModal(groupName);
+      this.setMeetingStatus('Loading meeting…');
+
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
         await this.init();
@@ -200,16 +204,14 @@ const GroupMeeting = {
       if (!window.JitsiMeetExternalAPI) {
         throw new Error('Jitsi API not available');
       }
-      
-      // Create meeting modal first
-      this.showMeetingModal(groupName);
-      
+
       const roomName = this.generateRoomName(groupId, groupName);
       this.currentGroupId = groupId;
       this.joinedAt = new Date();
       
       const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       console.log('[GroupMeeting] Joining room:', roomName, 'on', domain);
+      this.setMeetingStatus(`Connecting to ${domain}…`);
       
       // Simpler Jitsi configuration for reliability
       const options = {
@@ -275,6 +277,7 @@ const GroupMeeting = {
       // Event listeners
       this.api.addListener('videoConferenceJoined', (data) => {
         console.log('[GroupMeeting] Joined conference:', data);
+        this.setMeetingStatus('');
         this.onJoined(groupId, userName);
         
         // Switch to tile view for better group view
@@ -286,6 +289,13 @@ const GroupMeeting = {
       this.api.addListener('videoConferenceLeft', (data) => {
         console.log('[GroupMeeting] Left conference:', data);
         this.onLeft(groupId);
+      });
+
+      // Surface failures that otherwise look like "black screen"
+      this.api.addListener('errorOccurred', (evt) => {
+        console.error('[GroupMeeting] Jitsi errorOccurred:', evt);
+        const msg = evt?.message || evt?.error?.message || evt?.error || 'Meeting error';
+        this.setMeetingStatus(`Error: ${msg}`);
       });
       
       this.api.addListener('participantJoined', (data) => {
@@ -307,8 +317,8 @@ const GroupMeeting = {
       
     } catch (error) {
       console.error('[GroupMeeting] Error creating Jitsi instance:', error);
-      this.hideMeetingModal();
-      alert('Failed to start meeting on your server. Check SSL trust and Jitsi API path (external_api.js).');
+      this.setMeetingStatus(`Failed to start meeting: ${error?.message || error}`);
+      // Keep modal open so user can see the error; allow them to close via Leave.
     }
   },
   
@@ -334,6 +344,16 @@ const GroupMeeting = {
     const modal = document.createElement('div');
     modal.id = 'meeting-modal';
     modal.className = 'fixed inset-0 z-[200] bg-black flex flex-col';
+    // Ensure visibility even if Tailwind CDN misses some dynamic classes.
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.zIndex = '9999';
+    modal.style.background = '#000';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
     modal.innerHTML = `
       <!-- Header -->
       <div class="flex-shrink-0 bg-black/90 px-4 py-3 flex items-center justify-between border-b border-white/10">
@@ -349,6 +369,9 @@ const GroupMeeting = {
           ✕ Leave
         </button>
       </div>
+
+      <!-- Status -->
+      <div id="meeting-status" class="px-4 py-2 text-xs text-white/70 bg-black/70 border-b border-white/10"></div>
       
       <!-- Jitsi Container -->
       <div id="jitsi-container" class="flex-1 w-full"></div>
@@ -358,6 +381,16 @@ const GroupMeeting = {
     
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
+  },
+
+  /**
+   * Update the small status line in the meeting modal.
+   */
+  setMeetingStatus(text) {
+    const el = document.getElementById('meeting-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.display = text ? 'block' : 'none';
   },
   
   /**
@@ -708,3 +741,6 @@ if (document.readyState === 'loading') {
 } else {
   GroupMeeting.init();
 }
+
+// Expose for inline handlers and debugging in the console.
+window.GroupMeeting = GroupMeeting;

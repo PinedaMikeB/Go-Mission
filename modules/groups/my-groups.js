@@ -1666,6 +1666,7 @@ const MyGroups = {
      * Join meeting for a group (Disciple/Member/Guest)
      */
     joinMeeting(groupId) {
+        console.log('[MyGroups] Join Meeting clicked:', groupId);
         // Check upline group first, then guest groups, then downline groups
         let group = null;
         if (this.uplineGroup?.id === groupId) {
@@ -1689,7 +1690,20 @@ const MyGroups = {
             const userName = window.currentUser?.displayName || 'Guest';
             const userEmail = window.currentUser?.email || '';
             const isLeader = group.leaderId === window.currentUser?.uid;
-            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
+            try {
+                GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
+            } catch (e) {
+                console.error('[MyGroups] GroupMeeting.joinMeeting threw:', e);
+                // Fallback to opening directly if embed fails synchronously.
+                const cleanName = (group.name || '')
+                    .replace(/[^a-zA-Z0-9\s]/g, '')
+                    .replace(/\s+/g, '')
+                    .substring(0, 15);
+                const shortId = group.id.substring(Math.max(0, group.id.length - 8));
+                const roomName = `GoMission${cleanName}${shortId}`;
+                const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
+                window.open(jitsiUrl, '_blank');
+            }
         } else {
             // Fallback: Open Jitsi directly
             const cleanName = (group.name || '')
