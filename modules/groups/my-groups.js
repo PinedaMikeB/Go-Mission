@@ -9,6 +9,8 @@ const MyGroups = {
     downlineGroups: [],
     guestGroups: [],  // Groups where user is a guest
     isOpen: false,
+    isDashboardOpen: false,
+    openedFromDashboard: false,
     pendingRequestsCount: 0,
     
     /**
@@ -202,6 +204,9 @@ const MyGroups = {
             if (this.isOpen) {
                 this.render();
             }
+            if (this.isDashboardOpen) {
+                this.renderDashboard();
+            }
             
             console.log('[MyGroups] Real-time update, groups:', this.downlineGroups.length);
         }, (error) => {
@@ -213,6 +218,15 @@ const MyGroups = {
      * Open My Groups screen
      */
     open() {
+        const fromDashboard = arguments[0] === true;
+        this.openedFromDashboard = fromDashboard;
+
+        // If opening from dashboard, hide dashboard screen first.
+        if (fromDashboard) {
+            const dashboard = document.getElementById('missionGroupsDashboardScreen');
+            if (dashboard) dashboard.classList.add('hidden');
+        }
+
         const screen = document.getElementById('myGroupsScreen');
         if (screen) {
             screen.classList.remove('hidden');
@@ -229,6 +243,707 @@ const MyGroups = {
         if (screen) {
             screen.classList.add('hidden');
             this.isOpen = false;
+        }
+
+        // Return to dashboard if user opened My Groups from dashboard.
+        if (this.openedFromDashboard) {
+            this.openedFromDashboard = false;
+            this.openDashboard();
+        }
+    },
+
+    /**
+     * Open mission groups dashboard screen (entry point from footer)
+     */
+    async openDashboard() {
+        const dashboard = document.getElementById('missionGroupsDashboardScreen');
+        if (!dashboard) return;
+
+        // Refresh latest group data before rendering dashboard cards.
+        await this.loadGroups();
+        this.updateBadges();
+
+        // Ensure My Groups detail screen is closed.
+        const groupsScreen = document.getElementById('myGroupsScreen');
+        if (groupsScreen) groupsScreen.classList.add('hidden');
+        this.isOpen = false;
+
+        dashboard.classList.remove('hidden');
+        this.isDashboardOpen = true;
+        await this.renderDashboard();
+    },
+
+    /**
+     * Close mission groups dashboard screen
+     */
+    closeDashboard() {
+        const dashboard = document.getElementById('missionGroupsDashboardScreen');
+        if (dashboard) {
+            dashboard.classList.add('hidden');
+        }
+        this.isDashboardOpen = false;
+    },
+
+    /**
+     * Escape user-provided strings for safe HTML rendering
+     */
+    escapeHtml(value) {
+        const str = (value ?? '').toString();
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    /**
+     * Format meeting date in short readable form
+     */
+    formatMeetingDate(dateStr) {
+        if (!dateStr) return 'No meeting yet';
+        const date = new Date(`${dateStr}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return dateStr;
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+    },
+
+    /**
+     * Find group from any dashboard-visible collection
+     */
+    getGroupById(groupId) {
+        if (!groupId) return null;
+        if (this.uplineGroup?.id === groupId) return this.uplineGroup;
+        if (this.guestGroups?.length) {
+            const guestGroup = this.guestGroups.find((g) => g.id === groupId);
+            if (guestGroup) return guestGroup;
+        }
+        return this.downlineGroups.find((g) => g.id === groupId) || null;
+    },
+
+    /**
+     * Load current user member profile from Firestore
+     */
+    async getCurrentMemberData() {
+        if (!window.currentUser?.uid || !window.db) return null;
+        const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+        const userDoc = await window.getDoc(userRef);
+        return userDoc.exists() ? userDoc.data() : null;
+    },
+
+    /**
+     * Determine if user completed leadership training milestone
+     */
+    hasCompletedLeadershipTraining(userData) {
+        if (!userData) return false;
+        const training = userData.training || {};
+        const phase1 = training?.phases?.phase1 || {};
+
+        return !!(
+            training.completed === true
+            || training.isCompleted === true
+            || training.trainingCompleted === true
+            || userData.trainingCompleted === true
+            || phase1.status === 'completed'
+            || phase1.completed === true
+            || phase1.exitRequirementMet === true
+            || userData.trainingPhaseCompleted === true
+        );
+    },
+
+    /**
+     * Determine if user has endorsement for leadership
+     */
+    hasLeadershipEndorsement(userData) {
+        if (!userData) return false;
+        const training = userData.training || {};
+        const phase1 = training?.phases?.phase1 || {};
+
+        return !!(
+            userData.leaderEndorsed === true
+            || userData.endorsedToLead === true
+            || userData.endorsementApproved === true
+            || userData.canCreateGroup === true
+            || phase1.endorsed === true
+            || phase1.exitRequirementMet === true
+            || training.leaderEndorsed === true
+        );
+    },
+
+    /**
+     * Evaluate whether "Create a Group" action should be shown in dashboard
+     */
+    async canShowCreateGroupAction() {
+        let profile = null;
+        try {
+            profile = await this.getCurrentMemberData();
+        } catch (error) {
+            console.warn('[MyGroups] Could not load member profile for create action:', error);
+        }
+
+        let groupsEligibility = { allowed: false, reason: 'unknown' };
+        if (typeof Groups !== 'undefined' && typeof Groups.canCreateGroup === 'function') {
+            try {
+                groupsEligibility = await Groups.canCreateGroup();
+            } catch (error) {
+                console.warn('[MyGroups] Groups.canCreateGroup() failed:', error);
+            }
+        }
+
+        const trainingCompleted = this.hasCompletedLeadershipTraining(profile);
+        const endorsed = this.hasLeadershipEndorsement(profile);
+        const allowedByTrainingAndEndorsement = trainingCompleted && endorsed;
+        const isCurrentLeader = (this.downlineGroups?.length || 0) > 0;
+
+        return {
+            allowed: !!(groupsEligibility.allowed || allowedByTrainingAndEndorsement || isCurrentLeader),
+            reason: groupsEligibility.reason || 'unknown',
+            trainingCompleted,
+            endorsed
+        };
+    },
+
+    /**
+     * Render dashboard-level action buttons
+     */
+    async renderDashboardActions() {
+        const actionsWrap = document.getElementById('missionGroupsActionBar');
+        const createBtn = document.getElementById('missionGroupsCreateBtn');
+        const joinBtn = document.getElementById('missionGroupsJoinBtn');
+        if (!actionsWrap || !createBtn || !joinBtn) return;
+
+        const eligibility = await this.canShowCreateGroupAction();
+
+        if (eligibility.allowed) {
+            createBtn.classList.remove('hidden');
+            joinBtn.classList.remove('w-full');
+            actionsWrap.classList.add('grid', 'grid-cols-2');
+            actionsWrap.classList.remove('block');
+        } else {
+            createBtn.classList.add('hidden');
+            joinBtn.classList.add('w-full');
+            actionsWrap.classList.remove('grid', 'grid-cols-2');
+            actionsWrap.classList.add('block');
+        }
+    },
+
+    /**
+     * Collect meeting metrics for mission dashboard
+     */
+    async getDashboardMeetingData(groupIds) {
+        const uid = window.currentUser?.uid;
+        if (!uid || !window.db || !groupIds.length) {
+            return {
+                attendanceRate: 0,
+                attendedThisMonth: 0,
+                meetingsThisMonth: 0,
+                streak: 0,
+                lastMeeting: null,
+                perGroupLastMeeting: {}
+            };
+        }
+
+        const allMeetings = [];
+        const perGroupLastMeeting = {};
+        const monthKey = new Date().toISOString().slice(0, 7);
+
+        for (const groupId of groupIds) {
+            let meetings = [];
+
+            try {
+                const meetingsRef = window.collection(window.db, 'goMission_meetings');
+                const q = window.query(
+                    meetingsRef,
+                    window.where('groupId', '==', groupId),
+                    window.orderBy('date', 'desc'),
+                    window.limit(15)
+                );
+                const snapshot = await window.getDocs(q);
+                meetings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                // Fallback for environments lacking index support
+                try {
+                    const meetingsRef = window.collection(window.db, 'goMission_meetings');
+                    const qFallback = window.query(
+                        meetingsRef,
+                        window.where('groupId', '==', groupId),
+                        window.limit(25)
+                    );
+                    const fallbackSnapshot = await window.getDocs(qFallback);
+                    meetings = fallbackSnapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() }))
+                        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                } catch (fallbackError) {
+                    console.warn('[MyGroups] Meeting metrics fallback failed for group', groupId, fallbackError);
+                }
+            }
+
+            meetings.forEach((meeting) => {
+                const attended = (meeting.attendees || []).some((attendee) => attendee.odId === uid);
+                allMeetings.push({
+                    groupId,
+                    date: meeting.date || '',
+                    attended
+                });
+            });
+
+            const latest = meetings[0] || null;
+            perGroupLastMeeting[groupId] = latest
+                ? {
+                    date: latest.date || '',
+                    attended: (latest.attendees || []).some((attendee) => attendee.odId === uid)
+                }
+                : null;
+        }
+
+        allMeetings.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        const meetingsThisMonth = allMeetings.filter((meeting) => (meeting.date || '').startsWith(monthKey));
+        const attendedThisMonth = meetingsThisMonth.filter((meeting) => meeting.attended).length;
+        const attendanceRate = meetingsThisMonth.length > 0
+            ? Math.round((attendedThisMonth / meetingsThisMonth.length) * 100)
+            : 0;
+
+        let streak = 0;
+        for (const meeting of allMeetings) {
+            if (meeting.attended) {
+                streak += 1;
+            } else {
+                break;
+            }
+        }
+
+        return {
+            attendanceRate,
+            attendedThisMonth,
+            meetingsThisMonth: meetingsThisMonth.length,
+            streak,
+            lastMeeting: allMeetings[0] || null,
+            perGroupLastMeeting
+        };
+    },
+
+    /**
+     * Render mission groups dashboard data
+     */
+    async renderDashboard() {
+        const allGroups = [];
+        if (this.uplineGroup) allGroups.push({ ...this.uplineGroup, role: 'upline' });
+        this.downlineGroups.forEach((group) => allGroups.push({ ...group, role: 'downline' }));
+        this.guestGroups.forEach((group) => allGroups.push({ ...group, role: 'guest' }));
+
+        const uniqueGroups = [];
+        const seen = new Set();
+        for (const group of allGroups) {
+            if (!group?.id || seen.has(group.id)) continue;
+            seen.add(group.id);
+            uniqueGroups.push(group);
+        }
+
+        const groupIds = uniqueGroups.map((group) => group.id);
+        const meetingData = await this.getDashboardMeetingData(groupIds);
+
+        const totalGroupsEl = document.getElementById('missionGroupsTotalGroups');
+        const attendanceRateEl = document.getElementById('missionGroupsAttendanceRate');
+        const meetingsMonthEl = document.getElementById('missionGroupsMeetingsMonth');
+        const lastMeetingEl = document.getElementById('missionGroupsLastMeeting');
+        const heroStreakEl = document.getElementById('missionGroupsHeroStreak');
+        const encouragementEl = document.getElementById('missionGroupsEncouragement');
+        const statusListEl = document.getElementById('missionGroupsStatusList');
+
+        await this.renderDashboardActions();
+
+        if (totalGroupsEl) totalGroupsEl.textContent = String(groupIds.length);
+        if (attendanceRateEl) attendanceRateEl.textContent = `${meetingData.attendanceRate}%`;
+        if (meetingsMonthEl) meetingsMonthEl.textContent = String(meetingData.attendedThisMonth);
+        if (heroStreakEl) heroStreakEl.textContent = String(meetingData.streak);
+
+        if (lastMeetingEl) {
+            if (!meetingData.lastMeeting) {
+                lastMeetingEl.textContent = 'No meeting yet';
+            } else {
+                const attendanceLabel = meetingData.lastMeeting.attended ? 'attended' : 'missed';
+                lastMeetingEl.textContent = `${this.formatMeetingDate(meetingData.lastMeeting.date)} (${attendanceLabel})`;
+            }
+        }
+
+        if (encouragementEl) {
+            let message = 'Join a mission group and take your next faithful step today.';
+            if (groupIds.length > 0) {
+                if (meetingData.streak >= 4) {
+                    message = 'Strong consistency. Keep helping others by showing up faithfully each meeting.';
+                } else if (meetingData.streak >= 1) {
+                    message = 'Good momentum. Protect your rhythm and attend the next meeting.';
+                } else {
+                    message = 'Fresh start this week. Attend your next meeting and build a new streak.';
+                }
+            }
+            encouragementEl.textContent = message;
+        }
+
+        if (!statusListEl) return;
+
+        if (uniqueGroups.length === 0) {
+            statusListEl.innerHTML = `
+                <div class="mission-groups-status-item p-4">
+                    <p class="text-[var(--text-muted)] text-sm">No mission groups yet.</p>
+                    <button onclick="MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2.5 rounded-lg text-sm">
+                        Join with Invite Code
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        statusListEl.innerHTML = uniqueGroups.map((group) => {
+            const roleLabel = group.role === 'upline'
+                ? 'Upline'
+                : (group.role === 'downline' ? 'Downline' : 'Guest');
+            const roleColor = group.role === 'upline'
+                ? 'text-[var(--mission-gold)]'
+                : (group.role === 'downline' ? 'text-green-500' : 'text-blue-400');
+
+            const scheduleConfig = group.meetingSchedule || group.schedule || null;
+            const schedule = scheduleConfig?.day && scheduleConfig?.time
+                ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
+                : 'No meeting schedule yet';
+            const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
+            const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
+
+            const last = meetingData.perGroupLastMeeting[group.id];
+            const lastLine = last
+                ? `${this.formatMeetingDate(last.date)} • ${last.attended ? 'You attended' : 'You missed'}`
+                : 'No recorded meeting yet';
+
+            const memberCount = group.members?.length || 0;
+
+            return `
+                <div class="mission-groups-status-item p-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <p class="font-bold text-[var(--text-color)]">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                            <p class="text-xs ${roleColor} uppercase tracking-wider mt-1">${roleLabel}</p>
+                        </div>
+                        <span class="text-xs text-[var(--text-muted)]">${memberCount}/12 members</span>
+                    </div>
+                    <div class="mt-3 text-xs text-[var(--text-muted)] space-y-1.5">
+                        <p>📅 ${this.escapeHtml(schedule)}</p>
+                        <p>✅ ${this.escapeHtml(lastLine)}</p>
+                    </div>
+                    <div class="mt-4 grid ${isLeaderOfGroup ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
+                        <button onclick="MyGroups.joinMeeting('${groupIdForJs}')"
+                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
+                                    ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
+                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'}">
+                            <span>🎥</span>
+                            <span>${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}</span>
+                        </button>
+                        <button onclick="MyGroups.openGroupChat('${groupIdForJs}')"
+                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors">
+                            <span>💬</span>
+                            <span>Chat</span>
+                        </button>
+                        ${isLeaderOfGroup ? `
+                        <button onclick="MyGroups.viewGroupDetails('${groupIdForJs}')"
+                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                            <span>👁</span>
+                            <span>View</span>
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Open detailed group settings/member view from mission dashboard (leader-focused)
+     */
+    async viewGroupDetails(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        if (!isLeader) {
+            // Keep member flow simple: no advanced settings view.
+            this.showGroupMembers(groupId);
+            return;
+        }
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-6 text-center">
+                <p class="text-[var(--text-muted)]">Loading group details...</p>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        try {
+            const memberData = await this.getCurrentMemberData();
+            const reminderConfig = memberData?.meetingReminders?.[groupId] || {};
+            const reminderEnabled = reminderConfig.enabled !== false;
+            const reminderMinutes = Number(reminderConfig.minutesBefore || 30);
+            const alarmEnabled = reminderConfig.alarmEnabled !== false;
+            const pushEnabled = reminderConfig.pushEnabled !== false;
+
+            const memberIds = Array.isArray(group.members) ? group.members : [];
+            const uniqueMemberIds = [...new Set(memberIds)];
+            const memberProfiles = await Promise.all(uniqueMemberIds.map(async (memberId) => {
+                try {
+                    const snap = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+                    return {
+                        id: memberId,
+                        data: snap.exists() ? snap.data() : {}
+                    };
+                } catch (error) {
+                    console.warn('[MyGroups] Failed loading member profile:', memberId, error);
+                    return { id: memberId, data: {} };
+                }
+            }));
+
+            const scheduleConfig = group.meetingSchedule || group.schedule || null;
+            const scheduleLabel = scheduleConfig?.day && scheduleConfig?.time
+                ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
+                : 'No meeting schedule set';
+            const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
+            const groupNameSafe = this.escapeHtml(group.name || 'Mission Group');
+
+            const membersHtml = memberProfiles.map(({ id, data }) => {
+                const displayName = this.escapeHtml(data.displayName || data.name || data.email?.split('@')[0] || 'Member');
+                const email = this.escapeHtml(data.email || 'Not set');
+                const mobile = this.escapeHtml(data.mobile || data.phone || 'Not set');
+                const birthday = this.escapeHtml(data.birthday || data.birthDate || 'Not set');
+                const spouse = this.escapeHtml(data.spouseName || data.spouse?.name || data.family?.spouseName || 'Not set');
+                const childrenRaw = data.childrenNames || data.children || data.family?.childrenNames || data.family?.children;
+                const children = Array.isArray(childrenRaw)
+                    ? childrenRaw.join(', ')
+                    : (childrenRaw || 'Not set');
+
+                return `
+                    <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="font-bold text-[var(--text-color)]">${displayName}</p>
+                            <span class="text-[10px] uppercase tracking-wider ${id === group.leaderId ? 'text-[var(--mission-gold)]' : 'text-[var(--text-muted)]'}">${id === group.leaderId ? 'Leader' : 'Member'}</span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-1 gap-1.5 text-xs text-[var(--text-muted)]">
+                            <p>📧 ${email}</p>
+                            <p>📱 ${mobile}</p>
+                            <p>🎂 ${birthday}</p>
+                            <p>💍 ${spouse}</p>
+                            <p>👶 ${this.escapeHtml(children)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${groupNameSafe}</h3>
+                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+
+                    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Group Settings</p>
+                                    <p class="font-semibold text-[var(--text-color)] mt-1">📅 ${this.escapeHtml(scheduleLabel)}</p>
+                                </div>
+                                <span class="text-[10px] uppercase tracking-wider ${meetingLive ? 'text-green-500' : 'text-[var(--text-muted)]'}">
+                                    ${meetingLive ? 'Live now' : 'Waiting'}
+                                </span>
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-xs text-[var(--text-muted)] mb-1">Group Name</label>
+                                <div class="flex items-center gap-2">
+                                    <input id="groupNameInput" type="text" value="${groupNameSafe}" maxlength="80"
+                                           class="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-color)]">
+                                    <button onclick="MyGroups.saveGroupName('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                            class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-red-bright)] text-white whitespace-nowrap">
+                                        Save Name
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex items-center gap-2">
+                                <button onclick="MyGroups.editSchedule('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                        class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
+                                    Edit Day & Time
+                                </button>
+                                <button onclick="MyGroups.joinMeeting('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                        class="px-3 py-2 rounded-lg text-xs font-bold border ${meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]'}">
+                                    ${meetingLive ? 'Join Meeting (Live)' : 'Join Meeting'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+                            <p class="text-xs uppercase tracking-wider text-[var(--text-muted)] mb-3">My Meeting Reminder</p>
+                            <label class="flex items-center justify-between text-sm text-[var(--text-color)]">
+                                <span>Enable reminder</span>
+                                <input id="meetingReminderEnabled" type="checkbox" class="accent-[var(--mission-gold)]" ${reminderEnabled ? 'checked' : ''}>
+                            </label>
+                            <div class="mt-3">
+                                <label class="block text-xs text-[var(--text-muted)] mb-1">Notify me before meeting</label>
+                                <select id="meetingReminderMinutes" class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-color)]">
+                                    <option value="10" ${reminderMinutes === 10 ? 'selected' : ''}>10 minutes</option>
+                                    <option value="30" ${reminderMinutes === 30 ? 'selected' : ''}>30 minutes</option>
+                                    <option value="60" ${reminderMinutes === 60 ? 'selected' : ''}>1 hour</option>
+                                    <option value="1440" ${reminderMinutes === 1440 ? 'selected' : ''}>1 day</option>
+                                </select>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 gap-2 text-sm text-[var(--text-color)]">
+                                <label class="flex items-center justify-between">
+                                    <span>In-app notification</span>
+                                    <input id="meetingReminderPush" type="checkbox" class="accent-[var(--mission-gold)]" ${pushEnabled ? 'checked' : ''}>
+                                </label>
+                                <label class="flex items-center justify-between">
+                                    <span>Alarm-style alert</span>
+                                    <input id="meetingReminderAlarm" type="checkbox" class="accent-[var(--mission-gold)]" ${alarmEnabled ? 'checked' : ''}>
+                                </label>
+                            </div>
+                            <button onclick="MyGroups.saveMeetingReminder('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                    class="mt-4 w-full py-2.5 rounded-lg text-sm font-bold bg-[var(--mission-red-bright)] text-white">
+                                Save Reminder Settings
+                            </button>
+                        </div>
+
+                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Members</p>
+                                <span class="text-xs text-[var(--mission-gold)] font-semibold">${memberProfiles.length} total</span>
+                            </div>
+                            <div class="space-y-3">
+                                ${membersHtml || '<p class="text-sm text-[var(--text-muted)]">No members found.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('[MyGroups] viewGroupDetails error:', error);
+            content.innerHTML = `
+                <div class="p-6 text-center">
+                    <p class="text-[var(--mission-red-bright)] mb-3">Failed to load group details.</p>
+                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">Close</button>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Save reminder/alarm preferences for current user per group
+     */
+    async saveMeetingReminder(groupId) {
+        if (!window.currentUser?.uid || !window.db) return;
+
+        const enabled = !!document.getElementById('meetingReminderEnabled')?.checked;
+        const pushEnabled = !!document.getElementById('meetingReminderPush')?.checked;
+        const alarmEnabled = !!document.getElementById('meetingReminderAlarm')?.checked;
+        const minutesBeforeRaw = parseInt(document.getElementById('meetingReminderMinutes')?.value || '30', 10);
+        const minutesBefore = Number.isFinite(minutesBeforeRaw) ? minutesBeforeRaw : 30;
+
+        try {
+            await window.setDoc(
+                window.doc(window.db, 'goMission_members', window.currentUser.uid),
+                {
+                    meetingReminders: {
+                        [groupId]: {
+                            enabled,
+                            pushEnabled,
+                            alarmEnabled,
+                            minutesBefore,
+                            updatedAt: new Date().toISOString()
+                        }
+                    }
+                },
+                { merge: true }
+            );
+
+            alert('Reminder settings saved');
+        } catch (error) {
+            console.error('[MyGroups] saveMeetingReminder error:', error);
+            alert('Could not save reminder settings');
+        }
+    },
+
+    /**
+     * Save group name (leader only)
+     */
+    async saveGroupName(groupId) {
+        if (!window.currentUser?.uid || !window.db) return;
+
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+
+        if (group.leaderId !== window.currentUser.uid) {
+            alert('Only the group leader can rename this group.');
+            return;
+        }
+
+        const rawName = document.getElementById('groupNameInput')?.value || '';
+        const newName = rawName.trim().replace(/\s+/g, ' ');
+
+        if (newName.length < 3) {
+            alert('Group name must be at least 3 characters.');
+            return;
+        }
+
+        if (newName.length > 80) {
+            alert('Group name is too long.');
+            return;
+        }
+
+        try {
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId),
+                {
+                    name: newName,
+                    updatedAt: new Date().toISOString()
+                },
+                { merge: true }
+            );
+
+            // Keep local state in sync for immediate UI updates.
+            if (this.uplineGroup?.id === groupId) {
+                this.uplineGroup = { ...this.uplineGroup, name: newName };
+            }
+            this.downlineGroups = (this.downlineGroups || []).map((g) => (
+                g.id === groupId ? { ...g, name: newName } : g
+            ));
+            this.guestGroups = (this.guestGroups || []).map((g) => (
+                g.id === groupId ? { ...g, name: newName } : g
+            ));
+
+            if (typeof Groups !== 'undefined' && Groups.currentGroup?.id === groupId) {
+                Groups.currentGroup = { ...Groups.currentGroup, name: newName };
+            }
+
+            if (this.isOpen) {
+                this.render();
+            }
+            if (this.isDashboardOpen) {
+                await this.renderDashboard();
+            }
+
+            // Re-render details modal so header and field reflect saved value.
+            await this.viewGroupDetails(groupId);
+            alert('Group name updated.');
+        } catch (error) {
+            console.error('[MyGroups] saveGroupName error:', error);
+            alert('Failed to update group name.');
         }
     },
     
@@ -326,14 +1041,14 @@ const MyGroups = {
             typeIcon = '👤';
         } else if (type === 'guest') {
             typeIcon = '🎫';
-            typeBadge = '<span class="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Guest</span>';
+            typeBadge = '<span class="ml-2 text-xs bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">Guest</span>';
         }
         
         return `
-            <div class="mission-card rounded-xl overflow-hidden ${type === 'guest' ? 'border border-blue-500/30' : ''}">
-                <div class="p-4 border-b border-white/5 flex items-center justify-between">
+            <div class="mission-card rounded-xl overflow-hidden ${type === 'guest' ? 'border border-[var(--card-border)]' : ''}">
+                <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
                     <h4 class="font-bold text-[var(--text-color)] flex items-center gap-2">
-                        <span class="${type === 'guest' ? 'text-blue-400' : 'text-amber-500'}">${typeIcon}</span>
+                        <span class="text-[var(--mission-gold)]">${typeIcon}</span>
                         ${group.name}
                         ${typeBadge}
                     </h4>
@@ -341,7 +1056,7 @@ const MyGroups = {
                 </div>
                 <div class="p-4 space-y-3">
                     <!-- Meeting Section -->
-                    <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
+                    <div class="flex items-center justify-between bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
                         <div>
                             <p class="text-xs text-[var(--text-muted)] flex items-center gap-1">
                                 <span>📅</span> Weekly Meeting
@@ -356,13 +1071,13 @@ const MyGroups = {
                             <!-- Leader: Start Meeting + Edit Schedule -->
                             <div class="flex items-center gap-2">
                                 <button onclick="MyGroups.editSchedule('${group.id}')" class="text-[var(--mission-gold)] text-xs">Edit</button>
-                                <button onclick="MyGroups.startMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1">
+                                <button onclick="MyGroups.startMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
                                     <span>📹</span> Start Meeting
                                 </button>
                             </div>
                         ` : `
                             <!-- Member/Guest: Join Meeting -->
-                            <button onclick="MyGroups.joinMeeting('${group.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1">
+                            <button onclick="MyGroups.joinMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
                                 <span>📹</span> Join Meeting
                             </button>
                         `}
@@ -376,13 +1091,13 @@ const MyGroups = {
                     ${guestCount > 0 ? `
                     <div class="flex items-center justify-between">
                         <span class="text-[var(--text-muted)] text-sm">🎫 Guests</span>
-                        <span class="text-blue-400 font-bold">${guestCount}</span>
+                        <span class="text-[var(--mission-gold)] font-bold">${guestCount}</span>
                     </div>
                     ` : ''}
                     
                     ${type === 'downline' && requestCount > 0 ? `
                     <!-- Pending Requests Badge -->
-                    <button onclick="MyGroups.showJoinRequests('${group.id}')" class="w-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <button onclick="MyGroups.showJoinRequests('${group.id}')" class="w-full bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
                         🔔 ${requestCount} Pending Request${requestCount > 1 ? 's' : ''}
                     </button>
                     ` : ''}
@@ -394,13 +1109,13 @@ const MyGroups = {
                         <button onclick="MyGroups.showInviteCode('${group.id}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm">
                             🔑 Invite Members
                         </button>
-                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-white/10 text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
+                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-[var(--card-border)] text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
                             👥 View Members ${guestCount > 0 ? `& Guests` : ''}
-                            ${requestCount > 0 ? `<span class="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
+                            ${requestCount > 0 ? `<span class="absolute right-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
                         </button>
                     ` : ''}
                     ${type === 'guest' ? `
-                        <button onclick="MyGroups.leaveAsGuest('${group.id}')" class="w-full border border-red-500/30 text-red-400 font-medium py-2 rounded-lg text-sm">
+                        <button onclick="MyGroups.leaveAsGuest('${group.id}')" class="w-full border border-[var(--mission-red-bright)]/40 text-[var(--mission-red-bright)] font-medium py-2 rounded-lg text-sm">
                             Leave as Guest
                         </button>
                     ` : ''}
@@ -438,7 +1153,7 @@ const MyGroups = {
                 <input type="text" id="joinCodeInput" placeholder="Enter 6-digit code" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] text-center text-2xl tracking-[0.5em] uppercase mb-4"
                     maxlength="6" oninput="this.value = this.value.toUpperCase()">
-                <div id="joinError" class="text-red-500 text-sm text-center mb-4 hidden"></div>
+                <div id="joinError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
                 <button onclick="MyGroups.joinWithCode()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Join Group
                 </button>
@@ -465,7 +1180,7 @@ const MyGroups = {
                 <p class="text-[var(--text-muted)] text-sm mb-4">Create a group to start discipling others:</p>
                 <input type="text" id="newGroupName" placeholder="Group name" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] mb-4">
-                <div id="createError" class="text-red-500 text-sm text-center mb-4 hidden"></div>
+                <div id="createError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
                 <button onclick="MyGroups.createGroup()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Create Group
                 </button>
@@ -660,6 +1375,15 @@ const MyGroups = {
         }
         
         try {
+            const eligibility = await this.canShowCreateGroupAction();
+            if (!eligibility.allowed) {
+                if (errorEl) {
+                    errorEl.textContent = 'You are not yet eligible to create a group.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
             // Generate 6-character invite code with 7-day expiration
             const inviteCode = this.generateInviteCode();
             const inviteCodeExpiresAt = this.generateExpirationDate();
@@ -815,10 +1539,10 @@ const MyGroups = {
                         <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
                     <p class="text-[var(--text-muted)] text-sm mb-4">Share this code with people you want to disciple:</p>
-                    <div class="bg-black/30 rounded-xl p-6 mb-2">
+                    <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-6 mb-2">
                         <p class="text-4xl font-bold text-[var(--mission-gold)] tracking-[0.3em] font-mono">${inviteCode}</p>
                     </div>
-                    <p class="text-amber-500/70 text-xs mb-4">⏱️ ${expiresText}</p>
+                    <p class="text-[var(--text-muted)] text-xs mb-4">⏱️ ${expiresText}</p>
                     <p class="text-[var(--text-color)] font-medium mb-4">${group.name}</p>
                     <div class="space-y-3">
                         <button onclick="MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
@@ -916,8 +1640,13 @@ const MyGroups = {
             GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, true);
         } else {
             // Fallback: Open Jitsi directly
-            const roomName = `GoMission-${groupId}`;
-            const jitsiUrl = `https://meet.jit.si/${roomName}`;
+            const cleanName = (group.name || '')
+                .replace(/[^a-zA-Z0-9\s]/g, '')
+                .replace(/\s+/g, '')
+                .substring(0, 15);
+            const shortId = group.id.substring(Math.max(0, group.id.length - 8));
+            const roomName = `GoMission${cleanName}${shortId}`;
+            const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
             window.open(jitsiUrl, '_blank');
         }
     },
@@ -952,8 +1681,13 @@ const MyGroups = {
             GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
         } else {
             // Fallback: Open Jitsi directly
-            const roomName = `GoMission-${groupId}`;
-            const jitsiUrl = `https://meet.jit.si/${roomName}`;
+            const cleanName = (group.name || '')
+                .replace(/[^a-zA-Z0-9\s]/g, '')
+                .replace(/\s+/g, '')
+                .substring(0, 15);
+            const shortId = group.id.substring(Math.max(0, group.id.length - 8));
+            const roomName = `GoMission${cleanName}${shortId}`;
+            const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
             window.open(jitsiUrl, '_blank');
         }
     },
@@ -998,7 +1732,7 @@ const MyGroups = {
                     </div>
                 </div>
                 
-                <div id="scheduleError" class="text-red-500 text-sm text-center mt-4 hidden"></div>
+                <div id="scheduleError" class="text-[var(--mission-red-bright)] text-sm text-center mt-4 hidden"></div>
                 
                 <button onclick="MyGroups.saveSchedule('${groupId}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg mt-6">
                     Save Schedule
@@ -1083,24 +1817,24 @@ const MyGroups = {
             `;
         } else {
             requestsHtml = requests.map(req => `
-                <div class="bg-black/30 rounded-xl p-4 border border-white/10">
+                <div class="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)]">
                     <div class="flex items-start gap-3">
                         <img src="${req.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name)}&background=4a0404&color=fbbf24`}" 
-                             class="w-12 h-12 rounded-full border border-white/10">
+                             class="w-12 h-12 rounded-full border border-[var(--card-border)]">
                         <div class="flex-1">
                             <p class="font-bold text-[var(--text-color)]">${req.name}</p>
                             <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
                             ${req.hasExistingGroup ? `
-                                <div class="mt-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                                    <p class="text-xs text-blue-400">
+                                <div class="mt-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-2">
+                                    <p class="text-xs text-[var(--text-color)]">
                                         ℹ️ Already in: <strong>${req.existingGroupName}</strong>
                                     </p>
-                                    <p class="text-xs text-blue-400/70">
+                                    <p class="text-xs text-[var(--text-muted)]">
                                         Leader: ${req.existingLeaderName}
                                     </p>
                                 </div>
                             ` : `
-                                <p class="text-xs text-green-400 mt-2">✨ New believer (no current group)</p>
+                                <p class="text-xs text-[var(--text-muted)] mt-2">✨ New believer (no current group)</p>
                             `}
                         </div>
                     </div>
@@ -1108,15 +1842,15 @@ const MyGroups = {
                     <div class="mt-4 flex gap-2">
                         <!-- Always show both options: Member or Guest -->
                         <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                class="flex-1 bg-green-600 text-white text-sm font-bold py-2 rounded-lg">
+                                class="flex-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold py-2 rounded-lg">
                             ✅ Member
                         </button>
                         <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
-                                class="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-lg">
+                                class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold py-2 rounded-lg">
                             🎫 Guest
                         </button>
                         <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
-                                class="flex-1 bg-red-600/20 text-red-400 text-sm font-bold py-2 rounded-lg border border-red-500/30">
+                                class="flex-1 bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-sm font-bold py-2 rounded-lg border border-[var(--mission-red-bright)]/30">
                             ❌
                         </button>
                     </div>
@@ -1292,12 +2026,12 @@ const MyGroups = {
             const leaderPhoto = leaderData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(leaderName)}&background=4a0404&color=fbbf24`;
             
             membersHtml += `
-                <div class="flex items-center justify-between bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                <div class="flex items-center justify-between bg-[var(--card-bg)] rounded-lg p-3 border border-[var(--mission-gold)]/30">
                     <div class="flex items-center gap-3">
-                        <img src="${leaderPhoto}" class="w-10 h-10 rounded-full border-2 border-amber-500">
+                        <img src="${leaderPhoto}" class="w-10 h-10 rounded-full border-2 border-[var(--mission-gold)]">
                         <div>
-                            <p class="text-[var(--text-color)] font-medium">${leaderName} ${group.leaderId === window.currentUser?.uid ? '<span class="text-amber-400">(You)</span>' : ''}</p>
-                            <p class="text-xs text-amber-400">👑 Leader</p>
+                            <p class="text-[var(--text-color)] font-medium">${leaderName} ${group.leaderId === window.currentUser?.uid ? '<span class="text-[var(--mission-gold)]">(You)</span>' : ''}</p>
+                            <p class="text-xs text-[var(--mission-gold)]">👑 Leader</p>
                         </div>
                     </div>
                 </div>
@@ -1315,7 +2049,7 @@ const MyGroups = {
                     const memberPhoto = member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=4a0404&color=fbbf24`;
                     
                     membersHtml += `
-                        <div class="flex items-center justify-between bg-black/20 rounded-lg p-3">
+                        <div class="flex items-center justify-between bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
                             <div class="flex items-center gap-3">
                                 <img src="${memberPhoto}" class="w-10 h-10 rounded-full">
                                 <div>
@@ -1325,7 +2059,7 @@ const MyGroups = {
                             </div>
                             ${isLeader ? `
                                 <button onclick="MyGroups.removeMember('${groupId}', '${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
-                                        class="text-red-400 text-sm hover:text-red-300">Remove</button>
+                                        class="text-[var(--mission-red-bright)] text-sm hover:opacity-80">Remove</button>
                             ` : ''}
                         </div>
                     `;
@@ -1338,13 +2072,13 @@ const MyGroups = {
                 
                 for (const guest of guests) {
                     membersHtml += `
-                        <div class="flex items-center justify-between bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                        <div class="flex items-center justify-between bg-[var(--card-bg)] rounded-lg p-3 border border-[var(--card-border)]">
                             <div class="flex items-center gap-3">
                                 <img src="${guest.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(guest.name)}&background=1e40af&color=93c5fd`}" 
                                      class="w-10 h-10 rounded-full">
                                 <div>
-                                    <p class="text-[var(--text-color)] font-medium">${guest.name} <span class="text-blue-400 text-xs">🎫</span></p>
-                                    <p class="text-xs text-blue-400/70">From: ${guest.homeGroupName || 'Unknown'}</p>
+                                    <p class="text-[var(--text-color)] font-medium">${guest.name} <span class="text-[var(--mission-gold)] text-xs">🎫</span></p>
+                                    <p class="text-xs text-[var(--text-muted)]">From: ${guest.homeGroupName || 'Unknown'}</p>
                                 </div>
                             </div>
                             ${isLeader ? `
@@ -1363,35 +2097,35 @@ const MyGroups = {
             
             if (isLeader && requests.length > 0) {
                 pendingHtml = `
-                    <div class="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                        <p class="text-amber-400 font-bold text-sm mb-3">🔔 PENDING REQUESTS (${requests.length})</p>
+                    <div class="mb-4 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-4">
+                        <p class="text-[var(--mission-gold)] font-bold text-sm mb-3">🔔 PENDING REQUESTS (${requests.length})</p>
                         <div class="space-y-3">
                             ${requests.map(req => `
-                                <div class="bg-black/30 rounded-lg p-3">
+                                <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
                                     <div class="flex items-center gap-3 mb-3">
                                         <img src="${req.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name)}&background=4a0404&color=fbbf24`}" 
-                                             class="w-10 h-10 rounded-full border border-amber-500/50">
+                                             class="w-10 h-10 rounded-full border border-[var(--mission-gold)]/40">
                                         <div class="flex-1">
                                             <p class="text-[var(--text-color)] font-medium">${req.name}</p>
                                             <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
                                             ${req.hasExistingGroup ? `
-                                                <p class="text-xs text-blue-400 mt-1">Already in: ${req.existingGroupName}</p>
+                                                <p class="text-xs text-[var(--text-muted)] mt-1">Already in: ${req.existingGroupName}</p>
                                             ` : `
-                                                <p class="text-xs text-green-400 mt-1">✨ New (no current group)</p>
+                                                <p class="text-xs text-[var(--text-muted)] mt-1">✨ New (no current group)</p>
                                             `}
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
                                         <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                                class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-lg">
+                                                class="flex-1 bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 rounded-lg transition-opacity">
                                             ✅ Member
                                         </button>
                                         <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
-                                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg">
+                                                class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs font-bold py-2 rounded-lg">
                                             🎫 Guest
                                         </button>
                                         <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
-                                                class="bg-red-600/30 hover:bg-red-600/50 text-red-400 text-xs font-bold py-2 px-3 rounded-lg border border-red-500/30">
+                                                class="bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-xs font-bold py-2 px-3 rounded-lg border border-[var(--mission-red-bright)]/30">
                                             ✕
                                         </button>
                                     </div>
@@ -1419,7 +2153,7 @@ const MyGroups = {
             console.error('[MyGroups] Load members error:', error);
             content.innerHTML = `
                 <div class="p-6 text-center">
-                    <p class="text-red-400">Failed to load members</p>
+                    <p class="text-[var(--mission-red-bright)]">Failed to load members</p>
                     <button onclick="MyGroups.closeModal()" class="mt-4 text-[var(--text-muted)]">Close</button>
                 </div>
             `;
@@ -1451,13 +2185,13 @@ const MyGroups = {
                          class="w-14 h-14 rounded-full">
                     <div>
                         <p class="text-[var(--text-color)] font-bold">${guest.name}</p>
-                        <p class="text-xs text-blue-400">🎫 Guest from ${guest.homeGroupName}</p>
+                        <p class="text-xs text-[var(--text-muted)]">🎫 Guest from ${guest.homeGroupName}</p>
                     </div>
                 </div>
                 
                 <div class="space-y-3">
                     <button onclick="MyGroups.promoteGuestToMember('${groupId}', '${guestId}')" 
-                            class="w-full bg-green-600 text-white font-bold py-3 rounded-lg">
+                            class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                         ✅ Promote to Full Member
                     </button>
                     <p class="text-xs text-[var(--text-muted)] text-center">
@@ -1465,7 +2199,7 @@ const MyGroups = {
                     </p>
                     
                     <button onclick="MyGroups.removeGuest('${groupId}', '${guestId}')" 
-                            class="w-full bg-red-600/20 text-red-400 font-bold py-3 rounded-lg border border-red-500/30 mt-4">
+                            class="w-full bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] font-bold py-3 rounded-lg border border-[var(--mission-red-bright)]/30 mt-4">
                         ❌ Remove as Guest
                     </button>
                 </div>

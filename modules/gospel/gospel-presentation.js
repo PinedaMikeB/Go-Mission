@@ -74,11 +74,30 @@ const GospelPresentation = {
             .gospel-option:active { transform: scale(0.98); }
             .gospel-correct { animation: correctPulse 0.5s ease-out forwards; }
             .gospel-wrong { animation: wrongShake 0.5s ease-out forwards; }
-            @keyframes correctPulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); background: rgba(34, 197, 94, 0.2); } 100% { transform: scale(1); background: rgba(34, 197, 94, 0.1); } }
+            @keyframes correctPulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); background: rgba(212, 160, 23, 0.22); } 100% { transform: scale(1); background: rgba(212, 160, 23, 0.14); } }
             @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
             #gospelProgress { box-shadow: 0 0 10px var(--mission-gold); }
             .gospel-btn-pulse { animation: btnPulse 2s infinite; }
             @keyframes btnPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); } }
+            .gospel-modal-shell {
+                border: 1px solid var(--card-border);
+                background: var(--card-bg);
+                backdrop-filter: blur(8px);
+            }
+            .gospel-slide-stage {
+                background: var(--card-bg-solid);
+                border: 1px solid var(--card-border);
+                border-radius: 1.25rem;
+                padding: 1rem;
+                box-shadow: 0 18px 48px var(--shadow-color);
+                min-height: clamp(420px, 60vh, 560px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            body.light-mode .gospel-slide-stage {
+                background: #ffffff;
+            }
         `;
         document.head.appendChild(style);
     },
@@ -107,7 +126,7 @@ const GospelPresentation = {
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth1.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth1.title')}</h2>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth1.title')}</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth1.subtitle')}</p>
                     </div>
                 `
@@ -144,7 +163,7 @@ const GospelPresentation = {
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth2.label')}</p>
                         <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${self.c('truth2.intro')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth2.title')}</h2>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth2.title')}</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth2.subtitle')}</p>
                     </div>
                 `
@@ -153,7 +172,7 @@ const GospelPresentation = {
             // ========== SLIDE 8: ROMANS 3:23 ==========
             {
                 type: 'verse',
-                image: '/assets/images/gospel/gospel_tract1.jpg',
+                image: 'assets/images/gospel/gospel_tract1.jpg',
                 getData: () => self.c('truth2.verse1')
             },
 
@@ -172,7 +191,7 @@ const GospelPresentation = {
             // ========== SLIDE 11: ROMANS 6:23 ==========
             {
                 type: 'verse',
-                image: '/assets/images/gospel/gospel_tract2.jpg',
+                image: 'assets/images/gospel/gospel_tract2.jpg',
                 getData: () => self.c('truth2.verse2')
             },
 
@@ -199,7 +218,7 @@ const GospelPresentation = {
                         <div class="gospel-fade-up delay-2 flex justify-center gap-4 mb-4">
                             <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 text-center w-32">
                                 <p class="text-2xl mb-1">💀</p>
-                                <p class="text-xs text-white font-bold">${d.physical}</p>
+                                <p class="text-xs text-[var(--text-color)] font-bold">${d.physical}</p>
                                 <p class="text-xs text-[var(--text-muted)]">${d.physicalSub}</p>
                             </div>
                             <div class="bg-[var(--card-bg)] border border-[var(--mission-gold)]/50 rounded-xl p-3 text-center w-32">
@@ -208,7 +227,7 @@ const GospelPresentation = {
                                 <p class="text-xs text-[var(--text-muted)]">${d.spiritualSub}</p>
                             </div>
                         </div>
-                        <p class="gospel-fade-up delay-4 text-sm text-white">${d.explanation}</p>
+                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-color)]">${d.explanation}</p>
                         <p class="gospel-fade-up delay-5 text-xs text-[var(--text-muted)] mt-2">${d.next}</p>
                     </div>
                 `}
@@ -240,7 +259,7 @@ const GospelPresentation = {
             // ========== SLIDE 18: PROVERBS 14:12 ==========
             {
                 type: 'verse',
-                image: '/assets/images/gospel/gospel_tract3.jpg',
+                image: 'assets/images/gospel/gospel_tract3.jpg',
                 getData: () => self.c('truth3.verseHumanEffort')
             },
 
@@ -254,12 +273,12 @@ const GospelPresentation = {
                         <p class="gospel-fade-in text-center text-sm text-[var(--text-muted)] mb-4">${h.intro}</p>
                         <div class="grid grid-cols-2 gap-2 max-w-xs mx-auto mb-4">
                             ${h.items.map((item, i) => `
-                                <div class="gospel-fade-up delay-${i+1} bg-red-900/30 border border-red-500/30 rounded-xl p-2 text-center">
-                                    <p class="text-xs text-white">${item}</p>
+                                <div class="gospel-fade-up delay-${i+1} bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 rounded-xl p-2 text-center">
+                                    <p class="text-xs text-[var(--text-color)]">${item}</p>
                                 </div>
                             `).join('')}
                         </div>
-                        <p class="gospel-fade-up delay-5 text-center text-sm text-red-400">${h.fail}</p>
+                        <p class="gospel-fade-up delay-5 text-center text-sm text-[var(--mission-red-bright)]">${h.fail}</p>
                         <p class="gospel-fade-up delay-6 text-center text-xs text-[var(--text-muted)] mt-2">${h.explanation}</p>
                     </div>
                 `}
@@ -278,7 +297,7 @@ const GospelPresentation = {
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth3.label')}</p>
                         <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${this.lang() === 'tl' ? 'Ang sagot sa ating tanong ay...' : 'The answer to our question is...'}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth3.title')}</h2>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth3.title')}</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth3.subtitle')}</p>
                     </div>
                 `
@@ -287,7 +306,7 @@ const GospelPresentation = {
             // ========== SLIDE 22: JOHN 14:6 ==========
             {
                 type: 'verse',
-                image: '/assets/images/gospel/gospel_tract4.jpg',
+                image: 'assets/images/gospel/gospel_tract4.jpg',
                 getData: () => self.c('truth3.verse1')
             },
 
@@ -327,7 +346,7 @@ const GospelPresentation = {
                 render: () => `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth4.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-white mb-3">${self.c('truth4.title')}</h2>
+                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth4.title')}</h2>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth4.subtitle')}</p>
                     </div>
                 `
@@ -352,7 +371,7 @@ const GospelPresentation = {
                     const d = self.c('decision');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <h3 class="gospel-fade-in text-lg font-bold text-white mb-3">${d.question}</h3>
+                        <h3 class="gospel-fade-in text-lg font-bold text-[var(--text-color)] mb-3">${d.question}</h3>
                         <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-3">${d.summary}</p>
                         <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-3 text-xs mb-4">
                             ${d.points.map(p => `<p class="text-[var(--text-color)] mb-1">✅ ${p}</p>`).join('')}
@@ -377,7 +396,7 @@ const GospelPresentation = {
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-fade-in text-4xl mb-3">🙏</div>
-                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-white mb-3">${n.title}</h3>
+                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-3">${n.title}</h3>
                         <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-4 text-sm">
                             <p class="text-[var(--text-color)] mb-3">${n.message1}</p>
                             <p class="text-[var(--text-color)] mb-3">${n.message2}</p>
@@ -398,7 +417,7 @@ const GospelPresentation = {
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-5xl mb-3">🙏</div>
-                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-white mb-3">${p.intro}</h3>
+                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-3">${p.intro}</h3>
                         <p class="gospel-fade-up delay-2 text-sm text-[var(--text-muted)]">${p.introSub}</p>
                     </div>
                 `}
@@ -411,12 +430,12 @@ const GospelPresentation = {
                     const p = self.c('prayer');
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
-                        <h3 class="gospel-fade-in text-base font-bold text-white mb-2">${p.title}</h3>
+                        <h3 class="gospel-fade-in text-base font-bold text-[var(--text-color)] mb-2">${p.title}</h3>
                         <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-2">${p.instruction}</p>
                         <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-left mb-3">
                             <p class="text-[var(--text-color)] leading-relaxed text-sm italic">${p.text}</p>
                         </div>
-                        <p class="gospel-fade-up delay-3 text-sm text-white mb-3">${p.confirmQ}</p>
+                        <p class="gospel-fade-up delay-3 text-sm text-[var(--text-color)] mb-3">${p.confirmQ}</p>
                         <div class="gospel-fade-up delay-4 flex gap-3 justify-center">
                             <button onclick="GospelPresentation.handlePrayerResponse('no')" class="px-6 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] rounded-xl text-sm">
                                 ${p.noBtn}
@@ -456,7 +475,7 @@ const GospelPresentation = {
                     <div class="text-center flex flex-col justify-center h-full">
                         <div class="gospel-bounce text-6xl mb-3">🎉</div>
                         <h2 class="gospel-scale-in delay-2 text-2xl font-bold text-[var(--mission-gold)] mb-2">${cel.title}</h2>
-                        <p class="gospel-fade-up delay-3 text-lg text-white mb-4">${cel.subtitle}</p>
+                        <p class="gospel-fade-up delay-3 text-lg text-[var(--text-color)] mb-4">${cel.subtitle}</p>
                         <div class="gospel-fade-up delay-4 bg-[var(--card-bg)] rounded-xl p-4 text-sm">
                             <p class="text-[var(--text-color)] leading-relaxed">${cel.message}</p>
                             <p class="text-[var(--text-muted)] mt-3 text-xs">${cel.promisesIntro}</p>
@@ -473,7 +492,7 @@ const GospelPresentation = {
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">${p.title}</h2>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
                         <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
                             <p class="text-base italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
                             <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
@@ -490,7 +509,7 @@ const GospelPresentation = {
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">${p.title}</h2>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
                         <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 text-left">
                             <p class="text-sm italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
                             <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
@@ -507,7 +526,7 @@ const GospelPresentation = {
                     return `
                     <div class="text-center flex flex-col justify-center h-full">
                         <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-white mb-4">${p.title}</h2>
+                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
                         <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
                             <p class="text-base italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
                             <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
@@ -536,7 +555,7 @@ const GospelPresentation = {
                         </div>
                         <p class="gospel-fade-up delay-3 text-xs text-[var(--text-muted)] mb-2">${f.footer}</p>
                         <p class="gospel-fade-up delay-4 text-sm text-[var(--mission-gold)] font-bold mb-3">${f.excited}</p>
-                        <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-4 w-full py-4 bg-yellow-500 text-black font-bold rounded-xl text-lg shadow-lg">
+                        <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-4 w-full py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-lg shadow-lg hover:opacity-95 transition-opacity">
                             ${f.button}
                         </button>
                     </div>
@@ -551,38 +570,42 @@ const GospelPresentation = {
 
         const modal = document.createElement('div');
         modal.id = 'gospelModal';
-        modal.className = 'fixed inset-0 z-[100] bg-[var(--bg-color)] hidden flex flex-col';
+        modal.className = 'fixed inset-0 z-[100] bg-mission-sunset hidden';
         
         const audioBtn = window.GospelAudio ? window.GospelAudio.getButtonHTML() : '';
         const headerTitle = this.lang() === 'tl' ? 'Ang Pag-ibig ng Diyos' : 'God\'s Love';
         
         modal.innerHTML = `
-            <div class="flex items-center justify-between p-3 border-b border-[var(--card-border)]">
-                <div class="flex items-center gap-2">
-                    <span class="text-lg">❤️</span>
-                    <span class="font-bold text-sm text-[var(--text-color)]">${headerTitle}</span>
+            <div class="h-full w-full max-w-3xl mx-auto md:px-4 md:py-4">
+                <div class="gospel-modal-shell mission-card rounded-none md:rounded-3xl overflow-hidden flex flex-col h-full">
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)] bg-[var(--nav-bg)]/90 backdrop-blur-md">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">❤️</span>
+                            <span class="font-bold text-sm text-[var(--text-color)]">${headerTitle}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            ${audioBtn}
+                            <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-1 bg-[var(--card-border)]">
+                        <div id="gospelProgress" class="h-full bg-[var(--mission-gold)] transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div id="gospelContent" class="flex-1 overflow-hidden p-4 sm:p-6 flex items-center justify-center"></div>
+                    <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)]/90 backdrop-blur-md flex items-center justify-between">
+                        <button onclick="GospelPresentation.prev()" id="gospelPrevBtn" class="px-4 py-2 bg-[var(--card-bg)] text-[var(--text-color)] border border-[var(--card-border)] rounded-lg text-sm transition-all hover:border-[var(--mission-gold)]/50">
+                            ${this.c('ui.back')}
+                        </button>
+                        <span id="gospelSlideNum" class="text-xs text-[var(--text-muted)]"></span>
+                        <button onclick="GospelPresentation.next()" id="gospelNextBtn" class="px-5 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-lg text-sm transition-all hover:opacity-90">
+                            ${this.c('ui.next')}
+                        </button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-1">
-                    ${audioBtn}
-                    <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-white transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="h-1 bg-[var(--card-border)]">
-                <div id="gospelProgress" class="h-full bg-[var(--mission-gold)] transition-all duration-500" style="width: 0%"></div>
-            </div>
-            <div id="gospelContent" class="flex-1 overflow-hidden p-4 flex items-center justify-center"></div>
-            <div class="p-3 border-t border-[var(--card-border)] flex items-center justify-between">
-                <button onclick="GospelPresentation.prev()" id="gospelPrevBtn" class="px-4 py-2 bg-[var(--card-bg)] text-[var(--text-color)] rounded-lg text-sm transition-all hover:bg-[var(--card-border)]">
-                    ${this.c('ui.back')}
-                </button>
-                <span id="gospelSlideNum" class="text-xs text-[var(--text-muted)]"></span>
-                <button onclick="GospelPresentation.next()" id="gospelNextBtn" class="px-5 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-lg text-sm transition-all hover:bg-yellow-400">
-                    ${this.c('ui.next')}
-                </button>
             </div>
         `;
         document.body.appendChild(modal);
@@ -664,7 +687,7 @@ const GospelPresentation = {
                 nextBtn.style.display = 'flex';
         }
         
-        content.innerHTML = `<div class="w-full max-w-md gospel-slide-enter">${html}</div>`;
+        content.innerHTML = `<div class="w-full max-w-lg gospel-slide-enter gospel-slide-stage"><div class="w-full">${html}</div></div>`;
     },
 
     renderVerse(slide) {
@@ -703,7 +726,7 @@ const GospelPresentation = {
         return `
             <div class="flex flex-col justify-center h-full">
                 <p class="gospel-fade-in text-xs text-[var(--mission-gold)] mb-1 text-center">${questionLabel}</p>
-                <h3 class="gospel-fade-up delay-1 text-lg font-bold text-white mb-4 text-center">${data.question}</h3>
+                <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-4 text-center">${data.question}</h3>
                 <div id="questionOptions">${options}</div>
                 <div id="questionFeedback" class="hidden mt-3 p-3 rounded-xl text-sm"></div>
             </div>
@@ -715,7 +738,7 @@ const GospelPresentation = {
         return `
             <div class="text-center flex flex-col justify-center h-full">
                 <div class="gospel-bounce text-4xl mb-3">${data.emoji}</div>
-                <h3 class="gospel-fade-up delay-2 text-xl font-bold text-white mb-3">${data.title}</h3>
+                <h3 class="gospel-fade-up delay-2 text-xl font-bold text-[var(--text-color)] mb-3">${data.title}</h3>
                 <p class="gospel-fade-up delay-3 text-sm text-[var(--text-muted)] mb-3">${data.text}</p>
                 <p class="gospel-fade-up delay-4 text-lg text-[var(--mission-gold)] font-bold">${data.highlight}</p>
             </div>
@@ -735,13 +758,19 @@ const GospelPresentation = {
             
             if (i === selectedIndex) {
                 if (isCorrect) {
-                    opt.classList.add('gospel-correct', 'border-green-500', 'bg-green-500/10');
+                    opt.classList.add('gospel-correct');
+                    opt.style.borderColor = 'var(--mission-gold)';
+                    opt.style.background = 'rgba(212, 160, 23, 0.12)';
                 } else {
-                    opt.classList.add('gospel-wrong', 'border-red-500', 'bg-red-500/10');
+                    opt.classList.add('gospel-wrong');
+                    opt.style.borderColor = 'var(--mission-red-bright)';
+                    opt.style.background = 'rgba(122, 0, 0, 0.10)';
                 }
             }
             if (i === data.correctIndex && !isCorrect) {
-                setTimeout(() => opt.classList.add('border-green-500'), 500);
+                setTimeout(() => {
+                    opt.style.borderColor = 'var(--mission-gold)';
+                }, 500);
             }
         });
         
@@ -749,7 +778,7 @@ const GospelPresentation = {
         feedback.classList.add('gospel-fade-up');
         
         if (isCorrect) {
-            feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-green-500/10 border border-green-500/30 text-green-300';
+            feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-[var(--mission-gold)]/10 border border-[var(--mission-gold)]/30 text-[var(--text-color)]';
             feedback.innerHTML = data.correctFeedback;
             // Play correct answer audio
             if (window.GospelAudio) {
@@ -760,7 +789,7 @@ const GospelPresentation = {
                 feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-xs bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] max-h-48 overflow-y-auto';
                 feedback.innerHTML = data.wrongExplanation;
             } else {
-                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-orange-500/10 border border-orange-500/30 text-orange-300';
+                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 text-[var(--text-color)]';
                 feedback.innerHTML = data.wrongFeedback;
             }
             // Play wrong answer audio

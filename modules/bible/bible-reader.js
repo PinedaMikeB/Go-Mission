@@ -20,6 +20,9 @@ const BibleReader = {
   commentaryData: null,
   quickInsightsData: null,
   tyndaleData: null,
+  commentaryRequestId: 0,
+  insightsLoading: false,
+  insightsLastError: null,
   
   // Bible translation (independent of global language)
   // This only affects the Bible text, NOT insights/reflect
@@ -296,7 +299,7 @@ const BibleReader = {
     overlay.innerHTML = `
       <!-- Fullscreen Header -->
       <div class="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
-        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-1 md:gap-2 text-amber-500 hover:text-amber-400">
+        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-1 md:gap-2 text-[var(--mission-gold)] hover:opacity-85">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -305,10 +308,10 @@ const BibleReader = {
         
         <!-- Clickable Title + Translation Dropdown -->
         <div class="flex items-center gap-2">
-          <button onclick="BiblePicker.open()" class="flex items-center gap-1 text-base md:text-lg font-bold text-[var(--text-color)] hover:text-amber-400 transition-colors">
+          <button onclick="BiblePicker.open()" class="flex items-center gap-1 text-base md:text-lg font-bold text-[var(--text-color)] hover:text-[var(--mission-gold)] transition-colors">
             <span>📖</span>
             <span id="fullscreenBookTitle">${bookName} ${this.currentChapter}</span>
-            <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-[var(--mission-gold)]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
@@ -324,10 +327,10 @@ const BibleReader = {
         
         <div class="flex items-center gap-1 md:gap-2">
           <!-- Font Size Controls -->
-          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-[var(--mission-gold)]/20">
             <span class="text-base md:text-lg font-bold">A-</span>
           </button>
-          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-amber-500/20">
+          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-[var(--mission-gold)]/20">
             <span class="text-base md:text-lg font-bold">A+</span>
           </button>
         </div>
@@ -349,7 +352,7 @@ const BibleReader = {
         <div class="flex items-center gap-2">
           <button onclick="BibleReader.toggleFullscreenCommentary()" 
                   id="fullscreenCommentaryBtn"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/25' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
                   ${!hasHighlights ? 'disabled' : ''}>
             <span>💡</span>
             <span>Insights</span>
@@ -358,7 +361,7 @@ const BibleReader = {
           
           <button onclick="BibleReader.openReflectModal()" 
                   id="fullscreenReflectBtn"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-500/20 text-gray-500 cursor-not-allowed'}"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
                   ${!hasHighlights ? 'disabled' : ''}>
             <span>📝</span>
             <span>Reflect</span>
@@ -369,7 +372,7 @@ const BibleReader = {
       <!-- Chapter Navigation -->
       <div class="flex items-center justify-between px-3 md:px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
         <button onclick="BibleReader.prevChapter(); BibleReader.updateFullscreenContent();" 
-                class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400 ${this.currentChapter <= 1 ? 'opacity-30 pointer-events-none' : ''}">
+                class="flex items-center gap-1 text-sm text-[var(--mission-gold)] hover:opacity-85 ${this.currentChapter <= 1 ? 'opacity-30 pointer-events-none' : ''}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
@@ -379,7 +382,7 @@ const BibleReader = {
         <span id="fullscreenChapterLabel" class="text-sm text-[var(--text-muted)]">Chapter ${this.currentChapter}</span>
         
         <button onclick="BibleReader.nextChapter(); BibleReader.updateFullscreenContent();" 
-                class="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400">
+                class="flex items-center gap-1 text-sm text-[var(--mission-gold)] hover:opacity-85">
           Next
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -398,8 +401,8 @@ const BibleReader = {
         <div id="fullscreenCommentaryPanel" class="hidden absolute inset-0 md:relative md:inset-auto md:w-80 md:border-l border-[var(--card-border)] bg-[var(--bg-color)] md:bg-[var(--nav-bg)] overflow-y-auto z-20">
           <div class="p-4 h-full flex flex-col">
             <div class="flex items-center justify-between mb-3 pb-3 border-b border-[var(--card-border)]">
-              <h3 class="text-amber-500 font-bold">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
-              <button onclick="BibleReader.toggleFullscreenCommentary()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-amber-500">
+              <h3 class="text-[var(--mission-gold)] font-bold">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
+              <button onclick="BibleReader.toggleFullscreenCommentary()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--mission-gold)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -409,7 +412,7 @@ const BibleReader = {
               ${this.generateCommentaryHTML()}
             </div>
             <!-- Back to Bible button on mobile -->
-            <button onclick="BibleReader.toggleFullscreenCommentary()" class="md:hidden mt-4 w-full py-3 bg-amber-500 text-white font-bold rounded-xl">
+            <button onclick="BibleReader.toggleFullscreenCommentary()" class="md:hidden mt-4 w-full py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl">
               ← ${lang === 'tl' ? 'Bumalik sa Bibliya' : 'Back to Bible'}
             </button>
           </div>
@@ -439,10 +442,10 @@ const BibleReader = {
     
     if (isHidden) {
       panel.classList.remove('hidden');
-      btn?.classList.add('bg-amber-500/40');
+      btn?.classList.add('bg-[var(--mission-gold)]/25');
     } else {
       panel.classList.add('hidden');
-      btn?.classList.remove('bg-amber-500/40');
+      btn?.classList.remove('bg-[var(--mission-gold)]/25');
     }
   },
 
@@ -462,12 +465,20 @@ const BibleReader = {
    * Generate commentary HTML for fullscreen panel
    */
   generateCommentaryHTML() {
+    const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
+
+    if (this.insightsLoading) {
+      return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'Naglo-load ng insights...' : 'Loading insights...'}</p>`;
+    }
+
     if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
-      const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+      if (this.highlightedVerses.length > 0) {
+        const err = this.insightsLastError ? ` (${this.insightsLastError})` : '';
+        return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'Wala pang insights para sa napiling talata.' : 'No insights available for the selected verse(s) yet.'}${err}</p>`;
+      }
       return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'I-tap ang mga talata para makita ang insights' : 'Tap verses to see insights'}</p>`;
     }
-    
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+
     const labels = {
       en: { understanding: '📖 Understanding', livingItOut: '🚶 Living It Out', godsLove: '❤️ God\'s Love' },
       tl: { understanding: '📖 Pag-unawa', livingItOut: '🚶 Isabuhay', godsLove: '❤️ Pag-ibig ng Diyos' }
@@ -478,11 +489,11 @@ const BibleReader = {
     for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
       html += `
         <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
-          <p class="text-amber-500 font-bold mb-2">Verse ${verseNum}</p>
+          <p class="text-[var(--mission-gold)] font-bold mb-2">Verse ${verseNum}</p>
           <div class="space-y-3 text-[var(--text-color)]">
-            <div><span class="text-amber-400/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
-            <div><span class="text-amber-400/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
-            <div><span class="text-amber-400/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
           </div>
         </div>
       `;
@@ -557,12 +568,12 @@ const BibleReader = {
       const hasHighlights = this.highlightedVerses.length > 0;
       if (commentaryBtn) {
         if (hasHighlights) {
-          commentaryBtn.classList.remove('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
-          commentaryBtn.classList.add('bg-amber-500/20', 'text-amber-400', 'hover:bg-amber-500/30');
+          commentaryBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          commentaryBtn.classList.add('bg-[var(--mission-gold)]/15', 'text-[var(--mission-gold)]', 'hover:bg-[var(--mission-gold)]/25');
           commentaryBtn.disabled = false;
         } else {
-          commentaryBtn.classList.add('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
-          commentaryBtn.classList.remove('bg-amber-500/20', 'text-amber-400', 'hover:bg-amber-500/30');
+          commentaryBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          commentaryBtn.classList.remove('bg-[var(--mission-gold)]/15', 'text-[var(--mission-gold)]', 'hover:bg-[var(--mission-gold)]/25');
           commentaryBtn.disabled = true;
         }
       }
@@ -576,12 +587,12 @@ const BibleReader = {
       const reflectBtn = document.getElementById('fullscreenReflectBtn');
       if (reflectBtn) {
         if (hasHighlights) {
-          reflectBtn.classList.remove('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
-          reflectBtn.classList.add('bg-green-500/20', 'text-green-400', 'hover:bg-green-500/30');
+          reflectBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.add('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
           reflectBtn.disabled = false;
         } else {
-          reflectBtn.classList.add('bg-gray-500/20', 'text-gray-500', 'cursor-not-allowed');
-          reflectBtn.classList.remove('bg-green-500/20', 'text-green-400', 'hover:bg-green-500/30');
+          reflectBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.remove('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
           reflectBtn.disabled = true;
         }
       }
@@ -592,7 +603,7 @@ const BibleReader = {
    * Generate HTML for verses (used by both normal and fullscreen views)
    */
   generateVersesHTML() {
-    if (!this.chapterData) return '<p class="text-slate-500">Loading...</p>';
+    if (!this.chapterData) return '<p class="text-[var(--text-muted)]">Loading...</p>';
     
     const verses = this.chapterData.verses;
     let html = '';
@@ -648,6 +659,8 @@ const BibleReader = {
     this.currentBook = bookId;
     this.currentChapter = chapter;
     this.highlightedVerses = [];
+    this.insightsLoading = false;
+    this.insightsLastError = null;
     
     // Use Bible-specific translation (not global language)
     // Load chapter data using BibleLoader
@@ -752,6 +765,11 @@ const BibleReader = {
     // Update UI
     this.renderPassageTitle();
     this.renderVerses();
+
+    // Refresh insights in the selected Bible translation
+    if (this.highlightedVerses.length > 0) {
+      await this.loadCommentary();
+    }
     
     // Update fullscreen if open
     if (this.preferences.isFullscreen) {
@@ -806,7 +824,7 @@ const BibleReader = {
       if (titleContainer) {
         const progressDiv = document.createElement('div');
         progressDiv.id = 'chapterProgress';
-        progressDiv.className = 'text-[10px] text-slate-500 flex items-center gap-1';
+        progressDiv.className = 'text-[10px] text-[var(--text-muted)] flex items-center gap-1';
         titleContainer.appendChild(progressDiv);
         progressEl = progressDiv;
       }
@@ -828,7 +846,7 @@ const BibleReader = {
     
     let dotsHtml = '';
     for (let i = 0; i < dotsCount; i++) {
-      dotsHtml += `<span class="w-1.5 h-1.5 rounded-full ${i < filledDots ? 'bg-amber-500' : 'bg-amber-900/40'}"></span>`;
+      dotsHtml += `<span class="w-1.5 h-1.5 rounded-full ${i < filledDots ? 'bg-[var(--accent-active)]' : 'bg-[var(--card-border)]'}"></span>`;
     }
     
     progressEl.innerHTML = `
@@ -855,7 +873,7 @@ const BibleReader = {
       if (bibleTextContainer) {
         navContainer = document.createElement('div');
         navContainer.id = 'chapterNavigation';
-        navContainer.className = 'flex justify-between items-center py-3 border-b border-white/10';
+        navContainer.className = 'flex justify-between items-center py-3 border-b border-[var(--card-border)]';
         
         // Insert before bible text
         bibleTextContainer.insertBefore(navContainer, this.elements.bibleText);
@@ -869,7 +887,7 @@ const BibleReader = {
     
     navContainer.innerHTML = `
       <button onclick="BibleReader.prevChapter()" 
-              class="flex items-center gap-1 text-xs ${hasPrev ? 'text-amber-500 hover:text-amber-400' : 'text-slate-700 cursor-not-allowed'}"
+              class="flex items-center gap-1 text-xs ${hasPrev ? 'text-[var(--mission-gold)] hover:opacity-85' : 'text-[var(--text-dim)] cursor-not-allowed'}"
               ${!hasPrev ? 'disabled' : ''}>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -877,12 +895,12 @@ const BibleReader = {
         <span>Prev</span>
       </button>
       
-      <button onclick="BiblePicker.open()" class="text-xs text-slate-400 hover:text-amber-500">
+      <button onclick="BiblePicker.open()" class="text-xs text-[var(--text-muted)] hover:text-[var(--mission-gold)]">
         Chapter ${this.currentChapter}
       </button>
       
       <button onclick="BibleReader.nextChapter()" 
-              class="flex items-center gap-1 text-xs ${hasNext ? 'text-amber-500 hover:text-amber-400' : 'text-slate-700 cursor-not-allowed'}"
+              class="flex items-center gap-1 text-xs ${hasNext ? 'text-[var(--mission-gold)] hover:opacity-85' : 'text-[var(--text-dim)] cursor-not-allowed'}"
               ${!hasNext ? 'disabled' : ''}>
         <span>Next</span>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -934,29 +952,88 @@ const BibleReader = {
   async loadCommentary() {
     if (this.highlightedVerses.length === 0) return;
     
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    // Insights should follow Bible translation selector (TL/EN), not global app language.
+    const lang = this.bibleTranslation || 'en';
+    const requestId = ++this.commentaryRequestId;
+
+    this.insightsLoading = true;
+    this.insightsLastError = null;
+    this.refreshFullscreenInsightsPanel();
     
     // Extract just verse numbers from highlighted verses
     const verseNumbers = this.highlightedVerses.map(h => h.verse);
     
-    // Get Quick Insights using BibleLoader
+    // Get Quick Insights first so panel is responsive, even if deeper notes are slower.
     if (typeof BibleLoader !== 'undefined') {
-      this.quickInsightsData = await BibleLoader.getQuickInsights(
-        this.currentBook, 
-        this.currentChapter, 
-        verseNumbers,
-        lang
-      );
-      
-      // Also load Tyndale for "Dig Deeper"
-      this.tyndaleData = await BibleLoader.getTyndale(
-        this.currentBook,
-        this.currentChapter,
-        verseNumbers
-      );
+      try {
+        const quickInsights = await BibleLoader.getQuickInsights(
+          this.currentBook,
+          this.currentChapter,
+          verseNumbers,
+          lang
+        );
+
+        if (requestId !== this.commentaryRequestId) return;
+
+        this.quickInsightsData = quickInsights || {
+          book: this.currentBook,
+          chapter: this.currentChapter,
+          verses: {}
+        };
+
+        this.insightsLoading = false;
+        this.refreshFullscreenInsightsPanel();
+      } catch (error) {
+        console.error('[BibleReader] Quick Insights load error:', error);
+        if (requestId !== this.commentaryRequestId) return;
+        this.insightsLoading = false;
+        this.insightsLastError = error?.message || String(error);
+        this.quickInsightsData = {
+          book: this.currentBook,
+          chapter: this.currentChapter,
+          verses: {}
+        };
+        this.refreshFullscreenInsightsPanel();
+      }
+
+      this.tyndaleData = null;
+      this.renderCommentary();
+      if (this.preferences.isFullscreen) {
+        this.updateFullscreenContent();
+      }
+
+      try {
+        const tyndale = await BibleLoader.getTyndale(
+          this.currentBook,
+          this.currentChapter,
+          verseNumbers
+        );
+
+        if (requestId !== this.commentaryRequestId) return;
+
+        this.tyndaleData = tyndale;
+      } catch (error) {
+        console.warn('[BibleReader] Tyndale load error:', error);
+        if (requestId !== this.commentaryRequestId) return;
+        this.tyndaleData = null;
+      }
     }
     
     this.renderCommentary();
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+    }
+  },
+
+  /**
+   * Immediately refresh the fullscreen insights panel (if present).
+   * This avoids the UI getting stuck on stale placeholder text while data loads.
+   */
+  refreshFullscreenInsightsPanel() {
+    const commentaryContent = document.getElementById('fullscreenCommentaryContent');
+    if (!commentaryContent) return;
+    commentaryContent.innerHTML = this.generateCommentaryHTML();
+    commentaryContent.style.fontSize = `${this.preferences.fontSize}px`;
   },
 
   /**
@@ -970,7 +1047,7 @@ const BibleReader = {
     
     if (!commentarySection || !commentaryContent) return;
     
-    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
     
     // Section labels
     const labels = {
@@ -1002,7 +1079,7 @@ const BibleReader = {
     
     if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
       commentaryContent.innerHTML = `
-        <p class="text-slate-400 italic text-sm">${L.noInsights}</p>
+        <p class="text-[var(--text-muted)] italic text-sm">${L.noInsights}</p>
       `;
       return;
     }
@@ -1023,25 +1100,25 @@ const BibleReader = {
       }
       
       html += `
-        <div class="mb-5 pb-4 border-b border-white/10 last:border-0 last:pb-0 last:mb-0">
-          <p class="text-amber-500 font-bold text-sm mb-3">Verse ${verseNum}</p>
+        <div class="mb-5 pb-4 border-b border-[var(--card-border)] last:border-0 last:pb-0 last:mb-0">
+          <p class="text-[var(--mission-gold)] font-bold text-sm mb-3">Verse ${verseNum}</p>
           
           <!-- Understanding -->
           <div class="mb-3">
-            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.understanding}</p>
-            <p class="text-sm text-slate-300 leading-relaxed">${insight.understanding || ''}</p>
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.understanding}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.understanding || ''}</p>
           </div>
           
           <!-- Living It Out -->
           <div class="mb-3">
-            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.livingItOut}</p>
-            <p class="text-sm text-slate-300 leading-relaxed">${insight.livingItOut || ''}</p>
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.livingItOut}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.livingItOut || ''}</p>
           </div>
           
           <!-- God's Love -->
           <div class="mb-3">
-            <p class="text-amber-400/80 text-xs font-semibold mb-1">${L.godsLove}</p>
-            <p class="text-sm text-slate-300 leading-relaxed">${insight.godsLove || ''}</p>
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.godsLove}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.godsLove || ''}</p>
           </div>
           
           ${tyndaleNote ? `
@@ -1049,12 +1126,12 @@ const BibleReader = {
           <div class="mt-3">
             <button onclick="BibleReader.toggleDigDeeper('${uniqueId}')" 
                     id="${uniqueId}-btn"
-                    class="text-xs text-amber-500/70 hover:text-amber-400 flex items-center gap-1 transition-colors">
+                    class="text-xs text-[var(--mission-gold)]/70 hover:text-[var(--mission-gold)] flex items-center gap-1 transition-colors">
               <span id="${uniqueId}-icon">▶</span>
               <span>${L.digDeeper}</span>
             </button>
-            <div id="${uniqueId}-content" class="hidden mt-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
-              <p class="text-xs text-slate-400 leading-relaxed">${tyndaleNote}</p>
+            <div id="${uniqueId}-content" class="hidden mt-2 p-3 bg-[var(--card-bg)] rounded-lg border border-[var(--card-border)]">
+              <p class="text-xs text-[var(--text-muted)] leading-relaxed">${tyndaleNote}</p>
             </div>
           </div>
           ` : ''}
@@ -1160,6 +1237,11 @@ const BibleReader = {
     
     this.quickInsightsData = null;
     this.tyndaleData = null;
+    this.insightsLoading = false;
+    this.insightsLastError = null;
+    this.commentaryRequestId += 1;
+
+    this.refreshFullscreenInsightsPanel();
     
     // Hide AI reflection card
     const aiReflectCard = document.getElementById('aiReflectCard');
@@ -1213,8 +1295,8 @@ const BibleReader = {
     if (this.elements.bibleText) {
       this.elements.bibleText.innerHTML = `
         <div class="text-center py-8">
-          <p class="text-red-400 text-sm">${message}</p>
-          <button onclick="BibleReader.loadChapter('JHN', 1)" class="mt-4 text-amber-500 text-xs hover:underline">
+          <p class="text-[var(--mission-red-bright)] text-sm">${message}</p>
+          <button onclick="BibleReader.loadChapter('JHN', 1)" class="mt-4 text-[var(--mission-gold)] text-xs hover:underline">
             Start with John 1
           </button>
         </div>
@@ -1234,6 +1316,9 @@ if (document.readyState === 'loading') {
 }
 
 // Export
+if (typeof window !== 'undefined') {
+  window.BibleReader = BibleReader;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BibleReader;
 }
