@@ -15,6 +15,8 @@ const BibleLoader = {
   paths: {
     bibleEn: 'modules/bible/data/en',
     bibleTl: 'modules/bible/data/tl',
+    commentaryEn: 'modules/bible/data/commentary/matthew-henry',
+    commentaryTl: 'modules/bible/data/commentary/matthew-henry-tl',
     quickInsights: 'modules/bible/data/quick-insights',
     tyndale: 'modules/bible/data/commentary/tyndale-json'
   },
@@ -27,6 +29,15 @@ const BibleLoader = {
     tyndale: {},       // { 'GEN': {...} }
     index: null        // Book metadata
   },
+
+  // Track lazy-loaded inline bundles (used as local-file fallback)
+  inlineBundleState: {
+    en: false,
+    tl: false
+  },
+
+  // Track lazy-loaded inline quick-insights scripts by book id
+  inlineQuickInsightsState: {},
   
   // Book ID mapping (3-letter codes)
   bookIds: [
@@ -94,6 +105,224 @@ const BibleLoader = {
     
     console.log('[BibleLoader] Ready');
   },
+
+  /**
+   * Build candidate URLs for local (file://) and deployed environments.
+   */
+  getPathCandidates(path) {
+    const cleanPath = (path || '').replace(/^\/+/, '');
+    if (!cleanPath) return [];
+
+    const candidates = [cleanPath, `/${cleanPath}`];
+
+    // In file:// mode, resolve explicit absolute file URL as the most reliable form.
+    if (typeof window !== 'undefined' && window.location?.protocol === 'file:') {
+      try {
+        const baseHref = window.location.href.replace(/[^/]*$/, '');
+        const absoluteFileUrl = new URL(cleanPath, baseHref).href;
+        candidates.unshift(absoluteFileUrl);
+      } catch (e) {
+        // Ignore URL construction errors and keep relative candidates.
+      }
+    }
+
+    return [...new Set(candidates)];
+  },
+
+  /**
+   * Parse JSON from a URL using XHR (fallback for strict file:// behavior).
+   */
+  fetchJsonViaXHR(url) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return;
+        const ok = (xhr.status >= 200 && xhr.status < 300) || xhr.status === 0;
+        if (!ok) {
+          reject(new Error(`XHR HTTP ${xhr.status}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      xhr.onerror = () => reject(new Error('XHR network error'));
+      xhr.send();
+    });
+  },
+
+  /**
+   * Load JSON with resilient local-file fallback.
+   */
+  async fetchJson(path, options = {}) {
+    const { logLabel = 'JSON', allowMissing = false } = options;
+    const candidates = this.getPathCandidates(path);
+    let lastError = null;
+    const isFileMode = typeof window !== 'undefined' && window.location?.protocol === 'file:';
+
+    for (const url of candidates) {
+      // In file:// mode, XHR is often more reliable than fetch() for local files.
+      if (isFileMode) {
+        try {
+          const data = await this.fetchJsonViaXHR(url);
+          if (data) return data;
+        } catch (xhrError) {
+          lastError = xhrError;
+        }
+      }
+
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        const isFileResponse = isFileMode && response.status === 0;
+
+        if (!response.ok && !isFileResponse) {
+          if (allowMissing && response.status === 404) return null;
+          lastError = new Error(`HTTP ${response.status} for ${url}`);
+          continue;
+        }
+
+        const text = await response.text();
+        if (!text || !text.trim()) {
+          lastError = new Error(`Empty response for ${url}`);
+
+          // Try XHR once more before moving to next candidate.
+          if (isFileMode) {
+            try {
+              const data = await this.fetchJsonViaXHR(url);
+              if (data) return data;
+            } catch (xhrError) {
+              lastError = xhrError;
+            }
+          }
+          continue;
+        }
+
+        return JSON.parse(text);
+      } catch (error) {
+        lastError = error;
+
+        // Some browsers are stricter with fetch() on file://; XHR can still work.
+        if (isFileMode) {
+          try {
+            const data = await this.fetchJsonViaXHR(url);
+            return data;
+          } catch (xhrError) {
+            lastError = xhrError;
+          }
+        }
+      }
+    }
+
+    if (!allowMissing) {
+      console.error(`[BibleLoader] ${logLabel} load failed for ${path}:`, lastError);
+    }
+
+    return null;
+  },
+
+  /**
+   * Lazy-load inline Bible bundles for file:// fallback mode.
+   */
+  async loadInlineBibleBundle(lang) {
+    if (lang !== 'en' && lang !== 'tl') return false;
+    if (this.inlineBundleState[lang] && window.GoMissionBibleInline?.[lang]) {
+      return true;
+    }
+
+    const bundlePath = `modules/bible/data-inline/${lang}-bundle.js`;
+    const candidates = this.getPathCandidates(bundlePath);
+
+    const tryScript = (index) => new Promise((resolve) => {
+      if (index >= candidates.length) {
+        resolve(false);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = candidates[index];
+      script.async = true;
+
+      script.onload = () => {
+        const ok = !!window.GoMissionBibleInline?.[lang];
+        if (ok) {
+          this.inlineBundleState[lang] = true;
+          resolve(true);
+          return;
+        }
+        script.remove();
+        tryScript(index + 1).then(resolve);
+      };
+
+      script.onerror = () => {
+        script.remove();
+        tryScript(index + 1).then(resolve);
+      };
+
+      document.head.appendChild(script);
+    });
+
+    const loaded = await tryScript(0);
+    if (!loaded) {
+      console.warn(`[BibleLoader] Inline bundle not found for ${lang}: ${bundlePath}`);
+      return false;
+    }
+
+    console.log(`[BibleLoader] Inline bundle loaded for ${lang}`);
+    return true;
+  },
+
+  /**
+   * Lazy-load inline Quick Insights for local file mode fallback.
+   */
+  async loadInlineQuickInsights(bookId) {
+    if (!bookId) return false;
+    if (this.inlineQuickInsightsState[bookId] && window.GoMissionQuickInsightsInline?.[bookId]) {
+      return true;
+    }
+
+    const bundlePath = `modules/bible/data-inline/quick-insights/${bookId}.js`;
+    const candidates = this.getPathCandidates(bundlePath);
+
+    const tryScript = (index) => new Promise((resolve) => {
+      if (index >= candidates.length) {
+        resolve(false);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = candidates[index];
+      script.async = true;
+
+      script.onload = () => {
+        const ok = !!window.GoMissionQuickInsightsInline?.[bookId];
+        if (ok) {
+          this.inlineQuickInsightsState[bookId] = true;
+          resolve(true);
+          return;
+        }
+        script.remove();
+        tryScript(index + 1).then(resolve);
+      };
+
+      script.onerror = () => {
+        script.remove();
+        tryScript(index + 1).then(resolve);
+      };
+
+      document.head.appendChild(script);
+    });
+
+    const loaded = await tryScript(0);
+    if (!loaded) {
+      return false;
+    }
+
+    console.log(`[BibleLoader] Inline Quick Insights loaded for ${bookId}`);
+    return true;
+  },
   
   /**
    * Get book name in current or specified language
@@ -115,6 +344,7 @@ const BibleLoader = {
   async loadBook(bookId, lang = null) {
     const l = lang || (typeof i18n !== 'undefined' ? i18n.getLang() : 'en');
     const cacheKey = `${l}:${bookId}`;
+    const isFileMode = typeof window !== 'undefined' && window.location?.protocol === 'file:';
     
     // Return from cache if available
     if (this.cache.bible[cacheKey]) {
@@ -126,12 +356,40 @@ const BibleLoader = {
     const url = `${basePath}/${bookId}.json`;
     
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      // Fast path: use preloaded inline bundle if present.
+      const preloadedInline = window.GoMissionBibleInline?.[l]?.[bookId];
+      if (preloadedInline) {
+        this.cache.bible[cacheKey] = preloadedInline;
+        return preloadedInline;
       }
-      
-      const data = await response.json();
+
+      // File mode fallback: attempt inline bundle before fetch/XHR.
+      if (isFileMode) {
+        const loadedInline = await this.loadInlineBibleBundle(l);
+        if (loadedInline) {
+          const inlineData = window.GoMissionBibleInline?.[l]?.[bookId] || null;
+          if (inlineData) {
+            this.cache.bible[cacheKey] = inlineData;
+            return inlineData;
+          }
+        }
+      }
+
+      let data = await this.fetchJson(url, {
+        logLabel: `Bible ${bookId} (${l})`,
+        allowMissing: false
+      });
+
+      // Fallback for local file mode when fetch/XHR is blocked.
+      if (!data) {
+        const loadedInline = await this.loadInlineBibleBundle(l);
+        if (loadedInline) {
+          data = window.GoMissionBibleInline?.[l]?.[bookId] || null;
+        }
+      }
+
+      if (!data) return null;
+
       this.cache.bible[cacheKey] = data;
       console.log(`[BibleLoader] Loaded ${bookId} (${l})`);
       return data;
@@ -214,17 +472,18 @@ const BibleLoader = {
     const url = `${basePath}/${bookId}.json`;
     
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        // If Tagalog not available, fallback to English
+      const data = await this.fetchJson(url, {
+        logLabel: `Commentary ${bookId} (${l})`,
+        allowMissing: true
+      });
+      if (!data) {
         if (l === 'tl') {
           console.log(`[BibleLoader] TL commentary not available for ${bookId}, falling back to EN`);
           return this.loadCommentary(bookId, 'en');
         }
-        throw new Error(`HTTP ${response.status}`);
+        return null;
       }
-      
-      const data = await response.json();
+
       this.cache.commentary[cacheKey] = data;
       console.log(`[BibleLoader] Loaded commentary ${bookId} (${l})`);
       return data;
@@ -290,21 +549,53 @@ const BibleLoader = {
    * @returns {Promise<object>}
    */
   async loadQuickInsights(bookId) {
+    const isFileMode = typeof window !== 'undefined' && window.location?.protocol === 'file:';
+
     // Return from cache if available
     if (this.cache.quickInsights[bookId]) {
       return this.cache.quickInsights[bookId];
+    }
+
+    // Fast path for preloaded inline quick insights
+    const preloadedInline = window.GoMissionQuickInsightsInline?.[bookId];
+    if (preloadedInline) {
+      this.cache.quickInsights[bookId] = preloadedInline;
+      return preloadedInline;
+    }
+
+    // File mode fallback: attempt inline data before fetch/XHR
+    if (isFileMode) {
+      const loadedInline = await this.loadInlineQuickInsights(bookId);
+      if (loadedInline) {
+        const inlineData = window.GoMissionQuickInsightsInline?.[bookId] || null;
+        if (inlineData) {
+          this.cache.quickInsights[bookId] = inlineData;
+          return inlineData;
+        }
+      }
     }
     
     const url = `${this.paths.quickInsights}/${bookId}.json`;
     
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
+      let data = await this.fetchJson(url, {
+        logLabel: `Quick Insights ${bookId}`,
+        allowMissing: true
+      });
+
+      // Final fallback for local file mode
+      if (!data) {
+        const loadedInline = await this.loadInlineQuickInsights(bookId);
+        if (loadedInline) {
+          data = window.GoMissionQuickInsightsInline?.[bookId] || null;
+        }
+      }
+
+      if (!data) {
         console.log(`[BibleLoader] Quick Insights not available for ${bookId}`);
         return null;
       }
-      
-      const data = await response.json();
+
       this.cache.quickInsights[bookId] = data;
       console.log(`[BibleLoader] Loaded Quick Insights for ${bookId}`);
       return data;
@@ -375,13 +666,15 @@ const BibleLoader = {
     const url = `${this.paths.tyndale}/${bookId}.json`;
     
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
+      const data = await this.fetchJson(url, {
+        logLabel: `Tyndale ${bookId}`,
+        allowMissing: true
+      });
+      if (!data) {
         console.log(`[BibleLoader] Tyndale not available for ${bookId}`);
         return null;
       }
-      
-      const data = await response.json();
+
       this.cache.tyndale[bookId] = data;
       console.log(`[BibleLoader] Loaded Tyndale for ${bookId}`);
       return data;
@@ -430,8 +723,11 @@ const BibleLoader = {
    */
   async hasQuickInsights(bookId) {
     try {
-      const response = await fetch(`${this.paths.quickInsights}/${bookId}.json`, { method: 'HEAD' });
-      return response.ok;
+      const data = await this.fetchJson(`${this.paths.quickInsights}/${bookId}.json`, {
+        logLabel: `Quick Insights HEAD ${bookId}`,
+        allowMissing: true
+      });
+      return !!data;
     } catch {
       return false;
     }
@@ -518,6 +814,9 @@ if (document.readyState === 'loading') {
 }
 
 // Export
+if (typeof window !== 'undefined') {
+  window.BibleLoader = BibleLoader;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BibleLoader;
 }

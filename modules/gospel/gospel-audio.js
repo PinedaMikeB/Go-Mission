@@ -18,9 +18,10 @@ const GospelAudio = {
     isPlaying: false,
     currentSlide: null,
     isMuted: false,
+    currentAudioType: 'default',
     
-    // Base path for audio files
-    basePath: '/assets/audio/gospel/',
+    // Base paths for audio files (support both file:// local preview and deployed web root)
+    basePaths: ['assets/audio/gospel/', '/assets/audio/gospel/'],
     
     // Tagalog audio files mapped to slide index
     // Slide index (0-based) → filename
@@ -354,6 +355,17 @@ const GospelAudio = {
     getAudioMap() {
         return this.getLang() === 'en' ? this.slideAudioEN : this.slideAudioTL;
     },
+
+    /**
+     * Build possible source URLs for an audio file.
+     */
+    getAudioSourceCandidates(audioFile) {
+        const encodedPath = audioFile.split('/').map(part => encodeURIComponent(part)).join('/');
+        const isFileProtocol = window.location.protocol === 'file:';
+        const orderedBasePaths = isFileProtocol ? this.basePaths : [...this.basePaths].reverse();
+        const candidates = orderedBasePaths.map(base => `${base}${encodedPath}`);
+        return [...new Set(candidates)];
+    },
     
     /**
      * Initialize audio system
@@ -417,23 +429,46 @@ const GospelAudio = {
         }
         
         this.currentSlide = slideIndex;
-        // Encode only the filename parts (spaces), not the path slashes
-        const encodedPath = audioFile.split('/').map(part => encodeURIComponent(part)).join('/');
-        this.audio.src = this.basePath + encodedPath;
-        this.audio.load();
+        this.currentAudioType = audioType;
+        const sourceCandidates = this.getAudioSourceCandidates(audioFile);
+        if (!sourceCandidates.length) return;
+
+        const tryPlaySource = (candidateIndex) => {
+            if (candidateIndex >= sourceCandidates.length) {
+                console.warn(`[GospelAudio] No playable source found for slide ${slideIndex}: ${audioFile}`);
+                this.isPlaying = false;
+                this.updateUI();
+                return;
+            }
+
+            this.audio.src = sourceCandidates[candidateIndex];
+            this.audio.load();
         
-        if (!this.isMuted) {
+            if (this.isMuted) {
+                this.isPlaying = false;
+                this.updateUI();
+                return;
+            }
+
             this.audio.play()
                 .then(() => {
                     this.isPlaying = true;
                     this.updateUI();
-                    console.log(`[GospelAudio] Playing slide ${slideIndex} (${audioType}): ${audioFile}`);
+                    console.log(`[GospelAudio] Playing slide ${slideIndex} (${audioType}): ${this.audio.src}`);
                 })
                 .catch(e => {
-                    console.warn('[GospelAudio] Autoplay blocked:', e.message);
-                    this.showPlayPrompt();
+                    // Autoplay restrictions should not trigger path fallback.
+                    if (e?.name === 'NotAllowedError') {
+                        console.warn('[GospelAudio] Autoplay blocked:', e.message);
+                        this.showPlayPrompt();
+                        return;
+                    }
+                    console.warn(`[GospelAudio] Source failed (${candidateIndex + 1}/${sourceCandidates.length}):`, this.audio.src);
+                    tryPlaySource(candidateIndex + 1);
                 });
-        }
+        };
+
+        tryPlaySource(0);
     },
     
     /**
@@ -516,15 +551,28 @@ const GospelAudio = {
      * Toggle mute
      */
     toggleMute() {
-        this.isMuted = !this.isMuted;
-        this.audio.muted = this.isMuted;
-        localStorage.setItem('gospelAudioMuted', this.isMuted);
-        this.updateUI();
-        
-        // If unmuting and on a slide with audio, play it
-        if (!this.isMuted && this.currentSlide !== null) {
-            this.replay();
+        // If currently muted, unmute and replay current narration.
+        if (this.isMuted) {
+            this.isMuted = false;
+            this.audio.muted = false;
+            localStorage.setItem('gospelAudioMuted', 'false');
+            if (this.currentSlide !== null) this.replay();
+            this.updateUI();
+            return;
         }
+
+        // If not muted but not currently playing (e.g., autoplay blocked), play on user gesture.
+        if (!this.isPlaying && this.currentSlide !== null) {
+            this.play();
+            this.updateUI();
+            return;
+        }
+
+        // Otherwise, mute.
+        this.isMuted = true;
+        this.audio.muted = true;
+        localStorage.setItem('gospelAudioMuted', 'true');
+        this.updateUI();
     },
     
     /**
@@ -540,7 +588,7 @@ const GospelAudio = {
      * Handle audio errors
      */
     onError(e) {
-        console.warn('[GospelAudio] Error loading audio:', e);
+        console.warn('[GospelAudio] Error loading audio:', this.audio?.src, e);
         this.isPlaying = false;
         this.updateUI();
     },
