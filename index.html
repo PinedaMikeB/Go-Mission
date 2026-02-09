@@ -12,7 +12,7 @@
         // Auto-generated build timestamp - changes on every deployment
         const BUILD_TIMESTAMP = '1769521046000';
     </script>
-    <script src="/modules/core/auto-update.js"></script>
+    <script src="modules/core/auto-update.js"></script>
     
     <!-- PWA Auto-Calibration: Redirect to clean URL when opened from home screen -->
     <script>
@@ -301,19 +301,26 @@
         .stage-node {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #8B4513 0%, #D2691E 50%, #CD853F 100%);
-            border: 5px solid rgba(139, 69, 19, 0.3);
+            background: var(--node-bg);
+            border: 5px solid var(--node-border);
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
-            box-shadow: 0 4px 12px rgba(205, 133, 63, 0.4);
+            box-shadow: 0 4px 12px var(--node-shadow);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
             margin-bottom: 1rem;
             z-index: 2;
+        }
+
+        .light-mode .stage-node {
+            box-shadow:
+                0 4px 12px rgba(139, 69, 19, 0.15),
+                0 8px 24px rgba(210, 105, 30, 0.1),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8);
         }
         
         .stage-node:hover {
@@ -322,7 +329,7 @@
         
         /* Current Stage - EXACT FROM PROTOTYPE */
         .stage.current .stage-node {
-            background: linear-gradient(135deg, #D94A00 0%, #fbbf24 100%);
+            background: var(--node-current);
             border-color: #fbbf24;
             border-width: 6px;
             animation: currentPulse 2s ease-in-out infinite;
@@ -336,7 +343,11 @@
         
         /* Completed Stage */
         .stage.completed .stage-node {
-            border-color: #10b981;
+            border-color: var(--node-completed);
+        }
+
+        .light-mode .stage.completed .stage-node {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 50%, #b1dfbb 100%);
         }
         
         .stage.completed .stage-node::after {
@@ -346,7 +357,7 @@
             right: -8px;
             width: 32px;
             height: 32px;
-            background: #10b981;
+            background: var(--node-completed);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -355,16 +366,22 @@
             font-size: 1.1rem;
             font-weight: bold;
         }
+
+        .light-mode .stage.completed .stage-node::after {
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
         
         /* === PATH LINE - EXACT FROM PROTOTYPE === */
         .path-wrapper {
             position: relative;
-            padding: 2rem 0 1rem;
+            margin-top: 1.2rem;
+            padding: 2.35rem 0 1rem;
         }
         
         .path-line-container {
             position: absolute;
-            top: 80px;
+            top: 86px;
             left: 0;
             right: 0;
             height: 8px;
@@ -377,7 +394,7 @@
             position: relative;
             width: 100%;
             height: 8px;
-            background: linear-gradient(to right, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.6) 50%, #fbbf24 100%);
+            background: var(--path-line);
             border-radius: 10px;
         }
         
@@ -388,7 +405,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(to right, transparent 0%, rgba(251, 191, 36, 0.6) 50%, transparent 100%);
+            background: linear-gradient(to right, transparent 0%, var(--path-glow) 50%, transparent 100%);
             background-size: 200px 100%;
             animation: flowRight 3s linear infinite;
             border-radius: 10px;
@@ -406,7 +423,7 @@
             top: 50%;
             transform: translateY(-50%);
             font-size: 1.5rem;
-            color: #fbbf24;
+            color: var(--text-accent);
             animation: slideRight 2s ease-in-out infinite;
         }
         
@@ -422,7 +439,7 @@
             overflow-x: auto;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
-            padding: 0 1rem 1rem;
+            padding: 1.5rem 1rem 1rem;
             scrollbar-width: none;
         }
         
@@ -1163,6 +1180,80 @@
             0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
             50% { transform: translateY(-50%) translateX(5px); opacity: 0.6; }
         }
+
+        .mission-groups-hero {
+            position: relative;
+            overflow: hidden;
+            border-radius: 1.25rem;
+            border: 1px solid var(--card-border);
+            background:
+                radial-gradient(circle at 12% 16%, rgba(251, 191, 36, 0.22), transparent 38%),
+                radial-gradient(circle at 88% 82%, rgba(217, 74, 0, 0.20), transparent 42%),
+                linear-gradient(140deg, rgba(25, 10, 10, 0.92), rgba(45, 15, 15, 0.85));
+            box-shadow:
+                0 18px 45px var(--shadow-color),
+                inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transform: perspective(1200px) rotateX(2deg);
+            animation: missionGroupsFloat 7s ease-in-out infinite;
+        }
+
+        .light-mode .mission-groups-hero {
+            background:
+                radial-gradient(circle at 15% 18%, rgba(212, 160, 23, 0.18), transparent 40%),
+                radial-gradient(circle at 88% 78%, rgba(217, 74, 0, 0.14), transparent 45%),
+                linear-gradient(145deg, #fffdf9, #f6efe6);
+            box-shadow:
+                0 16px 32px rgba(123, 0, 0, 0.14),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .mission-groups-hero::after {
+            content: '';
+            position: absolute;
+            inset: -20% auto auto -15%;
+            width: 60%;
+            height: 170%;
+            transform: rotate(18deg);
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.12), transparent 65%);
+            pointer-events: none;
+        }
+
+        .mission-groups-stat {
+            border-radius: 1rem;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            box-shadow:
+                0 10px 24px var(--shadow-color),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transform: perspective(1000px) translateZ(0);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .mission-groups-stat:hover {
+            transform: perspective(1000px) translateY(-2px) scale(1.01);
+            border-color: rgba(251, 191, 36, 0.35);
+            box-shadow:
+                0 14px 30px var(--shadow-color),
+                0 0 0 1px rgba(251, 191, 36, 0.12) inset;
+        }
+
+        .mission-groups-status-item {
+            border-radius: 0.95rem;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            box-shadow: 0 7px 20px var(--shadow-color);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .mission-groups-status-item:hover {
+            transform: translateY(-1px);
+            border-color: rgba(251, 191, 36, 0.25);
+        }
+
+        @keyframes missionGroupsFloat {
+            0%, 100% { transform: perspective(1200px) rotateX(2deg) translateY(0); }
+            50% { transform: perspective(1200px) rotateX(2deg) translateY(-3px); }
+        }
     </style>
 </head>
 <body class="bg-mission-sunset min-h-screen">
@@ -1656,7 +1747,7 @@
             <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
             <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
                 <!-- Header with Menu -->
-                <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                <div class="p-4 border-b border-[var(--card-border)] flex items-center">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">🔥</span>
                         <div>
@@ -1664,12 +1755,6 @@
                             <p class="text-xs text-[var(--accent-active)] font-medium" id="devotionDate"></p>
                         </div>
                     </div>
-                    <!-- Menu Button -->
-                    <button onclick="toggleDevotionMenu()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
                 </div>
 
                 <!-- Collapsed Bible Preview - Cream bg area like Journey phase card -->
@@ -1866,26 +1951,6 @@
 
             <!-- Cards Grid -->
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                
-                <!-- My Mission Card (opens My Groups screen) -->
-                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up cursor-pointer hover:ring-1 hover:ring-[var(--mission-gold)]/30 transition-all" onclick="MyGroups.open()">
-                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
-                            <span class="text-amber-500">👥</span>
-                            My Mission
-                            <span id="pendingRequestsBadge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
-                        </h3>
-                        <span class="text-[var(--text-muted)]">›</span>
-                    </div>
-                    <div class="p-4" id="myMissionCardContent">
-                        <p id="missionVerseText" class="text-[var(--text-muted)] text-sm italic mb-2">"Go therefore and make disciples of all nations..."</p>
-                        <p id="missionVerseRef" class="text-[var(--mission-gold)] text-xs font-medium">— Matthew 28:19</p>
-                        <div class="mt-4 flex items-center justify-between text-xs">
-                            <span class="text-[var(--text-dim)]" id="missionGroupCount">0 groups</span>
-                            <span class="text-[var(--mission-gold)]">View Groups →</span>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- My Training Card (opens Training screen) -->
                 <div class="mission-card rounded-2xl overflow-hidden animate-fade-up cursor-pointer hover:ring-1 hover:ring-[var(--mission-gold)]/30 transition-all" onclick="Training.openFullScreen()">
@@ -1970,7 +2035,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Messages</span>
                 </button>
                 <!-- Groups/Dash -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="MyGroups.open()">
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="MyGroups.openDashboard()">
                     <div class="relative">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1982,6 +2047,74 @@
                 </button>
             </div>
         </nav>
+    </div>
+
+    <!-- Mission Groups Dashboard Screen -->
+    <div id="missionGroupsDashboardScreen" class="fixed inset-0 bg-[var(--bg-color)] z-50 hidden flex flex-col">
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="MyGroups.closeDashboard()" class="text-[var(--mission-gold)] hover:opacity-80">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <h2 class="text-lg font-bold text-[var(--text-color)]">My Mission Groups</h2>
+            </div>
+            <button onclick="MyGroups.open(true)" class="text-[var(--mission-gold)] text-sm font-medium">My Groups</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="mission-groups-hero p-5">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)] mb-2">Mission Journey</p>
+                <h3 class="font-black text-[var(--text-color)] text-xl mb-1">Stay Faithful, Keep Showing Up</h3>
+                <p id="missionGroupsEncouragement" class="text-sm text-[var(--text-muted)] italic leading-relaxed">
+                    Building consistency in community makes discipleship stronger.
+                </p>
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-xs text-[var(--text-muted)]">Current meeting streak</span>
+                    <span id="missionGroupsHeroStreak" class="text-2xl font-black text-[var(--mission-gold)]">0</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="mission-groups-stat p-4">
+                    <p class="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Total Groups</p>
+                    <p id="missionGroupsTotalGroups" class="text-2xl font-black text-[var(--text-color)] mt-1">0</p>
+                </div>
+                <div class="mission-groups-stat p-4">
+                    <p class="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Attendance Rate</p>
+                    <p id="missionGroupsAttendanceRate" class="text-2xl font-black text-[var(--mission-gold)] mt-1">0%</p>
+                </div>
+                <div class="mission-groups-stat p-4">
+                    <p class="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Meetings This Month</p>
+                    <p id="missionGroupsMeetingsMonth" class="text-2xl font-black text-[var(--text-color)] mt-1">0</p>
+                </div>
+                <div class="mission-groups-stat p-4">
+                    <p class="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Last Meeting</p>
+                    <p id="missionGroupsLastMeeting" class="text-sm font-bold text-[var(--text-color)] mt-2">No meeting yet</p>
+                </div>
+            </div>
+
+            <div class="mission-card rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                    <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                        <span class="text-[var(--mission-gold)]">👥</span> Group Status
+                    </h3>
+                </div>
+                <div id="missionGroupsStatusList" class="p-4 space-y-3">
+                    <p class="text-[var(--text-muted)] text-sm">Loading mission groups...</p>
+                </div>
+            </div>
+
+            <div id="missionGroupsActionBar" class="pb-6 block gap-2">
+                <button id="missionGroupsCreateBtn" onclick="MyGroups.showCreateModal()" class="hidden w-full py-3 rounded-xl font-bold text-sm bg-[var(--mission-red-bright)] text-white hover:opacity-90 transition-opacity">
+                    Create a Group
+                </button>
+                <button id="missionGroupsJoinBtn" onclick="MyGroups.showJoinModal()" class="w-full py-3 rounded-xl font-bold text-sm border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/10 transition-colors">
+                    Join Mission Group with Code
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Group Modal (for join/create/requests) -->
@@ -2386,110 +2519,61 @@
         }
 
         window.updateJourneyDisplay = function(stage) {
-            const stages = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
-            
-            // Stage content in English and Tagalog
-            const stageContent = {
-                'seeker': {
-                    name_en: 'ON THE JOURNEY',
-                    name_tl: 'NASA PAGLALAKBAY',
-                    encouragement_en: 'God drew you to Himself.<br>He sees your seeking heart and delights in it.',
-                    encouragement_tl: 'Inakay ka ng Diyos palapit sa Kanya.<br>Nakikita Niya ang puso mong naghahanap, at kinalulugdan Niya ito.',
-                    next_en: 'Walk as a Disciple',
-                    next_tl: 'Mamuhay Bilang Alagad'
-                },
-                'disciple': {
-                    name_en: 'DISCIPLE',
-                    name_tl: 'ALAGAD',
-                    encouragement_en: 'You are learning to follow Jesus.<br>He is shaping you to be more like Him.',
-                    encouragement_tl: 'Natututo kang sumunod kay Jesus.<br>Hinuhubog ka Niya upang maging katulad Niya.',
-                    next_en: 'Become a Disciple-Maker',
-                    next_tl: 'Maging Tagapaghubog ng Alagad'
-                },
-                'disciple-maker': {
-                    name_en: 'DISCIPLE-MAKER',
-                    name_tl: 'TAGAPAGHUBOG NG ALAGAD',
-                    encouragement_en: 'You are now investing in others.<br>God is multiplying His kingdom through you.',
-                    encouragement_tl: 'Namumuhunan ka na sa iba.<br>Pinarami ng Diyos ang Kanyang kaharian sa pamamagitan mo.',
-                    next_en: 'Become a Builder',
-                    next_tl: 'Maging Tagapagtayo'
-                },
-                'builder': {
-                    name_en: 'BUILDER',
-                    name_tl: 'TAGAPAGTAYO',
-                    encouragement_en: 'You are building a community of disciples.<br>God is using you to lead His mission.',
-                    encouragement_tl: 'Nagtatayo ka ng komunidad ng mga alagad.<br>Ginagamit ka ng Diyos upang pangunahan ang Kanyang misyon.',
-                    next_en: 'Become a Multiplier',
-                    next_tl: 'Maging Tagapagparami'
-                },
-                'multiplier': {
-                    name_en: 'MULTIPLIER',
-                    name_tl: 'TAGAPAGPARAMI',
-                    encouragement_en: 'You are raising leaders who raise leaders.<br>Generations will be transformed because of your faithfulness.',
-                    encouragement_tl: 'Naghuhubog ka ng mga lider na naghuhubog ng mga lider.<br>Mababago ang mga henerasyon dahil sa iyong katapatan.',
-                    next_en: 'Keep multiplying!',
-                    next_tl: 'Patuloy na magparami!'
-                }
-            };
-            
-            const content = stageContent[stage] || stageContent['seeker'];
-            // Use i18n.getLang() for reliable language detection
+            const stageKeys = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
             const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : (currentLanguage || 'tl');
-            
-            const currentIndex = stages.indexOf(stage);
-            const progressPercent = (currentIndex / (stages.length - 1)) * 100;
-            
-            document.getElementById('journeyProgressLine').style.width = progressPercent + '%';
-            
-            // Update card title
-            document.getElementById('journeyCardTitle').textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
-            
-            // Update stage label
-            document.getElementById('journeyStageLabel').textContent = lang === 'tl' ? 'KUNG SAAN KA NILALAGAY NG DIYOS NGAYON' : 'WHERE GOD HAS YOU TODAY';
-            
-            // Update stage name
-            document.getElementById('journeyPhaseName').textContent = lang === 'tl' ? content.name_tl : content.name_en;
-            
-            // Update encouragement
-            document.getElementById('journeyEncouragement').innerHTML = lang === 'tl' ? content.encouragement_tl : content.encouragement_en;
-            
-            // Update next step
-            document.getElementById('journeyNextLabel').textContent = lang === 'tl' ? 'Susunod:' : 'Next:';
-            document.getElementById('journeyNextStep').textContent = lang === 'tl' ? content.next_tl : content.next_en;
-            
-            // Update button text
-            document.getElementById('viewNextStepsBtn').textContent = lang === 'tl' ? 'HUMAKBANG NGAYON' : 'TAKE A STEP TODAY';
-            
-            // Update progress dots
-            stages.forEach((s, i) => {
-                const dot = document.getElementById('dot-' + s);
-                const label = document.getElementById('label-' + s);
-                if (i <= currentIndex) {
-                    dot.classList.add('active');
-                    dot.classList.remove('inactive');
-                    label.classList.add('text-amber-400');
-                    label.classList.remove('text-slate-600');
-                } else {
-                    dot.classList.remove('active');
-                    dot.classList.add('inactive');
-                    label.classList.remove('text-amber-400');
-                    label.classList.add('text-slate-600');
+            const resolvedIndex = stageKeys.includes(stage) ? stageKeys.indexOf(stage) : 0;
+            const currentStageNum = resolvedIndex + 1;
+
+            // Keep existing journey text content logic, only switch title label.
+            const titleTextEl = document.getElementById('journeyTitleText');
+            if (titleTextEl) {
+                titleTextEl.textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
+            }
+
+            // Keep line full-width so the animated glow is always visible.
+            const progressLine = document.getElementById('journeyProgressLine');
+            if (progressLine) {
+                progressLine.style.width = '100%';
+                progressLine.dataset.currentStage = String(currentStageNum);
+            }
+
+            // Update stage states (completed/current/upcoming) using existing markup.
+            const stageCards = document.querySelectorAll('#journeyStagesScroll .stage');
+            stageCards.forEach((card, idx) => {
+                card.classList.remove('completed', 'current');
+                if (idx < resolvedIndex) {
+                    card.classList.add('completed');
+                } else if (idx === resolvedIndex) {
+                    card.classList.add('current');
                 }
             });
-            
-            // Update dot labels based on language
-            const dotLabels = {
-                'seeker': { en: 'On The<br>Journey', tl: 'Nasa<br>Paglalakbay' },
-                'disciple': { en: 'Disciple', tl: 'Alagad' },
-                'disciple-maker': { en: 'Disciple-<br>Maker', tl: 'Tagapag-<br>hubog' },
-                'builder': { en: 'Builder', tl: 'Tagapag-<br>tayo' },
-                'multiplier': { en: 'Multiplier', tl: 'Tagapag-<br>parami' }
-            };
-            
-            stages.forEach(s => {
-                const label = document.getElementById('label-' + s);
-                label.innerHTML = lang === 'tl' ? dotLabels[s].tl : dotLabels[s].en;
-            });
+
+            const currentStageCard = document.querySelector(`#journeyStagesScroll .stage[data-stage="${currentStageNum}"]`);
+            if (!currentStageCard) return;
+
+            // Move "YOU ARE HERE" badge to current stage.
+            const badge = document.getElementById('youAreHere');
+            if (badge) {
+                let badgeContainer = currentStageCard.querySelector('.you-are-here-container');
+                if (!badgeContainer) {
+                    badgeContainer = document.createElement('div');
+                    badgeContainer.className = 'you-are-here-container';
+                    currentStageCard.appendChild(badgeContainer);
+                }
+                if (badge.parentElement !== badgeContainer) {
+                    badgeContainer.appendChild(badge);
+                }
+            }
+
+            // Move CTA button to current stage card while preserving original text/behavior.
+            const ctaBtn = document.querySelector('#journeyStagesScroll .take-step-btn');
+            const currentStageContent = currentStageCard.querySelector('.stage-content');
+            if (ctaBtn && currentStageContent && ctaBtn.parentElement !== currentStageContent) {
+                currentStageContent.appendChild(ctaBtn);
+            }
+
+            // Auto-center current stage in horizontal scroll.
+            currentStageCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
 
         window.loadWeekProgress = async function(uid) {
@@ -3467,11 +3551,11 @@
     </script>
 
     <!-- Journey Modules -->
-    <script src="/modules/journey/next-steps-modal.js"></script>
+    <script src="modules/journey/next-steps-modal.js"></script>
     
     <!-- Gospel Presentation Module -->
-    <script src="/modules/gospel/gospel-content.js"></script>
-    <script src="/modules/gospel/gospel-audio.js"></script>
-    <script src="/modules/gospel/gospel-presentation.js"></script>
+    <script src="modules/gospel/gospel-content.js"></script>
+    <script src="modules/gospel/gospel-audio.js"></script>
+    <script src="modules/gospel/gospel-presentation.js"></script>
 </body>
 </html>

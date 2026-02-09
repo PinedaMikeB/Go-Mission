@@ -24,6 +24,7 @@ const GroupMeeting = {
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
+  allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -49,28 +50,54 @@ const GroupMeeting = {
         resolve();
         return;
       }
-      
+
       const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
-      const script = document.createElement('script');
-      script.src = `https://${domain}/external_api.js`;
-      script.async = true;
-      script.onload = () => {
-        console.log('[GroupMeeting] Jitsi API loaded from', domain);
-        resolve();
-      };
-      script.onerror = () => {
-        console.error('[GroupMeeting] Failed to load Jitsi API from', domain);
-        // Try fallback to public Jitsi if self-hosted fails
-        if (this.useSelfHosted) {
-          console.log('[GroupMeeting] Trying public Jitsi fallback...');
-          this.useSelfHosted = false;
-          script.remove();
-          this.loadJitsiScript().then(resolve).catch(reject);
-        } else {
-          reject(new Error('Failed to load Jitsi API'));
+      const candidates = [
+        `https://${domain}/external_api.js`,
+        `https://${domain}/libs/external_api.min.js`
+      ];
+
+      const loadCandidate = (index) => {
+        if (index >= candidates.length) {
+          console.error('[GroupMeeting] Failed to load Jitsi API from', domain, '(all script paths)');
+
+          // Try fallback to public Jitsi only if explicitly allowed
+          if (this.useSelfHosted && this.allowPublicFallback) {
+            console.log('[GroupMeeting] Trying public Jitsi fallback...');
+            this.useSelfHosted = false;
+            this.loadJitsiScript().then(resolve).catch(reject);
+            return;
+          }
+
+          reject(new Error(`Failed to load Jitsi API from ${domain}. Check SSL and external_api path.`));
+          return;
         }
+
+        const script = document.createElement('script');
+        script.src = candidates[index];
+        script.async = true;
+
+        script.onload = () => {
+          if (window.JitsiMeetExternalAPI) {
+            console.log('[GroupMeeting] Jitsi API loaded from', candidates[index]);
+            resolve();
+            return;
+          }
+
+          // Loaded but did not expose API; try next candidate.
+          script.remove();
+          loadCandidate(index + 1);
+        };
+
+        script.onerror = () => {
+          script.remove();
+          loadCandidate(index + 1);
+        };
+
+        document.head.appendChild(script);
       };
-      document.head.appendChild(script);
+
+      loadCandidate(0);
     });
   },
   
@@ -197,6 +224,9 @@ const GroupMeeting = {
         configOverwrite: {
           // Basic settings
           prejoinPageEnabled: false,
+          prejoinConfig: {
+            enabled: false
+          },
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableDeepLinking: true,
@@ -224,6 +254,13 @@ const GroupMeeting = {
           SHOW_WATERMARK_FOR_GUESTS: false,
           SHOW_BRAND_WATERMARK: false,
           SHOW_POWERED_BY: false,
+          DEFAULT_LOGO_URL: '',
+          DEFAULT_WELCOME_PAGE_LOGO_URL: '',
+          JITSI_WATERMARK_LINK: '',
+          BRAND_WATERMARK_LINK: '',
+          APP_NAME: '',
+          NATIVE_APP_NAME: '',
+          PROVIDER_NAME: '',
           MOBILE_APP_PROMO: false,
           
           // Clean UI
@@ -271,7 +308,7 @@ const GroupMeeting = {
     } catch (error) {
       console.error('[GroupMeeting] Error creating Jitsi instance:', error);
       this.hideMeetingModal();
-      alert('Failed to start meeting. Please try again.');
+      alert('Failed to start meeting on your server. Check SSL trust and Jitsi API path (external_api.js).');
     }
   },
   

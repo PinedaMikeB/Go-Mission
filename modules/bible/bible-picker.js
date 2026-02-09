@@ -533,6 +533,9 @@ if (document.readyState === 'loading') {
 }
 
 // Export
+if (typeof window !== 'undefined') {
+  window.BiblePicker = BiblePicker;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BiblePicker;
 }
