@@ -421,16 +421,7 @@ const GroupMeeting = {
     } catch (error) {
       console.error('[GroupMeeting] Error creating Jitsi instance:', error);
       this.setMeetingStatus(`Failed to start meeting: ${error?.message || error}`);
-
-      // Fast fallback: open the room directly so the meeting can still happen.
-      try {
-        if (this.currentRoomUrl) {
-          window.open(this.currentRoomUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch (e) {
-        // ignore
-      }
-      // Keep modal open so user can see the error; allow them to close via Leave.
+      // Keep modal open so user can see the error; allow them to Retry or Leave.
     }
   },
   

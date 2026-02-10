@@ -12,6 +12,7 @@ const MyGroups = {
     isDashboardOpen: false,
     openedFromDashboard: false,
     pendingRequestsCount: 0,
+    dashboardTab: 'downline', // 'downline' | 'upline'
     
     /**
      * Initialize module
@@ -263,6 +264,15 @@ const MyGroups = {
         await this.loadGroups();
         this.updateBadges();
 
+        // Choose a sensible default tab based on available groups.
+        // If user has no downline groups but has an upline group, default to upline.
+        if (this.dashboardTab === 'downline' && !(this.downlineGroups?.length) && this.uplineGroup) {
+            this.dashboardTab = 'upline';
+        }
+        if (this.dashboardTab === 'upline' && !this.uplineGroup) {
+            this.dashboardTab = 'downline';
+        }
+
         // Ensure My Groups detail screen is closed.
         const groupsScreen = document.getElementById('myGroupsScreen');
         if (groupsScreen) groupsScreen.classList.add('hidden');
@@ -271,6 +281,39 @@ const MyGroups = {
         dashboard.classList.remove('hidden');
         this.isDashboardOpen = true;
         await this.renderDashboard();
+    },
+
+    setDashboardTab(tab) {
+        const next = tab === 'upline' ? 'upline' : 'downline';
+        this.dashboardTab = next;
+        if (this.isDashboardOpen) {
+            this.renderDashboard();
+        }
+    },
+
+    updateDashboardTabUI() {
+        const downBtn = document.getElementById('missionGroupsTabDownline');
+        const upBtn = document.getElementById('missionGroupsTabUpline');
+        if (!downBtn || !upBtn) return;
+
+        const applyInactive = (btn) => {
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-muted)';
+            btn.style.boxShadow = 'none';
+            btn.setAttribute('aria-selected', 'false');
+        };
+
+        const applyActive = (btn) => {
+            btn.style.background = 'var(--mission-gold)';
+            btn.style.color = 'var(--mission-red-deep)';
+            btn.style.boxShadow = '0 10px 18px rgba(251, 191, 36, 0.22)';
+            btn.setAttribute('aria-selected', 'true');
+        };
+
+        applyInactive(downBtn);
+        applyInactive(upBtn);
+        if (this.dashboardTab === 'upline') applyActive(upBtn);
+        else applyActive(downBtn);
     },
 
     /**
@@ -540,10 +583,15 @@ const MyGroups = {
      * Render mission groups dashboard data
      */
     async renderDashboard() {
+        this.updateDashboardTabUI();
+
+        const tab = this.dashboardTab || 'downline';
         const allGroups = [];
-        if (this.uplineGroup) allGroups.push({ ...this.uplineGroup, role: 'upline' });
-        this.downlineGroups.forEach((group) => allGroups.push({ ...group, role: 'downline' }));
-        this.guestGroups.forEach((group) => allGroups.push({ ...group, role: 'guest' }));
+        if (tab === 'upline') {
+            if (this.uplineGroup) allGroups.push({ ...this.uplineGroup, role: 'upline' });
+        } else {
+            this.downlineGroups.forEach((group) => allGroups.push({ ...group, role: 'downline' }));
+        }
 
         const uniqueGroups = [];
         const seen = new Set();
@@ -597,9 +645,10 @@ const MyGroups = {
         if (!statusListEl) return;
 
         if (uniqueGroups.length === 0) {
+            const emptyLabel = tab === 'upline' ? 'No upline group yet.' : 'No downline groups yet.';
             statusListEl.innerHTML = `
                 <div class="mission-groups-status-item p-4">
-                    <p class="text-[var(--text-muted)] text-sm">No mission groups yet.</p>
+                    <p class="text-[var(--text-muted)] text-sm">${emptyLabel}</p>
                     <button onclick="window.MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2.5 rounded-lg text-sm">
                         Join with Invite Code
                     </button>
@@ -687,7 +736,7 @@ const MyGroups = {
                         </button>
                     </div>
                     ` : `
-                    <div class="mt-4 grid grid-cols-2 gap-2">
+                    <div class="mt-4 grid ${group.role === 'upline' ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
                         <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
                                     ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
@@ -700,6 +749,13 @@ const MyGroups = {
                             <span>💬</span>
                             <span>Chat</span>
                         </button>
+                        ${group.role === 'upline' ? `
+                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
+                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                            <span>👁</span>
+                            <span>View</span>
+                        </button>
+                        ` : ''}
                     </div>
                     `}
                 </div>

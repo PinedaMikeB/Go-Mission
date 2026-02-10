@@ -15,10 +15,15 @@
 - **Active module**: Install / Welcome (first-run experience)
   - `/modules/install/install-modal.js`
   - `/index.html` (WelcomeModal CTA)
-- **Goal**: Fix first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button reliability after new install
-- **Status**: 🔧 Fixing duplicate-id collision + inline handler reliability
+- **Goal**: Smooth first-run UX + tighten Journey/Groups UI for mobile
+- **Status**: ✅ Fixed first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button
   - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
   - Inline handlers updated to use `window.*` for consistent behavior across browsers
+- **Status**: 🔧 Fix Journey “Take the Next Step” button text overflow (mobile)
+  - Make CTA label wrap to 2 lines so it stays inside the button border
+- **Status**: 🔧 Groups dashboard navigation + Upline/Downline toggle
+  - Footer `Groups` opens Mission Groups dashboard
+  - Dashboard header adds a toggle: `Downline` / `Upline` (My Groups screen no longer used)
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -32,6 +37,10 @@
   - Push + deploy to Netlify, then test on a fresh install:
     - PWA first-launch welcome: “🎉 Welcome to Go Mission!” → “Let’s Start” closes the modal
     - New-user WelcomeModal: “START YOUR JOURNEY” closes and shows main app
+  - Test Journey card on small screens: “TAKE THE NEXT STEP / TODAY” stays within button border
+  - Test Groups dashboard toggle:
+    - Downline: shows leader groups + Invite/Chat/View/Join buttons
+    - Upline: shows upline group with Join/Chat/View
 
 ---
 
