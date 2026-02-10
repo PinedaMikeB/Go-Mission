@@ -21,6 +21,7 @@ const GroupMeeting = {
   participants: [],
   joinedConference: false,
   connectTimeoutId: null,
+  currentRoomUrl: null,
   
   // Jitsi configuration - self-hosted is faster
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
@@ -38,7 +39,7 @@ const GroupMeeting = {
   async init() {
     // Load Jitsi external API if not already loaded
     if (!window.JitsiMeetExternalAPI) {
-      await this.loadJitsiScript();
+      await this.loadJitsiScript({ timeoutMs: 10000 });
     }
     console.log('[GroupMeeting] Initialized');
   },
@@ -46,7 +47,7 @@ const GroupMeeting = {
   /**
    * Load Jitsi Meet External API script
    */
-  loadJitsiScript() {
+  loadJitsiScript({ timeoutMs = 10000 } = {}) {
     return new Promise((resolve, reject) => {
       if (window.JitsiMeetExternalAPI) {
         resolve();
@@ -75,11 +76,21 @@ const GroupMeeting = {
           return;
         }
 
+        this.setMeetingStatus?.(`Loading Jitsi API…`);
+
         const script = document.createElement('script');
         script.src = candidates[index];
         script.async = true;
+        script.crossOrigin = 'anonymous';
+
+        const timer = setTimeout(() => {
+          // In case neither onload nor onerror fires (rare, but happens in the wild).
+          script.remove();
+          loadCandidate(index + 1);
+        }, timeoutMs);
 
         script.onload = () => {
+          clearTimeout(timer);
           if (window.JitsiMeetExternalAPI) {
             console.log('[GroupMeeting] Jitsi API loaded from', candidates[index]);
             resolve();
@@ -92,6 +103,7 @@ const GroupMeeting = {
         };
 
         script.onerror = () => {
+          clearTimeout(timer);
           script.remove();
           loadCandidate(index + 1);
         };
@@ -101,6 +113,10 @@ const GroupMeeting = {
 
       loadCandidate(0);
     });
+  },
+
+  getRoomUrl(domain, roomName) {
+    return `https://${domain}/${roomName}`;
   },
   
   /**
@@ -199,9 +215,12 @@ const GroupMeeting = {
       this.setMeetingStatus('Loading meeting…');
 
       const roomName = this.generateRoomName(groupId, groupName);
+      const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
+      this.currentRoomUrl = this.getRoomUrl(desiredDomain, roomName);
 
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
+        this.setMeetingStatus(`Loading Jitsi API from ${desiredDomain}…`);
         await this.init();
       }
       
@@ -215,6 +234,7 @@ const GroupMeeting = {
 
       // Domain may change if we later allow fallback.
       const activeDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
+      this.currentRoomUrl = this.getRoomUrl(activeDomain, roomName);
       console.log('[GroupMeeting] Joining room:', roomName, 'on', activeDomain);
       this.setMeetingStatus(`Connecting to ${activeDomain}…`);
 
@@ -341,6 +361,15 @@ const GroupMeeting = {
     } catch (error) {
       console.error('[GroupMeeting] Error creating Jitsi instance:', error);
       this.setMeetingStatus(`Failed to start meeting: ${error?.message || error}`);
+
+      // Fast fallback: open the room directly so the meeting can still happen.
+      try {
+        if (this.currentRoomUrl) {
+          window.open(this.currentRoomUrl, '_blank', 'noopener,noreferrer');
+        }
+      } catch (e) {
+        // ignore
+      }
       // Keep modal open so user can see the error; allow them to close via Leave.
     }
   },
