@@ -22,6 +22,8 @@ const GroupMeeting = {
   joinedConference: false,
   connectTimeoutId: null,
   currentRoomUrl: null,
+  initPromise: null,
+  lastJoinArgs: null,
   
   // Jitsi configuration - self-hosted is faster
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
@@ -37,11 +39,24 @@ const GroupMeeting = {
    * Initialize - load Jitsi API script
    */
   async init() {
-    // Load Jitsi external API if not already loaded
-    if (!window.JitsiMeetExternalAPI) {
-      await this.loadJitsiScript({ timeoutMs: 10000 });
+    if (window.JitsiMeetExternalAPI) return;
+
+    // Avoid loading the script multiple times if init() is called concurrently.
+    if (this.initPromise) {
+      await this.initPromise;
+      return;
     }
-    console.log('[GroupMeeting] Initialized');
+
+    this.initPromise = (async () => {
+      await this.loadJitsiScript({ timeoutMs: 3500 });
+      console.log('[GroupMeeting] Initialized');
+    })();
+
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
+    }
   },
   
   /**
@@ -54,25 +69,21 @@ const GroupMeeting = {
         return;
       }
 
-      const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
-      const candidates = [
+      // Script can be loaded from any Jitsi domain; prefer self-hosted but fall back
+      // to meet.jit.si for fast/consistent script delivery.
+      const domainsToTry = this.useSelfHosted
+        ? [this.JITSI_DOMAIN, this.JITSI_PUBLIC]
+        : [this.JITSI_PUBLIC, this.JITSI_DOMAIN];
+
+      const candidates = domainsToTry.flatMap((domain) => ([
         `https://${domain}/external_api.js`,
         `https://${domain}/libs/external_api.min.js`
-      ];
+      ]));
 
       const loadCandidate = (index) => {
         if (index >= candidates.length) {
-          console.error('[GroupMeeting] Failed to load Jitsi API from', domain, '(all script paths)');
-
-          // Try fallback to public Jitsi only if explicitly allowed
-          if (this.useSelfHosted && this.allowPublicFallback) {
-            console.log('[GroupMeeting] Trying public Jitsi fallback...');
-            this.useSelfHosted = false;
-            this.loadJitsiScript().then(resolve).catch(reject);
-            return;
-          }
-
-          reject(new Error(`Failed to load Jitsi API from ${domain}. Check SSL and external_api path.`));
+          console.error('[GroupMeeting] Failed to load Jitsi API (all candidates)', candidates);
+          reject(new Error('Failed to load Jitsi API. Check network/SSL and external_api path.'));
           return;
         }
 
@@ -116,6 +127,28 @@ const GroupMeeting = {
 
   getRoomUrl(domain, roomName) {
     return `https://${domain}/${roomName}`;
+  },
+
+  /**
+   * Quick reachability check so we can fail fast (instead of showing a blank iframe).
+   * Uses no-cors so it can run cross-origin; success means "network reachable", not "200 OK".
+   */
+  async checkReachable(url, timeoutMs = 2500) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+      clearTimeout(timer);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  },
+
+  retryLastJoin() {
+    const a = this.lastJoinArgs;
+    if (!a) return;
+    this.joinMeeting(a.groupId, a.groupName, a.userName, a.userEmail, a.isLeader);
   },
   
   /**
@@ -209,6 +242,8 @@ const GroupMeeting = {
    */
   async joinMeeting(groupId, groupName, userName, userEmail, isLeader = false) {
     try {
+      this.lastJoinArgs = { groupId, groupName, userName, userEmail, isLeader };
+
       // Show UI immediately so users see something happening even if the API load is slow/fails.
       this.showMeetingModal(groupName);
       this.setMeetingStatus('Loading meeting…');
@@ -217,9 +252,17 @@ const GroupMeeting = {
       const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(desiredDomain, roomName);
 
+      // Fail fast if the call server is not responding.
+      this.setMeetingStatus(`Checking ${desiredDomain}…`);
+      const reachable = await this.checkReachable(`https://${desiredDomain}/`, 2500);
+      if (!reachable) {
+        this.setMeetingStatus(`${desiredDomain} is not responding. Please try again in a moment.`);
+        return;
+      }
+
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
-        this.setMeetingStatus(`Loading Jitsi API from ${desiredDomain}…`);
+        this.setMeetingStatus('Loading Jitsi API…');
         await this.init();
       }
       
@@ -264,6 +307,13 @@ const GroupMeeting = {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableDeepLinking: true,
+
+          // Make XMPP endpoints explicit (helps some reverse-proxy setups).
+          bosh: `https://${activeDomain}/http-bind`,
+          websocket: `wss://${activeDomain}/xmpp-websocket`,
+
+          // Reduce third-party fetches for faster, more reliable first paint.
+          disableThirdPartyRequests: true,
           
           // Disable features that cause issues
           enableWelcomePage: false,
@@ -338,6 +388,17 @@ const GroupMeeting = {
         console.error('[GroupMeeting] Jitsi errorOccurred:', evt);
         const msg = evt?.message || evt?.error?.message || evt?.error || 'Meeting error';
         this.setMeetingStatus(`Error: ${msg}`);
+      });
+
+      // Some failures never reach errorOccurred; listen for these too.
+      this.api.addListener('connectionFailed', (evt) => {
+        console.error('[GroupMeeting] Jitsi connectionFailed:', evt);
+        this.setMeetingStatus('Connection failed. Tap Retry.');
+      });
+
+      this.api.addListener('conferenceFailed', (evt) => {
+        console.error('[GroupMeeting] Jitsi conferenceFailed:', evt);
+        this.setMeetingStatus('Conference failed. Tap Retry.');
       });
       
       this.api.addListener('participantJoined', (data) => {
@@ -415,10 +476,16 @@ const GroupMeeting = {
             <p id="participant-count" class="text-white/60 text-xs">Connecting...</p>
           </div>
         </div>
-        <button onclick="window.GroupMeeting.leaveMeeting()" 
-                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-bold transition-colors">
-          ✕ Leave
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="window.GroupMeeting.retryLastJoin()"
+                  class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-sm font-bold transition-colors">
+            ↻ Retry
+          </button>
+          <button onclick="window.GroupMeeting.leaveMeeting()" 
+                  class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-bold transition-colors">
+            ✕ Leave
+          </button>
+        </div>
       </div>
 
       <!-- Status -->

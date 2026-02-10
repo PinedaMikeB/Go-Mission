@@ -21,6 +21,7 @@
   - Made room-name generation resilient if a group is missing a name (prevents a hard JS crash)
   - Updated inline `onclick="MyGroups.*"` handlers to `onclick="window.MyGroups.*"` (fixes cases where inline handlers can’t resolve `const MyGroups` in some browser scopes)
   - Removed all Jitsi “open in new tab” fallbacks so meetings stay embedded in the PWA
+  - Added fast call-server reachability check + in-modal Retry button to avoid long blank/timeout screens when `call.wotgonline.com` is slow/offline
 - **Next steps**
   - Push + deploy to Netlify, then test Join Meeting from:
     - Mission Groups Dashboard (“Group Status” cards)
