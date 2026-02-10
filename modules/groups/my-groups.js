@@ -623,6 +623,7 @@ const MyGroups = {
             const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
+            const pendingRequestsCount = Array.isArray(group.joinRequests) ? group.joinRequests.length : 0;
 
             const last = meetingData.perGroupLastMeeting[group.id];
             const lastLine = last
@@ -643,8 +644,50 @@ const MyGroups = {
                     <div class="mt-3 text-xs text-[var(--text-muted)] space-y-1.5">
                         <p>📅 ${this.escapeHtml(schedule)}</p>
                         <p>✅ ${this.escapeHtml(lastLine)}</p>
+                        ${isLeaderOfGroup && pendingRequestsCount > 0 ? `
+                            <p class="text-[var(--mission-gold)] font-semibold">🔔 ${pendingRequestsCount} request${pendingRequestsCount === 1 ? '' : 's'} pending</p>
+                        ` : ''}
                     </div>
-                    <div class="mt-4 grid ${isLeaderOfGroup ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
+                    ${isLeaderOfGroup ? `
+                    <div class="mt-4 grid grid-cols-4 gap-2">
+                        <button onclick="window.MyGroups.showInviteCode('${groupIdForJs}')"
+                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors"
+                                title="Generate Invite Code"
+                                aria-label="Generate Invite Code">
+                            <span class="text-base leading-none">🔑</span>
+                            <span>Invite</span>
+                        </button>
+                        <button onclick="window.MyGroups.openGroupChat('${groupIdForJs}')"
+                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors"
+                                title="Chat"
+                                aria-label="Chat">
+                            <span class="text-base leading-none">💬</span>
+                            <span>Chat</span>
+                        </button>
+                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
+                                class="relative flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors"
+                                title="View & Approve"
+                                aria-label="View & Approve">
+                            <span class="text-base leading-none">👁</span>
+                            <span>View</span>
+                            ${pendingRequestsCount > 0 ? `
+                                <span class="absolute -top-1 -right-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                    ${pendingRequestsCount}
+                                </span>
+                            ` : ''}
+                        </button>
+                        <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
+                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border transition-colors ${isMeetingNow
+                                    ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
+                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'}"
+                                title="${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}"
+                                aria-label="${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}">
+                            <span class="text-base leading-none">🎥</span>
+                            <span>${isMeetingNow ? 'Live' : 'Join'}</span>
+                        </button>
+                    </div>
+                    ` : `
+                    <div class="mt-4 grid grid-cols-2 gap-2">
                         <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
                                     ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
@@ -657,14 +700,8 @@ const MyGroups = {
                             <span>💬</span>
                             <span>Chat</span>
                         </button>
-                        ${isLeaderOfGroup ? `
-                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
-                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                            <span>👁</span>
-                            <span>View</span>
-                        </button>
-                        ` : ''}
                     </div>
+                    `}
                 </div>
             `;
         }).join('');
@@ -727,6 +764,8 @@ const MyGroups = {
                 : 'No meeting schedule set';
             const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupNameSafe = this.escapeHtml(group.name || 'Mission Group');
+            const pendingRequestsCount = Array.isArray(group.joinRequests) ? group.joinRequests.length : 0;
+            const groupIdForJs = String(groupId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             const membersHtml = memberProfiles.map(({ id, data }) => {
                 const displayName = this.escapeHtml(data.displayName || data.name || data.email?.split('@')[0] || 'Member');
@@ -763,11 +802,18 @@ const MyGroups = {
                         <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
 
-                    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
-                            <div class="flex items-center justify-between gap-2">
-                                <div>
-                                    <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Group Settings</p>
+	                    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+	                        ${pendingRequestsCount > 0 ? `
+	                        <button onclick="window.MyGroups.showJoinRequests('${groupIdForJs}')"
+	                                class="w-full rounded-xl border border-[var(--mission-gold)]/35 bg-[var(--card-bg)] px-4 py-3 text-sm font-bold text-[var(--mission-gold)] flex items-center justify-between">
+	                            <span>🔔 Pending Requests</span>
+	                            <span class="bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2">${pendingRequestsCount}</span>
+	                        </button>
+	                        ` : ''}
+	                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+	                            <div class="flex items-center justify-between gap-2">
+	                                <div>
+	                                    <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Group Settings</p>
                                     <p class="font-semibold text-[var(--text-color)] mt-1">📅 ${this.escapeHtml(scheduleLabel)}</p>
                                 </div>
                                 <span class="text-[10px] uppercase tracking-wider ${meetingLive ? 'text-green-500' : 'text-[var(--text-muted)]'}">
@@ -1484,6 +1530,12 @@ const MyGroups = {
                 alert('Group not found. Please refresh and try again.');
                 return;
             }
+
+            // Leader-only safety check (this button is only shown for leaders, but enforce anyway).
+            if (group.leaderId && group.leaderId !== window.currentUser?.uid) {
+                alert('Only the group leader can generate invite codes.');
+                return;
+            }
             
             const modal = document.getElementById('groupModal');
             const content = document.getElementById('groupModalContent');
@@ -1529,11 +1581,49 @@ const MyGroups = {
                     },
                     { merge: true }
                 );
+
+                // Also upsert the new-system invite code doc so joins can use Method 1 (fast lookup + usage tracking).
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_groupInviteCodes', inviteCode),
+                    {
+                        code: inviteCode,
+                        groupId: groupId,
+                        groupName: group.name || '',
+                        createdBy: window.currentUser?.uid || '',
+                        createdByName: window.currentUser?.displayName || window.currentUser?.email || '',
+                        createdAt: new Date().toISOString(),
+                        expiresAt: inviteCodeExpiresAt,
+                        maxUses: null,
+                        usedCount: 0
+                    },
+                    { merge: true }
+                );
                 
                 // Update local group object
                 group.inviteCode = inviteCode;
                 group.inviteCodeExpiresAt = inviteCodeExpiresAt;
                 console.log('[MyGroups] Invite code saved to Firestore');
+            } else {
+                // Ensure a matching invite code doc exists (non-destructive).
+                try {
+                    const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', inviteCode);
+                    const codeDoc = await window.getDoc(codeRef);
+                    if (!codeDoc.exists()) {
+                        await window.setDoc(codeRef, {
+                            code: inviteCode,
+                            groupId: groupId,
+                            groupName: group.name || '',
+                            createdBy: window.currentUser?.uid || '',
+                            createdByName: window.currentUser?.displayName || window.currentUser?.email || '',
+                            createdAt: new Date().toISOString(),
+                            expiresAt: inviteCodeExpiresAt,
+                            maxUses: null,
+                            usedCount: 0
+                        }, { merge: true });
+                    }
+                } catch (e) {
+                    console.warn('[MyGroups] Could not upsert goMission_groupInviteCodes doc:', e);
+                }
             }
             
             // Calculate days until expiration
