@@ -263,8 +263,11 @@ const InstallModal = {
         
         const t = welcomeText[lang] || welcomeText.en;
         
+        // Important: do NOT reuse the id "welcomeModal" because index.html already
+        // has a first-run Welcome modal with that id. If we duplicate ids, the
+        // close button may target the wrong element and appear "broken".
         const modal = document.createElement('div');
-        modal.id = 'welcomeModal';
+        modal.id = 'installWelcomeModal';
         modal.innerHTML = `
             <div class="welcome-overlay"></div>
             <div class="welcome-content">
@@ -285,7 +288,7 @@ const InstallModal = {
                 
                 <p class="welcome-journey">${t.journey}</p>
                 
-                <button class="welcome-btn" onclick="InstallModal.closeWelcome()">
+                <button class="welcome-btn" onclick="window.InstallModal.closeWelcome()">
                     ${t.button}
                 </button>
             </div>
@@ -293,9 +296,9 @@ const InstallModal = {
         
         // Add styles
         const style = document.createElement('style');
-        style.id = 'welcomeModalStyles';
+        style.id = 'installWelcomeModalStyles';
         style.textContent = `
-            #welcomeModal {
+            #installWelcomeModal {
                 position: fixed;
                 inset: 0;
                 z-index: 99999;
@@ -304,29 +307,29 @@ const InstallModal = {
                 justify-content: center;
                 padding: 12px;
             }
-            #welcomeModal .welcome-overlay {
+            #installWelcomeModal .welcome-overlay {
                 position: absolute;
                 inset: 0;
-                background: rgba(0,0,0,0.95);
+                background: rgba(0,0,0,0.72);
             }
-            #welcomeModal .welcome-content {
+            #installWelcomeModal .welcome-content {
                 position: relative;
-                background: linear-gradient(135deg, #1a0505 0%, #2a0a0a 100%);
-                border: 2px solid rgba(251, 191, 36, 0.4);
+                background: linear-gradient(135deg, #fff7e6 0%, #fff1db 100%);
+                border: 2px solid rgba(180, 83, 9, 0.35);
                 border-radius: 24px;
                 padding: 20px 20px 24px;
                 max-width: 360px;
                 width: 100%;
                 text-align: center;
-                color: #fff;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(251, 191, 36, 0.1);
+                color: #1a0505;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.45), 0 0 40px rgba(245, 158, 11, 0.12);
                 max-height: calc(100vh - 24px);
                 overflow-y: auto;
             }
-            #welcomeModal .welcome-icon {
+            #installWelcomeModal .welcome-icon {
                 margin-bottom: 12px;
             }
-            #welcomeModal .welcome-logo {
+            #installWelcomeModal .welcome-logo {
                 width: 72px;
                 height: 72px;
                 border-radius: 18px;
@@ -337,66 +340,66 @@ const InstallModal = {
                 0%, 100% { box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4); }
                 50% { box-shadow: 0 8px 50px rgba(245, 158, 11, 0.6); }
             }
-            #welcomeModal .welcome-title {
+            #installWelcomeModal .welcome-title {
                 font-size: 24px;
                 font-weight: 800;
-                color: #f59e0b;
+                color: #7c2d12;
                 margin: 0 0 4px 0;
             }
-            #welcomeModal .welcome-subtitle {
+            #installWelcomeModal .welcome-subtitle {
                 font-size: 16px;
-                color: #e2e8f0;
+                color: #4b5563;
                 margin: 0 0 16px 0;
             }
-            #welcomeModal .welcome-app-preview {
-                background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.1);
+            #installWelcomeModal .welcome-app-preview {
+                background: rgba(124, 45, 18, 0.06);
+                border: 1px solid rgba(124, 45, 18, 0.15);
                 border-radius: 14px;
                 padding: 12px;
                 margin-bottom: 12px;
             }
-            #welcomeModal .welcome-find-text {
+            #installWelcomeModal .welcome-find-text {
                 font-size: 13px;
-                color: #94a3b8;
+                color: #6b7280;
                 margin: 0 0 8px 0;
             }
-            #welcomeModal .welcome-app-icon {
+            #installWelcomeModal .welcome-app-icon {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 6px;
             }
-            #welcomeModal .welcome-app-icon img {
+            #installWelcomeModal .welcome-app-icon img {
                 width: 52px;
                 height: 52px;
                 border-radius: 14px;
             }
-            #welcomeModal .welcome-app-icon span {
+            #installWelcomeModal .welcome-app-icon span {
                 font-size: 14px;
                 font-weight: 600;
-                color: #fff;
+                color: #111827;
             }
-            #welcomeModal .welcome-journey {
+            #installWelcomeModal .welcome-journey {
                 font-size: 18px;
                 font-weight: 600;
-                color: #4ade80;
+                color: #166534;
                 margin: 0 0 16px 0;
                 line-height: 1.3;
             }
-            #welcomeModal .welcome-btn {
+            #installWelcomeModal .welcome-btn {
                 width: 100%;
                 padding: 16px;
                 background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                 border: none;
                 border-radius: 14px;
-                color: #1a0505;
+                color: #3a0a0a;
                 font-size: 18px;
                 font-weight: 800;
                 cursor: pointer;
                 transition: transform 0.2s, box-shadow 0.2s;
                 box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
             }
-            #welcomeModal .welcome-btn:active {
+            #installWelcomeModal .welcome-btn:active {
                 transform: scale(0.98);
             }
         `;
@@ -412,8 +415,8 @@ const InstallModal = {
     closeWelcome() {
         localStorage.setItem('goMission_welcomeShown', 'true');
         
-        const modal = document.getElementById('welcomeModal');
-        const style = document.getElementById('welcomeModalStyles');
+        const modal = document.getElementById('installWelcomeModal');
+        const style = document.getElementById('installWelcomeModalStyles');
         if (modal) modal.remove();
         if (style) style.remove();
         

@@ -12,19 +12,13 @@
 
 ## Current Task Status (2026-02-10)
 
-- **Active module**: Groups (Jitsi meetings)
-  - `/modules/groups/my-groups.js`
-  - `/modules/groups/group-meeting.js`
-- **Goal**: Make embedded meetings and leader tools reliable (self-hosted Jitsi `call.wotgonline.com`)
-- **Status**: ✅ Join Meeting click reliability fixed + in-app embedded Jitsi improved
-  - Added 12s “Still connecting…” status hint if embed stalls (common when iframe/CSP blocks or the call server is slow)
-  - Made room-name generation resilient if a group is missing a name (prevents a hard JS crash)
-  - Updated inline `onclick="MyGroups.*"` handlers to `onclick="window.MyGroups.*"` (fixes cases where inline handlers can’t resolve `const MyGroups` in some browser scopes)
-  - Removed all Jitsi “open in new tab” behavior so meetings stay embedded in the PWA
-  - Added fast call-server reachability check + in-modal Retry button to avoid long blank/timeout screens when `call.wotgonline.com` is slow/offline
-- **Status**: ✅ Leader “Generate Invite Code” + pending-request visibility improved on Mission Groups dashboard
-  - Leader cards now show 4 actions side-by-side: Invite Code, Chat, View (with pending badge), Join Meeting
-  - If there are pending join requests, leader sees “X requests pending” and can approve as Member or Guest
+- **Active module**: Install / Welcome (first-run experience)
+  - `/modules/install/install-modal.js`
+  - `/index.html` (WelcomeModal CTA)
+- **Goal**: Fix first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button reliability after new install
+- **Status**: 🔧 Fixing duplicate-id collision + inline handler reliability
+  - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
+  - Inline handlers updated to use `window.*` for consistent behavior across browsers
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -35,13 +29,9 @@
       - `/etc/jitsi/videobridge/jvb.conf` (jvb password)
     - Restarted: `prosody`, `jicofo`, `jitsi-videobridge2`
 - **Next steps**
-  - Push + deploy to Netlify, then test:
-    - Mission Groups Dashboard (“Group Status” cards): Invite Code, pending badge, View & Approve, Join Meeting
-    - My Groups screen: Join with Invite Code flow
-  - Verify end-to-end invite flow:
-    - Leader taps Invite Code → shares code (expires in 7 days)
-    - Member taps “Join with Invite Code” → request appears as pending
-    - Leader approves as Member or Guest
+  - Push + deploy to Netlify, then test on a fresh install:
+    - PWA first-launch welcome: “🎉 Welcome to Go Mission!” → “Let’s Start” closes the modal
+    - New-user WelcomeModal: “START YOUR JOURNEY” closes and shows main app
 
 ---
 
