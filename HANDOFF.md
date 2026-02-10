@@ -10,6 +10,25 @@
 
 ---
 
+## Current Task Status (2026-02-10)
+
+- **Active module**: Groups (Jitsi meetings)
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/group-meeting.js`
+- **Goal**: Fix **Join Meeting** button reliability for self-hosted Jitsi (`call.wotgonline.com`)
+- **Status**: ✅ Implemented safer join flow + visible fallback
+  - Added 12s “Still connecting…” status hint if embed stalls (common when iframe/CSP blocks or the call server is slow)
+  - Made room-name generation resilient if a group is missing a name (prevents a hard JS crash)
+  - Updated inline `onclick="MyGroups.*"` handlers to `onclick="window.MyGroups.*"` (fixes cases where inline handlers can’t resolve `const MyGroups` in some browser scopes)
+  - Removed all Jitsi “open in new tab” fallbacks so meetings stay embedded in the PWA
+- **Next steps**
+  - Push + deploy to Netlify, then test Join Meeting from:
+    - Mission Groups Dashboard (“Group Status” cards)
+    - My Groups screen
+  - If the embed still doesn’t load in-app, use the new **Open in new tab** button and then check VPS/Jitsi headers/config (frame-ancestors / X-Frame-Options) to allow embedding from `https://gomission.netlify.app`.
+
+---
+
 ## ✅ COMPLETED - Session 2026-02-04
 
 ### 1. Git Push & API Key Fix ✅

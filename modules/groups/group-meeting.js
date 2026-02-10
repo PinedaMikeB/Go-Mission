@@ -19,6 +19,8 @@ const GroupMeeting = {
   currentMeetingId: null,
   joinedAt: null,
   participants: [],
+  joinedConference: false,
+  connectTimeoutId: null,
   
   // Jitsi configuration - self-hosted is faster
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
@@ -106,7 +108,7 @@ const GroupMeeting = {
    */
   generateRoomName(groupId, groupName) {
     // Clean group name for URL
-    const cleanName = groupName
+    const cleanName = String(groupName || '')
       .replace(/[^a-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, '')
       .substring(0, 15);
@@ -117,7 +119,7 @@ const GroupMeeting = {
     // Self-hosted room format: just the room name
     return `GoMission${cleanName}${shortId}`;
   },
-  
+
   /**
    * Check if it's meeting time for a group
    */
@@ -196,6 +198,8 @@ const GroupMeeting = {
       this.showMeetingModal(groupName);
       this.setMeetingStatus('Loading meeting…');
 
+      const roomName = this.generateRoomName(groupId, groupName);
+
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
         await this.init();
@@ -205,13 +209,22 @@ const GroupMeeting = {
         throw new Error('Jitsi API not available');
       }
 
-      const roomName = this.generateRoomName(groupId, groupName);
       this.currentGroupId = groupId;
       this.joinedAt = new Date();
-      
-      const domain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
-      console.log('[GroupMeeting] Joining room:', roomName, 'on', domain);
-      this.setMeetingStatus(`Connecting to ${domain}…`);
+      this.joinedConference = false;
+
+      // Domain may change if we later allow fallback.
+      const activeDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
+      console.log('[GroupMeeting] Joining room:', roomName, 'on', activeDomain);
+      this.setMeetingStatus(`Connecting to ${activeDomain}…`);
+
+      if (this.connectTimeoutId) {
+        clearTimeout(this.connectTimeoutId);
+      }
+      this.connectTimeoutId = setTimeout(() => {
+        if (this.joinedConference) return;
+        this.setMeetingStatus('Still connecting…');
+      }, 12000);
       
       // Simpler Jitsi configuration for reliability
       const options = {
@@ -272,11 +285,16 @@ const GroupMeeting = {
         }
       };
       
-      this.api = new JitsiMeetExternalAPI(domain, options);
+      this.api = new JitsiMeetExternalAPI(activeDomain, options);
       
       // Event listeners
       this.api.addListener('videoConferenceJoined', (data) => {
         console.log('[GroupMeeting] Joined conference:', data);
+        this.joinedConference = true;
+        if (this.connectTimeoutId) {
+          clearTimeout(this.connectTimeoutId);
+          this.connectTimeoutId = null;
+        }
         this.setMeetingStatus('');
         this.onJoined(groupId, userName);
         
@@ -288,6 +306,11 @@ const GroupMeeting = {
       
       this.api.addListener('videoConferenceLeft', (data) => {
         console.log('[GroupMeeting] Left conference:', data);
+        this.joinedConference = false;
+        if (this.connectTimeoutId) {
+          clearTimeout(this.connectTimeoutId);
+          this.connectTimeoutId = null;
+        }
         this.onLeft(groupId);
       });
 
@@ -364,7 +387,7 @@ const GroupMeeting = {
             <p id="participant-count" class="text-white/60 text-xs">Connecting...</p>
           </div>
         </div>
-        <button onclick="GroupMeeting.leaveMeeting()" 
+        <button onclick="window.GroupMeeting.leaveMeeting()" 
                 class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-bold transition-colors">
           ✕ Leave
         </button>
@@ -412,6 +435,12 @@ const GroupMeeting = {
       this.api.dispose();
       this.api = null;
     }
+
+    if (this.connectTimeoutId) {
+      clearTimeout(this.connectTimeoutId);
+      this.connectTimeoutId = null;
+    }
+    this.joinedConference = false;
     
     this.hideMeetingModal();
     this.currentGroupId = null;
@@ -580,7 +609,7 @@ const GroupMeeting = {
             <span class="text-xl">📹</span> Weekly Meeting
           </h3>
           ${isLeader ? `
-            <button onclick="GroupMeeting.showScheduleModal('${group.id}')" 
+            <button onclick="window.GroupMeeting.showScheduleModal('${group.id}')" 
                     class="text-xs text-amber-500 hover:text-amber-400">
               Edit Schedule
             </button>
@@ -599,7 +628,7 @@ const GroupMeeting = {
             ` : ''}
           </div>
           
-          <button onclick="GroupMeeting.joinMeeting('${group.id}', '${group.name.replace(/'/g, "\\'")}', '${(window.currentUser?.displayName || 'Guest').replace(/'/g, "\\'")}', '${window.currentUser?.email || ''}', ${isLeader})"
+          <button onclick="window.GroupMeeting.joinMeeting('${group.id}', '${group.name.replace(/'/g, "\\'")}', '${(window.currentUser?.displayName || 'Guest').replace(/'/g, "\\'")}', '${window.currentUser?.email || ''}', ${isLeader})"
                   class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
             <span>📹</span> ${buttonText}
           </button>
@@ -641,7 +670,7 @@ const GroupMeeting = {
                   class="flex-1 py-3 bg-[var(--input-bg)] text-[var(--text-muted)] rounded-lg font-bold">
             Cancel
           </button>
-          <button onclick="GroupMeeting.saveSchedule('${groupId}')"
+          <button onclick="window.GroupMeeting.saveSchedule('${groupId}')"
                   class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-lg font-bold">
             Save
           </button>

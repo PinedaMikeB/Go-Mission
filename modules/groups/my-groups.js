@@ -600,7 +600,7 @@ const MyGroups = {
             statusListEl.innerHTML = `
                 <div class="mission-groups-status-item p-4">
                     <p class="text-[var(--text-muted)] text-sm">No mission groups yet.</p>
-                    <button onclick="MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2.5 rounded-lg text-sm">
+                    <button onclick="window.MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2.5 rounded-lg text-sm">
                         Join with Invite Code
                     </button>
                 </div>
@@ -645,20 +645,20 @@ const MyGroups = {
                         <p>✅ ${this.escapeHtml(lastLine)}</p>
                     </div>
                     <div class="mt-4 grid ${isLeaderOfGroup ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
-                        <button onclick="MyGroups.joinMeeting('${groupIdForJs}')"
+                        <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
                                     ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
                                     : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'}">
                             <span>🎥</span>
                             <span>${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}</span>
                         </button>
-                        <button onclick="MyGroups.openGroupChat('${groupIdForJs}')"
+                        <button onclick="window.MyGroups.openGroupChat('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors">
                             <span>💬</span>
                             <span>Chat</span>
                         </button>
                         ${isLeaderOfGroup ? `
-                        <button onclick="MyGroups.viewGroupDetails('${groupIdForJs}')"
+                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors">
                             <span>👁</span>
                             <span>View</span>
@@ -760,7 +760,7 @@ const MyGroups = {
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${groupNameSafe}</h3>
-                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
 
                     <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -779,18 +779,18 @@ const MyGroups = {
                                 <div class="flex items-center gap-2">
                                     <input id="groupNameInput" type="text" value="${groupNameSafe}" maxlength="80"
                                            class="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-color)]">
-                                    <button onclick="MyGroups.saveGroupName('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                    <button onclick="window.MyGroups.saveGroupName('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
                                             class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-red-bright)] text-white whitespace-nowrap">
                                         Save Name
                                     </button>
                                 </div>
                             </div>
                             <div class="mt-3 flex items-center gap-2">
-                                <button onclick="MyGroups.editSchedule('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                <button onclick="window.MyGroups.editSchedule('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
                                         class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
                                     Edit Day & Time
                                 </button>
-                                <button onclick="MyGroups.joinMeeting('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                                <button onclick="window.MyGroups.joinMeeting('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
                                         class="px-3 py-2 rounded-lg text-xs font-bold border ${meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]'}">
                                     ${meetingLive ? 'Join Meeting (Live)' : 'Join Meeting'}
                                 </button>
@@ -822,7 +822,7 @@ const MyGroups = {
                                     <input id="meetingReminderAlarm" type="checkbox" class="accent-[var(--mission-gold)]" ${alarmEnabled ? 'checked' : ''}>
                                 </label>
                             </div>
-                            <button onclick="MyGroups.saveMeetingReminder('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                            <button onclick="window.MyGroups.saveMeetingReminder('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
                                     class="mt-4 w-full py-2.5 rounded-lg text-sm font-bold bg-[var(--mission-red-bright)] text-white">
                                 Save Reminder Settings
                             </button>
@@ -845,7 +845,7 @@ const MyGroups = {
             content.innerHTML = `
                 <div class="p-6 text-center">
                     <p class="text-[var(--mission-red-bright)] mb-3">Failed to load group details.</p>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">Close</button>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">Close</button>
                 </div>
             `;
         }
@@ -980,7 +980,7 @@ const MyGroups = {
             container.innerHTML = `
                 <div class="mission-card rounded-xl p-4 border border-dashed border-[var(--card-border)]">
                     <p class="text-[var(--text-muted)] text-sm text-center">No upline group yet</p>
-                    <button onclick="MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2 px-4 rounded-lg text-sm">
+                    <button onclick="window.MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2 px-4 rounded-lg text-sm">
                         Join with Invite Code
                     </button>
                 </div>
@@ -1063,7 +1063,7 @@ const MyGroups = {
                         ${group.name}
                         ${typeBadge}
                     </h4>
-                    <button onclick="MyGroups.showGroupMenu('${group.id}')" class="text-[var(--text-muted)]">•••</button>
+                    <button onclick="window.MyGroups.showGroupMenu('${group.id}')" class="text-[var(--text-muted)]">•••</button>
                 </div>
                 <div class="p-4 space-y-3">
                     <!-- Meeting Section -->
@@ -1081,14 +1081,14 @@ const MyGroups = {
                         ${type === 'downline' ? `
                             <!-- Leader: Start Meeting + Edit Schedule -->
                             <div class="flex items-center gap-2">
-                                <button onclick="MyGroups.editSchedule('${group.id}')" class="text-[var(--mission-gold)] text-xs">Edit</button>
-                                <button onclick="MyGroups.startMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
+                                <button onclick="window.MyGroups.editSchedule('${group.id}')" class="text-[var(--mission-gold)] text-xs">Edit</button>
+                                <button onclick="window.MyGroups.startMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
                                     <span>📹</span> Start Meeting
                                 </button>
                             </div>
                         ` : `
                             <!-- Member/Guest: Join Meeting -->
-                            <button onclick="MyGroups.joinMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
+                            <button onclick="window.MyGroups.joinMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
                                 <span>📹</span> Join Meeting
                             </button>
                         `}
@@ -1108,25 +1108,25 @@ const MyGroups = {
                     
                     ${type === 'downline' && requestCount > 0 ? `
                     <!-- Pending Requests Badge -->
-                    <button onclick="MyGroups.showJoinRequests('${group.id}')" class="w-full bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <button onclick="window.MyGroups.showJoinRequests('${group.id}')" class="w-full bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
                         🔔 ${requestCount} Pending Request${requestCount > 1 ? 's' : ''}
                     </button>
                     ` : ''}
                     
-                    <button onclick="MyGroups.openGroupChat('${group.id}')" class="w-full bg-[var(--mission-red-bright)] hover:bg-[var(--mission-red-bright)]/80 text-white font-bold py-3 rounded-lg text-sm">
+                    <button onclick="window.MyGroups.openGroupChat('${group.id}')" class="w-full bg-[var(--mission-red-bright)] hover:bg-[var(--mission-red-bright)]/80 text-white font-bold py-3 rounded-lg text-sm">
                         💬 GROUP CHAT
                     </button>
                     ${type === 'downline' ? `
-                        <button onclick="MyGroups.showInviteCode('${group.id}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm">
+                        <button onclick="window.MyGroups.showInviteCode('${group.id}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm">
                             🔑 Invite Members
                         </button>
-                        <button onclick="MyGroups.showGroupMembers('${group.id}')" class="w-full border border-[var(--card-border)] text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
+                        <button onclick="window.MyGroups.showGroupMembers('${group.id}')" class="w-full border border-[var(--card-border)] text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
                             👥 View Members ${guestCount > 0 ? `& Guests` : ''}
                             ${requestCount > 0 ? `<span class="absolute right-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
                         </button>
                     ` : ''}
                     ${type === 'guest' ? `
-                        <button onclick="MyGroups.leaveAsGuest('${group.id}')" class="w-full border border-[var(--mission-red-bright)]/40 text-[var(--mission-red-bright)] font-medium py-2 rounded-lg text-sm">
+                        <button onclick="window.MyGroups.leaveAsGuest('${group.id}')" class="w-full border border-[var(--mission-red-bright)]/40 text-[var(--mission-red-bright)] font-medium py-2 rounded-lg text-sm">
                             Leave as Guest
                         </button>
                     ` : ''}
@@ -1158,14 +1158,14 @@ const MyGroups = {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-[var(--text-color)]">Join a Group</h3>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
                 </div>
                 <p class="text-[var(--text-muted)] text-sm mb-4">Enter the invite code given by your discipler:</p>
                 <input type="text" id="joinCodeInput" placeholder="Enter 6-digit code" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] text-center text-2xl tracking-[0.5em] uppercase mb-4"
                     maxlength="6" oninput="this.value = this.value.toUpperCase()">
                 <div id="joinError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
-                <button onclick="MyGroups.joinWithCode()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                <button onclick="window.MyGroups.joinWithCode()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Join Group
                 </button>
             </div>
@@ -1186,13 +1186,13 @@ const MyGroups = {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-[var(--text-color)]">Create New Group</h3>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
                 </div>
                 <p class="text-[var(--text-muted)] text-sm mb-4">Create a group to start discipling others:</p>
                 <input type="text" id="newGroupName" placeholder="Group name" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] mb-4">
                 <div id="createError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
-                <button onclick="MyGroups.createGroup()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                <button onclick="window.MyGroups.createGroup()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Create Group
                 </button>
             </div>
@@ -1547,7 +1547,7 @@ const MyGroups = {
                 <div class="p-6 text-center">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-[var(--text-color)]">🔑 Invite Code</h3>
-                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
                     <p class="text-[var(--text-muted)] text-sm mb-4">Share this code with people you want to disciple:</p>
                     <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-6 mb-2">
@@ -1556,10 +1556,10 @@ const MyGroups = {
                     <p class="text-[var(--text-muted)] text-xs mb-4">⏱️ ${expiresText}</p>
                     <p class="text-[var(--text-color)] font-medium mb-4">${group.name}</p>
                     <div class="space-y-3">
-                        <button onclick="MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                        <button onclick="window.MyGroups.copyInviteCode('${inviteCode}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                             📋 Copy Code
                         </button>
-                        <button onclick="MyGroups.shareInviteCode('${inviteCode}', '${group.name.replace(/'/g, "\\'")}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-3 rounded-lg">
+                        <button onclick="window.MyGroups.shareInviteCode('${inviteCode}', '${group.name.replace(/'/g, "\\'")}')" class="w-full border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-3 rounded-lg">
                             📤 Share via...
                         </button>
                     </div>
@@ -1650,15 +1650,7 @@ const MyGroups = {
             const userEmail = window.currentUser?.email || '';
             GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, true);
         } else {
-            // Fallback: Open Jitsi directly
-            const cleanName = (group.name || '')
-                .replace(/[^a-zA-Z0-9\s]/g, '')
-                .replace(/\s+/g, '')
-                .substring(0, 15);
-            const shortId = group.id.substring(Math.max(0, group.id.length - 8));
-            const roomName = `GoMission${cleanName}${shortId}`;
-            const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
-            window.open(jitsiUrl, '_blank');
+            alert('Meeting system not available. Please refresh the app and try again.');
         }
     },
     
@@ -1694,26 +1686,10 @@ const MyGroups = {
                 GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
             } catch (e) {
                 console.error('[MyGroups] GroupMeeting.joinMeeting threw:', e);
-                // Fallback to opening directly if embed fails synchronously.
-                const cleanName = (group.name || '')
-                    .replace(/[^a-zA-Z0-9\s]/g, '')
-                    .replace(/\s+/g, '')
-                    .substring(0, 15);
-                const shortId = group.id.substring(Math.max(0, group.id.length - 8));
-                const roomName = `GoMission${cleanName}${shortId}`;
-                const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
-                window.open(jitsiUrl, '_blank');
+                alert('Failed to start the in-app meeting. Please refresh and try again.');
             }
         } else {
-            // Fallback: Open Jitsi directly
-            const cleanName = (group.name || '')
-                .replace(/[^a-zA-Z0-9\s]/g, '')
-                .replace(/\s+/g, '')
-                .substring(0, 15);
-            const shortId = group.id.substring(Math.max(0, group.id.length - 8));
-            const roomName = `GoMission${cleanName}${shortId}`;
-            const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
-            window.open(jitsiUrl, '_blank');
+            alert('Meeting system not available. Please refresh the app and try again.');
         }
     },
     
@@ -1735,7 +1711,7 @@ const MyGroups = {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-[var(--text-color)]">📅 Edit Meeting Schedule</h3>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
                 </div>
                 <p class="text-[var(--text-muted)] text-sm mb-4">${group.name}</p>
                 
@@ -1759,7 +1735,7 @@ const MyGroups = {
                 
                 <div id="scheduleError" class="text-[var(--mission-red-bright)] text-sm text-center mt-4 hidden"></div>
                 
-                <button onclick="MyGroups.saveSchedule('${groupId}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg mt-6">
+                <button onclick="window.MyGroups.saveSchedule('${groupId}')" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg mt-6">
                     Save Schedule
                 </button>
             </div>
@@ -1866,15 +1842,15 @@ const MyGroups = {
                     
                     <div class="mt-4 flex gap-2">
                         <!-- Always show both options: Member or Guest -->
-                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
                                 class="flex-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold py-2 rounded-lg">
                             ✅ Member
                         </button>
-                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
                                 class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold py-2 rounded-lg">
                             🎫 Guest
                         </button>
-                        <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
+                        <button onclick="window.MyGroups.declineRequest('${groupId}', '${req.odId}')" 
                                 class="flex-1 bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-sm font-bold py-2 rounded-lg border border-[var(--mission-red-bright)]/30">
                             ❌
                         </button>
@@ -1887,7 +1863,7 @@ const MyGroups = {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-[var(--text-color)]">🔔 Join Requests</h3>
-                    <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                 </div>
                 <p class="text-[var(--text-muted)] text-sm mb-4">${group.name}</p>
                 <div class="space-y-4 max-h-[60vh] overflow-y-auto">
@@ -2083,7 +2059,7 @@ const MyGroups = {
                                 </div>
                             </div>
                             ${isLeader ? `
-                                <button onclick="MyGroups.removeMember('${groupId}', '${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
+                                <button onclick="window.MyGroups.removeMember('${groupId}', '${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
                                         class="text-[var(--mission-red-bright)] text-sm hover:opacity-80">Remove</button>
                             ` : ''}
                         </div>
@@ -2107,7 +2083,7 @@ const MyGroups = {
                                 </div>
                             </div>
                             ${isLeader ? `
-                                <button onclick="MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
+                                <button onclick="window.MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
                             ` : ''}
                         </div>
                     `;
@@ -2141,15 +2117,15 @@ const MyGroups = {
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
                                                 class="flex-1 bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 rounded-lg transition-opacity">
                                             ✅ Member
                                         </button>
-                                        <button onclick="MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+                                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
                                                 class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs font-bold py-2 rounded-lg">
                                             🎫 Guest
                                         </button>
-                                        <button onclick="MyGroups.declineRequest('${groupId}', '${req.odId}')" 
+                                        <button onclick="window.MyGroups.declineRequest('${groupId}', '${req.odId}')" 
                                                 class="bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-xs font-bold py-2 px-3 rounded-lg border border-[var(--mission-red-bright)]/30">
                                             ✕
                                         </button>
@@ -2165,7 +2141,7 @@ const MyGroups = {
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${group.name}</h3>
-                        <button onclick="MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
                     </div>
                     <div class="max-h-[60vh] overflow-y-auto">
                         ${pendingHtml}
@@ -2179,7 +2155,7 @@ const MyGroups = {
             content.innerHTML = `
                 <div class="p-6 text-center">
                     <p class="text-[var(--mission-red-bright)]">Failed to load members</p>
-                    <button onclick="MyGroups.closeModal()" class="mt-4 text-[var(--text-muted)]">Close</button>
+                    <button onclick="window.MyGroups.closeModal()" class="mt-4 text-[var(--text-muted)]">Close</button>
                 </div>
             `;
         }
@@ -2202,7 +2178,7 @@ const MyGroups = {
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-[var(--text-color)]">Guest Options</h3>
-                    <button onclick="MyGroups.showGroupMembers('${groupId}')" class="text-[var(--text-muted)]">← Back</button>
+                    <button onclick="window.MyGroups.showGroupMembers('${groupId}')" class="text-[var(--text-muted)]">← Back</button>
                 </div>
                 
                 <div class="flex items-center gap-3 mb-6">
@@ -2215,7 +2191,7 @@ const MyGroups = {
                 </div>
                 
                 <div class="space-y-3">
-                    <button onclick="MyGroups.promoteGuestToMember('${groupId}', '${guestId}')" 
+                    <button onclick="window.MyGroups.promoteGuestToMember('${groupId}', '${guestId}')" 
                             class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                         ✅ Promote to Full Member
                     </button>
@@ -2223,7 +2199,7 @@ const MyGroups = {
                         This will request transfer from their original leader
                     </p>
                     
-                    <button onclick="MyGroups.removeGuest('${groupId}', '${guestId}')" 
+                    <button onclick="window.MyGroups.removeGuest('${groupId}', '${guestId}')" 
                             class="w-full bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] font-bold py-3 rounded-lg border border-[var(--mission-red-bright)]/30 mt-4">
                         ❌ Remove as Guest
                     </button>
