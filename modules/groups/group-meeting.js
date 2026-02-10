@@ -81,7 +81,6 @@ const GroupMeeting = {
         const script = document.createElement('script');
         script.src = candidates[index];
         script.async = true;
-        script.crossOrigin = 'anonymous';
 
         const timer = setTimeout(() => {
           // In case neither onload nor onerror fires (rare, but happens in the wild).
