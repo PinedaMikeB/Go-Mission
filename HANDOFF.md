@@ -25,6 +25,15 @@
 - **Status**: ✅ Leader “Generate Invite Code” + pending-request visibility improved on Mission Groups dashboard
   - Leader cards now show 4 actions side-by-side: Invite Code, Chat, View (with pending badge), Join Meeting
   - If there are pending join requests, leader sees “X requests pending” and can approve as Member or Guest
+
+- **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
+  - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
+  - Fix applied on VPS (not in git):
+    - `/etc/prosody/conf.d/call.wotgonline.com.cfg.lua`: set `VirtualHost "auth.call.wotgonline.com"` to `authentication = "internal_hashed"`
+    - Set Prosody user passwords for `focus@auth.call.wotgonline.com` and `jvb@auth.call.wotgonline.com` to match:
+      - `/etc/jitsi/jicofo/jicofo.conf` (focus password)
+      - `/etc/jitsi/videobridge/jvb.conf` (jvb password)
+    - Restarted: `prosody`, `jicofo`, `jitsi-videobridge2`
 - **Next steps**
   - Push + deploy to Netlify, then test:
     - Mission Groups Dashboard (“Group Status” cards): Invite Code, pending badge, View & Approve, Join Meeting
