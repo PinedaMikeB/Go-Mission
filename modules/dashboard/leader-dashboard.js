@@ -772,17 +772,15 @@ const LeaderDashboard = {
             <span class="text-sm">Back</span>
           </button>
           <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">📊 My Mission Groups</h1>
+            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">My Mission Groups</h1>
             ${showTabToggle ? `
             <div class="inline-flex rounded-xl p-1 border border-[var(--card-border)] bg-[var(--input-bg)]">
               <button onclick="window.LeaderDashboard.setDashboardTab('upline')"
-                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'upline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}"
-                      ${hasUpline ? '' : 'disabled'}>
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'upline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}">
                 Upline
               </button>
               <button onclick="window.LeaderDashboard.setDashboardTab('downline')"
-                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'downline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}"
-                      ${hasDownline ? '' : 'disabled'}>
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'downline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}">
                 Downline
               </button>
             </div>
