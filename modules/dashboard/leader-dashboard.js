@@ -18,6 +18,8 @@ const LeaderDashboard = {
   // State
   isOpen: false,
   myGroups: [],           // Groups where user is leader
+  uplineGroup: null,      // Group where user is being discipled
+  dashboardTab: 'downline', // 'downline' | 'upline'
   selectedGroup: null,    // Currently viewing group
   members: [],            // Members of selected group
   memberStats: {},        // Cached member statistics
@@ -57,8 +59,17 @@ const LeaderDashboard = {
       return;
     }
     
-    // Load groups where user is leader
+    // Load groups where user is leader + their upline group.
     await this.loadMyGroups();
+    await this.loadUplineGroup();
+
+    // Keep selected tab valid with available data.
+    if (this.dashboardTab === 'upline' && !this.uplineGroup) {
+      this.dashboardTab = 'downline';
+    }
+    if (this.dashboardTab === 'downline' && !this.myGroups.length && this.uplineGroup) {
+      this.dashboardTab = 'upline';
+    }
     
     // Show dashboard card if user has groups
     if (this.myGroups.length > 0) {
@@ -164,10 +175,80 @@ const LeaderDashboard = {
   },
 
   /**
+   * Load the upline group of current user (if any)
+   */
+  async loadUplineGroup() {
+    this.uplineGroup = null;
+    if (!window.currentUser || !window.db) return;
+
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      if (!userDoc.exists()) return;
+
+      const userData = userDoc.data();
+      if (!userData.uplineGroupId) return;
+
+      const groupRef = window.doc(window.db, 'goMission_groups', userData.uplineGroupId);
+      const groupDoc = await window.getDoc(groupRef);
+      if (!groupDoc.exists()) return;
+
+      const groupData = groupDoc.data();
+      const isMember = groupData.members?.includes(window.currentUser.uid);
+      const isGuest = groupData.guests?.some?.(g => g.odId === window.currentUser.uid);
+      if (!isMember && !isGuest) return;
+
+      this.uplineGroup = {
+        id: groupDoc.id,
+        ...groupData,
+        role: 'upline'
+      };
+    } catch (error) {
+      console.error('[LeaderDashboard] Error loading upline group:', error);
+    }
+  },
+
+  /**
+   * Get groups for currently selected dashboard tab
+   */
+  getTabGroups(tab = this.dashboardTab) {
+    if (tab === 'upline') {
+      return this.uplineGroup ? [this.uplineGroup] : [];
+    }
+    return this.myGroups || [];
+  },
+
+  /**
+   * Switch dashboard tab
+   */
+  async setDashboardTab(tab) {
+    const nextTab = tab === 'upline' ? 'upline' : 'downline';
+    if (nextTab === this.dashboardTab) return;
+    this.dashboardTab = nextTab;
+
+    const tabGroups = this.getTabGroups(nextTab);
+    if (!tabGroups.length) {
+      this.selectedGroup = null;
+      this.members = [];
+      this.prayerList = [];
+      if (this.isOpen) this.render();
+      return;
+    }
+
+    if (!this.selectedGroup || !tabGroups.some(g => g.id === this.selectedGroup.id)) {
+      await this.selectGroup(tabGroups[0].id);
+      return;
+    }
+
+    if (this.isOpen) this.render();
+  },
+
+  /**
    * Select a group to view
    */
   async selectGroup(groupId) {
-    const group = this.myGroups.find(g => g.id === groupId);
+    const group = this.myGroups.find(g => g.id === groupId)
+      || (this.uplineGroup?.id === groupId ? this.uplineGroup : null);
     if (!group) return;
     
     this.selectedGroup = group;
@@ -555,9 +636,19 @@ const LeaderDashboard = {
   /**
    * Open full dashboard modal
    */
-  open() {
+  async open() {
     this.isOpen = true;
-    this.render();
+    const tabGroups = this.getTabGroups();
+    if (!tabGroups.length && this.dashboardTab === 'upline' && this.myGroups.length) {
+      this.dashboardTab = 'downline';
+    }
+
+    const activeGroups = this.getTabGroups();
+    if (!this.selectedGroup && activeGroups.length) {
+      await this.selectGroup(activeGroups[0].id);
+    } else {
+      this.render();
+    }
     
     const modal = document.getElementById('leaderDashboardModal');
     if (modal) {
@@ -592,6 +683,10 @@ const LeaderDashboard = {
       document.body.appendChild(modal);
     }
     
+    const tabGroups = this.getTabGroups();
+    const hasDownline = this.myGroups.length > 0;
+    const hasUpline = !!this.uplineGroup;
+    const showTabToggle = hasDownline || hasUpline;
     const needsAttentionMembers = this.members.filter(m => this.needsAttention(m).length > 0);
     const thisWeekAccountability = this.getThisWeeksAccountability();
     const groupStats = this.calculateGroupStats();
@@ -606,7 +701,23 @@ const LeaderDashboard = {
             </svg>
             <span class="text-sm">Back</span>
           </button>
-          <h1 class="text-lg font-bold text-[var(--text-color)]">📊 Leader Dashboard</h1>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">📊 Leader Dashboard</h1>
+            ${showTabToggle ? `
+            <div class="inline-flex rounded-xl p-1 border border-[var(--card-border)] bg-[var(--input-bg)]">
+              <button onclick="window.LeaderDashboard.setDashboardTab('upline')"
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'upline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}"
+                      ${hasUpline ? '' : 'disabled'}>
+                Upline
+              </button>
+              <button onclick="window.LeaderDashboard.setDashboardTab('downline')"
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'downline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}"
+                      ${hasDownline ? '' : 'disabled'}>
+                Downline
+              </button>
+            </div>
+            ` : ''}
+          </div>
           <div class="w-16"></div>
         </div>
         
@@ -614,9 +725,9 @@ const LeaderDashboard = {
         <div class="h-[calc(100vh-60px)] overflow-y-auto p-4 space-y-4">
           
           <!-- Group Selector (if multiple groups) -->
-          ${this.myGroups.length > 1 ? `
+          ${tabGroups.length > 1 ? `
           <div class="flex gap-2 overflow-x-auto pb-2">
-            ${this.myGroups.map(g => `
+            ${tabGroups.map(g => `
               <button onclick="window.LeaderDashboard.selectGroup('${g.id}')"
                       class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
                              ${this.selectedGroup?.id === g.id 
@@ -627,6 +738,14 @@ const LeaderDashboard = {
             `).join('')}
           </div>
           ` : ''}
+
+          ${!tabGroups.length ? `
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center">
+            <p class="text-[var(--text-muted)]">${this.dashboardTab === 'upline' ? 'No upline group yet.' : 'No downline groups yet.'}</p>
+          </div>
+          ` : ''}
+
+          ${tabGroups.length ? `
           
           <!-- This Week's Focus -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
@@ -831,6 +950,8 @@ const LeaderDashboard = {
               <p class="text-sm text-[var(--text-color)] mt-1">Reports</p>
             </button>
           </div>
+
+          ` : ''}
           
         </div>
       </div>
