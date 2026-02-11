@@ -41,6 +41,9 @@
 - **Status**: ✅ Removed header chart icon + fixed upline/downline toggle click behavior
   - Header title now plain `My Mission Groups` (no 📊 icon)
   - Toggle buttons are always clickable; selecting `Upline` now switches tab and renders upline/empty state
+- **Status**: ✅ Fixed Group Status action buttons (`Invite`, `Chat`, `View`) not opening
+  - Root cause: target overlays/modals opened behind current full-screen modal
+  - Fix: Leader dashboard now closes first, then opens MyGroups action target (`showInviteCode`, `openGroupChat`, `viewGroupDetails`, `joinMeeting`)
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -70,6 +73,11 @@
     - `Upline`: shows user upline group (if available)
     - Upline cards: no Invite button; only Chat/View/Join
     - Both toggle buttons must respond on tap/click
+  - Test Group Status card buttons in Downline:
+    - Invite opens invite-code modal
+    - Chat opens group chat
+    - View opens group details/members
+    - Join opens in-app Jitsi
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join

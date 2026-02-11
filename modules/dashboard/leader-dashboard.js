@@ -282,7 +282,8 @@ const LeaderDashboard = {
 
   showInviteCode(groupId) {
     if (window.MyGroups?.showInviteCode) {
-      window.MyGroups.showInviteCode(groupId);
+      this.close();
+      setTimeout(() => window.MyGroups.showInviteCode(groupId), 0);
       return;
     }
     this.showToast('Invite code is not available right now');
@@ -290,7 +291,8 @@ const LeaderDashboard = {
 
   openGroupCardChat(groupId) {
     if (window.MyGroups?.openGroupChat) {
-      window.MyGroups.openGroupChat(groupId);
+      this.close();
+      setTimeout(() => window.MyGroups.openGroupChat(groupId), 0);
       return;
     }
     this.showToast('Chat is not available right now');
@@ -298,7 +300,8 @@ const LeaderDashboard = {
 
   openGroupCardView(groupId) {
     if (window.MyGroups?.viewGroupDetails) {
-      window.MyGroups.viewGroupDetails(groupId);
+      this.close();
+      setTimeout(() => window.MyGroups.viewGroupDetails(groupId), 0);
       return;
     }
     this.showToast('View details is not available right now');
@@ -306,7 +309,8 @@ const LeaderDashboard = {
 
   joinGroupCardMeeting(groupId) {
     if (window.MyGroups?.joinMeeting) {
-      window.MyGroups.joinMeeting(groupId);
+      this.close();
+      setTimeout(() => window.MyGroups.joinMeeting(groupId), 0);
       return;
     }
     this.showToast('Meeting is not available right now');
