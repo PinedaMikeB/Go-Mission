@@ -43,7 +43,10 @@
   - Toggle buttons are always clickable; selecting `Upline` now switches tab and renders upline/empty state
 - **Status**: ✅ Fixed Group Status action buttons (`Invite`, `Chat`, `View`) not opening
   - Root cause: target overlays/modals opened behind current full-screen modal
-  - Fix: Leader dashboard now closes first, then opens MyGroups action target (`showInviteCode`, `openGroupChat`, `viewGroupDetails`, `joinMeeting`)
+  - Fix: keep My Mission Groups modal open, and open targets above it
+    - `/index.html`: raised `#groupModal` and `#chatModal` to `z-[120]`
+    - `/modules/dashboard/leader-dashboard.js`: actions no longer close the parent modal before opening target
+  - Result: closing Invite/View/Join/Chat returns to My Mission Groups instead of Home
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -78,6 +81,7 @@
     - Chat opens group chat
     - View opens group details/members
     - Join opens in-app Jitsi
+    - Closing these flows returns to My Mission Groups modal (not Home)
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join
