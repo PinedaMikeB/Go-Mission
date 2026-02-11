@@ -33,6 +33,10 @@
 - **Status**: ✅ Leader Dashboard now includes `Group Status` cards below `Prayer List`
   - Mirrors My Mission Groups action layout per group: `Invite`, `Chat`, `View`, `Join`
   - Uses current tab group set (`Downline` or `Upline`), and reuses `window.MyGroups` actions
+- **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
+  - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
+  - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
+  - `Announcement` and `Reports` retained
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -56,6 +60,9 @@
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join
+  - Test quick actions row:
+    - Cards show: `Create Group`, `Join with Code`, `Announcement`, `Reports`
+    - First two open My Groups modals from inside Leader Dashboard
   - Test Mission Groups dashboard toggle:
     - Downline: shows leader groups + Invite/Chat/View/Join buttons
     - Upline: shows upline group with Join/Chat/View

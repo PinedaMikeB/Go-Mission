@@ -1060,15 +1060,15 @@ const LeaderDashboard = {
           
           <!-- Quick Actions -->
           <div class="grid grid-cols-2 gap-3">
-            <button onclick="window.LeaderDashboard.openGroupChat()"
+            <button onclick="window.LeaderDashboard.openCreateGroup()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
-              <span class="text-2xl">💬</span>
-              <p class="text-sm text-[var(--text-color)] mt-1">Group Chat</p>
+              <span class="text-2xl">➕</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Create Group</p>
             </button>
-            <button onclick="window.LeaderDashboard.startMeeting()"
+            <button onclick="window.LeaderDashboard.openJoinWithCode()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
-              <span class="text-2xl">📹</span>
-              <p class="text-sm text-[var(--text-color)] mt-1">Start Meeting</p>
+              <span class="text-2xl">🔑</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Join with Code</p>
             </button>
             <button onclick="window.LeaderDashboard.sendGroupAnnouncement()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
@@ -1106,26 +1106,22 @@ const LeaderDashboard = {
     return { activeCount, devotionActiveCount, newCount };
   },
 
-  /**
-   * Open group chat
-   */
-  openGroupChat() {
-    if (this.selectedGroup && typeof Groups !== 'undefined') {
+  openCreateGroup() {
+    if (window.MyGroups?.showCreateModal) {
       this.close();
-      Groups.openChat(this.selectedGroup.id);
+      window.MyGroups.showCreateModal();
+      return;
     }
+    this.showToast('Create group is not available right now');
   },
 
-  /**
-   * Start Jitsi meeting
-   */
-  startMeeting() {
-    if (this.selectedGroup && typeof GroupMeeting !== 'undefined') {
+  openJoinWithCode() {
+    if (window.MyGroups?.showJoinModal) {
       this.close();
-      GroupMeeting.start(this.selectedGroup.id);
-    } else {
-      this.showToast('Meeting feature coming soon');
+      window.MyGroups.showJoinModal();
+      return;
     }
+    this.showToast('Join with code is not available right now');
   },
 
   /**
