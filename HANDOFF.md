@@ -30,6 +30,9 @@
   - Added tab state in `/modules/dashboard/leader-dashboard.js`
   - Added upline-group loading from member profile (`uplineGroupId`)
   - Group chips and dashboard content now follow selected tab
+- **Status**: ✅ Leader Dashboard now includes `Group Status` cards below `Prayer List`
+  - Mirrors My Mission Groups action layout per group: `Invite`, `Chat`, `View`, `Join`
+  - Uses current tab group set (`Downline` or `Upline`), and reuses `window.MyGroups` actions
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -50,6 +53,9 @@
   - Test Leader Dashboard tab toggle:
     - `Downline`: shows groups user leads/assists
     - `Upline`: shows user upline group (if available)
+  - Test Group Status cards inside Leader Dashboard:
+    - Downline shows all leader groups (expected: 3 cards in current account)
+    - Buttons work: Invite/Chat/View/Join
   - Test Mission Groups dashboard toggle:
     - Downline: shows leader groups + Invite/Chat/View/Join buttons
     - Upline: shows upline group with Join/Chat/View

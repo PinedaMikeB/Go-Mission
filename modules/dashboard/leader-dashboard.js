@@ -243,6 +243,75 @@ const LeaderDashboard = {
     if (this.isOpen) this.render();
   },
 
+  escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  escapeForJs(value) {
+    return String(value ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'");
+  },
+
+  formatScheduleText(group) {
+    const day = group?.meetingSchedule?.day;
+    const time = group?.meetingSchedule?.time;
+    if (!day || !time) return 'No meeting schedule yet';
+    const [hh = '0', mm = '00'] = String(time).split(':');
+    const hour = Number(hh);
+    const hour12 = (hour % 12) || 12;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    return `${day.toLowerCase()} • ${hour12}:${mm} ${ampm}`;
+  },
+
+  getStatusGroupsForTab(tabGroups) {
+    if (this.dashboardTab !== 'downline') {
+      return tabGroups;
+    }
+    const myGroupsDownline = window.MyGroups?.downlineGroups;
+    if (Array.isArray(myGroupsDownline) && myGroupsDownline.length) {
+      return myGroupsDownline;
+    }
+    return tabGroups;
+  },
+
+  showInviteCode(groupId) {
+    if (window.MyGroups?.showInviteCode) {
+      window.MyGroups.showInviteCode(groupId);
+      return;
+    }
+    this.showToast('Invite code is not available right now');
+  },
+
+  openGroupCardChat(groupId) {
+    if (window.MyGroups?.openGroupChat) {
+      window.MyGroups.openGroupChat(groupId);
+      return;
+    }
+    this.showToast('Chat is not available right now');
+  },
+
+  openGroupCardView(groupId) {
+    if (window.MyGroups?.viewGroupDetails) {
+      window.MyGroups.viewGroupDetails(groupId);
+      return;
+    }
+    this.showToast('View details is not available right now');
+  },
+
+  joinGroupCardMeeting(groupId) {
+    if (window.MyGroups?.joinMeeting) {
+      window.MyGroups.joinMeeting(groupId);
+      return;
+    }
+    this.showToast('Meeting is not available right now');
+  },
+
   /**
    * Select a group to view
    */
@@ -684,6 +753,7 @@ const LeaderDashboard = {
     }
     
     const tabGroups = this.getTabGroups();
+    const statusGroups = this.getStatusGroupsForTab(tabGroups);
     const hasDownline = this.myGroups.length > 0;
     const hasUpline = !!this.uplineGroup;
     const showTabToggle = hasDownline || hasUpline;
@@ -923,6 +993,67 @@ const LeaderDashboard = {
                   <p>No prayer requests yet</p>
                   <p class="text-xs mt-1">Add prayer needs for your members</p>
                 </div>
+              `}
+            </div>
+          </div>
+
+          <!-- Group Status -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>👥</span> Group Status
+              </h2>
+              <span class="text-xs text-[var(--text-muted)]">${statusGroups.length} group${statusGroups.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="p-3 space-y-3">
+              ${statusGroups.length ? statusGroups.map(group => {
+                const groupId = this.escapeForJs(group.id);
+                const groupName = this.escapeHtml(group.name || 'My Group');
+                const members = group.members?.length || 0;
+                const roleText = this.dashboardTab === 'upline' ? 'Upline' : 'Downline';
+                const roleColor = this.dashboardTab === 'upline' ? 'text-blue-500' : 'text-green-500';
+                const scheduleText = this.escapeHtml(this.formatScheduleText(group));
+                const inviteDisabled = this.dashboardTab === 'upline';
+                return `
+                <div class="rounded-xl border border-[var(--card-border)] p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-[24px] leading-tight font-bold text-[var(--text-color)]">${groupName}</p>
+                      <p class="text-xs uppercase tracking-[0.16em] mt-1 ${roleColor}">${roleText}</p>
+                    </div>
+                    <p class="text-sm text-[var(--text-muted)]">${members}/12 members</p>
+                  </div>
+                  <p class="text-sm text-[var(--text-muted)] mt-3">📅 ${scheduleText}</p>
+                  <p class="text-sm text-[var(--text-muted)] mt-1">✅ No recorded meeting yet</p>
+                  <div class="mt-4 grid grid-cols-4 gap-2">
+                    <button onclick="window.LeaderDashboard.showInviteCode('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center ${inviteDisabled ? 'text-[var(--text-dim)] opacity-50' : 'text-[var(--mission-gold)]'}"
+                            ${inviteDisabled ? 'disabled' : ''}>
+                      <div class="text-base leading-none">🔑</div>
+                      <div class="text-xs font-bold mt-1">Invite</div>
+                    </button>
+                    <button onclick="window.LeaderDashboard.openGroupCardChat('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-gold)]">
+                      <div class="text-base leading-none">💬</div>
+                      <div class="text-xs font-bold mt-1">Chat</div>
+                    </button>
+                    <button onclick="window.LeaderDashboard.openGroupCardView('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-red-deep)]">
+                      <div class="text-base leading-none">👁️</div>
+                      <div class="text-xs font-bold mt-1">View</div>
+                    </button>
+                    <button onclick="window.LeaderDashboard.joinGroupCardMeeting('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-red-deep)]">
+                      <div class="text-base leading-none">🎥</div>
+                      <div class="text-xs font-bold mt-1">Join</div>
+                    </button>
+                  </div>
+                </div>
+              `;
+              }).join('') : `
+              <div class="rounded-xl border border-dashed border-[var(--card-border)] p-4 text-center text-[var(--text-muted)] text-sm">
+                No groups available in this tab.
+              </div>
               `}
             </div>
           </div>
