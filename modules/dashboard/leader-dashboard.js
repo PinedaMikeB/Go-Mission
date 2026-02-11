@@ -772,7 +772,7 @@ const LeaderDashboard = {
             <span class="text-sm">Back</span>
           </button>
           <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">📊 Leader Dashboard</h1>
+            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">📊 My Mission Groups</h1>
             ${showTabToggle ? `
             <div class="inline-flex rounded-xl p-1 border border-[var(--card-border)] bg-[var(--input-bg)]">
               <button onclick="window.LeaderDashboard.setDashboardTab('upline')"
@@ -1010,10 +1010,10 @@ const LeaderDashboard = {
                 const groupId = this.escapeForJs(group.id);
                 const groupName = this.escapeHtml(group.name || 'My Group');
                 const members = group.members?.length || 0;
+                const isUplineTab = this.dashboardTab === 'upline';
                 const roleText = this.dashboardTab === 'upline' ? 'Upline' : 'Downline';
                 const roleColor = this.dashboardTab === 'upline' ? 'text-blue-500' : 'text-green-500';
                 const scheduleText = this.escapeHtml(this.formatScheduleText(group));
-                const inviteDisabled = this.dashboardTab === 'upline';
                 return `
                 <div class="rounded-xl border border-[var(--card-border)] p-4">
                   <div class="flex items-start justify-between gap-3">
@@ -1025,13 +1025,14 @@ const LeaderDashboard = {
                   </div>
                   <p class="text-sm text-[var(--text-muted)] mt-3">📅 ${scheduleText}</p>
                   <p class="text-sm text-[var(--text-muted)] mt-1">✅ No recorded meeting yet</p>
-                  <div class="mt-4 grid grid-cols-4 gap-2">
+                  <div class="mt-4 grid ${isUplineTab ? 'grid-cols-3' : 'grid-cols-4'} gap-2">
+                    ${isUplineTab ? '' : `
                     <button onclick="window.LeaderDashboard.showInviteCode('${groupId}')"
-                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center ${inviteDisabled ? 'text-[var(--text-dim)] opacity-50' : 'text-[var(--mission-gold)]'}"
-                            ${inviteDisabled ? 'disabled' : ''}>
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-gold)]">
                       <div class="text-base leading-none">🔑</div>
                       <div class="text-xs font-bold mt-1">Invite</div>
                     </button>
+                    `}
                     <button onclick="window.LeaderDashboard.openGroupCardChat('${groupId}')"
                             class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-gold)]">
                       <div class="text-base leading-none">💬</div>

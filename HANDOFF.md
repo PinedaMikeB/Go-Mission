@@ -30,9 +30,14 @@
   - Added tab state in `/modules/dashboard/leader-dashboard.js`
   - Added upline-group loading from member profile (`uplineGroupId`)
   - Group chips and dashboard content now follow selected tab
+- **Status**: ✅ Leader Dashboard modal title renamed to `My Mission Groups`
+  - Updated header title text inside `/modules/dashboard/leader-dashboard.js`
 - **Status**: ✅ Leader Dashboard now includes `Group Status` cards below `Prayer List`
   - Mirrors My Mission Groups action layout per group: `Invite`, `Chat`, `View`, `Join`
   - Uses current tab group set (`Downline` or `Upline`), and reuses `window.MyGroups` actions
+- **Status**: ✅ Upline group cards now hide `Invite` action
+  - Upline cards show only `Chat`, `View`, `Join`
+  - Downline cards keep `Invite`, `Chat`, `View`, `Join`
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -60,6 +65,7 @@
   - Test Leader Dashboard tab toggle:
     - `Downline`: shows groups user leads/assists
     - `Upline`: shows user upline group (if available)
+    - Upline cards: no Invite button; only Chat/View/Join
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join
