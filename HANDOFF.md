@@ -37,6 +37,9 @@
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
   - `Announcement` and `Reports` retained
+- **Status**: 🔧 Added cache-busting script query for Leader Dashboard module
+  - `/index.html` now loads `modules/dashboard/leader-dashboard.js?v=20260211-quickactions`
+  - Purpose: force fresh module fetch after Netlify publishes latest commit
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -63,6 +66,7 @@
   - Test quick actions row:
     - Cards show: `Create Group`, `Join with Code`, `Announcement`, `Reports`
     - First two open My Groups modals from inside Leader Dashboard
+  - If labels still show old text, verify Netlify production commit is newer than `6077fb6` then reload app
   - Test Mission Groups dashboard toggle:
     - Downline: shows leader groups + Invite/Chat/View/Join buttons
     - Upline: shows upline group with Join/Chat/View
