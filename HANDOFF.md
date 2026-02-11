@@ -10,20 +10,22 @@
 
 ---
 
-## Current Task Status (2026-02-10)
+## Current Task Status (2026-02-11)
 
-- **Active module**: Install / Welcome (first-run experience)
-  - `/modules/install/install-modal.js`
-  - `/index.html` (WelcomeModal CTA)
-- **Goal**: Smooth first-run UX + tighten Journey/Groups UI for mobile
+- **Active module**: Navigation (Groups) + Leader Dashboard
+  - `/index.html` (bottom nav handler)
+  - `/modules/dashboard/leader-dashboard.js` (global + inline handler reliability)
+- **Goal**: Make footer `Groups` open the right screen (Leader Dashboard for leaders; Mission Groups for members)
 - **Status**: ✅ Fixed first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button
   - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
   - Inline handlers updated to use `window.*` for consistent behavior across browsers
-- **Status**: 🔧 Fix Journey “Take the Next Step” button text overflow (mobile)
-  - Make CTA label wrap to 2 lines so it stays inside the button border
-- **Status**: 🔧 Groups dashboard navigation + Upline/Downline toggle
-  - Footer `Groups` opens Mission Groups dashboard
-  - Dashboard header adds a toggle: `Downline` / `Upline` (My Groups screen no longer used)
+- **Status**: ✅ Fixed Journey “Take the Next Step” button text overflow (mobile)
+  - CTA label wraps to 2 lines so it stays inside the button border
+- **Status**: ✅ Groups dashboard navigation + Upline/Downline toggle
+  - Mission Groups dashboard header adds a toggle: `Downline` / `Upline` (My Groups screen no longer used)
+- **Status**: 🔧 Footer `Groups` should open Leader Dashboard (leaders) with fallback to Mission Groups
+  - Implemented `window.openGroupsNav()` dispatcher
+  - Made `window.LeaderDashboard` explicit + updated inline handler strings in its template
 
 - **Infra fix (VPS Jitsi)**: ✅ Fixed `xmpp: service-unavailable` to `focus.call.wotgonline.com`
   - Root cause: `VirtualHost "auth.call.wotgonline.com"` was set to `authentication = "anonymous"`, so Jicofo/JVB authenticated as random guest JIDs and `focus@auth.call.wotgonline.com` was not reachable.
@@ -34,11 +36,14 @@
       - `/etc/jitsi/videobridge/jvb.conf` (jvb password)
     - Restarted: `prosody`, `jicofo`, `jitsi-videobridge2`
 - **Next steps**
-  - Push + deploy to Netlify, then test on a fresh install:
+  - Push + deploy to Netlify, then test:
     - PWA first-launch welcome: “🎉 Welcome to Go Mission!” → “Let’s Start” closes the modal
     - New-user WelcomeModal: “START YOUR JOURNEY” closes and shows main app
   - Test Journey card on small screens: “TAKE THE NEXT STEP / TODAY” stays within button border
-  - Test Groups dashboard toggle:
+  - Test footer `Groups`:
+    - Leader: opens Leader Dashboard modal (and actions work)
+    - Non-leader: opens Mission Groups dashboard
+  - Test Mission Groups dashboard toggle:
     - Downline: shows leader groups + Invite/Chat/View/Join buttons
     - Upline: shows upline group with Join/Chat/View
 

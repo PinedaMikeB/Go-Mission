@@ -600,7 +600,7 @@ const LeaderDashboard = {
       <div class="absolute inset-0 bg-[var(--bg-color)]">
         <!-- Header -->
         <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
-          <button onclick="LeaderDashboard.close()" class="flex items-center gap-2 text-amber-500">
+          <button onclick="window.LeaderDashboard.close()" class="flex items-center gap-2 text-amber-500">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
@@ -617,7 +617,7 @@ const LeaderDashboard = {
           ${this.myGroups.length > 1 ? `
           <div class="flex gap-2 overflow-x-auto pb-2">
             ${this.myGroups.map(g => `
-              <button onclick="LeaderDashboard.selectGroup('${g.id}')"
+              <button onclick="window.LeaderDashboard.selectGroup('${g.id}')"
                       class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
                              ${this.selectedGroup?.id === g.id 
                                ? 'bg-amber-500 text-white' 
@@ -650,17 +650,17 @@ const LeaderDashboard = {
                   </div>
                 </div>
                 <div class="flex gap-2">
-                  <button onclick="LeaderDashboard.sendEncouragement('${thisWeekAccountability.id}')"
+                  <button onclick="window.LeaderDashboard.sendEncouragement('${thisWeekAccountability.id}')"
                           class="p-2 rounded-full bg-amber-500/20 text-amber-500">
                     💬
                   </button>
-                  <button onclick="LeaderDashboard.recordCheckIn('${thisWeekAccountability.id}')"
+                  <button onclick="window.LeaderDashboard.recordCheckIn('${thisWeekAccountability.id}')"
                           class="p-2 rounded-full bg-green-500/20 text-green-500">
                     ✓
                   </button>
                 </div>
               </div>
-              <button onclick="LeaderDashboard.rotateAccountability()"
+              <button onclick="window.LeaderDashboard.rotateAccountability()"
                       class="w-full py-2 text-xs text-amber-500/70 hover:text-amber-500">
                 ↻ Rotate to next member
               </button>
@@ -699,7 +699,7 @@ const LeaderDashboard = {
                       </div>
                     </div>
                     <div class="flex gap-1">
-                      <button onclick="LeaderDashboard.sendEncouragement('${member.id}')"
+                      <button onclick="window.LeaderDashboard.sendEncouragement('${member.id}')"
                               class="p-2 rounded-full bg-amber-500/20 text-amber-500 text-sm">
                         💬
                       </button>
@@ -776,7 +776,7 @@ const LeaderDashboard = {
               <h2 class="font-bold text-amber-500 flex items-center gap-2">
                 <span>🙏</span> Prayer List
               </h2>
-              <button onclick="LeaderDashboard.showAddPrayerModal()"
+              <button onclick="window.LeaderDashboard.showAddPrayerModal()"
                       class="text-xs px-3 py-1 bg-amber-500/20 text-amber-500 rounded-full">
                 + Add
               </button>
@@ -790,7 +790,7 @@ const LeaderDashboard = {
                       <p class="text-sm text-[var(--text-color)] mt-1 ${prayer.answered ? 'line-through opacity-60' : ''}">${prayer.request}</p>
                     </div>
                     ${!prayer.answered ? `
-                    <button onclick="LeaderDashboard.markPrayerAnswered('${prayer.id}')"
+                    <button onclick="window.LeaderDashboard.markPrayerAnswered('${prayer.id}')"
                             class="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">
                       ✓ Answered
                     </button>
@@ -810,22 +810,22 @@ const LeaderDashboard = {
           
           <!-- Quick Actions -->
           <div class="grid grid-cols-2 gap-3">
-            <button onclick="LeaderDashboard.openGroupChat()"
+            <button onclick="window.LeaderDashboard.openGroupChat()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
               <span class="text-2xl">💬</span>
               <p class="text-sm text-[var(--text-color)] mt-1">Group Chat</p>
             </button>
-            <button onclick="LeaderDashboard.startMeeting()"
+            <button onclick="window.LeaderDashboard.startMeeting()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
               <span class="text-2xl">📹</span>
               <p class="text-sm text-[var(--text-color)] mt-1">Start Meeting</p>
             </button>
-            <button onclick="LeaderDashboard.sendGroupAnnouncement()"
+            <button onclick="window.LeaderDashboard.sendGroupAnnouncement()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
               <span class="text-2xl">📢</span>
               <p class="text-sm text-[var(--text-color)] mt-1">Announcement</p>
             </button>
-            <button onclick="LeaderDashboard.viewReports()"
+            <button onclick="window.LeaderDashboard.viewReports()"
                     class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
               <span class="text-2xl">📊</span>
               <p class="text-sm text-[var(--text-color)] mt-1">Reports</p>
@@ -916,7 +916,7 @@ const LeaderDashboard = {
                     class="flex-1 py-3 border border-[var(--card-border)] rounded-xl text-[var(--text-muted)]">
               Cancel
             </button>
-            <button onclick="LeaderDashboard.submitPrayerRequest()"
+            <button onclick="window.LeaderDashboard.submitPrayerRequest()"
                     class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold">
               Add Prayer
             </button>
@@ -957,14 +957,17 @@ const LeaderDashboard = {
   }
 };
 
+// Make available to inline handlers and other modules.
+window.LeaderDashboard = LeaderDashboard;
+
 // Initialize when DOM ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     // Wait for auth to be ready
-    setTimeout(() => LeaderDashboard.init(), 2000);
+    setTimeout(() => window.LeaderDashboard?.init?.(), 2000);
   });
 } else {
-  setTimeout(() => LeaderDashboard.init(), 2000);
+  setTimeout(() => window.LeaderDashboard?.init?.(), 2000);
 }
 
 // Export

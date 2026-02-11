@@ -1975,7 +1975,7 @@
                 </div>
 
                 <!-- Leader Dashboard Card - Only visible for leaders/admins -->
-                <div id="leaderDashboardCard" onclick="LeaderDashboard.open()" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden cursor-pointer hover:border-amber-500/30 transition-all">
+                <div id="leaderDashboardCard" onclick="window.LeaderDashboard.open()" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden cursor-pointer hover:border-amber-500/30 transition-all">
                     <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
                         <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
                             <span class="text-amber-500">📊</span>
@@ -2038,7 +2038,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Messages</span>
                 </button>
                 <!-- Groups/Dash -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.MyGroups.openDashboard()">
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.openGroupsNav && window.openGroupsNav()">
                     <div class="relative">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -3395,15 +3395,40 @@
             toggleDevotionMenu();
         };
         
-        window.openReadingStats = function() {
-            alert('Reading Stats feature coming soon!');
-            toggleDevotionMenu();
-        };
+	        window.openReadingStats = function() {
+	            alert('Reading Stats feature coming soon!');
+	            toggleDevotionMenu();
+	        };
 
-        // ====== Toggle Other Cards Section (below Journey) ======
-        window.toggleOtherCards = function() {
-            const content = document.getElementById('otherCardsContent');
-            const chevron = document.getElementById('otherCardsChevron');
+	        // Bottom nav "Groups": leaders go to Leader Dashboard, everyone else goes to Mission Groups.
+	        window.openGroupsNav = async function() {
+	            try {
+	                if (window.LeaderDashboard?.init) {
+	                    // If the leader card is visible, user should have leader access. Still re-init to ensure data is loaded.
+	                    const card = document.getElementById('leaderDashboardCard');
+	                    const leaderCardVisible = !!(card && !card.classList.contains('hidden'));
+	                    
+	                    if (leaderCardVisible || window.currentUser) {
+	                        await window.LeaderDashboard.init();
+	                        if ((window.LeaderDashboard.myGroups || []).length > 0) {
+	                            window.LeaderDashboard.open();
+	                            return;
+	                        }
+	                    }
+	                }
+	            } catch (e) {
+	                console.warn('[Nav] openGroupsNav failed; falling back to Mission Groups dashboard', e);
+	            }
+	            
+	            if (window.MyGroups?.openDashboard) {
+	                window.MyGroups.openDashboard();
+	            }
+	        };
+
+	        // ====== Toggle Other Cards Section (below Journey) ======
+	        window.toggleOtherCards = function() {
+	            const content = document.getElementById('otherCardsContent');
+	            const chevron = document.getElementById('otherCardsChevron');
             const isHidden = content.classList.contains('hidden');
             
             if (isHidden) {
