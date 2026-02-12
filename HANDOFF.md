@@ -10,7 +10,7 @@
 
 ---
 
-## Current Task Status (2026-02-11)
+## Current Task Status (2026-02-12)
 
 - **Active module**: Navigation (Groups) + Leader Dashboard
   - `/index.html` (bottom nav handler)
@@ -54,6 +54,15 @@
     - Added direct `click` + `touchend` listener on `#installWelcomeStartBtn` as fallback
     - Made close cleanup resilient by removing all `#installWelcomeModal` nodes
     - `/index.html`: cache-busted install script URL (`install-modal.js?v=20260211-letsstart-fix`)
+- **Status**: ✅ Strengthened first-install welcome button reliability for iOS/PWA taps
+  - `/modules/install/install-modal.js`: added `pointerup` fallback and modal-level delegated click handler for `#installWelcomeStartBtn`
+- **Status**: ✅ Startup silent update now applies immediately on home-screen launch (PWA)
+  - `/modules/core/pwa-updater.js`:
+    - runs immediate `registration.update()` on startup
+    - if a waiting SW exists, activates it right away in standalone mode (once per build)
+    - adds fallback reload if `controllerchange` is missed by iOS/PWA session
+  - `/index.html`: cache-busted script URL (`pwa-updater.js?v=20260212-startup-update`)
+  - `/index.html`: refreshed install modal script query (`install-modal.js?v=20260212-letsstart-hotfix`)
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -92,6 +101,10 @@
   - Test first-launch installed PWA welcome:
     - `Let's Start` closes welcome modal on first app open
     - Welcome does not show again on next launch
+  - Test startup update behavior:
+    - Install/open PWA from home screen after deploy
+    - app should apply waiting SW on launch (without requiring blur/background first)
+    - latest install modal script should load (`?v=20260212-letsstart-hotfix`)
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join

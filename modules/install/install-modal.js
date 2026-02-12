@@ -413,11 +413,23 @@ const InstallModal = {
         if (startBtn) {
             const onStart = (event) => {
                 event.preventDefault();
+                event.stopPropagation();
                 this.closeWelcome();
             };
             startBtn.addEventListener('click', onStart);
+            startBtn.addEventListener('pointerup', onStart, { passive: false });
             startBtn.addEventListener('touchend', onStart, { passive: false });
         }
+
+        // Extra safety for some iOS/PWA tap edge-cases: delegate click from modal root.
+        modal.addEventListener('click', (event) => {
+            const target = event.target && event.target.closest ? event.target.closest('#installWelcomeStartBtn') : null;
+            if (target) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeWelcome();
+            }
+        });
     },
     
     /**

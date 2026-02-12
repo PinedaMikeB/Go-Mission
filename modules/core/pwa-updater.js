@@ -20,6 +20,8 @@ const PWAUpdater = {
     updateReady: false,
     newWorker: null,
     isUpdating: false,
+    reloadTimeout: null,
+    STARTUP_UPDATE_KEY: 'goMission_startupUpdateBuild',
     
     /**
      * Initialize PWA and register service worker
@@ -42,6 +44,20 @@ const PWAUpdater = {
                 console.log('[PWA] Found waiting SW on load - update ready');
                 this.updateReady = true;
                 this.newWorker = this.registration.waiting;
+            }
+
+            // Force one immediate update check on app open, then apply instantly if waiting.
+            // This makes home-screen launches pick up latest code without waiting for blur/pagehide.
+            await this.checkForUpdates();
+            if (this.registration.waiting) {
+                this.updateReady = true;
+                this.newWorker = this.registration.waiting;
+            }
+            if (this.updateReady && this.shouldApplyStartupUpdate()) {
+                const build = this.getBuildVersion();
+                console.log('[PWA] Startup launch with waiting update - applying now for build:', build);
+                localStorage.setItem(this.STARTUP_UPDATE_KEY, build);
+                this.applySilentUpdate();
             }
             
             // Listen for new service worker installing
@@ -68,6 +84,10 @@ const PWAUpdater = {
             
             // Listen for SW taking control (after skipWaiting)
             navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (this.reloadTimeout) {
+                    clearTimeout(this.reloadTimeout);
+                    this.reloadTimeout = null;
+                }
                 if (this.isUpdating) {
                     console.log('[PWA] Controller changed - reloading...');
                     window.location.reload();
@@ -155,6 +175,14 @@ const PWAUpdater = {
             } else if (this.registration?.waiting) {
                 this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
+
+            // Fallback: some iOS/PWA sessions miss controllerchange. Reload once anyway.
+            this.reloadTimeout = setTimeout(() => {
+                if (this.isUpdating) {
+                    console.log('[PWA] Fallback reload after SKIP_WAITING');
+                    window.location.reload();
+                }
+            }, 2500);
             
             // Note: controllerchange event will trigger reload
             console.log('[PWA] Silent update applied - will reload on next focus');
@@ -214,6 +242,32 @@ const PWAUpdater = {
      */
     isUpdatePending() {
         return this.updateReady;
+    },
+
+    /**
+     * Current build version from index.html timestamp.
+     */
+    getBuildVersion() {
+        if (typeof BUILD_TIMESTAMP !== 'undefined' && BUILD_TIMESTAMP) {
+            return String(BUILD_TIMESTAMP);
+        }
+        return 'unknown';
+    },
+
+    /**
+     * Detect installed app mode (PWA standalone).
+     */
+    isStandaloneMode() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    },
+
+    /**
+     * Apply startup update once per build to avoid reload loops.
+     */
+    shouldApplyStartupUpdate() {
+        if (!this.isStandaloneMode()) return false;
+        const build = this.getBuildVersion();
+        return localStorage.getItem(this.STARTUP_UPDATE_KEY) !== build;
     },
     
     /**
