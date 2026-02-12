@@ -649,6 +649,97 @@
         }
 
         /* ============================================
+           LOGIN SCREEN - DESIGN SYSTEM ALIGNMENT
+           ============================================ */
+        #loginScreen .auth-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 1rem;
+            box-shadow: 0 8px 30px var(--shadow-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        #loginScreen .auth-tabs {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 14px;
+            padding: 4px;
+        }
+
+        #loginScreen .auth-tab {
+            color: var(--text-muted);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        #loginScreen .auth-tab.auth-tab-active {
+            background: linear-gradient(135deg, var(--mission-gold) 0%, #e9b908 100%);
+            color: var(--mission-red-deep);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+        }
+
+        #loginScreen .auth-label {
+            color: var(--text-muted);
+        }
+
+        #loginScreen .auth-input {
+            background: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-color);
+        }
+
+        #loginScreen .auth-input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+
+        #loginScreen .auth-input:focus {
+            border-color: var(--accent-active);
+            box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35);
+        }
+
+        #loginScreen .auth-icon-btn {
+            color: var(--text-muted);
+        }
+
+        #loginScreen .auth-icon-btn:hover {
+            color: var(--text-color);
+        }
+
+        #loginScreen .auth-primary-btn {
+            background: linear-gradient(135deg, var(--mission-gold) 0%, #d97706 100%);
+            color: var(--mission-red-deep);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.22);
+        }
+
+        #loginScreen .auth-primary-btn:hover {
+            filter: brightness(1.03);
+        }
+
+        #loginScreen .auth-link {
+            color: var(--text-muted);
+        }
+
+        #loginScreen .auth-link:hover {
+            color: var(--accent-active);
+        }
+
+        #loginScreen .auth-alert-error {
+            background: rgba(127, 29, 29, 0.32);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            color: #fecaca;
+        }
+
+        #loginScreen .auth-alert-success {
+            background: rgba(20, 83, 45, 0.3);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #bbf7d0;
+        }
+
+        /* ============================================
            WELCOME MODAL STYLES
            ============================================ */
         .welcome-overlay {
@@ -1416,13 +1507,13 @@
                 </h2>
             </div>
             
-            <div class="space-y-4">
+            <div class="space-y-4 auth-panel">
                 <!-- Auth Mode Tabs -->
-                <div class="flex bg-[var(--card-bg)] rounded-xl p-1 border border-stone-700">
-                    <button id="tabSignIn" onclick="switchAuthMode('signin')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
+                <div class="flex bg-[var(--card-bg)] rounded-xl p-1 border border-stone-700 auth-tabs">
+                    <button id="tabSignIn" onclick="switchAuthMode('signin')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all bg-[var(--mission-gold)] text-[var(--mission-red-deep)] auth-tab auth-tab-active">
                         Sign In
                     </button>
-                    <button id="tabSignUp" onclick="switchAuthMode('signup')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all text-stone-400 hover:text-stone-300">
+                    <button id="tabSignUp" onclick="switchAuthMode('signup')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all text-stone-400 hover:text-stone-300 auth-tab">
                         Sign Up
                     </button>
                 </div>
@@ -1430,16 +1521,16 @@
                 <!-- Sign In Form -->
                 <div id="signInForm" class="space-y-4">
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Email</label>
                         <input type="email" id="signInEmail" placeholder="your@email.com"
-                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors auth-input">
                     </div>
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Password</label>
                         <div class="relative">
                             <input type="password" id="signInPassword" placeholder="••••••••"
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
-                            <button type="button" onclick="togglePasswordVisibility('signInPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12 auth-input">
+                            <button type="button" onclick="togglePasswordVisibility('signInPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 auth-icon-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1448,11 +1539,11 @@
                         </div>
                     </div>
                     <button id="signInBtn" onclick="handleSignIn()" 
-                        class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
+                        class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20 auth-primary-btn">
                         🚀 Sign In
                     </button>
                     <div class="text-center">
-                        <button onclick="switchAuthMode('forgot')" class="text-stone-500 text-xs hover:text-[var(--mission-gold)] transition-colors">
+                        <button onclick="switchAuthMode('forgot')" class="text-stone-500 text-xs hover:text-[var(--mission-gold)] transition-colors auth-link">
                             Forgot Password?
                         </button>
                     </div>
@@ -1461,21 +1552,21 @@
                 <!-- Sign Up Form -->
                 <div id="signUpForm" class="hidden space-y-4">
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Full Name</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Full Name</label>
                         <input type="text" id="signUpName" placeholder="Juan Dela Cruz"
-                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors auth-input">
                     </div>
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Email</label>
                         <input type="email" id="signUpEmail" placeholder="your@email.com"
-                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors auth-input">
                     </div>
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Password</label>
                         <div class="relative">
                             <input type="password" id="signUpPassword" placeholder="At least 6 characters"
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
-                            <button type="button" onclick="togglePasswordVisibility('signUpPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12 auth-input">
+                            <button type="button" onclick="togglePasswordVisibility('signUpPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 auth-icon-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1484,11 +1575,11 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm Password</label>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Confirm Password</label>
                         <div class="relative">
                             <input type="password" id="signUpConfirmPassword" placeholder="Confirm your password"
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
-                            <button type="button" onclick="togglePasswordVisibility('signUpConfirmPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12 auth-input">
+                            <button type="button" onclick="togglePasswordVisibility('signUpConfirmPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 auth-icon-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1497,7 +1588,7 @@
                         </div>
                     </div>
                     <button id="signUpBtn" onclick="handleSignUp()" 
-                        class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-green-500/20">
+                        class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20 auth-primary-btn">
                         ✨ Create Account
                     </button>
                 </div>
@@ -1507,19 +1598,19 @@
                     <!-- Step 1: Enter Email -->
                     <div id="forgotStep1" class="space-y-4">
                         <div class="text-center mb-4">
-                            <p class="text-stone-400 text-sm">Enter your email and we'll send you a verification code</p>
+                            <p class="text-stone-400 text-sm auth-label">Enter your email and we'll send you a verification code</p>
                         </div>
                         <div>
-                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Email</label>
                             <input type="email" id="forgotEmail" placeholder="your@email.com"
-                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors auth-input">
                         </div>
                         <button id="sendResetCodeBtn" onclick="handleSendResetCode()" 
-                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 auth-primary-btn">
                             📧 Send Verification Code
                         </button>
                         <div class="text-center">
-                            <button onclick="switchAuthMode('signin')" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                            <button onclick="switchAuthMode('signin')" class="text-stone-500 text-xs hover:text-stone-300 transition-colors auth-link">
                                 ← Back to Sign In
                             </button>
                         </div>
@@ -1528,7 +1619,7 @@
                     <!-- Step 2: Enter Code -->
                     <div id="forgotStep2" class="hidden space-y-4">
                         <div class="text-center mb-4">
-                            <p class="text-stone-400 text-sm">Enter the 6-digit code sent to <span id="forgotEmailDisplay" class="text-[var(--mission-gold)]"></span></p>
+                            <p class="text-stone-400 text-sm auth-label">Enter the 6-digit code sent to <span id="forgotEmailDisplay" class="text-[var(--mission-gold)]"></span></p>
                         </div>
                         <div class="flex justify-center gap-2">
                             <input type="text" id="resetCode1" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode2')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
@@ -1539,11 +1630,11 @@
                             <input type="text" id="resetCode6" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, null)" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         </div>
                         <button id="verifyResetCodeBtn" onclick="handleVerifyResetCode()" 
-                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 auth-primary-btn">
                             ✓ Verify Code
                         </button>
                         <div class="text-center">
-                            <button onclick="resetForgotPassword()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                            <button onclick="resetForgotPassword()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors auth-link">
                                 ← Use different email
                             </button>
                         </div>
@@ -1552,14 +1643,14 @@
                     <!-- Step 3: New Password -->
                     <div id="forgotStep3" class="hidden space-y-4">
                         <div class="text-center mb-4">
-                            <p class="text-stone-400 text-sm">Create your new password</p>
+                            <p class="text-stone-400 text-sm auth-label">Create your new password</p>
                         </div>
                         <div>
-                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">New Password</label>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">New Password</label>
                             <div class="relative">
                                 <input type="password" id="newPassword" placeholder="At least 6 characters"
-                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
-                                <button type="button" onclick="togglePasswordVisibility('newPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12 auth-input">
+                                <button type="button" onclick="togglePasswordVisibility('newPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 auth-icon-btn">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1568,11 +1659,11 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm New Password</label>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2 auth-label">Confirm New Password</label>
                             <div class="relative">
                                 <input type="password" id="confirmNewPassword" placeholder="Confirm new password"
-                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
-                                <button type="button" onclick="togglePasswordVisibility('confirmNewPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12 auth-input">
+                                <button type="button" onclick="togglePasswordVisibility('confirmNewPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 auth-icon-btn">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1581,14 +1672,14 @@
                             </div>
                         </div>
                         <button id="resetPasswordBtn" onclick="handleResetPassword()" 
-                            class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95">
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 auth-primary-btn">
                             🔐 Reset Password
                         </button>
                     </div>
                 </div>
                 
-                <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
-                <div id="successMessage" class="hidden mt-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm"></div>
+                <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm auth-alert-error"></div>
+                <div id="successMessage" class="hidden mt-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm auth-alert-success"></div>
             </div>
             <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-8">
                 Tuklasin ang Misyon Ni God!
@@ -2652,8 +2743,10 @@
             
             // Reset tab styles
             tabSignIn.classList.remove('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+            tabSignIn.classList.remove('auth-tab-active');
             tabSignIn.classList.add('text-stone-400');
             tabSignUp.classList.remove('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+            tabSignUp.classList.remove('auth-tab-active');
             tabSignUp.classList.add('text-stone-400');
             
             // Clear messages
@@ -2663,10 +2756,12 @@
             if (mode === 'signin') {
                 signInForm.classList.remove('hidden');
                 tabSignIn.classList.add('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+                tabSignIn.classList.add('auth-tab-active');
                 tabSignIn.classList.remove('text-stone-400');
             } else if (mode === 'signup') {
                 signUpForm.classList.remove('hidden');
                 tabSignUp.classList.add('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+                tabSignUp.classList.add('auth-tab-active');
                 tabSignUp.classList.remove('text-stone-400');
             } else if (mode === 'forgot') {
                 forgotForm.classList.remove('hidden');

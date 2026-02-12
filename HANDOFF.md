@@ -12,11 +12,9 @@
 
 ## Current Task Status (2026-02-12)
 
-- **Active module**: Install + PWA Update
-  - `/modules/install/install-modal.js`
-  - `/modules/core/pwa-updater.js`
-  - `/index.html` (script cache-busting)
-- **Goal**: Ensure first-install `Let's Start` always closes welcome modal and apply waiting update immediately when app is launched from home screen
+- **Active module**: Authentication UI (Login Modal)
+  - `/index.html` (login screen markup + scoped auth styles)
+- **Goal**: Align login modal with design-system theme tokens without changing auth behavior
 - **Status**: ✅ Fixed first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button
   - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
   - Inline handlers updated to use `window.*` for consistent behavior across browsers
@@ -91,6 +89,12 @@
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
   - `Announcement` and `Reports` retained
+- **Status**: ✅ Login modal restyled to design-system theme (safe, scoped changes)
+  - Added scoped auth styles under `#loginScreen` to use theme variables (`--card-bg`, `--text-color`, `--input-bg`, `--accent-active`)
+  - Converted auth CTA buttons to mission gold theme (removed green variants for Sign Up/Reset)
+  - Added non-breaking utility classes (`auth-*`) to login inputs/labels/tabs/buttons/alerts
+  - Updated `switchAuthMode()` to also toggle `auth-tab-active` so tab visuals remain consistent
+  - Scope limited to login section to avoid regressions in other modules
 - **Status**: 🔧 Added cache-busting script query for Leader Dashboard module
   - `/index.html` now loads `modules/dashboard/leader-dashboard.js?v=20260211-quickactions`
   - Purpose: force fresh module fetch after Netlify publishes latest commit
@@ -136,6 +140,10 @@
     - modal appears in light style (no heavy dark mask over content)
     - `Let's Start` closes immediately on first tap
     - reopening app should not show install welcome again
+  - Test login modal theme consistency:
+    - Sign In / Sign Up tabs render with mission-gold active state
+    - Inputs/labels/alerts use theme variables in both dark and light modes
+    - Sign In, Sign Up, Forgot Password, Verify Code, Reset Password flows still function
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join
