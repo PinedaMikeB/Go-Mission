@@ -74,6 +74,19 @@
     - startup-only reload fallback; background flow no forced reload
     - reset update lock if `controllerchange` is missed
   - `/index.html`: updated updater cache-bust query (`pwa-updater.js?v=20260212-launch-stability`)
+- **Status**: ✅ Fixed first-install welcome dark overlay + unclickable `Let's Start` on some devices
+  - Root cause: CSS class collision with global onboarding modal styles in `/index.html`
+    - install modal reused `.welcome-overlay` / `.welcome-content`
+    - global `.welcome-overlay` had `z-index: 9999`, causing dark layer above install card and tap interception
+  - Fixes in `/modules/install/install-modal.js`:
+    - switched to isolated classes: `install-welcome-*`
+    - overlay now non-interactive (`pointer-events: none`) and lighter tint
+    - content set above overlay (`z-index: 2`)
+    - stronger iOS tap handling on start button (`pointerdown` + click/touch handlers)
+    - resilient `localStorage` write in `closeWelcome()`
+  - `/index.html`:
+    - changed iOS PWA status bar style to `default` (lighter presentation)
+    - cache-busted install script: `install-modal.js?v=20260212-install-welcome-isolation`
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -119,6 +132,10 @@
   - Test cold launch on older iPhone:
     - loading screen should not hang indefinitely
     - if auth/bootstrap is slow, login screen appears after ~15s with notice
+  - Test first-install welcome on iPhone/Android:
+    - modal appears in light style (no heavy dark mask over content)
+    - `Let's Start` closes immediately on first tap
+    - reopening app should not show install welcome again
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join

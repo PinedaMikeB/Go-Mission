@@ -240,6 +240,9 @@ const InstallModal = {
      * Show welcome message for first-time PWA launch
      */
     showWelcome() {
+        // Force light presentation for first-launch welcome on all devices.
+        document.body.classList.add('light-mode');
+
         const lang = this.currentLang;
         
         const welcomeText = {
@@ -269,26 +272,26 @@ const InstallModal = {
         const modal = document.createElement('div');
         modal.id = 'installWelcomeModal';
         modal.innerHTML = `
-            <div class="welcome-overlay"></div>
-            <div class="welcome-content">
-                <div class="welcome-icon">
-                    <img src="/icons/icon-192.png" alt="Go Mission" class="welcome-logo">
+            <div class="install-welcome-overlay"></div>
+            <div class="install-welcome-content">
+                <div class="install-welcome-icon">
+                    <img src="/icons/icon-192.png" alt="Go Mission" class="install-welcome-logo">
                 </div>
                 
-                <h1 class="welcome-title">${t.title}</h1>
-                <p class="welcome-subtitle">${t.subtitle}</p>
+                <h1 class="install-welcome-title">${t.title}</h1>
+                <p class="install-welcome-subtitle">${t.subtitle}</p>
                 
-                <div class="welcome-app-preview">
-                    <p class="welcome-find-text">${t.findApp}</p>
-                    <div class="welcome-app-icon">
+                <div class="install-welcome-app-preview">
+                    <p class="install-welcome-find-text">${t.findApp}</p>
+                    <div class="install-welcome-app-icon">
                         <img src="/icons/icon-192.png" alt="Go Mission">
                         <span>${t.appName}</span>
                     </div>
                 </div>
                 
-                <p class="welcome-journey">${t.journey}</p>
+                <p class="install-welcome-journey">${t.journey}</p>
                 
-                <button id="installWelcomeStartBtn" type="button" class="welcome-btn" onclick="window.InstallModal && window.InstallModal.closeWelcome()">
+                <button id="installWelcomeStartBtn" type="button" class="install-welcome-btn" onclick="window.InstallModal && window.InstallModal.closeWelcome()">
                     ${t.button}
                 </button>
             </div>
@@ -307,13 +310,16 @@ const InstallModal = {
                 justify-content: center;
                 padding: 12px;
             }
-            #installWelcomeModal .welcome-overlay {
+            #installWelcomeModal .install-welcome-overlay {
                 position: absolute;
                 inset: 0;
-                background: rgba(0,0,0,0.72);
+                z-index: 0;
+                pointer-events: none;
+                background: rgba(26, 5, 5, 0.22);
             }
-            #installWelcomeModal .welcome-content {
+            #installWelcomeModal .install-welcome-content {
                 position: relative;
+                z-index: 2;
                 background: linear-gradient(135deg, #fff7e6 0%, #fff1db 100%);
                 border: 2px solid rgba(180, 83, 9, 0.35);
                 border-radius: 24px;
@@ -326,10 +332,10 @@ const InstallModal = {
                 max-height: calc(100vh - 24px);
                 overflow-y: auto;
             }
-            #installWelcomeModal .welcome-icon {
+            #installWelcomeModal .install-welcome-icon {
                 margin-bottom: 12px;
             }
-            #installWelcomeModal .welcome-logo {
+            #installWelcomeModal .install-welcome-logo {
                 width: 72px;
                 height: 72px;
                 border-radius: 18px;
@@ -340,53 +346,53 @@ const InstallModal = {
                 0%, 100% { box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4); }
                 50% { box-shadow: 0 8px 50px rgba(245, 158, 11, 0.6); }
             }
-            #installWelcomeModal .welcome-title {
+            #installWelcomeModal .install-welcome-title {
                 font-size: 24px;
                 font-weight: 800;
                 color: #7c2d12;
                 margin: 0 0 4px 0;
             }
-            #installWelcomeModal .welcome-subtitle {
+            #installWelcomeModal .install-welcome-subtitle {
                 font-size: 16px;
                 color: #4b5563;
                 margin: 0 0 16px 0;
             }
-            #installWelcomeModal .welcome-app-preview {
+            #installWelcomeModal .install-welcome-app-preview {
                 background: rgba(124, 45, 18, 0.06);
                 border: 1px solid rgba(124, 45, 18, 0.15);
                 border-radius: 14px;
                 padding: 12px;
                 margin-bottom: 12px;
             }
-            #installWelcomeModal .welcome-find-text {
+            #installWelcomeModal .install-welcome-find-text {
                 font-size: 13px;
                 color: #6b7280;
                 margin: 0 0 8px 0;
             }
-            #installWelcomeModal .welcome-app-icon {
+            #installWelcomeModal .install-welcome-app-icon {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 6px;
             }
-            #installWelcomeModal .welcome-app-icon img {
+            #installWelcomeModal .install-welcome-app-icon img {
                 width: 52px;
                 height: 52px;
                 border-radius: 14px;
             }
-            #installWelcomeModal .welcome-app-icon span {
+            #installWelcomeModal .install-welcome-app-icon span {
                 font-size: 14px;
                 font-weight: 600;
                 color: #111827;
             }
-            #installWelcomeModal .welcome-journey {
+            #installWelcomeModal .install-welcome-journey {
                 font-size: 18px;
                 font-weight: 600;
                 color: #166534;
                 margin: 0 0 16px 0;
                 line-height: 1.3;
             }
-            #installWelcomeModal .welcome-btn {
+            #installWelcomeModal .install-welcome-btn {
                 width: 100%;
                 padding: 16px;
                 background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -396,10 +402,12 @@ const InstallModal = {
                 font-size: 18px;
                 font-weight: 800;
                 cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
                 transition: transform 0.2s, box-shadow 0.2s;
                 box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
             }
-            #installWelcomeModal .welcome-btn:active {
+            #installWelcomeModal .install-welcome-btn:active {
                 transform: scale(0.98);
             }
         `;
@@ -416,6 +424,7 @@ const InstallModal = {
                 event.stopPropagation();
                 this.closeWelcome();
             };
+            startBtn.addEventListener('pointerdown', onStart, { passive: false });
             startBtn.addEventListener('click', onStart);
             startBtn.addEventListener('pointerup', onStart, { passive: false });
             startBtn.addEventListener('touchend', onStart, { passive: false });
@@ -436,7 +445,11 @@ const InstallModal = {
      * Close welcome modal and mark as shown
      */
     closeWelcome() {
-        localStorage.setItem('goMission_welcomeShown', 'true');
+        try {
+            localStorage.setItem('goMission_welcomeShown', 'true');
+        } catch (error) {
+            console.warn('[InstallModal] Could not persist welcome flag:', error?.message || error);
+        }
         
         const style = document.getElementById('installWelcomeModalStyles');
         document.querySelectorAll('#installWelcomeModal').forEach(el => el.remove());
