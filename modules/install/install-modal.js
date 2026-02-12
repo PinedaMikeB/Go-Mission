@@ -288,7 +288,7 @@ const InstallModal = {
                 
                 <p class="welcome-journey">${t.journey}</p>
                 
-                <button class="welcome-btn" onclick="window.InstallModal.closeWelcome()">
+                <button id="installWelcomeStartBtn" type="button" class="welcome-btn" onclick="window.InstallModal && window.InstallModal.closeWelcome()">
                     ${t.button}
                 </button>
             </div>
@@ -407,6 +407,17 @@ const InstallModal = {
         document.head.appendChild(style);
         document.body.appendChild(modal);
         document.body.style.overflow = 'hidden';
+
+        // iOS/PWA safety: bind directly so "Let's Start" always works even if inline handlers are blocked.
+        const startBtn = document.getElementById('installWelcomeStartBtn');
+        if (startBtn) {
+            const onStart = (event) => {
+                event.preventDefault();
+                this.closeWelcome();
+            };
+            startBtn.addEventListener('click', onStart);
+            startBtn.addEventListener('touchend', onStart, { passive: false });
+        }
     },
     
     /**
@@ -415,9 +426,8 @@ const InstallModal = {
     closeWelcome() {
         localStorage.setItem('goMission_welcomeShown', 'true');
         
-        const modal = document.getElementById('installWelcomeModal');
         const style = document.getElementById('installWelcomeModalStyles');
-        if (modal) modal.remove();
+        document.querySelectorAll('#installWelcomeModal').forEach(el => el.remove());
         if (style) style.remove();
         
         document.body.style.overflow = '';
@@ -1106,6 +1116,9 @@ const InstallModal = {
         document.head.appendChild(style);
     }
 };
+
+// Ensure inline handlers can always access InstallModal on all browsers.
+window.InstallModal = InstallModal;
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {

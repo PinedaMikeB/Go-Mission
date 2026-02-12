@@ -47,6 +47,13 @@
     - `/index.html`: raised `#groupModal` and `#chatModal` to `z-[120]`
     - `/modules/dashboard/leader-dashboard.js`: actions no longer close the parent modal before opening target
   - Result: closing Invite/View/Join/Chat returns to My Mission Groups instead of Home
+- **Status**: ✅ Fixed first-install welcome modal `Let's Start` button (PWA)
+  - Root cause: `window.InstallModal` was not guaranteed for inline handler in all browsers/PWA contexts
+  - Fixes:
+    - `/modules/install/install-modal.js`: set `window.InstallModal = InstallModal`
+    - Added direct `click` + `touchend` listener on `#installWelcomeStartBtn` as fallback
+    - Made close cleanup resilient by removing all `#installWelcomeModal` nodes
+    - `/index.html`: cache-busted install script URL (`install-modal.js?v=20260211-letsstart-fix`)
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -82,6 +89,9 @@
     - View opens group details/members
     - Join opens in-app Jitsi
     - Closing these flows returns to My Mission Groups modal (not Home)
+  - Test first-launch installed PWA welcome:
+    - `Let's Start` closes welcome modal on first app open
+    - Welcome does not show again on next launch
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join
