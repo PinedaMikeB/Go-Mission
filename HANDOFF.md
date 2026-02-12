@@ -64,6 +64,16 @@
     - adds fallback reload if `controllerchange` is missed by iOS/PWA session
   - `/index.html`: cache-busted script URL (`pwa-updater.js?v=20260212-startup-update`)
   - `/index.html`: refreshed install modal script query (`install-modal.js?v=20260212-letsstart-hotfix`)
+- **Status**: ✅ Fixed iPhone/PWA launch hang on loading screen
+  - `/index.html`: added 15s auth boot watchdog fallback
+    - hides loading overlay if auth bootstrap stalls
+    - shows login screen with a short connection notice
+  - `/modules/core/pwa-updater.js`: hardened startup update flow
+    - startup apply delayed slightly to let auth boot begin
+    - apply only when a real waiting worker exists
+    - startup-only reload fallback; background flow no forced reload
+    - reset update lock if `controllerchange` is missed
+  - `/index.html`: updated updater cache-bust query (`pwa-updater.js?v=20260212-launch-stability`)
 - **Status**: ✅ Leader Dashboard bottom 4 quick actions renamed
   - `Group Chat` -> `Create Group` (opens `MyGroups.showCreateModal()`)
   - `Start Meeting` -> `Join with Code` (opens `MyGroups.showJoinModal()`)
@@ -105,7 +115,10 @@
   - Test startup update behavior:
     - Install/open PWA from home screen after deploy
     - app should apply waiting SW on launch (without requiring blur/background first)
-    - latest install modal script should load (`?v=20260212-letsstart-hotfix`)
+    - latest updater script should load (`?v=20260212-launch-stability`)
+  - Test cold launch on older iPhone:
+    - loading screen should not hang indefinitely
+    - if auth/bootstrap is slow, login screen appears after ~15s with notice
   - Test Group Status cards inside Leader Dashboard:
     - Downline shows all leader groups (expected: 3 cards in current account)
     - Buttons work: Invite/Chat/View/Join

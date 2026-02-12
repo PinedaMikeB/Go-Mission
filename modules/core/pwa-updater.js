@@ -57,7 +57,8 @@ const PWAUpdater = {
                 const build = this.getBuildVersion();
                 console.log('[PWA] Startup launch with waiting update - applying now for build:', build);
                 localStorage.setItem(this.STARTUP_UPDATE_KEY, build);
-                this.applySilentUpdate();
+                // Delay slightly so startup/auth boot can progress before a reload.
+                setTimeout(() => this.applySilentUpdate('startup'), 800);
             }
             
             // Listen for new service worker installing
@@ -101,7 +102,7 @@ const PWAUpdater = {
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden' && this.updateReady) {
                     console.log('[PWA] User left app - applying silent update');
-                    this.applySilentUpdate();
+                    this.applySilentUpdate('background');
                 } else if (document.visibilityState === 'visible') {
                     // Check for updates when user returns
                     this.checkForUpdates();
@@ -112,7 +113,7 @@ const PWAUpdater = {
             window.addEventListener('pagehide', () => {
                 if (this.updateReady) {
                     console.log('[PWA] Page hiding - applying silent update');
-                    this.applySilentUpdate();
+                    this.applySilentUpdate('background');
                 }
             });
             
@@ -120,7 +121,7 @@ const PWAUpdater = {
             window.addEventListener('blur', () => {
                 if (this.updateReady) {
                     console.log('[PWA] Window blur - applying silent update');
-                    this.applySilentUpdate();
+                    this.applySilentUpdate('background');
                 }
             });
             
@@ -155,13 +156,21 @@ const PWAUpdater = {
     /**
      * Apply update silently (no UI, happens in background)
      */
-    async applySilentUpdate() {
+    async applySilentUpdate(reason = 'background') {
         if (this.isUpdating || !this.updateReady) return;
         this.isUpdating = true;
         
-        console.log('[PWA] Applying silent update...');
+        console.log('[PWA] Applying silent update. reason=', reason);
         
         try {
+            const waitingWorker = this.newWorker || this.registration?.waiting;
+            if (!waitingWorker) {
+                console.log('[PWA] No waiting SW to apply, skipping');
+                this.updateReady = false;
+                this.isUpdating = false;
+                return;
+            }
+
             // 1. Clear all caches first
             if ('caches' in window) {
                 const cacheNames = await caches.keys();
@@ -170,19 +179,25 @@ const PWAUpdater = {
             }
             
             // 2. Tell waiting SW to skip waiting and take over
-            if (this.newWorker) {
-                this.newWorker.postMessage({ type: 'SKIP_WAITING' });
-            } else if (this.registration?.waiting) {
-                this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
+            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
 
-            // Fallback: some iOS/PWA sessions miss controllerchange. Reload once anyway.
-            this.reloadTimeout = setTimeout(() => {
-                if (this.isUpdating) {
-                    console.log('[PWA] Fallback reload after SKIP_WAITING');
-                    window.location.reload();
-                }
-            }, 2500);
+            // Fallback reload only for startup apply. Background apply should be invisible.
+            if (reason === 'startup') {
+                this.reloadTimeout = setTimeout(() => {
+                    if (this.isUpdating) {
+                        console.log('[PWA] Startup fallback reload after SKIP_WAITING');
+                        window.location.reload();
+                    }
+                }, 2500);
+            } else {
+                // Avoid update lock if controllerchange is missed.
+                setTimeout(() => {
+                    if (this.isUpdating) {
+                        console.log('[PWA] controllerchange not observed, resetting update flag');
+                        this.isUpdating = false;
+                    }
+                }, 8000);
+            }
             
             // Note: controllerchange event will trigger reload
             console.log('[PWA] Silent update applied - will reload on next focus');

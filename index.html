@@ -2272,7 +2272,7 @@
     <script src="modules/dashboard/leader-dashboard.js?v=20260211-quickactions"></script>
     <script src="modules/core/notifications.js"></script>
     <script src="modules/core/push-notifications.js"></script>
-    <script src="modules/core/pwa-updater.js?v=20260212-startup-update"></script>
+    <script src="modules/core/pwa-updater.js?v=20260212-launch-stability"></script>
     <script src="modules/install/install-modal.js?v=20260212-letsstart-hotfix"></script>
     <script src="modules/training/training.js"></script>
     
@@ -2346,8 +2346,30 @@
         const loading = document.getElementById('loading');
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
+        let authBootResolved = false;
+
+        // Safety net: prevent infinite "Loading" if auth/bootstrap stalls on mobile PWA.
+        const authBootWatchdog = setTimeout(() => {
+            if (authBootResolved) return;
+            if (!loading || loading.classList.contains('hidden')) return;
+
+            console.warn('[Auth] Boot watchdog fired - showing login fallback');
+            loading.classList.add('hidden');
+            if (loginScreen) loginScreen.classList.remove('hidden');
+
+            const existing = document.getElementById('bootWatchdogNotice');
+            if (!existing && loginScreen) {
+                const notice = document.createElement('p');
+                notice.id = 'bootWatchdogNotice';
+                notice.className = 'text-xs text-amber-400 text-center mb-3';
+                notice.textContent = 'Connection is slow. Please wait a moment, then sign in again if needed.';
+                loginScreen.prepend(notice);
+            }
+        }, 15000);
 
         onAuthStateChanged(auth, async (user) => {
+            authBootResolved = true;
+            clearTimeout(authBootWatchdog);
             loading.classList.add('hidden');
             
             if (user) {
