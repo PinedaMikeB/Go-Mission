@@ -12,10 +12,11 @@
 
 ## Current Task Status (2026-02-12)
 
-- **Active module**: Navigation (Groups) + Leader Dashboard
-  - `/index.html` (bottom nav handler)
-  - `/modules/dashboard/leader-dashboard.js` (global + inline handler reliability + header tab toggle)
-- **Goal**: Keep Leader Dashboard as footer `Groups` destination for leaders and add `Upline / Downline` toggle beside title
+- **Active module**: Install + PWA Update
+  - `/modules/install/install-modal.js`
+  - `/modules/core/pwa-updater.js`
+  - `/index.html` (script cache-busting)
+- **Goal**: Ensure first-install `Let's Start` always closes welcome modal and apply waiting update immediately when app is launched from home screen
 - **Status**: ✅ Fixed first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button
   - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
   - Inline handlers updated to use `window.*` for consistent behavior across browsers
