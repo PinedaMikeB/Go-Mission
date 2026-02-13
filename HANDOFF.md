@@ -95,6 +95,10 @@
   - Added non-breaking utility classes (`auth-*`) to login inputs/labels/tabs/buttons/alerts
   - Updated `switchAuthMode()` to also toggle `auth-tab-active` so tab visuals remain consistent
   - Scope limited to login section to avoid regressions in other modules
+- **Status**: ✅ Updated login tagline copy (Filipino)
+  - `/index.html`: changed
+    - `Tuklasin ang Misyon Ni God!`
+    - to `Tuklasin ang layunin ng Diyos sa iyong buhay!`
 - **Status**: 🔧 Added cache-busting script query for Leader Dashboard module
   - `/index.html` now loads `modules/dashboard/leader-dashboard.js?v=20260211-quickactions`
   - Purpose: force fresh module fetch after Netlify publishes latest commit
