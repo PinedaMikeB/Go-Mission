@@ -10,11 +10,46 @@
 
 ---
 
-## Current Task Status (2026-02-12)
+## Current Task Status (2026-02-15)
 
-- **Active module**: Authentication UI (Login Modal)
-  - `/index.html` (login screen markup + scoped auth styles)
-- **Goal**: Align login modal with design-system theme tokens without changing auth behavior
+- **Active module**: Project orchestration (thread-by-thread workflow)
+  - `HANDOFF.md`
+  - `CHANGELOG.md`
+- **Goal**: Prepare clean handoff for new task-specific threads (UI, Mission Group Calling, Bible, Training)
+- **Status**: ✅ Login modal aligned to design system + Filipino tagline update completed and pushed
+  - Login UI theme update pushed: commit `c8b1b78`
+  - Login tagline update pushed: commit `52a2f9e`
+
+## Next Thread Roadmap (Start Here)
+
+- **Thread 1: UI / Design System**
+  - Scope: visual consistency, spacing, typography, mobile polish, modal consistency
+  - Primary files: `/index.html`, `/modules/core/design-system.css`
+  - Exit criteria: no style regressions across Home, Login, Journey, Groups, Leader Dashboard
+
+- **Thread 2: Mission Group Video Calling**
+  - Scope: embedded Jitsi UX, join/leave reliability, loading/error states, moderator behavior
+  - Primary files: `/modules/groups/group-meeting.js`, `/modules/groups/my-groups.js`, `/modules/dashboard/leader-dashboard.js`
+  - Infra checkpoints: `call.wotgonline.com` health, Prosody/Jicofo/JVB service status
+
+- **Thread 3: Bible Module**
+  - Scope: reading flow, verse highlight/commentary reliability, quick-insights coverage gaps
+  - Primary files: `/modules/bible/bible-loader.js`, `/modules/bible/bible-reader.js`, `/modules/bible/bible-picker.js`
+  - Data checkpoints: missing books (`1TH`, `2TH`, `HAG`, `JON`) and rendering performance
+
+- **Thread 4: Training Module**
+  - Scope: session loading reliability, progress tracking, language consistency, media behavior
+  - Primary files: `/modules/training/training.js`
+  - Exit criteria: stable session navigation and persisted progress per user
+
+- **Thread startup template (use in every new thread)**
+  - “Read `/HANDOFF.md` first.”
+  - “Active module for this thread: `<module>`.”
+  - “Update `/HANDOFF.md` current task status, active module, and next steps before push.”
+  - “Push to `main` after each tested change for live verification.”
+
+## Recent Completed Work (2026-02-12 to 2026-02-15)
+
 - **Status**: ✅ Fixed first-launch “Welcome to Go Mission” modal readability + “Let’s Start” button
   - Install welcome modal now uses a unique id (no collision with the main WelcomeModal)
   - Inline handlers updated to use `window.*` for consistent behavior across browsers

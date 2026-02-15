@@ -10,6 +10,42 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.3] - 2026-02-15 🧭 Stability + UI Alignment
+
+### ✅ Summary
+Stabilized first-install/login experience and documented a thread-based execution plan for faster, safer iteration by module.
+
+### Included Changes
+1. **Login modal design-system alignment**
+   - Scoped auth styling under `#loginScreen` to prevent regressions outside auth UI.
+   - Unified auth CTA colors to mission-gold theme.
+   - Preserved auth behavior; updated tab-state visuals via `auth-tab-active`.
+   - Tagline updated to: `Tuklasin ang layunin ng Diyos sa iyong buhay!`
+2. **PWA first-install stability fixes**
+   - Isolated install welcome CSS classes to avoid overlay collisions.
+   - Hardened `Let's Start` tap handling for iOS/PWA.
+   - Startup update behavior and boot watchdog improvements from prior fixes retained.
+3. **Handoff/process upgrade**
+   - Added thread roadmap in `HANDOFF.md` for separate module-focused threads:
+     - UI / Design System
+     - Mission Group Video Calling
+     - Bible
+     - Training
+
+### Files Modified
+- `/index.html`
+- `/modules/install/install-modal.js`
+- `/modules/core/pwa-updater.js`
+- `/HANDOFF.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert 52a2f9e c8b1b78 3536f11 6b47be5
+```
+
+---
+
 ## [v2.2.2] - 2026-02-04 🐛 UI/UX Fixes
 
 ### 🐛 Welcome/Onboarding Modal Fixes
