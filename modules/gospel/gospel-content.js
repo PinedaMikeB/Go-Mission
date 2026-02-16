@@ -315,9 +315,9 @@ const GospelContent = {
     en: {
         // INTRO
         intro: {
-            title: 'The Way to Heaven',
-            subtitle: 'Discover now how much God loves you',
-            description: 'A short journey that will change your life'
+            title: 'If you stood before God today, would you be certain where you would spend eternity?',
+            subtitle: 'Many hope for heaven. Few are truly sure.',
+            description: 'Let\'s discover what the Bible says about salvation and how deeply God loves you.'
         },
         
         // TRUTH 1: GOD LOVES YOU
