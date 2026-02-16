@@ -18,6 +18,8 @@
 const i18n = {
   // Current language mode: 'en' or 'tl'
   currentLang: 'tl',
+  // DOM observer for dynamic content translation
+  _observer: null,
   
   // Storage key
   STORAGE_KEY: 'goMission_language',
@@ -81,6 +83,7 @@ const i18n = {
       dash: 'Dash',
       
       // General
+      otherFeatures: 'Other Features',
       signOut: 'Sign out',
       loading: 'Loading...'
     },
@@ -141,6 +144,7 @@ const i18n = {
       dash: 'Dash',
       
       // General
+      otherFeatures: 'Iba pang Features',
       signOut: 'Mag-sign out',
       loading: 'Naglo-load...'
     }
@@ -198,21 +202,20 @@ const i18n = {
    * Initialize language system
    */
   init() {
-    // Force Tagalog for all users (January 2025 update)
-    // Remove any saved English preference
+    // Respect persisted language preference; default to Tagalog if missing/invalid.
     const saved = localStorage.getItem(this.STORAGE_KEY);
-    if (saved === 'en') {
-      localStorage.removeItem(this.STORAGE_KEY);
+    this.currentLang = (saved === 'en' || saved === 'tl') ? saved : 'tl';
+    localStorage.setItem(this.STORAGE_KEY, this.currentLang);
+    if (typeof window !== 'undefined') {
+      window.currentLang = this.currentLang;
     }
-    
-    // Always default to Tagalog now
-    this.currentLang = 'tl';
     
     // Update UI toggle state
     this.updateToggleUI();
     
     // Apply translations to page
-    this.applyTranslations();
+    this.applyTranslations(document);
+    this.startAutoTranslate();
     
     // Dispatch initial event
     this.dispatchChange();
@@ -232,13 +235,16 @@ const i18n = {
     
     this.currentLang = lang;
     localStorage.setItem(this.STORAGE_KEY, lang);
+    if (typeof window !== 'undefined') {
+      window.currentLang = this.currentLang;
+    }
     
     // Save to Firestore if user is logged in
     await this.saveToFirestore(lang);
     
     // Update UI
     this.updateToggleUI();
-    this.applyTranslations();
+    this.applyTranslations(document);
     
     // Dispatch change event for other modules to react
     this.dispatchChange();
@@ -361,8 +367,11 @@ const i18n = {
             if (data.preferences?.language) {
               this.currentLang = data.preferences.language;
               localStorage.setItem(this.STORAGE_KEY, this.currentLang);
+              if (typeof window !== 'undefined') {
+                window.currentLang = this.currentLang;
+              }
               this.updateToggleUI();
-              this.applyTranslations();
+              this.applyTranslations(document);
               this.dispatchChange();
               console.log('[i18n] Loaded from Firestore:', this.currentLang);
             }
@@ -405,27 +414,75 @@ const i18n = {
   /**
    * Apply translations to elements with data-i18n attribute
    */
-  applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      const translated = this.t(key);
-      
-      // Handle different element types
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        if (el.placeholder !== undefined && el.hasAttribute('data-i18n-placeholder')) {
-          el.placeholder = translated;
-        } else {
-          el.value = translated;
-        }
+  applyTranslations(root = document) {
+    if (!root) return;
+
+    if (root.nodeType === 1 && root.hasAttribute && root.hasAttribute('data-i18n')) {
+      this.translateElement(root);
+    }
+
+    if (!root.querySelectorAll) return;
+
+    root.querySelectorAll('[data-i18n]').forEach(el => {
+      this.translateElement(el);
+    });
+  },
+
+  /**
+   * Apply translation to a single element
+   */
+  translateElement(el) {
+    if (!el || !el.getAttribute) return;
+
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+
+    const translated = this.t(key);
+    if (!translated || translated === key) return;
+    
+    // Handle different element types
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      if (el.placeholder !== undefined && el.hasAttribute('data-i18n-placeholder')) {
+        el.placeholder = translated;
       } else {
-        // Check if we should use innerHTML (for <br> tags in labels)
-        if (translated.includes('<br>')) {
-          el.innerHTML = translated;
-        } else {
-          el.textContent = translated;
-        }
+        el.value = translated;
+      }
+    } else {
+      // Check if we should use innerHTML (for <br> tags in labels)
+      if (translated.includes('<br>')) {
+        el.innerHTML = translated;
+      } else {
+        el.textContent = translated;
+      }
+    }
+  },
+
+  /**
+   * Observe DOM changes so newly injected markup is translated automatically.
+   */
+  startAutoTranslate() {
+    if (this._observer || typeof MutationObserver === 'undefined' || !document.body) return;
+
+    this._observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) {
+            this.applyTranslations(node);
+          }
+        });
       }
     });
+
+    this._observer.observe(document.body, { childList: true, subtree: true });
+  },
+
+  /**
+   * Stop observing DOM changes.
+   */
+  stopAutoTranslate() {
+    if (!this._observer) return;
+    this._observer.disconnect();
+    this._observer = null;
   },
   
   /**
@@ -453,6 +510,18 @@ const i18n = {
     `;
   }
 };
+
+// Expose globally for cross-module usage.
+if (typeof window !== 'undefined') {
+  window.i18n = i18n;
+  window.LanguageSystem = {
+    getCurrent: () => i18n.getLang(),
+    set: (lang) => i18n.setLang(lang),
+    toggle: () => i18n.toggle(),
+    t: (key) => i18n.t(key),
+    apply: (root = document) => i18n.applyTranslations(root)
+  };
+}
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {

@@ -1855,7 +1855,7 @@
                 <div class="text-center mb-4 pt-2">
                     <h2 class="journey-title" id="journeyCardTitle">
                         <span>◆</span>
-                        <span id="journeyTitleText">MY JOURNEY</span>
+                        <span id="journeyTitleText" data-i18n="myJourney">My Journey</span>
                         <span>◆</span>
                     </h2>
                     <p class="journey-subtitle" id="journeySubtitle">"The path of the righteous is like the morning sun, shining ever brighter"</p>
@@ -1949,7 +1949,7 @@
 
             <!-- Collapsible Section Header for Other Cards -->
             <div class="flex items-center justify-between px-2 mb-3 cursor-pointer" onclick="toggleOtherCards()">
-                <span class="text-xs text-[var(--text-muted)] uppercase tracking-wider" id="otherCardsLabel">Iba pang Features</span>
+                <span class="text-xs text-[var(--text-muted)] uppercase tracking-wider" id="otherCardsLabel" data-i18n="otherFeatures">Other Features</span>
                 <svg id="otherCardsChevron" class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -2471,6 +2471,7 @@
     <!-- Core Modules -->
     <script src="modules/core/theme.js"></script>
     <script src="modules/core/i18n.js"></script>
+    <script src="modules/core/design-system-runtime.js"></script>
     <script src="modules/core/scroll-handler.js"></script>
     <script src="modules/core/discipleship-content.js"></script>
     <script src="modules/bible/bible-loader.js"></script>
@@ -2763,15 +2764,8 @@
 
         window.updateJourneyDisplay = function(stage) {
             const stageKeys = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
-            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : (currentLanguage || 'tl');
             const resolvedIndex = stageKeys.includes(stage) ? stageKeys.indexOf(stage) : 0;
             const currentStageNum = resolvedIndex + 1;
-
-            // Keep existing journey text content logic, only switch title label.
-            const titleTextEl = document.getElementById('journeyTitleText');
-            if (titleTextEl) {
-                titleTextEl.textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
-            }
 
             // Keep line full-width so the animated glow is always visible.
             const progressLine = document.getElementById('journeyProgressLine');
@@ -3158,7 +3152,7 @@
     <!-- App Logic -->
     <script>
         // State - use i18n module for language if available
-        let currentLanguage = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+        let currentLanguage = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
         let highlightedVerses = [];
         let shareWithGroup = false;
         let currentReading = null;
@@ -3225,10 +3219,11 @@
         // Set language - use i18n module
         window.setLanguage = function(lang) {
             // Use i18n module if available
-            if (typeof i18n !== 'undefined') {
-                i18n.setLang(lang);
+            if (window.i18n?.setLang) {
+                window.i18n.setLang(lang);
             } else {
                 currentLanguage = lang;
+                localStorage.setItem('goMission_language', lang);
                 document.querySelectorAll('.lang-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.lang === lang);
                 });
@@ -3354,7 +3349,7 @@
                     question: question,
                     reflection: reflection,
                     sharedWithGroup: shareWithGroup,
-                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    language: window.i18n?.getLang?.() || 'tl',
                     savedAt: window.serverTimestamp()
                 });
                 
@@ -3414,7 +3409,7 @@
                 modal.remove();
             } else {
                 // Create menu modal with current language
-                const currentLang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+                const currentLang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
                 const updateInfo = (typeof AutoUpdate !== 'undefined') ? AutoUpdate.CURRENT_UPDATE : { version: '2.0.0', date: '2026-01-27' };
                 const menuHTML = `
                     <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
@@ -3424,7 +3419,7 @@
                                 <p class="text-xs text-[var(--text-muted)]">${window.currentUser?.email || ''}</p>
                             </div>
                             <div class="p-2">
-                                <button onclick="i18n.setLang(i18n.getLang() === 'en' ? 'tl' : 'en'); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                <button onclick="if(window.i18n && window.i18n.toggle){window.i18n.toggle();} else {window.setLanguage((localStorage.getItem('goMission_language')||'tl') === 'en' ? 'tl' : 'en');} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">${currentLang === 'tl' ? '🇺🇸' : '🇵🇭'}</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog'}</span>
                                 </button>
@@ -3471,7 +3466,7 @@
             }
             
             // Update language labels
-            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+            const lang = window.i18n?.getLang?.() || 'en';
             document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
             
             modal.classList.remove('hidden');
@@ -3553,7 +3548,7 @@
                     question: question,
                     reflection: reflection,
                     sharedWithGroup: shareWithGroup,
-                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    language: window.i18n?.getLang?.() || 'tl',
                     savedAt: window.serverTimestamp()
                 });
                 
@@ -3707,13 +3702,6 @@
                 document.getElementById('otherCardsChevron')?.classList.add('rotate-180');
             }
             
-            // Update label based on language
-            const lang = localStorage.getItem('goMission_language') || 'tl';
-            const label = document.getElementById('otherCardsLabel');
-            if (label) {
-                label.textContent = lang === 'tl' ? 'Iba pang Features' : 'Other Features';
-            }
-            
             // Other features section
             const expanded = localStorage.getItem('otherFeaturesExpanded') === 'true';
             if (expanded) {
@@ -3775,7 +3763,7 @@
             
             // Show affirmation message
             showAffirmation: function() {
-                const lang = window.i18n?.currentLang || localStorage.getItem('goMission_language') || 'tl';
+                const lang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
                 const message = lang === 'tl' 
                     ? '🌱 Nakikita ng Diyos ang iyong pusong naghahanap sa Kanya.'
                     : '🌱 God sees your seeking heart for Him.';
