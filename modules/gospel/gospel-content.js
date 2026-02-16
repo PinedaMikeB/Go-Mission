@@ -7,9 +7,9 @@ const GospelContent = {
     tl: {
         // INTRO
         intro: {
-            title: 'Ang Daan Papuntang Langit',
-            subtitle: 'Tuklasin mo ngayon kung gaano ka kamahal ng Diyos',
-            description: 'Isang maikling paglalakbay na magbabago ng iyong buhay'
+            title: 'Kung tatayo ka sa harap ng Diyos ngayong araw, sigurado ka ba kung saan mo gugugulin ang iyong susunod na buhay?',
+            subtitle: 'Marami ang umaasa na mapunta sa langit. Ngunit kakaunti lamang ang tunay na sigurado.',
+            description: 'Alamin natin ang sinasabi ng Bibliya tungkol sa kaligtasan at kung gaano ka kalalim na minamahal ng Diyos.'
         },
         
         // TRUTH 1: GOD LOVES YOU
