@@ -2242,11 +2242,12 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Bible</span>
                 </button>
                 <!-- Messages -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                <button id="bottomNavMessagesBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.ChatApp && window.ChatApp.open && window.ChatApp.open()">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                     <span class="text-[10px] font-bold uppercase tracking-tight">Messages</span>
+                    <span id="messagesNavBadge" class="hidden absolute top-0 right-6 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">0</span>
                 </button>
                 <!-- Groups/Dash -->
                 <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.openGroupsNav && window.openGroupsNav()">
@@ -2411,6 +2412,129 @@
         </div>
     </div>
 
+    <!-- Messages Inbox -->
+    <div id="messagesInboxScreen" class="fixed inset-0 bg-[var(--bg-color)] z-[120] hidden flex flex-col">
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button onclick="window.ChatApp && window.ChatApp.close && window.ChatApp.close()" class="text-[var(--mission-gold)] hover:opacity-80">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-[var(--text-color)] truncate">Messages</h2>
+                    <p class="text-xs text-[var(--text-muted)]">Groups and direct messages</p>
+                </div>
+            </div>
+            <button onclick="window.ChatApp && window.ChatApp.openPeopleFinder && window.ChatApp.openPeopleFinder()" class="shrink-0 px-3 py-2 rounded-lg border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] text-xs font-bold hover:bg-[var(--mission-gold)]/10 transition-colors">
+                + Find People
+            </button>
+        </div>
+
+        <div class="p-4 border-b border-[var(--card-border)]">
+            <div class="relative">
+                <input id="messagesSearchInput" type="text" placeholder="Search in current tab..." oninput="window.ChatApp && window.ChatApp.handleSearchInput && window.ChatApp.handleSearchInput(this.value)"
+                       class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50">
+                <button onclick="window.ChatApp && window.ChatApp.refresh && window.ChatApp.refresh()" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-bold rounded-md border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-color)]">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="px-4 pt-3">
+            <div class="inline-flex w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl p-1">
+                <button id="messagesTabGroups" onclick="window.ChatApp && window.ChatApp.setTab && window.ChatApp.setTab('groups')" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors">Groups</button>
+                <button id="messagesTabDirect" onclick="window.ChatApp && window.ChatApp.setTab && window.ChatApp.setTab('direct')" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors">Direct</button>
+                <button id="messagesTabRequests" onclick="window.ChatApp && window.ChatApp.setTab && window.ChatApp.setTab('requests')" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors relative">
+                    Requests
+                    <span id="messagesRequestsBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">0</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4">
+            <div id="messagesGroupsPanel" class="space-y-3">
+                <div id="messagesGroupsList" class="space-y-3">
+                    <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading group threads...</p>
+                </div>
+            </div>
+
+            <div id="messagesDirectPanel" class="space-y-3 hidden">
+                <div id="messagesDirectList" class="space-y-3">
+                    <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading direct messages...</p>
+                </div>
+            </div>
+
+            <div id="messagesRequestsPanel" class="space-y-3 hidden">
+                <div id="messagesRequestsList" class="space-y-3">
+                    <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading friend requests...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- People Finder -->
+    <div id="peopleFinderModal" class="fixed inset-0 bg-black/80 z-[130] hidden flex items-end sm:items-center justify-center p-3 sm:p-4">
+        <div class="w-full max-w-lg bg-[var(--card-bg-solid)] border border-[var(--card-border)] rounded-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                <h3 class="font-bold text-[var(--text-color)]">Find People</h3>
+                <button onclick="window.ChatApp && window.ChatApp.closePeopleFinder && window.ChatApp.closePeopleFinder()" class="text-[var(--text-muted)] hover:text-[var(--text-color)]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 border-b border-[var(--card-border)] space-y-3">
+                <div class="flex items-center justify-between bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-3 py-2">
+                    <div>
+                        <p class="text-sm font-bold text-[var(--text-color)]">Find me in search</p>
+                        <p class="text-[11px] text-[var(--text-muted)]">Turn off to stop new friend requests from search.</p>
+                    </div>
+                    <button id="findMeToggleBtn" onclick="window.ChatApp && window.ChatApp.toggleFindMe && window.ChatApp.toggleFindMe()" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-[var(--card-border)] text-[var(--text-muted)]">Loading...</button>
+                </div>
+                <input id="peopleFinderInput" type="text" placeholder="Search by name or email" oninput="window.ChatApp && window.ChatApp.searchPeople && window.ChatApp.searchPeople(this.value)"
+                       class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50">
+            </div>
+            <div id="peopleFinderResults" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <p class="text-[var(--text-muted)] text-sm text-center py-8">Type to search people.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Message Modal -->
+    <div id="dmChatModal" class="fixed inset-0 bg-[var(--bg-color)] z-[130] hidden flex flex-col">
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button onclick="window.ChatApp && window.ChatApp.closeDirectChat && window.ChatApp.closeDirectChat()" class="text-[var(--mission-gold)] hover:opacity-80">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <img id="dmChatPhoto" src="https://ui-avatars.com/api/?name=User&background=4a0404&color=fbbf24" alt="User photo" class="w-9 h-9 rounded-full border border-[var(--card-border)]">
+                <div class="min-w-0">
+                    <h3 id="dmChatName" class="font-bold text-[var(--text-color)] truncate">Direct Message</h3>
+                    <p class="text-xs text-[var(--text-muted)]">Friend chat</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="dmChatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+            <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading messages...</p>
+        </div>
+
+        <div class="bg-[var(--nav-bg)] border-t border-[var(--nav-border)] p-4">
+            <div class="flex gap-2">
+                <input id="dmChatInput" type="text" placeholder="Type a message..." onkeypress="window.ChatApp && window.ChatApp.handleDmKeyPress && window.ChatApp.handleDmKeyPress(event)"
+                       class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50">
+                <button onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Chat Modal -->
     <!-- Training Day Modal (created dynamically by Training.js) -->
     <div id="trainingDayModal" class="hidden"></div>
@@ -2481,6 +2605,7 @@
     <script src="modules/groups/groups.js"></script>
     <script src="modules/groups/group-chat.js"></script>
     <script src="modules/groups/my-groups.js"></script>
+    <script src="modules/chat/chat-app.js?v=20260217-messages-inbox"></script>
     <script src="modules/dashboard/leader-dashboard.js?v=20260211-quickactions"></script>
     <script src="modules/core/notifications.js"></script>
     <script src="modules/core/push-notifications.js"></script>
@@ -2644,6 +2769,11 @@
                     if (typeof MyGroups !== 'undefined') {
                         await MyGroups.init();
                     }
+
+                    // Initialize Chat Inbox module
+                    if (typeof ChatApp !== 'undefined') {
+                        await ChatApp.init();
+                    }
                     
                     // Initialize Notifications after Groups
                     if (typeof Notifications !== 'undefined') {
@@ -2696,6 +2826,11 @@
                 }
             } else {
                 window.currentUser = null;
+                if (typeof ChatApp !== 'undefined') {
+                    ChatApp.close();
+                    ChatApp.closeDirectChat();
+                    ChatApp.closePeopleFinder();
+                }
                 loginScreen.classList.remove('hidden');
                 mainApp.classList.add('hidden');
             }

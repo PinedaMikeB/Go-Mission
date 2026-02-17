@@ -75,6 +75,7 @@ const GroupChat = {
     
     this.isOpen = true;
     this.currentGroupId = groupId; // Store for reference
+    this.updateGroupHeader();
     
     // FIRST: Set active chat in Firestore (prevents notifications while chat is open)
     // Wait for this to complete before proceeding
@@ -273,7 +274,7 @@ const GroupChat = {
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
-        senderName: window.currentUser.displayName || 'Unknown',
+        senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
         text: text.trim(),
         type: 'text',
@@ -281,6 +282,11 @@ const GroupChat = {
       };
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
+      await this.updateGroupThreadPreview({
+        type: 'text',
+        text: text.trim(),
+        senderName: message.senderName
+      });
       
       // Clear input
       const input = document.getElementById('chatInput');
@@ -306,7 +312,7 @@ const GroupChat = {
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
-        senderName: window.currentUser.displayName || 'Unknown',
+        senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
         type: 'devotion',
         devotion: {
@@ -320,6 +326,11 @@ const GroupChat = {
       };
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
+      await this.updateGroupThreadPreview({
+        type: 'devotion',
+        text: 'Shared a devotion',
+        senderName: message.senderName
+      });
       
       return true;
       
@@ -596,6 +607,39 @@ const GroupChat = {
     const headerSubtitle = document.querySelector('#chatModal .text-xs.text-\\[var\\(--text-muted\\)\\]');
     if (headerSubtitle) {
       headerSubtitle.textContent = `${memberCount} member${memberCount !== 1 ? 's' : ''}`;
+    }
+  },
+
+  /**
+   * Update chat title/subtitle for selected group
+   */
+  updateGroupHeader() {
+    const groupNameEl = document.getElementById('chatGroupName');
+    if (groupNameEl) {
+      groupNameEl.textContent = Groups.currentGroup?.name || 'Group Chat';
+    }
+    this.updateMemberCount();
+  },
+
+  /**
+   * Save latest group-message preview data for inbox thread list
+   */
+  async updateGroupThreadPreview({ type = 'text', text = '', senderName = '' } = {}) {
+    if (!Groups.currentGroup?.id || !window.db) return;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_groups', Groups.currentGroup.id),
+        {
+          lastChatMessageType: type,
+          lastChatMessageText: text || '',
+          lastChatSenderName: senderName || '',
+          lastChatMessageAt: window.serverTimestamp(),
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.warn('[GroupChat] Could not update group thread preview:', error);
     }
   }
 };
