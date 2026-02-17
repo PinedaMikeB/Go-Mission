@@ -2235,7 +2235,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Training</span>
                 </button>
                 <!-- Bible -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" onclick="window.BiblePicker && window.BiblePicker.open && window.BiblePicker.open()">
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" onclick="window.BibleReader && window.BibleReader.openFromNav ? window.BibleReader.openFromNav() : (window.BibleReader && window.BibleReader.enterFullscreen && window.BibleReader.enterFullscreen())">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5 5.284 5 3.264 5.767 1.67 7.039A1 1 0 001 7.82V19a1 1 0 001.67.743C4.264 18.471 6.284 17.7 8.5 17.7c1.746 0 3.332.477 4.5 1.253m-1-12.7C13.168 5.477 14.754 5 16.5 5c2.216 0 4.236.767 5.83 2.039A1 1 0 0123 7.82V19a1 1 0 01-1.67.743C19.736 18.471 17.716 17.7 15.5 17.7c-1.746 0-3.332.477-4.5 1.253"></path>
                     </svg>

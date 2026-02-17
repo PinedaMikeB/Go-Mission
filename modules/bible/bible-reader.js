@@ -14,7 +14,7 @@
 const BibleReader = {
   // State
   currentBook: 'JHN',
-  currentChapter: 1,
+  currentChapter: 3,
   highlightedVerses: [],      // Now stores objects: [{verse: 1, color: 'gold'}, ...]
   chapterData: null,
   commentaryData: null,
@@ -51,7 +51,7 @@ const BibleReader = {
   // Progress tracking
   progress: {
     book: 'JHN',
-    chapter: 1,
+    chapter: 3,
     booksProgress: {}
   },
 
@@ -119,7 +119,7 @@ const BibleReader = {
       if (saved) {
         this.progress = JSON.parse(saved);
         this.currentBook = this.progress.book || 'JHN';
-        this.currentChapter = this.progress.chapter || 1;
+        this.currentChapter = this.progress.chapter || 3;
       }
     } catch (e) {
       console.log('[BibleReader] No local progress found');
@@ -136,7 +136,7 @@ const BibleReader = {
           if (data.bibleProgress) {
             this.progress = data.bibleProgress;
             this.currentBook = this.progress.book || 'JHN';
-            this.currentChapter = this.progress.chapter || 1;
+            this.currentChapter = this.progress.chapter || 3;
             // Sync to localStorage
             localStorage.setItem('goMission_bibleProgress', JSON.stringify(this.progress));
           }
@@ -277,6 +277,19 @@ const BibleReader = {
     
     // Apply to reflection textarea
     if (reflectionTextarea) reflectionTextarea.style.fontSize = fontSize;
+  },
+
+  /**
+   * Open Bible from bottom nav and resume where reader left off.
+   */
+  async openFromNav() {
+    if (document.getElementById('bibleFullscreenOverlay')) return;
+
+    if (!this.chapterData) {
+      await this.loadChapter(this.currentBook || 'JHN', this.currentChapter || 3);
+    }
+
+    this.enterFullscreen();
   },
 
   /**
@@ -1296,8 +1309,8 @@ const BibleReader = {
       this.elements.bibleText.innerHTML = `
         <div class="text-center py-8">
           <p class="text-[var(--mission-red-bright)] text-sm">${message}</p>
-          <button onclick="BibleReader.loadChapter('JHN', 1)" class="mt-4 text-[var(--mission-gold)] text-xs hover:underline">
-            Start with John 1
+          <button onclick="BibleReader.loadChapter('JHN', 3)" class="mt-4 text-[var(--mission-gold)] text-xs hover:underline">
+            Start with John 3
           </button>
         </div>
       `;
