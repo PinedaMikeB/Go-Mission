@@ -3401,6 +3401,117 @@
             document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
         };
 
+        async function resolveActiveGroupId() {
+            if (typeof Groups !== 'undefined' && Groups.currentGroup?.id) {
+                return Groups.currentGroup.id;
+            }
+
+            if (typeof MyGroups !== 'undefined') {
+                if (MyGroups.uplineGroup?.id) return MyGroups.uplineGroup.id;
+                if (Array.isArray(MyGroups.guestGroups) && MyGroups.guestGroups[0]?.id) {
+                    return MyGroups.guestGroups[0].id;
+                }
+            }
+
+            if (!window.currentUser?.uid || !window.db) return null;
+
+            try {
+                const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+                const userDoc = await window.getDoc(userRef);
+                if (!userDoc.exists()) return null;
+
+                const userData = userDoc.data() || {};
+                return userData.uplineGroupId || userData.groupId || (Array.isArray(userData.guestGroups) ? userData.guestGroups[0] : null) || null;
+            } catch (error) {
+                console.error('[Devotion] Could not resolve active group:', error);
+                return null;
+            }
+        }
+
+        async function persistDevotionEntry({ reflection, question, shareRequested }) {
+            if (!window.currentUser || !reflection) {
+                return { saved: false, missingGroup: false };
+            }
+
+            const today = getTodayString();
+            const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+            const existingEntryDoc = await window.getDoc(entryRef);
+            const existingEntry = existingEntryDoc.exists() ? existingEntryDoc.data() : null;
+
+            const reading = (typeof BibleReader !== 'undefined')
+                ? BibleReader.getCurrentReading()
+                : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+
+            let groupId = null;
+            let shouldShare = !!shareRequested;
+
+            if (shouldShare) {
+                groupId = await resolveActiveGroupId();
+                if (!groupId) {
+                    shouldShare = false;
+                }
+            }
+
+            await window.setDoc(entryRef, {
+                uid: window.currentUser.uid,
+                userName: window.currentUser.displayName || '',
+                date: today,
+                book: reading.book,
+                chapter: reading.chapter,
+                highlightedVerses: reading.highlightedVerses,
+                question: question,
+                reflection: reflection,
+                sharedWithGroup: shouldShare,
+                groupId: shouldShare ? groupId : null,
+                language: window.i18n?.getLang?.() || 'tl',
+                savedAt: window.serverTimestamp()
+            });
+
+            if (shouldShare && groupId && window.db) {
+                const alreadySharedSame =
+                    !!existingEntry &&
+                    existingEntry.sharedWithGroup === true &&
+                    existingEntry.groupId === groupId &&
+                    existingEntry.book === reading.book &&
+                    existingEntry.chapter === reading.chapter &&
+                    existingEntry.reflection === reflection;
+
+                if (!alreadySharedSame) {
+                    const verseNumbers = (reading.highlightedVerses || [])
+                        .map(v => (typeof v === 'object' ? v.verse : v))
+                        .filter(v => Number.isFinite(Number(v)))
+                        .map(v => Number(v));
+
+                    await window.addDoc(window.collection(window.db, 'goMission_chats'), {
+                        groupId: groupId,
+                        senderId: window.currentUser.uid,
+                        senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
+                        senderPhoto: window.currentUser.photoURL || '',
+                        type: 'devotion',
+                        devotion: {
+                            book: reading.book,
+                            chapter: reading.chapter,
+                            verses: verseNumbers,
+                            question: question,
+                            reflection: reflection
+                        },
+                        createdAt: window.serverTimestamp()
+                    });
+                }
+            }
+
+            shareWithGroup = shouldShare;
+            const shareToggle = document.getElementById('shareToggle');
+            if (shareToggle) {
+                shareToggle.classList.toggle('active', shareWithGroup);
+            }
+
+            return {
+                saved: true,
+                missingGroup: !!shareRequested && !groupId
+            };
+        }
+
         // Load today's entry if exists - ONLY restore highlights, not reflection text
         window.loadTodaysEntry = async function(uid) {
             if (!uid) return;
@@ -3462,31 +3573,19 @@
             btnText.textContent = 'Saving...';
             
             try {
-                const today = getTodayString();
-                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
-                
-                // Get reading info from BibleReader
-                const reading = (typeof BibleReader !== 'undefined') 
-                    ? BibleReader.getCurrentReading() 
-                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
-                
                 // Get the reflection question (AI-generated or default)
                 const reflectionEl = document.getElementById('reflectionQuestion');
                 const question = reflectionEl ? reflectionEl.textContent.replace(/[""]/g, '').trim() : '';
-                
-                await window.setDoc(entryRef, {
-                    uid: window.currentUser.uid,
-                    userName: window.currentUser.displayName || '',
-                    date: today,
-                    book: reading.book,
-                    chapter: reading.chapter,
-                    highlightedVerses: reading.highlightedVerses,
-                    question: question,
-                    reflection: reflection,
-                    sharedWithGroup: shareWithGroup,
-                    language: window.i18n?.getLang?.() || 'tl',
-                    savedAt: window.serverTimestamp()
+
+                const result = await persistDevotionEntry({
+                    reflection,
+                    question,
+                    shareRequested: shareWithGroup
                 });
+
+                if (result.missingGroup) {
+                    alert('No mission group found. Your reflection was saved to Journal but not shared to group.');
+                }
                 
                 // Show success
                 document.getElementById('successToast').classList.remove('hidden');
@@ -3587,6 +3686,7 @@
         window.togglePopupShare = function() {
             const toggle = document.getElementById('sharePopupToggle');
             toggle.classList.toggle('active');
+            shareWithGroup = toggle.classList.contains('active');
         };
         
         // Show reflection popup (called when exiting fullscreen)
@@ -3603,6 +3703,12 @@
             // Update language labels
             const lang = window.i18n?.getLang?.() || 'en';
             document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+
+            // Sync popup share toggle with current preference
+            const popupShareToggle = document.getElementById('sharePopupToggle');
+            if (popupShareToggle) {
+                popupShareToggle.classList.toggle('active', !!shareWithGroup);
+            }
             
             modal.classList.remove('hidden');
         };
@@ -3619,8 +3725,9 @@
             document.getElementById('reflectionPopupModal').classList.add('hidden');
             document.getElementById('reflectionPopupAnswer').value = '';
             
-            // Reopen fullscreen
-            if (typeof BibleReader !== 'undefined') {
+            // Reopen fullscreen only if user was not already in it
+            const hasFullscreenOverlay = !!document.getElementById('bibleFullscreenOverlay');
+            if (!hasFullscreenOverlay && typeof BibleReader !== 'undefined') {
                 BibleReader.enterFullscreen();
             }
         };
@@ -3641,6 +3748,12 @@
             if (typeof BibleReader !== 'undefined') {
                 BibleReader.highlightedVerses = [];
                 BibleReader.renderVerses();
+                BibleReader.clearCommentary();
+
+                // If fullscreen is still open (opened via Reflect button), close it.
+                if (document.getElementById('bibleFullscreenOverlay')) {
+                    BibleReader.exitFullscreen();
+                }
             }
             
             // Reload week progress
@@ -3660,32 +3773,21 @@
             if (!window.currentUser || !reflection) return;
             
             try {
-                const today = getTodayString();
-                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
-                
-                const reading = (typeof BibleReader !== 'undefined') 
-                    ? BibleReader.getCurrentReading() 
-                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
-                
                 const questionEl = document.getElementById('reflectPopupQuestion');
                 const question = questionEl ? questionEl.textContent.replace(/[""]/g, '').trim() : '';
                 
                 const shareToggle = document.getElementById('sharePopupToggle');
-                const shareWithGroup = shareToggle?.classList.contains('active') || false;
-                
-                await window.setDoc(entryRef, {
-                    uid: window.currentUser.uid,
-                    userName: window.currentUser.displayName || '',
-                    date: today,
-                    book: reading.book,
-                    chapter: reading.chapter,
-                    highlightedVerses: reading.highlightedVerses,
-                    question: question,
-                    reflection: reflection,
-                    sharedWithGroup: shareWithGroup,
-                    language: window.i18n?.getLang?.() || 'tl',
-                    savedAt: window.serverTimestamp()
+                const popupShareEnabled = shareToggle?.classList.contains('active') || false;
+
+                const result = await persistDevotionEntry({
+                    reflection,
+                    question,
+                    shareRequested: popupShareEnabled
                 });
+
+                if (result.missingGroup) {
+                    alert('No mission group found. Your reflection was saved to Journal but not shared to group.');
+                }
                 
                 console.log('[Devotion] Saved reflection from popup');
             } catch (error) {

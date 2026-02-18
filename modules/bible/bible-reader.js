@@ -466,11 +466,17 @@ const BibleReader = {
    * Open reflect modal from fullscreen (without exiting)
    */
   openReflectModal() {
-    if (this.highlightedVerses.length === 0) return;
+    if (this.highlightedVerses.length === 0) {
+      const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
+      alert(lang === 'tl' ? 'Mag-highlight muna ng talata bago mag-reflect.' : 'Highlight at least one verse before reflecting.');
+      return;
+    }
     
     // Show the reflection popup
     if (typeof window.showReflectionPopup === 'function') {
       window.showReflectionPopup();
+    } else {
+      console.warn('[BibleReader] Reflection popup function is not available');
     }
   },
 
