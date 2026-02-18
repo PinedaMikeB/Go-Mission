@@ -525,12 +525,6 @@ const BibleReader = {
             <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
             <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
             <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
-            ${insight.reflection ? `
-              <div class="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
-                <span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.reflectionQuestion}</span>
-                <p class="leading-relaxed italic">${insight.reflection}</p>
-              </div>
-            ` : ''}
           </div>
         </div>
       `;
