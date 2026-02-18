@@ -441,13 +441,7 @@ const BibleReader = {
 
     // Bind reflect action programmatically for cross-browser reliability.
     let lastReflectTriggerAt = 0;
-    const handleReflectTap = (e) => {
-      const target = e.target;
-      if (!target || !target.closest) return;
-      const reflectBtn = target.closest('#fullscreenReflectBtn');
-      const reflectTempBtn = target.closest('#fullscreenReflectTempBtn');
-      if (!reflectBtn && !reflectTempBtn) return;
-
+    const openReflectFromButton = (e) => {
       const now = Date.now();
       if (now - lastReflectTriggerAt < 250) return;
       lastReflectTriggerAt = now;
@@ -456,8 +450,14 @@ const BibleReader = {
       e.stopPropagation();
       this.openReflectModalDirect();
     };
-    overlay.addEventListener('click', handleReflectTap, true);
-    overlay.addEventListener('pointerup', handleReflectTap, true);
+
+    const reflectBtn = overlay.querySelector('#fullscreenReflectBtn');
+    const reflectTempBtn = overlay.querySelector('#fullscreenReflectTempBtn');
+    [reflectBtn, reflectTempBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', openReflectFromButton);
+      btn.addEventListener('pointerup', openReflectFromButton);
+    });
     
     // Animate in
     requestAnimationFrame(() => {
