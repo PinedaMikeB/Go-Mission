@@ -377,6 +377,11 @@ const BibleReader = {
             <span>📝</span>
             <span>Reflect</span>
           </button>
+          <button id="fullscreenReflectTempBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-emerald-400/60 text-emerald-300 hover:bg-emerald-500/20 transition-all cursor-pointer">
+            <span>🧪</span>
+            <span>Test Reflect</span>
+          </button>
         </div>
       </div>
       
@@ -440,7 +445,8 @@ const BibleReader = {
       const target = e.target;
       if (!target || !target.closest) return;
       const reflectBtn = target.closest('#fullscreenReflectBtn');
-      if (!reflectBtn) return;
+      const reflectTempBtn = target.closest('#fullscreenReflectTempBtn');
+      if (!reflectBtn && !reflectTempBtn) return;
 
       const now = Date.now();
       if (now - lastReflectTriggerAt < 250) return;
@@ -448,7 +454,7 @@ const BibleReader = {
 
       e.preventDefault();
       e.stopPropagation();
-      this.openReflectModal();
+      this.openReflectModalDirect();
     };
     overlay.addEventListener('click', handleReflectTap, true);
     overlay.addEventListener('pointerup', handleReflectTap, true);
@@ -483,17 +489,21 @@ const BibleReader = {
    * Open reflect modal from fullscreen (without exiting)
    */
   openReflectModal() {
-    if (this.highlightedVerses.length === 0) {
-      const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
-      alert(lang === 'tl' ? 'Mag-highlight muna ng talata bago mag-reflect.' : 'Highlight at least one verse before reflecting.');
-      return;
-    }
-    
+    this.openReflectModalDirect();
+  },
+
+  /**
+   * Direct reflect modal opener used for reliability testing.
+   */
+  openReflectModalDirect() {
     // Show the reflection popup (primary path)
     if (typeof window.showReflectionPopup === 'function') {
       try {
         window.showReflectionPopup();
-        return;
+        const openedModal = document.getElementById('reflectionPopupModal');
+        if (openedModal && !openedModal.classList.contains('hidden')) {
+          return;
+        }
       } catch (error) {
         console.error('[BibleReader] showReflectionPopup failed:', error);
       }
