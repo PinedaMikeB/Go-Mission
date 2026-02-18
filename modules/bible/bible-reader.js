@@ -372,10 +372,9 @@ const BibleReader = {
             <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
           </button>
           
-          <button onclick="BibleReader.openReflectModal()" 
+          <button onclick="event.stopPropagation(); BibleReader.openReflectModal()" 
                   id="fullscreenReflectBtn"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
-                  ${!hasHighlights ? 'disabled' : ''}>
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)]'}">
             <span>📝</span>
             <span>Reflect</span>
           </button>
@@ -636,13 +635,11 @@ const BibleReader = {
       const reflectBtn = document.getElementById('fullscreenReflectBtn');
       if (reflectBtn) {
         if (hasHighlights) {
-          reflectBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]');
           reflectBtn.classList.add('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
-          reflectBtn.disabled = false;
         } else {
-          reflectBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]');
           reflectBtn.classList.remove('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
-          reflectBtn.disabled = true;
         }
       }
     }, 200);
