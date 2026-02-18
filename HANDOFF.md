@@ -24,6 +24,10 @@
   - Fix: add dual fallback in nav click handler + explicit safe global assignment `window.Training = Training`
   - Training copy update requested: Wednesday Equipping Tagalog description replaced with long-form discipleship invitation text
   - Added infographic-style "How to Join Wednesday Equipping" 4-step instruction card in Training full-screen view
+- **Status**: 🔄 Follow-up in progress for shared Jitsi meeting controls
+  - Active module: `/modules/groups/group-meeting.js`
+  - Goal: keep a compact 4-button main toolbar and move extras to `More` menu
+  - Added `overflowmenu` with `desktop` (Share Screen) and `reactions` (emoji) in shared config so it applies to Mission Groups + Wednesday Equipping + future embedded meetings
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`

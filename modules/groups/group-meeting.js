@@ -327,11 +327,37 @@ const GroupMeeting = {
           
           // Performance
           resolution: 480,
-          p2p: { enabled: true }
+          p2p: { enabled: true },
+
+          // Keep core controls visible and route extras to the More menu.
+          toolbarButtons: [
+            'microphone',
+            'camera',
+            'tileview',
+            'overflowmenu',
+            'hangup',
+            'desktop',
+            'reactions'
+          ]
         },
         interfaceConfigOverwrite: {
-          // Minimal toolbar
-          TOOLBAR_BUTTONS: ['microphone', 'camera', 'tileview', 'hangup'],
+          // Keep main toolbar compact and place extras under "More actions".
+          TOOLBAR_BUTTONS: [
+            'microphone',
+            'camera',
+            'tileview',
+            'overflowmenu',
+            'hangup',
+            'desktop',
+            'reactions'
+          ],
+          MAIN_TOOLBAR_BUTTONS: [
+            'microphone',
+            'camera',
+            'tileview',
+            'overflowmenu',
+            'hangup'
+          ],
           
           // Hide branding
           SHOW_JITSI_WATERMARK: false,
