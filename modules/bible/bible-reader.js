@@ -372,8 +372,7 @@ const BibleReader = {
             <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
           </button>
           
-          <button onclick="BibleReader.openReflectModal()" 
-                  id="fullscreenReflectBtn"
+          <button id="fullscreenReflectBtn"
                   class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)]'}">
             <span>📝</span>
             <span>Reflect</span>
@@ -434,6 +433,16 @@ const BibleReader = {
     
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
+
+    // Bind reflect action programmatically for cross-browser reliability.
+    const reflectBtn = overlay.querySelector('#fullscreenReflectBtn');
+    if (reflectBtn) {
+      reflectBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openReflectModal();
+      });
+    }
     
     // Animate in
     requestAnimationFrame(() => {
