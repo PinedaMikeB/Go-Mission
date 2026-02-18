@@ -472,12 +472,42 @@ const BibleReader = {
       return;
     }
     
-    // Show the reflection popup
+    // Show the reflection popup (primary path)
     if (typeof window.showReflectionPopup === 'function') {
-      window.showReflectionPopup();
-    } else {
-      console.warn('[BibleReader] Reflection popup function is not available');
+      try {
+        window.showReflectionPopup();
+        return;
+      } catch (error) {
+        console.error('[BibleReader] showReflectionPopup failed:', error);
+      }
     }
+
+    // Fallback path: open popup directly so Reflect never feels dead.
+    const modal = document.getElementById('reflectionPopupModal');
+    if (modal) {
+      const sourceQuestion = document.getElementById('reflectionQuestion');
+      const popupQuestion = document.getElementById('reflectPopupQuestion');
+      if (sourceQuestion && popupQuestion) {
+        popupQuestion.textContent = sourceQuestion.textContent || '"What is one thing God is inviting you to live out today?"';
+      }
+
+      const title = document.getElementById('reflectPopupTitle');
+      if (title) {
+        const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+        title.textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+      }
+
+      const popupShareToggle = document.getElementById('sharePopupToggle');
+      const cardShareToggle = document.getElementById('shareToggle');
+      if (popupShareToggle && cardShareToggle) {
+        popupShareToggle.classList.toggle('active', cardShareToggle.classList.contains('active'));
+      }
+
+      modal.classList.remove('hidden');
+      return;
+    }
+
+    alert('Could not open Reflect right now. Please refresh and try again.');
   },
 
   /**

@@ -3692,6 +3692,10 @@
         // Show reflection popup (called when exiting fullscreen)
         window.showReflectionPopup = function() {
             const modal = document.getElementById('reflectionPopupModal');
+            if (!modal) {
+                console.warn('[Devotion] reflectionPopupModal not found');
+                return;
+            }
             
             // Get the current reflection question from BibleReader
             const questionEl = document.getElementById('reflectionQuestion');
@@ -3702,7 +3706,10 @@
             
             // Update language labels
             const lang = window.i18n?.getLang?.() || 'en';
-            document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+            const titleEl = document.getElementById('reflectPopupTitle');
+            if (titleEl) {
+                titleEl.textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+            }
 
             // Sync popup share toggle with current preference
             const popupShareToggle = document.getElementById('sharePopupToggle');
