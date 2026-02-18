@@ -16,6 +16,8 @@ const Training = {
   currentDay: null,
   sessions: [],
   userProgress: {},
+  WEDNESDAY_EQUIPPING_ROOM_ID: 'wednesday-equipping-global',
+  WEDNESDAY_EQUIPPING_GROUP_NAME: 'Wednesday Equipping',
   
   /**
    * Initialize training module
@@ -626,14 +628,38 @@ const Training = {
   /**
    * Join video meeting (Jitsi)
    */
-  joinMeeting(sessionNumber) {
-    // Generate room name based on group
-    const groupId = Groups?.currentGroup?.id || 'general';
-    const roomName = `gomission-session${sessionNumber}-${groupId}`;
-    
-    // Open Jitsi meeting (self-hosted)
-    const jitsiUrl = `https://call.wotgonline.com/${roomName}`;
-    window.open(jitsiUrl, '_blank');
+  async joinMeeting(sessionNumber) {
+    const activeGroup = window.Groups?.currentGroup;
+    const groupId = activeGroup?.id || `training-session-${sessionNumber}`;
+    const groupName = activeGroup?.name || `Session ${sessionNumber} Group Processing`;
+
+    await this.joinEmbeddedMeeting(groupId, groupName);
+  },
+
+  /**
+   * Join weekly Wednesday Equipping room
+   */
+  async joinWednesdayEquipping() {
+    await this.joinEmbeddedMeeting(
+      this.WEDNESDAY_EQUIPPING_ROOM_ID,
+      this.WEDNESDAY_EQUIPPING_GROUP_NAME
+    );
+  },
+
+  /**
+   * Join meeting through the in-app GroupMeeting embed flow
+   */
+  async joinEmbeddedMeeting(groupId, groupName) {
+    const userName = window.currentUser?.displayName || window.currentUser?.email?.split('@')[0] || 'Guest';
+    const userEmail = window.currentUser?.email || '';
+
+    if (window.GroupMeeting && typeof window.GroupMeeting.joinMeeting === 'function') {
+      await window.GroupMeeting.joinMeeting(String(groupId), groupName, userName, userEmail, false);
+      return;
+    }
+
+    console.error('[Training] GroupMeeting module unavailable');
+    window.alert('Meeting is temporarily unavailable. Please refresh the app and try again.');
   },
   
   /**
@@ -665,7 +691,13 @@ const Training = {
         instruction4: 'Encourage each other to continue growing',
         discussionTopics: 'Discussion Topics',
         joinMeeting: 'Join Video Meeting',
-        meetingNote: 'You will be connected to your group\'s video call'
+        meetingNote: 'You will be connected to your group\'s video call',
+        liveTraining: 'Live Training',
+        wednesdayEquipping: 'Wednesday Equipping',
+        wednesdayEquippingDesc: 'Equip members to make disciples with participants from different countries.',
+        meetsEvery: 'Meets every',
+        wednesdayEquippingTime: 'Wednesday • 8:00 PM',
+        joinWednesdayEquipping: 'Join Wednesday Equipping'
       },
       tl: {
         session: 'Sesyon',
@@ -691,7 +723,13 @@ const Training = {
         instruction4: 'Palakasin ang loob ng bawat isa na magpatuloy sa paglago',
         discussionTopics: 'Mga Paksang Tatalakayin',
         joinMeeting: 'Sumali sa Video Meeting',
-        meetingNote: 'Ikokonekta ka sa video call ng iyong grupo'
+        meetingNote: 'Ikokonekta ka sa video call ng iyong grupo',
+        liveTraining: 'Live Training',
+        wednesdayEquipping: 'Wednesday Equipping',
+        wednesdayEquippingDesc: 'Pagsasanay para sa paggawa ng alagad kasama ang mga miyembro mula sa iba\'t ibang bansa.',
+        meetsEvery: 'Tuwing',
+        wednesdayEquippingTime: 'Miyerkules • 8:00 PM',
+        joinWednesdayEquipping: 'Sumali sa Wednesday Equipping'
       }
     };
     
@@ -715,6 +753,7 @@ const Training = {
       document.body.appendChild(modal);
     }
     
+    const wednesdayCardHtml = this.renderWednesdayEquippingCard(labels);
     let sessionsHtml = '';
     
     if (this.sessions.length === 0) {
@@ -777,12 +816,37 @@ const Training = {
         
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-4">
+          ${wednesdayCardHtml}
           ${sessionsHtml}
         </div>
       </div>
     `;
     
     modal.classList.remove('hidden');
+  },
+
+  /**
+   * Render weekly Wednesday Equipping live-call card
+   */
+  renderWednesdayEquippingCard(labels) {
+    return `
+      <div class="mb-5 rounded-2xl border border-[var(--mission-gold)]/35 bg-gradient-to-br from-[var(--mission-gold)]/15 to-transparent p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-xs uppercase tracking-[0.2em] font-bold text-[var(--mission-gold)]">${labels.liveTraining}</div>
+            <h3 class="mt-1 text-xl font-extrabold text-[var(--text-color)]">${labels.wednesdayEquipping}</h3>
+            <p class="mt-2 text-sm text-[var(--text-muted)]">${labels.wednesdayEquippingDesc}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">${labels.meetsEvery}</div>
+            <div class="text-sm font-semibold text-[var(--text-color)]">${labels.wednesdayEquippingTime}</div>
+          </div>
+        </div>
+        <button onclick="Training.joinWednesdayEquipping()" class="mt-4 w-full mission-button py-3 rounded-xl font-bold">
+          📹 ${labels.joinWednesdayEquipping}
+        </button>
+      </div>
+    `;
   },
   
   /**

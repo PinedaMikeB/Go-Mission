@@ -10,15 +10,19 @@
 
 ---
 
-## Current Task Status (2026-02-15)
+## Current Task Status (2026-02-18)
 
-- **Active module**: Project orchestration (thread-by-thread workflow)
+- **Active module**: Training module navigation + live meeting card
+  - `index.html`
+  - `modules/training/training.js`
   - `HANDOFF.md`
-  - `CHANGELOG.md`
-- **Goal**: Prepare clean handoff for new task-specific threads (UI, Mission Group Calling, Bible, Training)
-- **Status**: ✅ Login modal aligned to design system + Filipino tagline update completed and pushed
-  - Login UI theme update pushed: commit `c8b1b78`
-  - Login tagline update pushed: commit `52a2f9e`
+- **Goal**: Add Wednesday Equipping card in Training with in-app Jitsi join flow (same embedded meeting experience as Mission Groups)
+- **Status**: 🔄 Implemented locally; pending live verification after push
+- **Next steps**:
+  - Verify bottom nav `Training` opens full-screen Training view
+  - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
+  - Verify `Join Wednesday Equipping` opens embedded Jitsi modal in-app (no new browser tab)
+  - Verify Day 7 `Join Video Meeting` now uses embedded in-app Jitsi flow
 
 ## Next Thread Roadmap (Start Here)
 
