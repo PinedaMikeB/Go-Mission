@@ -373,7 +373,7 @@ const BibleReader = {
           </button>
           
           <button id="fullscreenReflectBtn"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)]'}">
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)]'}">
             <span>📝</span>
             <span>Reflect</span>
           </button>
@@ -435,14 +435,23 @@ const BibleReader = {
     document.body.style.overflow = 'hidden';
 
     // Bind reflect action programmatically for cross-browser reliability.
-    const reflectBtn = overlay.querySelector('#fullscreenReflectBtn');
-    if (reflectBtn) {
-      reflectBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.openReflectModal();
-      });
-    }
+    let lastReflectTriggerAt = 0;
+    const handleReflectTap = (e) => {
+      const target = e.target;
+      if (!target || !target.closest) return;
+      const reflectBtn = target.closest('#fullscreenReflectBtn');
+      if (!reflectBtn) return;
+
+      const now = Date.now();
+      if (now - lastReflectTriggerAt < 250) return;
+      lastReflectTriggerAt = now;
+
+      e.preventDefault();
+      e.stopPropagation();
+      this.openReflectModal();
+    };
+    overlay.addEventListener('click', handleReflectTap, true);
+    overlay.addEventListener('pointerup', handleReflectTap, true);
     
     // Animate in
     requestAnimationFrame(() => {
