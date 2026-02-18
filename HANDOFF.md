@@ -29,6 +29,9 @@
   - Goal: keep a compact 4-button main toolbar and move extras to `More` menu
   - Added `overflowmenu` with `desktop` (Share Screen) and `reactions` (emoji) in shared config so it applies to Mission Groups + Wednesday Equipping + future embedded meetings
   - Removed invite/share-link action globally via `disableInviteFunctions: true` so sharing is only `Share Screen`
+- **Status**: 🔄 Training UI cleanup in progress
+  - Removed Training sessions list block under "Paano Sumali sa Wednesday Equipping" including "Loading training content..."
+  - Current Training fullscreen content now shows only: Wednesday Equipping card + join infographic
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`

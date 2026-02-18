@@ -775,51 +775,6 @@ const Training = {
     
     const wednesdayCardHtml = this.renderWednesdayEquippingCard(labels);
     const joinGuideHtml = this.renderTrainingJoinGuide(labels);
-    let sessionsHtml = '';
-    
-    if (this.sessions.length === 0) {
-      sessionsHtml = `
-        <div class="text-center py-8">
-          <p class="text-[var(--text-muted)]">Loading training content...</p>
-        </div>
-      `;
-    } else {
-      // Render each session
-      this.sessions.forEach(session => {
-        const completedDays = session.days.filter(d => this.isDayCompleted(session.sessionNumber, d.dayNumber)).length;
-        const totalDays = session.days.length;
-        const progress = Math.round((completedDays / totalDays) * 100);
-        
-        sessionsHtml += `
-          <div class="training-session mb-6">
-            <div class="session-header bg-gradient-to-r from-amber-500/20 to-transparent p-4 rounded-xl mb-3">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-amber-400 font-bold text-lg">${labels.session} ${session.sessionNumber}</h3>
-                  <p class="text-[var(--text-color)] font-medium">${session.sessionTitle}</p>
-                </div>
-                <div class="text-right">
-                  <div class="text-2xl font-bold text-amber-400">${completedDays}/${totalDays}</div>
-                  <div class="text-xs text-[var(--text-muted)]">${labels.daysCompleted}</div>
-                </div>
-              </div>
-              <div class="mt-3 h-2 bg-black/30 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500" style="width: ${progress}%"></div>
-              </div>
-            </div>
-            
-            <div class="days-grid grid gap-2">
-              ${session.days.map(day => this.renderDayCard(session, day, labels)).join('')}
-            </div>
-            
-            <!-- Day 7: Group Processing -->
-            <div class="mt-3">
-              ${this.renderDay7Card(session, labels)}
-            </div>
-          </div>
-        `;
-      });
-    }
     
     modal.innerHTML = `
       <div class="fixed inset-0 bg-[var(--bg-color)] z-50 flex flex-col">
@@ -839,7 +794,6 @@ const Training = {
         <div class="flex-1 overflow-y-auto p-4">
           ${wednesdayCardHtml}
           ${joinGuideHtml}
-          ${sessionsHtml}
         </div>
       </div>
     `;
