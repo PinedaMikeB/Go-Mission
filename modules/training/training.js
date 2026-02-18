@@ -877,6 +877,10 @@ const Training = {
   }
 };
 
+if (typeof window !== 'undefined') {
+  window.Training = Training;
+}
+
 // Export
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Training;

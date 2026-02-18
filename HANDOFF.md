@@ -19,6 +19,9 @@
 - **Goal**: Add Wednesday Equipping card in Training with in-app Jitsi join flow (same embedded meeting experience as Mission Groups)
 - **Status**: ✅ Implemented and pushed to `main` for live verification
   - Commit: `9ce7868` (Wednesday Equipping card + in-app Jitsi join in Training)
+- **Status**: 🔄 Follow-up fix in progress for Training bottom-nav tap
+  - Root cause: inline handler relied on `window.Training` in some sessions where `Training` exists without explicit `window` binding
+  - Fix: add dual fallback in nav click handler + explicit safe global assignment `window.Training = Training`
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
