@@ -3428,7 +3428,7 @@
             }
         }
 
-        async function persistDevotionEntry({ reflection, question, shareRequested }) {
+        async function persistDevotionEntry({ reflection, commitment = '', question, shareRequested }) {
             if (!window.currentUser || !reflection) {
                 return { saved: false, missingGroup: false };
             }
@@ -3461,6 +3461,7 @@
                 highlightedVerses: reading.highlightedVerses,
                 question: question,
                 reflection: reflection,
+                commitment: commitment || '',
                 sharedWithGroup: shouldShare,
                 groupId: shouldShare ? groupId : null,
                 language: window.i18n?.getLang?.() || 'tl',
@@ -3474,7 +3475,8 @@
                     existingEntry.groupId === groupId &&
                     existingEntry.book === reading.book &&
                     existingEntry.chapter === reading.chapter &&
-                    existingEntry.reflection === reflection;
+                    existingEntry.reflection === reflection &&
+                    (existingEntry.commitment || '') === (commitment || '');
 
                 if (!alreadySharedSame) {
                     const verseNumbers = (reading.highlightedVerses || [])
@@ -3493,7 +3495,8 @@
                             chapter: reading.chapter,
                             verses: verseNumbers,
                             question: question,
-                            reflection: reflection
+                            reflection: reflection,
+                            commitment: commitment || ''
                         },
                         createdAt: window.serverTimestamp()
                     });
@@ -3511,6 +3514,41 @@
                 missingGroup: !!shareRequested && !groupId
             };
         }
+
+        window.saveReflectionFromInsights = async function({ reflection, commitment = '', question = '', shareWithGroup: shareRequested = false }) {
+            if (!window.currentUser) {
+                alert('Please sign in to save your reflection.');
+                return { saved: false, missingGroup: false };
+            }
+            if (!reflection || !reflection.trim()) {
+                alert('Please write your reflection before saving.');
+                return { saved: false, missingGroup: false };
+            }
+            if (!commitment || !commitment.trim()) {
+                alert('Please write your "I will" commitment before saving.');
+                return { saved: false, missingGroup: false };
+            }
+
+            const result = await persistDevotionEntry({
+                reflection: reflection.trim(),
+                commitment: commitment.trim(),
+                question: (question || '').trim(),
+                shareRequested: !!shareRequested
+            });
+
+            if (result.saved) {
+                const toast = document.getElementById('successToast');
+                if (toast) {
+                    toast.classList.remove('hidden');
+                    setTimeout(() => toast.classList.add('hidden'), 3000);
+                }
+                if (window.currentUser) {
+                    await window.loadWeekProgress(window.currentUser.uid);
+                }
+            }
+
+            return result;
+        };
 
         // Load today's entry if exists - ONLY restore highlights, not reflection text
         window.loadTodaysEntry = async function(uid) {
@@ -3579,6 +3617,7 @@
 
                 const result = await persistDevotionEntry({
                     reflection,
+                    commitment: '',
                     question,
                     shareRequested: shareWithGroup
                 });
@@ -3788,6 +3827,7 @@
 
                 const result = await persistDevotionEntry({
                     reflection,
+                    commitment: '',
                     question,
                     shareRequested: popupShareEnabled
                 });
@@ -3847,6 +3887,7 @@
                             </div>
                             <p class="text-xs text-[var(--text-muted)] italic mb-2">"${data.question || ''}"</p>
                             <p class="text-sm text-[var(--text-color)]">${data.reflection || ''}</p>
+                            ${data.commitment ? `<p class="text-xs text-emerald-300 mt-2"><span class="font-bold">I will:</span> ${data.commitment}</p>` : ''}
                             ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
                         </div>
                     `;
