@@ -697,7 +697,17 @@ const Training = {
         wednesdayEquippingDesc: 'Equip members to make disciples with participants from different countries.',
         meetsEvery: 'Meets every',
         wednesdayEquippingTime: 'Wednesday • 8:00 PM',
-        joinWednesdayEquipping: 'Join Wednesday Equipping'
+        joinWednesdayEquipping: 'Join Wednesday Equipping',
+        joinGuideTitle: 'How To Join Wednesday Equipping',
+        joinGuideSubtitle: 'Quick 4-step guide',
+        joinGuideStep1Title: 'Open Training',
+        joinGuideStep1Desc: 'Tap Training from the bottom navigation.',
+        joinGuideStep2Title: 'Find The Card',
+        joinGuideStep2Desc: 'Look for the Wednesday Equipping card.',
+        joinGuideStep3Title: 'Tap Join',
+        joinGuideStep3Desc: 'Press Join Wednesday Equipping.',
+        joinGuideStep4Title: 'Enter Meeting',
+        joinGuideStep4Desc: 'Allow mic/camera and wait to connect.'
       },
       tl: {
         session: 'Sesyon',
@@ -726,10 +736,20 @@ const Training = {
         meetingNote: 'Ikokonekta ka sa video call ng iyong grupo',
         liveTraining: 'Live Training',
         wednesdayEquipping: 'Wednesday Equipping',
-        wednesdayEquippingDesc: 'Pagsasanay para sa paggawa ng alagad kasama ang mga miyembro mula sa iba\'t ibang bansa.',
+        wednesdayEquippingDesc: 'Samahan kami sa isang pagsasanay na magpapalalim ng iyong pagmamahal sa Diyos at magpapatatag ng iyong pag-ibig sa kapwa. Lumago sa espirituwal. Magmahal nang may layunin. Mabuhay nang may saysay.',
         meetsEvery: 'Tuwing',
         wednesdayEquippingTime: 'Miyerkules • 8:00 PM',
-        joinWednesdayEquipping: 'Sumali sa Wednesday Equipping'
+        joinWednesdayEquipping: 'Sumali sa Wednesday Equipping',
+        joinGuideTitle: 'Paano Sumali sa Wednesday Equipping',
+        joinGuideSubtitle: 'Mabilis na 4 na hakbang',
+        joinGuideStep1Title: 'Buksan ang Training',
+        joinGuideStep1Desc: 'Pindutin ang Training sa ibabang navigation.',
+        joinGuideStep2Title: 'Hanapin ang Card',
+        joinGuideStep2Desc: 'Hanapin ang card na Wednesday Equipping.',
+        joinGuideStep3Title: 'Pindutin ang Join',
+        joinGuideStep3Desc: 'I-tap ang Sumali sa Wednesday Equipping.',
+        joinGuideStep4Title: 'Pumasok sa Meeting',
+        joinGuideStep4Desc: 'Payagan ang mic/camera at maghintay makakonekta.'
       }
     };
     
@@ -754,6 +774,7 @@ const Training = {
     }
     
     const wednesdayCardHtml = this.renderWednesdayEquippingCard(labels);
+    const joinGuideHtml = this.renderTrainingJoinGuide(labels);
     let sessionsHtml = '';
     
     if (this.sessions.length === 0) {
@@ -817,6 +838,7 @@ const Training = {
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-4">
           ${wednesdayCardHtml}
+          ${joinGuideHtml}
           ${sessionsHtml}
         </div>
       </div>
@@ -845,6 +867,42 @@ const Training = {
         <button onclick="Training.joinWednesdayEquipping()" class="mt-4 w-full mission-button py-3 rounded-xl font-bold">
           📹 ${labels.joinWednesdayEquipping}
         </button>
+      </div>
+    `;
+  },
+
+  /**
+   * Render infographic-style join instructions
+   */
+  renderTrainingJoinGuide(labels) {
+    return `
+      <div class="mb-6 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--card-border)] bg-gradient-to-r from-[var(--mission-gold)]/10 to-transparent">
+          <h4 class="text-base font-extrabold text-[var(--text-color)]">${labels.joinGuideTitle}</h4>
+          <p class="text-xs text-[var(--text-muted)]">${labels.joinGuideSubtitle}</p>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-3">
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-3">
+            <div class="w-7 h-7 rounded-full bg-[var(--mission-gold)] text-[#2a0505] font-extrabold text-sm flex items-center justify-center mb-2">1</div>
+            <p class="text-sm font-bold text-[var(--text-color)]">${labels.joinGuideStep1Title}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">${labels.joinGuideStep1Desc}</p>
+          </div>
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-3">
+            <div class="w-7 h-7 rounded-full bg-[var(--mission-gold)] text-[#2a0505] font-extrabold text-sm flex items-center justify-center mb-2">2</div>
+            <p class="text-sm font-bold text-[var(--text-color)]">${labels.joinGuideStep2Title}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">${labels.joinGuideStep2Desc}</p>
+          </div>
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-3">
+            <div class="w-7 h-7 rounded-full bg-[var(--mission-gold)] text-[#2a0505] font-extrabold text-sm flex items-center justify-center mb-2">3</div>
+            <p class="text-sm font-bold text-[var(--text-color)]">${labels.joinGuideStep3Title}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">${labels.joinGuideStep3Desc}</p>
+          </div>
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-3">
+            <div class="w-7 h-7 rounded-full bg-[var(--mission-gold)] text-[#2a0505] font-extrabold text-sm flex items-center justify-center mb-2">4</div>
+            <p class="text-sm font-bold text-[var(--text-color)]">${labels.joinGuideStep4Title}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">${labels.joinGuideStep4Desc}</p>
+          </div>
+        </div>
       </div>
     `;
   },

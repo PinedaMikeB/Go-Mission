@@ -22,6 +22,8 @@
 - **Status**: 🔄 Follow-up fix in progress for Training bottom-nav tap
   - Root cause: inline handler relied on `window.Training` in some sessions where `Training` exists without explicit `window` binding
   - Fix: add dual fallback in nav click handler + explicit safe global assignment `window.Training = Training`
+  - Training copy update requested: Wednesday Equipping Tagalog description replaced with long-form discipleship invitation text
+  - Added infographic-style "How to Join Wednesday Equipping" 4-step instruction card in Training full-screen view
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
