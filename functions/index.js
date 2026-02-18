@@ -93,13 +93,13 @@ async function sendToUser(userId, notification) {
     
     const userData = userDoc.data();
     const tokens = userData.fcmTokens || [];
-    
-    if (tokens.length === 0) {
-      return { success: false, error: 'No tokens' };
-    }
-    
+
     await incrementUnreadCount(userId);
     const badgeCount = (userData.unreadCount || 0) + 1;
+    
+    if (tokens.length === 0) {
+      return { success: false, error: 'No tokens', badgeCount };
+    }
     
     const message = {
       notification: {
@@ -202,6 +202,53 @@ async function sendToGroup(groupId, notification, excludeUserId = null) {
   }
 }
 
+function normalizeRequest(request) {
+  if (!request || typeof request !== 'object') return null;
+  const requesterId = request.odId || request.uid || null;
+  if (!requesterId) return null;
+  return {
+    ...request,
+    requesterId,
+    name: request.name || request.displayName || 'Someone'
+  };
+}
+
+function collectRequests(groupData) {
+  const joinRequests = Array.isArray(groupData?.joinRequests) ? groupData.joinRequests : [];
+  const pendingRequests = Array.isArray(groupData?.pendingRequests) ? groupData.pendingRequests : [];
+  const merged = [...joinRequests, ...pendingRequests];
+
+  const out = [];
+  const seen = new Set();
+  for (const request of merged) {
+    const normalized = normalizeRequest(request);
+    if (!normalized || seen.has(normalized.requesterId)) continue;
+    seen.add(normalized.requesterId);
+    out.push(normalized);
+  }
+  return out;
+}
+
+async function sendEventEmailToUser(userId, subject, html) {
+  try {
+    if (!userId) return false;
+    const userDoc = await db.collection('goMission_members').doc(userId).get();
+    if (!userDoc.exists) return false;
+
+    const to = userDoc.data()?.email;
+    if (!to) return false;
+
+    const fromEmail = gmailEmail.value();
+    const fromPassword = gmailPassword.value();
+    if (!fromEmail || !fromPassword) return false;
+
+    return await sendEmailWithCredentials(to, subject, html, fromEmail, fromPassword);
+  } catch (error) {
+    console.error('[Notifications] Email send error:', error);
+    return false;
+  }
+}
+
 // ============================================
 // FIRESTORE TRIGGERS
 // ============================================
@@ -234,9 +281,12 @@ exports.onNewChatMessage = onDocumentCreated('goMission_chats/{messageId}', asyn
   return null;
 });
 
-exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (event) => {
-  const before = event.data.before.data();
-  const after = event.data.after.data();
+exports.onMemberJoined = onDocumentUpdated({
+  document: 'goMission_groups/{groupId}',
+  secrets: [gmailEmail, gmailPassword]
+}, async (event) => {
+  const before = event.data.before.data() || {};
+  const after = event.data.after.data() || {};
   
   const oldMembers = before.members || [];
   const newMembers = after.members || [];
@@ -263,17 +313,31 @@ exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (
       if (existingMembers.length > 0) {
         await sendToUsers(existingMembers, notification);
       }
+
+      if (after.leaderId) {
+        const memberHtml = `
+          <div style="font-family:Arial,sans-serif;line-height:1.5">
+            <h2 style="margin:0 0 12px">👋 New Member Joined</h2>
+            <p><strong>${newMemberName}</strong> joined <strong>${after.name || 'your group'}</strong>.</p>
+          </div>
+        `;
+        await sendEventEmailToUser(
+          after.leaderId,
+          `New member joined ${after.name || 'your group'}`,
+          memberHtml
+        );
+      }
     }
   }
   
-  // Join request
-  const oldRequests = before.joinRequests || [];
-  const newRequests = after.joinRequests || [];
+  // Join request (supports both joinRequests and legacy pendingRequests)
+  const oldRequests = collectRequests(before);
+  const newRequests = collectRequests(after);
   
-  console.log('[onMemberJoined] Join requests - old:', oldRequests.length, 'new:', newRequests.length);
+  console.log('[onMemberJoined] Join requests (merged) - old:', oldRequests.length, 'new:', newRequests.length);
   
   if (newRequests.length > oldRequests.length) {
-    const newRequest = newRequests.find(r => !oldRequests.some(o => o.odId === r.odId));
+    const newRequest = newRequests.find((r) => !oldRequests.some((o) => o.requesterId === r.requesterId));
     
     console.log('[onMemberJoined] New request found:', newRequest?.name, 'Leader:', after.leaderId);
     
@@ -289,6 +353,19 @@ exports.onMemberJoined = onDocumentUpdated('goMission_groups/{groupId}', async (
       
       const result = await sendToUser(after.leaderId, notification);
       console.log('[onMemberJoined] Notification result:', result);
+
+      const requestHtml = `
+        <div style="font-family:Arial,sans-serif;line-height:1.5">
+          <h2 style="margin:0 0 12px">🔔 New Join Request</h2>
+          <p><strong>${newRequest.name}</strong> wants to join <strong>${after.name || 'your group'}</strong>.</p>
+          <p>Open Go Mission and tap <strong>View</strong> on your group card to approve.</p>
+        </div>
+      `;
+      await sendEventEmailToUser(
+        after.leaderId,
+        `New join request for ${after.name || 'your group'}`,
+        requestHtml
+      );
     }
   }
   
@@ -357,18 +434,82 @@ exports.onDevotionShared = onDocumentCreated('goMission_devotions/{devotionId}',
 // CALLABLE FUNCTIONS
 // ============================================
 
+function hasGroupMembership(memberData = {}) {
+  if (!memberData || typeof memberData !== 'object') return false;
+  const hasGuestGroups = Array.isArray(memberData.guestGroups) && memberData.guestGroups.length > 0;
+  return Boolean(memberData.groupId || memberData.uplineGroupId || hasGuestGroups);
+}
+
+function isLeaderProfile(memberData = {}) {
+  const roles = memberData.roles || {};
+  return Boolean(
+    roles.isGroupLeader ||
+    roles.isTrainer ||
+    roles.isShepherd ||
+    roles.isAdmin ||
+    memberData.groupRole === 'leader'
+  );
+}
+
+function isActiveProfile(memberData = {}) {
+  const status = String(memberData.status || '').toLowerCase();
+  if (status === 'inactive' || status === 'paused') return false;
+  return true;
+}
+
+async function sendToUsersInBatches(userIds = [], notification = {}, batchSize = 40) {
+  let successCount = 0;
+  let failureCount = 0;
+  const errors = [];
+
+  for (let i = 0; i < userIds.length; i += batchSize) {
+    const chunk = userIds.slice(i, i + batchSize);
+    const results = await sendToUsers(chunk, notification);
+
+    results.forEach((result, idx) => {
+      if (result?.success) {
+        successCount += 1;
+      } else {
+        failureCount += 1;
+        if (result?.error) {
+          errors.push({
+            userId: chunk[idx],
+            error: String(result.error)
+          });
+        }
+      }
+    });
+  }
+
+  return { successCount, failureCount, errors };
+}
+
 exports.sendCustomNotification = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be logged in');
   }
   
-  const { targetType, targetId, title, body, notificationType } = request.data;
+  const { targetType, targetId, title, body, notificationType, targetFilter = {} } = request.data;
+  const normalizedFilter = (targetFilter && typeof targetFilter === 'object') ? targetFilter : {};
   
   const userDoc = await db.collection('goMission_members').doc(request.auth.uid).get();
-  const userData = userDoc.data();
+  const userData = userDoc.data() || {};
+  const roleFlags = (userData.roles && !Array.isArray(userData.roles)) ? userData.roles : {};
+  const roleList = Array.isArray(userData.roles) ? userData.roles : [];
+  const isAdmin = !!roleFlags.isAdmin || roleList.includes('admin');
+  const isLeader = !!roleFlags.isGroupLeader ||
+    !!roleFlags.isTrainer ||
+    !!roleFlags.isShepherd ||
+    roleList.includes('leader') ||
+    roleList.includes('shepherd') ||
+    isAdmin;
   
-  if (!userData?.roles?.isGroupLeader && !userData?.roles?.isAdmin) {
+  if (!isLeader) {
     throw new HttpsError('permission-denied', 'Must be a leader or admin');
+  }
+
+  if (!title || !body) {
+    throw new HttpsError('invalid-argument', 'Title and body are required');
   }
   
   const notification = {
@@ -382,9 +523,51 @@ exports.sendCustomNotification = onCall(async (request) => {
   
   let result;
   if (targetType === 'user') {
+    if (!targetId) throw new HttpsError('invalid-argument', 'targetId is required for user');
     result = await sendToUser(targetId, notification);
   } else if (targetType === 'group') {
+    if (!targetId) throw new HttpsError('invalid-argument', 'targetId is required for group');
     result = await sendToGroup(targetId, notification, request.auth.uid);
+  } else if (targetType === 'all') {
+    if (!isAdmin) {
+      throw new HttpsError('permission-denied', 'Only admins can send to all users');
+    }
+
+    const usersSnapshot = await db.collection('goMission_members').get();
+    let recipientIds = usersSnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      data: docSnap.data() || {}
+    }));
+
+    if (normalizedFilter.inGroup === true) {
+      recipientIds = recipientIds.filter((entry) => hasGroupMembership(entry.data));
+    }
+    if (normalizedFilter.leaderOnly === true) {
+      recipientIds = recipientIds.filter((entry) => isLeaderProfile(entry.data));
+    }
+    if (normalizedFilter.activeOnly === true) {
+      recipientIds = recipientIds.filter((entry) => isActiveProfile(entry.data));
+    }
+
+    const ids = recipientIds.map((entry) => entry.id);
+    if (!ids.length) {
+      return {
+        success: true,
+        targetCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        message: 'No recipients matched the selected filters.'
+      };
+    }
+
+    const batchResult = await sendToUsersInBatches(ids, notification);
+    result = {
+      success: true,
+      targetCount: ids.length,
+      successCount: batchResult.successCount,
+      failureCount: batchResult.failureCount,
+      errors: batchResult.errors.slice(0, 25)
+    };
   } else {
     throw new HttpsError('invalid-argument', 'Invalid target type');
   }

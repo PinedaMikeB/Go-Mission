@@ -1,326 +1,1666 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go Mission - Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: #1a0a0a; color: #f5f5f4; font-family: 'Inter', sans-serif; }
-        .card { background: rgba(45, 15, 15, 0.85); border: 1px solid rgba(120, 113, 108, 0.15); }
-        input, select, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go Mission Admin Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #110706;
+      --bg-panel: rgba(34, 10, 8, 0.85);
+      --bg-panel-soft: rgba(58, 18, 14, 0.55);
+      --line: rgba(245, 189, 89, 0.18);
+      --line-strong: rgba(245, 189, 89, 0.35);
+      --text-main: #f6efe3;
+      --text-muted: #c8b59b;
+      --gold: #f5bd59;
+      --gold-strong: #f7cf7c;
+      --red: #d95f4a;
+      --green: #73c097;
+      --blue: #6da8cf;
+      --radius: 16px;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(245, 189, 89, 0.16), transparent 30%),
+        radial-gradient(circle at 85% 15%, rgba(217, 95, 74, 0.18), transparent 36%),
+        linear-gradient(165deg, #140706 0%, #0f0908 45%, #120707 100%);
+      color: var(--text-main);
+      font-family: "Manrope", "Segoe UI", sans-serif;
+    }
+
+    .shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background:
+        linear-gradient(120deg, rgba(245, 189, 89, 0.08), rgba(217, 95, 74, 0.08)),
+        rgba(20, 7, 6, 0.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -100px -80px auto;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(245, 189, 89, 0.24), transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: "Cinzel", Georgia, serif;
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--gold-strong);
+      text-transform: uppercase;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--text-muted);
+      max-width: 740px;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .status-banner {
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-top: 14px;
+      font-size: 13px;
+      border: 1px solid transparent;
+      display: none;
+    }
+
+    .status-banner.show { display: block; }
+    .status-banner.info { background: rgba(109, 168, 207, 0.14); border-color: rgba(109, 168, 207, 0.35); color: #d6e8f4; }
+    .status-banner.success { background: rgba(115, 192, 151, 0.16); border-color: rgba(115, 192, 151, 0.38); color: #d9f3e5; }
+    .status-banner.warn { background: rgba(245, 189, 89, 0.15); border-color: rgba(245, 189, 89, 0.42); color: #ffecbf; }
+    .status-banner.error { background: rgba(217, 95, 74, 0.18); border-color: rgba(217, 95, 74, 0.4); color: #ffd4cd; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--bg-panel);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(3px);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-family: "Cinzel", Georgia, serif;
+      font-size: 18px;
+      letter-spacing: 0.03em;
+      color: var(--gold-strong);
+      text-transform: uppercase;
+    }
+
+    .panel p.sub {
+      margin: 6px 0 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-8 { grid-column: span 8; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+
+    .metrics-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      position: relative;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--bg-panel-soft);
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .metric-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -25% -120% auto;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(245, 189, 89, 0.18), transparent 70%);
+      pointer-events: none;
+    }
+
+    .metric-label {
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-top: 8px;
+      color: var(--gold-strong);
+    }
+
+    .metric-foot {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 5px;
+      min-height: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      width: 100%;
+      border-radius: 11px;
+      border: 1px solid var(--line);
+      font: inherit;
+      color: var(--text-main);
+      background: rgba(12, 7, 7, 0.62);
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 2px rgba(245, 189, 89, 0.18);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 88px;
+      line-height: 1.4;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(120deg, #f5bd59, #ef9f51);
+      color: #220d08;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: rgba(11, 8, 8, 0.5);
+      border-color: var(--line);
+      color: var(--gold-strong);
+    }
+
+    button.warning {
+      background: linear-gradient(120deg, #d86b4c, #ca4f39);
+      color: #fff7f4;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .actions > button { flex: 1; }
+
+    .small {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: 6px;
+    }
+
+    .split {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .split .hint {
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .list {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.26);
+      max-height: 240px;
+      overflow: auto;
+    }
+
+    .list-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(245, 189, 89, 0.1);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .list-item:last-child { border-bottom: none; }
+
+    .list-item b { color: var(--gold-strong); }
+    .list-item .meta { color: var(--text-muted); font-size: 11px; }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 10px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.24);
+      font-size: 12px;
+    }
+
+    .check input {
+      width: auto;
+      margin: 0;
+      accent-color: #f5bd59;
+    }
+
+    .hidden { display: none !important; }
+
+    pre.rules {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.44);
+      color: #9ed4b4;
+      font-size: 11px;
+      line-height: 1.4;
+      overflow-x: auto;
+    }
+
+    .top-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .top-right a {
+      color: var(--gold-strong);
+      text-decoration: none;
+    }
+
+    @media (max-width: 1100px) {
+      .col-8, .col-6, .col-4 { grid-column: span 12; }
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 680px) {
+      .shell { padding: 14px; }
+      .hero { padding: 20px; }
+      .metrics-grid { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; }
+      .role-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body class="min-h-screen p-4">
-    <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-bold text-amber-500 mb-6">🔧 Go Mission Admin Panel</h1>
-        
-        <!-- Auth Status -->
-        <div id="authStatus" class="card rounded-xl p-4 mb-6">
-            <p class="text-slate-400">Checking authentication...</p>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="split" style="margin-top:0;align-items:flex-start;">
+        <div>
+          <h1>Admin Workspace</h1>
+          <p>
+            Mission group health, leadership visibility, and weekly operations in one place.
+            This panel tracks active discipleship movement and provides publishing/admin tools.
+          </p>
         </div>
-        
-        <!-- Force Update Section -->
-        <div id="forceUpdateSection" class="card rounded-xl p-6 mb-6 hidden">
-            <h2 class="text-lg font-bold text-white mb-4">🔄 Force Update All Users</h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm text-slate-400 mb-2">Update Type</label>
-                    <select id="updateType" class="w-full rounded-lg p-3 text-white">
-                        <option value="immediate">Immediate (Update Now)</option>
-                        <option value="scheduled">Scheduled (Pick Time)</option>
-                    </select>
-                </div>
-                
-                <div id="scheduleOptions" class="hidden">
-                    <label class="block text-sm text-slate-400 mb-2">Schedule For</label>
-                    <input type="datetime-local" id="scheduleTime" class="w-full rounded-lg p-3 text-white">
-                    <p class="text-xs text-slate-500 mt-1">Users will be updated at this time</p>
-                </div>
-                
-                <div>
-                    <label class="block text-sm text-slate-400 mb-2">Update Details (shown to users)</label>
-                    <textarea id="updateDetails" class="w-full rounded-lg p-3 text-white h-24" 
-                              placeholder="e.g., Bug fixes and performance improvements"></textarea>
-                </div>
-                
-                <button onclick="triggerForceUpdate()" 
-                        class="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
-                    ⚠️ Force Update All Users
-                </button>
+        <div class="top-right">
+          <span id="lastRefreshText">Not loaded yet</span>
+          <a href="/" target="_blank" rel="noreferrer">Open App</a>
+        </div>
+      </div>
+      <div id="globalStatus" class="status-banner info"></div>
+    </section>
+
+    <section id="authPanel" class="panel">
+      <h2>Authentication</h2>
+      <p class="sub" id="authText">Checking authentication...</p>
+    </section>
+
+    <section id="workspace" class="hidden">
+      <div class="grid">
+        <div class="col-12 panel">
+          <h2>Mission Group Health</h2>
+          <p class="sub">Snapshot of discipleship movement from users, groups, devotions, and weekly reports.</p>
+          <div id="metricsGrid" class="metrics-grid"></div>
+          <div class="actions" style="margin-top:12px;">
+            <button id="refreshHealthBtn" class="secondary">Refresh Health Data</button>
+          </div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Announcements</h2>
+          <p class="sub">Save announcements and optionally push to selected recipients.</p>
+          <div class="row">
+            <div>
+              <label for="announcementTitle">Title</label>
+              <input id="announcementTitle" maxlength="120" placeholder="Weekly Mission Update">
             </div>
-        </div>
-        
-        <!-- Current Force Update Status -->
-        <div id="statusSection" class="card rounded-xl p-6 mb-6 hidden">
-            <h2 class="text-lg font-bold text-white mb-4">📊 Current Force Update Status</h2>
-            <div id="forceUpdateStatus">
-                <p class="text-slate-400">Loading...</p>
+            <div>
+              <label for="announcementAudience">Audience</label>
+              <select id="announcementAudience">
+                <option value="all_users">All users</option>
+                <option value="group_members">Users in discipleship groups</option>
+                <option value="leaders_only">Leaders only</option>
+                <option value="specific_group">Specific group</option>
+              </select>
             </div>
+          </div>
+          <div id="groupAudienceWrap" class="hidden" style="margin-top:10px;">
+            <label for="announcementGroupId">Target group</label>
+            <select id="announcementGroupId"></select>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="announcementBody">Message</label>
+            <textarea id="announcementBody" maxlength="1200" placeholder="Share updates, prayer points, or mission focus for this week."></textarea>
+          </div>
+          <div class="check" style="margin-top:10px;">
+            <input type="checkbox" id="announcementPushNow" checked>
+            <span>Send push notification now</span>
+          </div>
+          <div class="actions">
+            <button id="sendAnnouncementBtn">Save and Send</button>
+            <button id="clearAnnouncementBtn" class="secondary">Clear</button>
+          </div>
+          <div id="announcementStatus" class="small"></div>
         </div>
-        
-        <!-- Stats -->
-        <div id="statsSection" class="card rounded-xl p-6 hidden">
-            <h2 class="text-lg font-bold text-white mb-4">📈 App Stats</h2>
-            <div id="appStats">
-                <p class="text-slate-400">Loading...</p>
+
+        <div class="col-6 panel">
+          <h2>Sunday Video Publishing</h2>
+          <p class="sub">Upload or link the weekly video and publish or schedule it.</p>
+          <div class="row">
+            <div>
+              <label for="sundayDate">Sunday date</label>
+              <input id="sundayDate" type="date">
             </div>
+            <div>
+              <label for="sundayStatus">Status</label>
+              <select id="sundayStatus">
+                <option value="published">Publish now</option>
+                <option value="scheduled">Save as scheduled</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="sundayTitle">Video title</label>
+            <input id="sundayTitle" maxlength="140" placeholder="Sunday Mission Gathering - Week 8">
+          </div>
+          <div style="margin-top:10px;">
+            <label for="sundayDescription">Description</label>
+            <textarea id="sundayDescription" maxlength="1500" placeholder="Summary, scripture focus, and call to action."></textarea>
+          </div>
+          <div class="row">
+            <div>
+              <label for="sundayVideoUrl">Video URL (YouTube/Vimeo/etc.)</label>
+              <input id="sundayVideoUrl" placeholder="https://...">
+            </div>
+            <div>
+              <label for="sundayVideoFile">Or upload video file</label>
+              <input id="sundayVideoFile" type="file" accept="video/*">
+            </div>
+          </div>
+          <div class="actions">
+            <button id="publishSundayVideoBtn">Save Sunday Video</button>
+            <button id="clearSundayVideoBtn" class="secondary">Clear</button>
+          </div>
+          <div id="sundayProgress" class="small"></div>
+          <div class="list" id="sundayVideoList"></div>
         </div>
-        
-        <!-- Firebase Rules Help -->
-        <div id="rulesHelp" class="card rounded-xl p-6 hidden">
-            <h2 class="text-lg font-bold text-amber-500 mb-4">⚠️ Firebase Rules Required</h2>
-            <p class="text-slate-300 text-sm mb-4">Add these rules to your Firebase Firestore to enable admin features:</p>
-            <pre class="bg-black/50 p-4 rounded-lg text-xs text-green-400 overflow-x-auto">
-// Add to your Firestore Rules
-match /goMission_config/{document} {
-  allow read: if true;
-  allow write: if request.auth != null && 
-    request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+
+        <div class="col-6 panel">
+          <h2>Training Modules</h2>
+          <p class="sub">Create or update training content used by the in-app training module.</p>
+          <div class="row">
+            <div>
+              <label for="trainingLanguage">Language</label>
+              <select id="trainingLanguage">
+                <option value="en">English</option>
+                <option value="tl">Tagalog</option>
+              </select>
+            </div>
+            <div>
+              <label for="trainingLevel">Level</label>
+              <input id="trainingLevel" type="number" min="1" max="9" value="2">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="trainingSession">Session number</label>
+              <input id="trainingSession" type="number" min="1" value="1">
+            </div>
+            <div>
+              <label for="trainingDay">Day number</label>
+              <input id="trainingDay" type="number" min="1" value="1">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="trainingSessionTitle">Session title</label>
+              <input id="trainingSessionTitle" maxlength="160" placeholder="The Way To Heaven">
+            </div>
+            <div>
+              <label for="trainingDayTitle">Day title</label>
+              <input id="trainingDayTitle" maxlength="160" placeholder="Who Is God?">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="trainingScriptureRef">Scripture reference</label>
+              <input id="trainingScriptureRef" maxlength="120" placeholder="Romans 6:23">
+            </div>
+            <div>
+              <label for="trainingFruitIndicator">Fruit indicator</label>
+              <input id="trainingFruitIndicator" maxlength="220" placeholder="Shift from fear to faith">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="trainingScriptureText">Scripture text</label>
+            <textarea id="trainingScriptureText" maxlength="2400"></textarea>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="trainingStory">Story illustration</label>
+            <textarea id="trainingStory" maxlength="3000"></textarea>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="trainingScriptureExplanation">Scripture explanation</label>
+            <textarea id="trainingScriptureExplanation" maxlength="3500"></textarea>
+          </div>
+          <div class="row">
+            <div>
+              <label for="trainingObedienceQ">Obedience question</label>
+              <textarea id="trainingObedienceQ" maxlength="1200"></textarea>
+            </div>
+            <div>
+              <label for="trainingMissionQ">Mission question</label>
+              <textarea id="trainingMissionQ" maxlength="1200"></textarea>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="trainingLeaderNote">Leader note</label>
+              <textarea id="trainingLeaderNote" maxlength="1200"></textarea>
+            </div>
+            <div>
+              <label for="trainingFollowThrough">Follow-through prompt</label>
+              <textarea id="trainingFollowThrough" maxlength="1200"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="saveTrainingBtn">Save Training Module</button>
+            <button id="clearTrainingBtn" class="secondary">Clear</button>
+          </div>
+          <div id="trainingStatus" class="small"></div>
+          <div class="split">
+            <span class="hint">For bulk upload, use the dedicated training uploader tool.</span>
+            <a class="pill" href="tools/training-uploader.html" target="_blank" rel="noreferrer">Open Bulk Uploader</a>
+          </div>
+          <div class="list" id="trainingRecentList"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>User Roles</h2>
+          <p class="sub">Lookup a user by email/UID and update role flags.</p>
+          <div class="row">
+            <div>
+              <label for="roleLookup">Email or UID</label>
+              <input id="roleLookup" placeholder="leader@email.com or uid">
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="lookupRoleBtn" class="secondary">Lookup User</button>
+            </div>
+          </div>
+          <div id="roleUserCard" class="hidden" style="margin-top:12px; border:1px solid var(--line); border-radius:12px; padding:12px; background:rgba(0,0,0,0.25);">
+            <div id="roleUserMeta" class="small" style="margin-top:0;"></div>
+            <div class="role-grid">
+              <label class="check"><input type="checkbox" id="roleIsAdmin"><span>Admin</span></label>
+              <label class="check"><input type="checkbox" id="roleIsGroupLeader"><span>Group Leader</span></label>
+              <label class="check"><input type="checkbox" id="roleIsTrainer"><span>Trainer</span></label>
+              <label class="check"><input type="checkbox" id="roleIsShepherd"><span>Shepherd</span></label>
+              <label class="check"><input type="checkbox" id="roleIsWelcomeTeam"><span>Welcome Team</span></label>
+              <label class="check"><input type="checkbox" id="roleIsMissionary"><span>Missionary</span></label>
+            </div>
+            <div class="actions">
+              <button id="saveRolesBtn">Save Roles</button>
+            </div>
+          </div>
+          <div id="roleStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Email Sequence</h2>
+          <p class="sub">Store sequence settings for onboarding/follow-up emails.</p>
+          <label class="check" style="margin-top:10px;"><input type="checkbox" id="emailSequenceEnabled"><span>Enable email sequence</span></label>
+          <div class="row">
+            <div>
+              <label for="emailSendHour">Default send hour (0-23)</label>
+              <input id="emailSendHour" type="number" min="0" max="23" value="8">
+            </div>
+            <div>
+              <label for="emailTimezone">Timezone</label>
+              <input id="emailTimezone" value="Asia/Manila">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay1Subject">Day 1 subject</label>
+            <input id="emailDay1Subject" maxlength="180" placeholder="Welcome to Go Mission">
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay1Body">Day 1 body</label>
+            <textarea id="emailDay1Body" maxlength="4000"></textarea>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay3Subject">Day 3 subject</label>
+            <input id="emailDay3Subject" maxlength="180" placeholder="How is your discipleship journey going?">
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay3Body">Day 3 body</label>
+            <textarea id="emailDay3Body" maxlength="4000"></textarea>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay7Subject">Day 7 subject</label>
+            <input id="emailDay7Subject" maxlength="180" placeholder="One week check-in">
+          </div>
+          <div style="margin-top:10px;">
+            <label for="emailDay7Body">Day 7 body</label>
+            <textarea id="emailDay7Body" maxlength="4000"></textarea>
+          </div>
+          <div class="actions">
+            <button id="saveEmailSequenceBtn">Save Email Sequence</button>
+            <button id="reloadEmailSequenceBtn" class="secondary">Reload</button>
+          </div>
+          <div id="emailSequenceStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Push Notification Settings</h2>
+          <p class="sub">Global defaults for push behavior and reminder enablement.</p>
+          <div class="role-grid">
+            <label class="check"><input type="checkbox" id="pushAnnouncementsEnabled"><span>Announcement pushes</span></label>
+            <label class="check"><input type="checkbox" id="pushChatEnabled"><span>Chat pushes</span></label>
+            <label class="check"><input type="checkbox" id="pushDevotionEnabled"><span>Devotion share pushes</span></label>
+            <label class="check"><input type="checkbox" id="pushDailyReminderEnabled"><span>Daily reminder pushes</span></label>
+          </div>
+          <div class="row">
+            <div>
+              <label for="pushReminderHour">Daily reminder hour (0-23)</label>
+              <input id="pushReminderHour" type="number" min="0" max="23" value="6">
+            </div>
+            <div>
+              <label for="pushReminderTimezone">Reminder timezone</label>
+              <input id="pushReminderTimezone" value="Asia/Manila">
+            </div>
+          </div>
+          <div class="actions">
+            <button id="savePushSettingsBtn">Save Push Settings</button>
+            <button id="reloadPushSettingsBtn" class="secondary">Reload</button>
+          </div>
+          <div id="pushSettingsStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Force Update Control</h2>
+          <p class="sub">Trigger or schedule mandatory app update prompt.</p>
+          <div class="row">
+            <div>
+              <label for="updateType">Update type</label>
+              <select id="updateType">
+                <option value="immediate">Immediate</option>
+                <option value="scheduled">Scheduled</option>
+              </select>
+            </div>
+            <div id="scheduleWrap" class="hidden">
+              <label for="scheduleTime">Schedule time</label>
+              <input id="scheduleTime" type="datetime-local">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="updateDetails">Update details</label>
+            <textarea id="updateDetails" maxlength="400" placeholder="Bug fixes, performance improvements, and UI updates."></textarea>
+          </div>
+          <div class="actions">
+            <button id="triggerForceUpdateBtn" class="warning">Trigger Force Update</button>
+            <button id="disableForceUpdateBtn" class="secondary">Disable</button>
+          </div>
+          <div id="forceUpdateStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Rules Help</h2>
+          <p class="sub">If admin tools fail with permission errors, add/update Firestore and Storage rules.</p>
+          <pre class="rules">match /goMission_config/{document} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
 }
 
-match /stats/{document} {
-  allow read: if true;
-  allow write: if request.auth != null;
+match /goMission_announcements/{docId} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
 }
-            </pre>
-            <p class="text-slate-400 text-xs mt-3">Go to Firebase Console → Firestore → Rules</p>
+
+match /goMission_sundayVideos/{docId} {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
+match /goMission_trainingContent/{docId} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
+// Storage example
+match /goMission/sunday-videos/{allPaths=**} {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}</pre>
         </div>
-    </div>
-    
-    <!-- Firebase -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
-            authDomain: "shaped-by-grace.firebaseapp.com",
-            projectId: "shaped-by-grace",
-            storageBucket: "shaped-by-grace.firebasestorage.app",
-            messagingSenderId: "421948043828",
-            appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        // Admin UIDs
-        const ADMIN_UIDS = [
-            '9zVKHJ11zaXD0f4GI6P7LHD6re32' // Mike Pineda
-        ];
-        
-        window.db = db;
-        window.auth = auth;
-        
-        // Toggle schedule options
-        document.getElementById('updateType').addEventListener('change', (e) => {
-            document.getElementById('scheduleOptions').classList.toggle('hidden', e.target.value !== 'scheduled');
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      orderBy,
+      limit,
+      doc,
+      getDoc,
+      getDocs,
+      setDoc,
+      addDoc,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+    import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+    import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4',
+      authDomain: 'shaped-by-grace.firebaseapp.com',
+      projectId: 'shaped-by-grace',
+      storageBucket: 'shaped-by-grace.firebasestorage.app',
+      messagingSenderId: '421948043828',
+      appId: '1:421948043828:web:4a8eb4ac2aa34df4c89061'
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const functions = getFunctions(app);
+    const storage = getStorage(app);
+
+    const ADMIN_UIDS = ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    let cachedGroups = [];
+    let currentRoleUser = null;
+
+    const authPanel = document.getElementById('authPanel');
+    const authText = document.getElementById('authText');
+    const workspace = document.getElementById('workspace');
+    const globalStatus = document.getElementById('globalStatus');
+
+    function showStatus(message, type = 'info', sticky = false) {
+      globalStatus.className = `status-banner show ${type}`;
+      globalStatus.textContent = message;
+      if (!sticky) {
+        window.clearTimeout(showStatus.timer);
+        showStatus.timer = window.setTimeout(() => {
+          globalStatus.classList.remove('show');
+        }, 4500);
+      }
+    }
+
+    function setInlineStatus(id, message, type = 'info') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const colorMap = {
+        info: 'var(--text-muted)',
+        success: '#b7efd1',
+        warn: '#ffdca2',
+        error: '#ffc4b7'
+      };
+      el.style.color = colorMap[type] || colorMap.info;
+      el.textContent = message;
+    }
+
+    function toDate(value) {
+      if (!value) return null;
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+      if (typeof value?.toDate === 'function') {
+        const d = value.toDate();
+        return Number.isNaN(d?.getTime?.()) ? null : d;
+      }
+      if (typeof value === 'object' && typeof value.seconds === 'number') {
+        const d = new Date(value.seconds * 1000);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function pickDate(...values) {
+      for (const value of values) {
+        const parsed = toDate(value);
+        if (parsed) return parsed;
+      }
+      return null;
+    }
+
+    function formatDateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDateTime(value) {
+      const d = toDate(value);
+      return d ? d.toLocaleString() : 'N/A';
+    }
+
+    function formatCompactDate(value) {
+      const d = toDate(value);
+      return d ? d.toLocaleDateString() : 'N/A';
+    }
+
+    function nextSundayDate() {
+      const now = new Date();
+      const day = now.getDay();
+      let diff = (7 - day) % 7;
+      if (diff === 0) diff = 7;
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      return formatDateKey(target);
+    }
+
+    function hasGroupMembership(member) {
+      if (!member || typeof member !== 'object') return false;
+      const hasGuest = Array.isArray(member.guestGroups) && member.guestGroups.length > 0;
+      return Boolean(member.groupId || member.uplineGroupId || hasGuest);
+    }
+
+    function isLeaderProfile(member) {
+      const roles = member?.roles || {};
+      return Boolean(
+        roles.isGroupLeader ||
+        roles.isTrainer ||
+        roles.isShepherd ||
+        roles.isAdmin ||
+        member?.groupRole === 'leader'
+      );
+    }
+
+    function isMissionMember(member) {
+      const stage = String(member?.stage || '').toLowerCase();
+      const stageMember = ['believer', 'disciple', 'disciple-maker', 'builder', 'multiplier', 'on the journey'].includes(stage);
+      return stageMember || hasGroupMembership(member) || Boolean(member?.groupRole);
+    }
+
+    function isActiveMember(member) {
+      const status = String(member?.status || '').toLowerCase();
+      if (status === 'inactive' || status === 'paused') return false;
+      const lastActive = pickDate(member?.lastActiveDate, member?.lastActive, member?.lastSeenAt, member?.updatedAt);
+      if (!lastActive) return status === 'active';
+      return (Date.now() - lastActive.getTime()) <= 7 * DAY_MS;
+    }
+
+    async function safeGetDocs(refLike) {
+      try {
+        return await getDocs(refLike);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function buildMetricCard(label, value, foot = '') {
+      return `
+        <article class="metric-card">
+          <div class="metric-label">${label}</div>
+          <div class="metric-value">${value}</div>
+          <div class="metric-foot">${foot}</div>
+        </article>
+      `;
+    }
+
+    async function loadMissionHealth() {
+      const metricsGrid = document.getElementById('metricsGrid');
+      metricsGrid.innerHTML = buildMetricCard('Loading', '...', 'Reading collections');
+
+      const weekStart = new Date(Date.now() - (6 * DAY_MS));
+      const monthStart = new Date(Date.now() - (30 * DAY_MS));
+      const weekKey = formatDateKey(weekStart);
+      const monthKey = formatDateKey(monthStart);
+
+      const [membersSnap, groupsSnap, weekDevotionsSnap, monthDevotionsSnap, debriefSnap] = await Promise.all([
+        safeGetDocs(collection(db, 'goMission_members')),
+        safeGetDocs(collection(db, 'goMission_groups')),
+        safeGetDocs(query(collection(db, 'goMission_devotions'), where('date', '>=', weekKey))),
+        safeGetDocs(query(collection(db, 'goMission_devotions'), where('date', '>=', monthKey))),
+        safeGetDocs(query(collection(db, 'goMission_debriefs'), where('submittedAt', '>=', monthStart)))
+      ]);
+
+      const members = membersSnap ? membersSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
+      const groups = groupsSnap ? groupsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
+
+      cachedGroups = groups;
+
+      const totalUsers = members.length;
+      const activeUsers = members.filter(isActiveMember).length;
+      const missionMembers = members.filter(isMissionMember).length;
+      const leaders = members.filter(isLeaderProfile).length;
+      const inGroups = members.filter(hasGroupMembership).length;
+
+      const groupStatuses = groups.reduce((acc, group) => {
+        const status = String(group?.status || 'unknown').toLowerCase();
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const activeGroups = groups.filter((g) => {
+        const status = String(g?.status || '').toLowerCase();
+        return status === '' || status === 'active' || status === 'multiplying';
+      }).length;
+
+      const spendingWithGod = new Set();
+      if (weekDevotionsSnap) {
+        weekDevotionsSnap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const uid = data.uid || String(docSnap.id).split('_')[0];
+          if (uid) spendingWithGod.add(uid);
         });
-        
-        // Check auth
-        onAuthStateChanged(auth, async (user) => {
-            const authStatus = document.getElementById('authStatus');
-            
-            if (!user) {
-                authStatus.innerHTML = `
-                    <p class="text-red-400">❌ Not signed in</p>
-                    <p class="text-sm text-slate-400 mt-2">Please sign in at <a href="/" class="text-amber-500 underline">gomission.netlify.app</a> first, then come back here.</p>
-                `;
-                return;
-            }
-            
-            if (!ADMIN_UIDS.includes(user.uid)) {
-                authStatus.innerHTML = `
-                    <p class="text-red-400">❌ Access Denied</p>
-                    <p class="text-sm text-slate-400 mt-2">You are not an admin.</p>
-                    <p class="text-xs text-slate-500 mt-1">Your UID: <code class="bg-black/30 px-1 rounded">${user.uid}</code></p>
-                `;
-                return;
-            }
-            
-            authStatus.innerHTML = `
-                <p class="text-green-400">✅ Signed in as Admin</p>
-                <p class="text-sm text-slate-400">${user.email}</p>
-                <p class="text-xs text-slate-500">UID: ${user.uid}</p>
-            `;
-            
-            // Show admin sections
-            document.getElementById('forceUpdateSection').classList.remove('hidden');
-            document.getElementById('statusSection').classList.remove('hidden');
-            document.getElementById('statsSection').classList.remove('hidden');
-            
-            // Load data
-            loadForceUpdateStatus();
-            loadAppStats();
+      }
+
+      const sharedGospel = new Set();
+      if (monthDevotionsSnap) {
+        monthDevotionsSnap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          if (data.sharedWithGroup) {
+            const uid = data.uid || String(docSnap.id).split('_')[0];
+            if (uid) sharedGospel.add(uid);
+          }
         });
-        
-        // Load current force update status
-        async function loadForceUpdateStatus() {
-            const statusEl = document.getElementById('forceUpdateStatus');
-            
-            try {
-                const configRef = doc(db, 'goMission_config', 'forceUpdate');
-                const configDoc = await getDoc(configRef);
-                
-                if (configDoc.exists()) {
-                    const data = configDoc.data();
-                    statusEl.innerHTML = `
-                        <div class="space-y-2 text-sm">
-                            <p><span class="text-slate-400">Status:</span> <span class="${data.enabled ? 'text-green-400' : 'text-slate-500'}">${data.enabled ? '🟢 Active' : '⚫ Inactive'}</span></p>
-                            <p><span class="text-slate-400">Last Triggered:</span> ${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
-                            ${data.scheduledFor ? `<p><span class="text-slate-400">Scheduled For:</span> <span class="text-amber-400">${new Date(data.scheduledFor).toLocaleString()}</span></p>` : ''}
-                            ${data.details ? `<p><span class="text-slate-400">Details:</span> ${data.details}</p>` : ''}
-                            ${data.triggeredBy ? `<p><span class="text-slate-400">By:</span> ${data.triggeredBy}</p>` : ''}
-                            
-                            ${data.enabled ? `
-                                <button onclick="disableForceUpdate()" class="mt-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
-                                    ⏹️ Disable Force Update
-                                </button>
-                            ` : ''}
-                        </div>
-                    `;
-                } else {
-                    statusEl.innerHTML = '<p class="text-slate-500">No force update configured yet</p>';
-                }
-                
-                // Hide rules help if successful
-                document.getElementById('rulesHelp').classList.add('hidden');
-                
-            } catch (error) {
-                console.error('Error loading status:', error);
-                statusEl.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
-                
-                // Show rules help
-                if (error.message.includes('permission')) {
-                    document.getElementById('rulesHelp').classList.remove('hidden');
-                }
-            }
+      }
+
+      if (debriefSnap) {
+        debriefSnap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const submittedAt = pickDate(data.submittedAt, data.createdAt, data.updatedAt);
+          const memberId = data.memberId || data.uid;
+          if (!memberId || !submittedAt) return;
+
+          if (submittedAt.getTime() >= weekStart.getTime() && Number(data.daysWithGod || 0) > 0) {
+            spendingWithGod.add(memberId);
+          }
+          if (submittedAt.getTime() >= monthStart.getTime() && data.sharedGospel === true) {
+            sharedGospel.add(memberId);
+          }
+        });
+      }
+
+      const cardsHtml = [
+        buildMetricCard('Active Users', activeUsers, 'Last 7 days'),
+        buildMetricCard('Mission Members', missionMembers, 'Disciple-stage or grouped users'),
+        buildMetricCard('Leaders', leaders, 'Leader, trainer, shepherd, or admin'),
+        buildMetricCard('Spending Time with God', spendingWithGod.size, 'Devotions/debriefs in last 7 days'),
+        buildMetricCard('Sharing Gospel', sharedGospel.size, 'Shared in last 30 days'),
+        buildMetricCard('Total App Users', totalUsers, 'All profiles in goMission_members'),
+        buildMetricCard('In Discipleship Group', inGroups, 'Users with group membership'),
+        buildMetricCard('Active Groups', activeGroups, `Total groups: ${groups.length}`)
+      ].join('');
+
+      metricsGrid.innerHTML = cardsHtml;
+      document.getElementById('lastRefreshText').textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
+
+      const statusBreakdown = Object.entries(groupStatuses)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(' | ');
+
+      showStatus(
+        `Health data refreshed. Users: ${totalUsers}, Active users: ${activeUsers}, Groups: ${groups.length}${statusBreakdown ? ` (${statusBreakdown})` : ''}.`,
+        'success'
+      );
+
+      populateGroupSelect();
+    }
+
+    function populateGroupSelect() {
+      const select = document.getElementById('announcementGroupId');
+      if (!select) return;
+      const sortedGroups = [...cachedGroups].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      select.innerHTML = sortedGroups.length
+        ? sortedGroups.map((group) => `<option value="${group.id}">${group.name || group.id}</option>`).join('')
+        : '<option value="">No groups found</option>';
+    }
+
+    async function loadForceUpdateStatus() {
+      try {
+        const configDoc = await getDoc(doc(db, 'goMission_config', 'forceUpdate'));
+        if (!configDoc.exists()) {
+          setInlineStatus('forceUpdateStatus', 'No force-update currently active.', 'info');
+          return;
         }
-        window.loadForceUpdateStatus = loadForceUpdateStatus;
-        
-        // Load app stats
-        async function loadAppStats() {
-            const statsEl = document.getElementById('appStats');
-            
-            try {
-                // Get user count
-                const membersRef = collection(db, 'goMission_members');
-                const membersSnap = await getDocs(membersRef);
-                
-                // Get gospel stats
-                let savedCount = 0;
-                try {
-                    const gospelRef = doc(db, 'stats', 'gospel');
-                    const gospelDoc = await getDoc(gospelRef);
-                    if (gospelDoc.exists()) {
-                        savedCount = gospelDoc.data().savedCount || 0;
-                    }
-                } catch (e) {
-                    console.log('Could not load gospel stats');
-                }
-                
-                // Get groups count
-                let groupsCount = 0;
-                try {
-                    const groupsRef = collection(db, 'goMission_groups');
-                    const groupsSnap = await getDocs(groupsRef);
-                    groupsCount = groupsSnap.size;
-                } catch (e) {
-                    console.log('Could not load groups');
-                }
-                
-                statsEl.innerHTML = `
-                    <div class="grid grid-cols-3 gap-4 text-sm">
-                        <div class="bg-black/30 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-amber-500">${membersSnap.size}</p>
-                            <p class="text-slate-400 text-xs">Users</p>
-                        </div>
-                        <div class="bg-black/30 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-green-400">${savedCount}</p>
-                            <p class="text-slate-400 text-xs">Salvations</p>
-                        </div>
-                        <div class="bg-black/30 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-blue-400">${groupsCount}</p>
-                            <p class="text-slate-400 text-xs">Groups</p>
-                        </div>
-                    </div>
-                `;
-            } catch (error) {
-                console.error('Error loading stats:', error);
-                statsEl.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
-                
-                if (error.message.includes('permission')) {
-                    document.getElementById('rulesHelp').classList.remove('hidden');
-                }
-            }
+
+        const data = configDoc.data() || {};
+        const status = data.enabled ? 'Active' : 'Inactive';
+        const scheduled = data.scheduledFor ? `Scheduled: ${formatDateTime(data.scheduledFor)}. ` : '';
+        setInlineStatus(
+          'forceUpdateStatus',
+          `Status: ${status}. ${scheduled}Last trigger: ${formatDateTime(data.timestamp)}.`,
+          data.enabled ? 'warn' : 'info'
+        );
+      } catch (error) {
+        setInlineStatus('forceUpdateStatus', `Error loading force-update status: ${error.message}`, 'error');
+      }
+    }
+
+    async function triggerForceUpdate() {
+      const updateType = document.getElementById('updateType').value;
+      const details = document.getElementById('updateDetails').value.trim();
+      const scheduleTime = document.getElementById('scheduleTime').value;
+
+      if (updateType === 'scheduled' && !scheduleTime) {
+        setInlineStatus('forceUpdateStatus', 'Please select a schedule time.', 'warn');
+        return;
+      }
+
+      const payload = {
+        enabled: true,
+        timestamp: new Date().toISOString(),
+        details: details || 'App update available',
+        triggeredBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown',
+        scheduledFor: updateType === 'scheduled' ? new Date(scheduleTime).toISOString() : null
+      };
+
+      try {
+        await setDoc(doc(db, 'goMission_config', 'forceUpdate'), payload, { merge: true });
+        setInlineStatus('forceUpdateStatus', 'Force update saved.', 'success');
+        await loadForceUpdateStatus();
+      } catch (error) {
+        setInlineStatus('forceUpdateStatus', `Could not trigger force update: ${error.message}`, 'error');
+      }
+    }
+
+    async function disableForceUpdate() {
+      try {
+        await setDoc(doc(db, 'goMission_config', 'forceUpdate'), {
+          enabled: false,
+          disabledAt: new Date().toISOString(),
+          disabledBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+        setInlineStatus('forceUpdateStatus', 'Force update disabled.', 'success');
+        await loadForceUpdateStatus();
+      } catch (error) {
+        setInlineStatus('forceUpdateStatus', `Could not disable force update: ${error.message}`, 'error');
+      }
+    }
+
+    function mapAudienceToNotificationTarget(audience, groupId) {
+      if (audience === 'specific_group') {
+        return { targetType: 'group', targetId: groupId, targetFilter: null };
+      }
+      if (audience === 'group_members') {
+        return { targetType: 'all', targetId: null, targetFilter: { inGroup: true } };
+      }
+      if (audience === 'leaders_only') {
+        return { targetType: 'all', targetId: null, targetFilter: { leaderOnly: true } };
+      }
+      return { targetType: 'all', targetId: null, targetFilter: {} };
+    }
+
+    async function saveAndSendAnnouncement() {
+      const title = document.getElementById('announcementTitle').value.trim();
+      const body = document.getElementById('announcementBody').value.trim();
+      const audience = document.getElementById('announcementAudience').value;
+      const groupId = document.getElementById('announcementGroupId').value;
+      const pushNow = document.getElementById('announcementPushNow').checked;
+
+      if (!title || !body) {
+        setInlineStatus('announcementStatus', 'Title and message are required.', 'warn');
+        return;
+      }
+
+      if (audience === 'specific_group' && !groupId) {
+        setInlineStatus('announcementStatus', 'Select a group for specific-group audience.', 'warn');
+        return;
+      }
+
+      const saveBtn = document.getElementById('sendAnnouncementBtn');
+      saveBtn.disabled = true;
+      setInlineStatus('announcementStatus', 'Saving announcement...', 'info');
+
+      try {
+        const announcementDoc = {
+          title,
+          body,
+          audience,
+          groupId: audience === 'specific_group' ? groupId : null,
+          pushRequested: pushNow,
+          createdByUid: auth.currentUser?.uid || null,
+          createdByEmail: auth.currentUser?.email || null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        const savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
+        let pushSummary = 'Saved without push.';
+
+        if (pushNow) {
+          const callable = httpsCallable(functions, 'sendCustomNotification');
+          const target = mapAudienceToNotificationTarget(audience, groupId);
+
+          const response = await callable({
+            targetType: target.targetType,
+            targetId: target.targetId,
+            targetFilter: target.targetFilter,
+            title,
+            body,
+            notificationType: 'announcement'
+          });
+
+          const data = response?.data || {};
+          if (typeof data.successCount === 'number' || typeof data.targetCount === 'number') {
+            pushSummary = `Push sent. Success: ${data.successCount ?? 0}, Failures: ${data.failureCount ?? 0}, Targets: ${data.targetCount ?? 0}.`;
+          } else {
+            pushSummary = 'Push request completed.';
+          }
         }
-        
-        // Trigger force update
-        window.triggerForceUpdate = async function() {
-            const updateType = document.getElementById('updateType').value;
-            const details = document.getElementById('updateDetails').value;
-            const scheduleTime = document.getElementById('scheduleTime').value;
-            
-            let confirmMsg = '⚠️ This will force ALL users to update their app.\n\n';
-            if (updateType === 'scheduled' && scheduleTime) {
-                confirmMsg += `Scheduled for: ${new Date(scheduleTime).toLocaleString()}\n\n`;
-            } else {
-                confirmMsg += 'Update will happen immediately when users open the app.\n\n';
-            }
-            confirmMsg += 'Continue?';
-            
-            if (!confirm(confirmMsg)) {
-                return;
-            }
-            
-            try {
-                const configRef = doc(db, 'goMission_config', 'forceUpdate');
-                
-                const updateData = {
-                    enabled: true,
-                    timestamp: new Date().toISOString(),
-                    details: details || 'App update available',
-                    triggeredBy: auth.currentUser.email
-                };
-                
-                if (updateType === 'scheduled' && scheduleTime) {
-                    updateData.scheduledFor = new Date(scheduleTime).toISOString();
-                } else {
-                    updateData.scheduledFor = null;
+
+        setInlineStatus('announcementStatus', `Announcement saved (${savedRef.id}). ${pushSummary}`, 'success');
+      } catch (error) {
+        setInlineStatus('announcementStatus', `Failed to save/send announcement: ${error.message}`, 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    function clearAnnouncementForm() {
+      document.getElementById('announcementTitle').value = '';
+      document.getElementById('announcementBody').value = '';
+      document.getElementById('announcementAudience').value = 'all_users';
+      document.getElementById('announcementPushNow').checked = true;
+      document.getElementById('groupAudienceWrap').classList.add('hidden');
+      setInlineStatus('announcementStatus', 'Announcement form cleared.', 'info');
+    }
+
+    function sanitizeFileName(name) {
+      return String(name || 'video')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .replace(/_+/g, '_')
+        .slice(0, 120);
+    }
+
+    async function saveSundayVideo() {
+      const btn = document.getElementById('publishSundayVideoBtn');
+      const date = document.getElementById('sundayDate').value;
+      const status = document.getElementById('sundayStatus').value;
+      const title = document.getElementById('sundayTitle').value.trim();
+      const description = document.getElementById('sundayDescription').value.trim();
+      const videoUrlInput = document.getElementById('sundayVideoUrl').value.trim();
+      const fileInput = document.getElementById('sundayVideoFile');
+      const file = fileInput.files?.[0] || null;
+
+      if (!date || !title) {
+        setInlineStatus('sundayProgress', 'Sunday date and title are required.', 'warn');
+        return;
+      }
+
+      if (!videoUrlInput && !file) {
+        setInlineStatus('sundayProgress', 'Provide a video URL or upload a video file.', 'warn');
+        return;
+      }
+
+      btn.disabled = true;
+      setInlineStatus('sundayProgress', 'Saving Sunday video...', 'info');
+
+      try {
+        let finalUrl = videoUrlInput || '';
+        let storagePath = null;
+
+        if (file) {
+          const safeName = sanitizeFileName(file.name);
+          storagePath = `goMission/sunday-videos/${date}/${Date.now()}_${safeName}`;
+          const ref = storageRef(storage, storagePath);
+          const uploadTask = uploadBytesResumable(ref, file);
+
+          finalUrl = await new Promise((resolve, reject) => {
+            uploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                setInlineStatus('sundayProgress', `Uploading video: ${progress}%`, 'info');
+              },
+              (error) => reject(error),
+              async () => {
+                try {
+                  const url = await getDownloadURL(uploadTask.snapshot.ref);
+                  resolve(url);
+                } catch (error) {
+                  reject(error);
                 }
-                
-                await setDoc(configRef, updateData);
-                
-                alert('✅ Force update triggered successfully!\n\nUsers will update when they open the app.');
-                loadForceUpdateStatus();
-                
-            } catch (error) {
-                console.error('Error:', error);
-                alert('❌ Error: ' + error.message);
-                
-                if (error.message.includes('permission')) {
-                    document.getElementById('rulesHelp').classList.remove('hidden');
-                }
-            }
+              }
+            );
+          });
+        }
+
+        const payload = {
+          sundayDate: date,
+          title,
+          description,
+          videoUrl: finalUrl,
+          storagePath,
+          status,
+          createdByUid: auth.currentUser?.uid || null,
+          createdByEmail: auth.currentUser?.email || null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         };
-        
-        // Disable force update
-        window.disableForceUpdate = async function() {
-            if (!confirm('Disable force update?')) return;
-            
-            try {
-                const configRef = doc(db, 'goMission_config', 'forceUpdate');
-                await setDoc(configRef, { enabled: false }, { merge: true });
-                alert('✅ Force update disabled');
-                loadForceUpdateStatus();
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        };
-    </script>
+
+        const ref = await addDoc(collection(db, 'goMission_sundayVideos'), payload);
+
+        if (status === 'published') {
+          await setDoc(doc(db, 'goMission_config', 'sundayVideo'), {
+            activeVideoId: ref.id,
+            sundayDate: date,
+            title,
+            description,
+            videoUrl: finalUrl,
+            storagePath,
+            updatedAt: serverTimestamp(),
+            updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+          }, { merge: true });
+        }
+
+        setInlineStatus('sundayProgress', `Sunday video saved (${ref.id}).`, 'success');
+        await loadSundayVideos();
+      } catch (error) {
+        setInlineStatus('sundayProgress', `Failed to save Sunday video: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearSundayVideoForm() {
+      document.getElementById('sundayDate').value = nextSundayDate();
+      document.getElementById('sundayStatus').value = 'published';
+      document.getElementById('sundayTitle').value = '';
+      document.getElementById('sundayDescription').value = '';
+      document.getElementById('sundayVideoUrl').value = '';
+      document.getElementById('sundayVideoFile').value = '';
+      setInlineStatus('sundayProgress', 'Sunday video form cleared.', 'info');
+    }
+
+    async function loadSundayVideos() {
+      const list = document.getElementById('sundayVideoList');
+      list.innerHTML = '<div class="list-item">Loading Sunday videos...</div>';
+
+      try {
+        const snap = await getDocs(query(collection(db, 'goMission_sundayVideos'), orderBy('createdAt', 'desc'), limit(8)));
+        if (snap.empty) {
+          list.innerHTML = '<div class="list-item">No Sunday videos yet.</div>';
+          return;
+        }
+
+        list.innerHTML = snap.docs.map((docSnap) => {
+          const data = docSnap.data() || {};
+          const title = data.title || 'Untitled';
+          const url = data.videoUrl || '';
+          const status = data.status || 'scheduled';
+          const when = data.sundayDate || formatCompactDate(data.createdAt);
+          return `
+            <div class="list-item">
+              <b>${title}</b>
+              <div class="meta">${when} | ${status}</div>
+              <div class="meta">${url ? `<a href="${url}" target="_blank" rel="noreferrer" style="color:var(--gold-strong)">Open video</a>` : 'No URL stored'}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="list-item">Failed to load Sunday videos: ${error.message}</div>`;
+      }
+    }
+
+    function collectTrainingForm() {
+      return {
+        language: document.getElementById('trainingLanguage').value,
+        level: Number(document.getElementById('trainingLevel').value || 2),
+        sessionNumber: Number(document.getElementById('trainingSession').value || 1),
+        dayNumber: Number(document.getElementById('trainingDay').value || 1),
+        sessionTitle: document.getElementById('trainingSessionTitle').value.trim(),
+        dayTitle: document.getElementById('trainingDayTitle').value.trim(),
+        scriptureReference: document.getElementById('trainingScriptureRef').value.trim(),
+        scriptureText: document.getElementById('trainingScriptureText').value.trim(),
+        storyIllustration: document.getElementById('trainingStory').value.trim(),
+        scriptureExplanation: document.getElementById('trainingScriptureExplanation').value.trim(),
+        obedienceQuestion: document.getElementById('trainingObedienceQ').value.trim(),
+        missionQuestion: document.getElementById('trainingMissionQ').value.trim(),
+        leaderNote: document.getElementById('trainingLeaderNote').value.trim(),
+        fruitIndicator: document.getElementById('trainingFruitIndicator').value.trim(),
+        followThrough: document.getElementById('trainingFollowThrough').value.trim()
+      };
+    }
+
+    async function saveTrainingModule() {
+      const btn = document.getElementById('saveTrainingBtn');
+      const payload = collectTrainingForm();
+
+      if (!payload.sessionTitle || !payload.dayTitle || !payload.scriptureReference) {
+        setInlineStatus('trainingStatus', 'Session title, day title, and scripture reference are required.', 'warn');
+        return;
+      }
+
+      btn.disabled = true;
+      setInlineStatus('trainingStatus', 'Saving training module...', 'info');
+
+      try {
+        const docId = `level_${payload.level}_session_${payload.sessionNumber}_day_${payload.dayNumber}_${payload.language}`;
+        const ref = doc(db, 'goMission_trainingContent', docId);
+        const existing = await getDoc(ref);
+        const createdAt = existing.exists() ? existing.data()?.createdAt || serverTimestamp() : serverTimestamp();
+
+        await setDoc(ref, {
+          ...payload,
+          createdAt,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+
+        setInlineStatus('trainingStatus', `Training module saved: ${docId}`, 'success');
+        await loadRecentTraining();
+      } catch (error) {
+        setInlineStatus('trainingStatus', `Failed to save training module: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearTrainingForm() {
+      document.getElementById('trainingSessionTitle').value = '';
+      document.getElementById('trainingDayTitle').value = '';
+      document.getElementById('trainingScriptureRef').value = '';
+      document.getElementById('trainingScriptureText').value = '';
+      document.getElementById('trainingStory').value = '';
+      document.getElementById('trainingScriptureExplanation').value = '';
+      document.getElementById('trainingObedienceQ').value = '';
+      document.getElementById('trainingMissionQ').value = '';
+      document.getElementById('trainingLeaderNote').value = '';
+      document.getElementById('trainingFruitIndicator').value = '';
+      document.getElementById('trainingFollowThrough').value = '';
+      setInlineStatus('trainingStatus', 'Training form cleared.', 'info');
+    }
+
+    async function loadRecentTraining() {
+      const list = document.getElementById('trainingRecentList');
+      list.innerHTML = '<div class="list-item">Loading training modules...</div>';
+
+      try {
+        const snap = await getDocs(query(collection(db, 'goMission_trainingContent'), orderBy('updatedAt', 'desc'), limit(12)));
+        if (snap.empty) {
+          list.innerHTML = '<div class="list-item">No training modules found.</div>';
+          return;
+        }
+
+        list.innerHTML = snap.docs.map((docSnap) => {
+          const d = docSnap.data() || {};
+          return `
+            <div class="list-item">
+              <b>L${d.level || '?'} S${d.sessionNumber || '?'} D${d.dayNumber || '?'}</b> - ${d.dayTitle || 'Untitled'}
+              <div class="meta">${d.language || 'n/a'} | ${d.scriptureReference || 'No verse'} | Updated ${formatDateTime(d.updatedAt)}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="list-item">Could not load training modules: ${error.message}</div>`;
+      }
+    }
+
+    async function lookupRoleUser() {
+      const queryValue = document.getElementById('roleLookup').value.trim();
+      if (!queryValue) {
+        setInlineStatus('roleStatus', 'Enter a user email or UID.', 'warn');
+        return;
+      }
+
+      setInlineStatus('roleStatus', 'Looking up user...', 'info');
+      currentRoleUser = null;
+      document.getElementById('roleUserCard').classList.add('hidden');
+
+      try {
+        let userDoc = null;
+        if (queryValue.includes('@')) {
+          const snap = await getDocs(query(collection(db, 'goMission_members'), where('email', '==', queryValue.toLowerCase()), limit(1)));
+          if (!snap.empty) {
+            userDoc = snap.docs[0];
+          }
+        } else {
+          const ref = doc(db, 'goMission_members', queryValue);
+          const snap = await getDoc(ref);
+          if (snap.exists()) {
+            userDoc = snap;
+          }
+        }
+
+        if (!userDoc) {
+          setInlineStatus('roleStatus', 'No matching user found.', 'warn');
+          return;
+        }
+
+        const data = userDoc.data() || {};
+        currentRoleUser = { id: userDoc.id, data };
+
+        document.getElementById('roleUserMeta').textContent = `${data.name || data.displayName || 'Unknown'} | ${data.email || 'No email'} | UID: ${userDoc.id}`;
+        const roles = data.roles || {};
+        document.getElementById('roleIsAdmin').checked = !!roles.isAdmin;
+        document.getElementById('roleIsGroupLeader').checked = !!roles.isGroupLeader;
+        document.getElementById('roleIsTrainer').checked = !!roles.isTrainer;
+        document.getElementById('roleIsShepherd').checked = !!roles.isShepherd;
+        document.getElementById('roleIsWelcomeTeam').checked = !!roles.isWelcomeTeam;
+        document.getElementById('roleIsMissionary').checked = roles.isMissionary !== false;
+
+        document.getElementById('roleUserCard').classList.remove('hidden');
+        setInlineStatus('roleStatus', 'User loaded. Update role flags and save.', 'success');
+      } catch (error) {
+        setInlineStatus('roleStatus', `Lookup failed: ${error.message}`, 'error');
+      }
+    }
+
+    async function saveRoles() {
+      if (!currentRoleUser) {
+        setInlineStatus('roleStatus', 'Lookup a user first.', 'warn');
+        return;
+      }
+
+      const roles = {
+        isAdmin: document.getElementById('roleIsAdmin').checked,
+        isGroupLeader: document.getElementById('roleIsGroupLeader').checked,
+        isTrainer: document.getElementById('roleIsTrainer').checked,
+        isShepherd: document.getElementById('roleIsShepherd').checked,
+        isWelcomeTeam: document.getElementById('roleIsWelcomeTeam').checked,
+        isMissionary: document.getElementById('roleIsMissionary').checked
+      };
+
+      try {
+        await setDoc(doc(db, 'goMission_members', currentRoleUser.id), {
+          roles,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        setInlineStatus('roleStatus', 'Roles updated successfully.', 'success');
+      } catch (error) {
+        setInlineStatus('roleStatus', `Failed to save roles: ${error.message}`, 'error');
+      }
+    }
+
+    function getEmailSequencePayloadFromForm() {
+      return {
+        enabled: document.getElementById('emailSequenceEnabled').checked,
+        sendHour: Number(document.getElementById('emailSendHour').value || 8),
+        timezone: document.getElementById('emailTimezone').value.trim() || 'Asia/Manila',
+        templates: {
+          day1: {
+            delayDays: 1,
+            subject: document.getElementById('emailDay1Subject').value.trim(),
+            body: document.getElementById('emailDay1Body').value.trim()
+          },
+          day3: {
+            delayDays: 3,
+            subject: document.getElementById('emailDay3Subject').value.trim(),
+            body: document.getElementById('emailDay3Body').value.trim()
+          },
+          day7: {
+            delayDays: 7,
+            subject: document.getElementById('emailDay7Subject').value.trim(),
+            body: document.getElementById('emailDay7Body').value.trim()
+          }
+        }
+      };
+    }
+
+    function applyEmailSequenceToForm(data = {}) {
+      document.getElementById('emailSequenceEnabled').checked = !!data.enabled;
+      document.getElementById('emailSendHour').value = Number(data.sendHour ?? 8);
+      document.getElementById('emailTimezone').value = data.timezone || 'Asia/Manila';
+
+      document.getElementById('emailDay1Subject').value = data.templates?.day1?.subject || '';
+      document.getElementById('emailDay1Body').value = data.templates?.day1?.body || '';
+      document.getElementById('emailDay3Subject').value = data.templates?.day3?.subject || '';
+      document.getElementById('emailDay3Body').value = data.templates?.day3?.body || '';
+      document.getElementById('emailDay7Subject').value = data.templates?.day7?.subject || '';
+      document.getElementById('emailDay7Body').value = data.templates?.day7?.body || '';
+    }
+
+    async function loadEmailSequence() {
+      try {
+        const snap = await getDoc(doc(db, 'goMission_config', 'emailSequence'));
+        applyEmailSequenceToForm(snap.exists() ? snap.data() : {});
+        setInlineStatus('emailSequenceStatus', 'Email sequence loaded.', 'info');
+      } catch (error) {
+        setInlineStatus('emailSequenceStatus', `Failed to load email sequence: ${error.message}`, 'error');
+      }
+    }
+
+    async function saveEmailSequence() {
+      try {
+        const payload = getEmailSequencePayloadFromForm();
+        await setDoc(doc(db, 'goMission_config', 'emailSequence'), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+        setInlineStatus('emailSequenceStatus', 'Email sequence settings saved.', 'success');
+      } catch (error) {
+        setInlineStatus('emailSequenceStatus', `Could not save email sequence: ${error.message}`, 'error');
+      }
+    }
+
+    function getPushSettingsPayloadFromForm() {
+      return {
+        announcementsEnabled: document.getElementById('pushAnnouncementsEnabled').checked,
+        chatEnabled: document.getElementById('pushChatEnabled').checked,
+        devotionEnabled: document.getElementById('pushDevotionEnabled').checked,
+        dailyReminderEnabled: document.getElementById('pushDailyReminderEnabled').checked,
+        reminderHour: Number(document.getElementById('pushReminderHour').value || 6),
+        reminderTimezone: document.getElementById('pushReminderTimezone').value.trim() || 'Asia/Manila'
+      };
+    }
+
+    function applyPushSettingsToForm(data = {}) {
+      document.getElementById('pushAnnouncementsEnabled').checked = data.announcementsEnabled !== false;
+      document.getElementById('pushChatEnabled').checked = data.chatEnabled !== false;
+      document.getElementById('pushDevotionEnabled').checked = data.devotionEnabled !== false;
+      document.getElementById('pushDailyReminderEnabled').checked = data.dailyReminderEnabled !== false;
+      document.getElementById('pushReminderHour').value = Number(data.reminderHour ?? 6);
+      document.getElementById('pushReminderTimezone').value = data.reminderTimezone || 'Asia/Manila';
+    }
+
+    async function loadPushSettings() {
+      try {
+        const snap = await getDoc(doc(db, 'goMission_config', 'pushSettings'));
+        applyPushSettingsToForm(snap.exists() ? snap.data() : {});
+        setInlineStatus('pushSettingsStatus', 'Push settings loaded.', 'info');
+      } catch (error) {
+        setInlineStatus('pushSettingsStatus', `Failed to load push settings: ${error.message}`, 'error');
+      }
+    }
+
+    async function savePushSettings() {
+      try {
+        const payload = getPushSettingsPayloadFromForm();
+        await setDoc(doc(db, 'goMission_config', 'pushSettings'), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+        setInlineStatus('pushSettingsStatus', 'Push settings saved.', 'success');
+      } catch (error) {
+        setInlineStatus('pushSettingsStatus', `Could not save push settings: ${error.message}`, 'error');
+      }
+    }
+
+    async function initializeWorkspace() {
+      document.getElementById('sundayDate').value = nextSundayDate();
+      await Promise.all([
+        loadMissionHealth(),
+        loadForceUpdateStatus(),
+        loadEmailSequence(),
+        loadPushSettings(),
+        loadSundayVideos(),
+        loadRecentTraining()
+      ]);
+    }
+
+    function wireEvents() {
+      document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
+
+      document.getElementById('announcementAudience').addEventListener('change', (event) => {
+        const wrap = document.getElementById('groupAudienceWrap');
+        wrap.classList.toggle('hidden', event.target.value !== 'specific_group');
+      });
+      document.getElementById('sendAnnouncementBtn').addEventListener('click', saveAndSendAnnouncement);
+      document.getElementById('clearAnnouncementBtn').addEventListener('click', clearAnnouncementForm);
+
+      document.getElementById('publishSundayVideoBtn').addEventListener('click', saveSundayVideo);
+      document.getElementById('clearSundayVideoBtn').addEventListener('click', clearSundayVideoForm);
+
+      document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
+      document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);
+
+      document.getElementById('lookupRoleBtn').addEventListener('click', lookupRoleUser);
+      document.getElementById('saveRolesBtn').addEventListener('click', saveRoles);
+
+      document.getElementById('saveEmailSequenceBtn').addEventListener('click', saveEmailSequence);
+      document.getElementById('reloadEmailSequenceBtn').addEventListener('click', loadEmailSequence);
+
+      document.getElementById('savePushSettingsBtn').addEventListener('click', savePushSettings);
+      document.getElementById('reloadPushSettingsBtn').addEventListener('click', loadPushSettings);
+
+      document.getElementById('updateType').addEventListener('change', (event) => {
+        document.getElementById('scheduleWrap').classList.toggle('hidden', event.target.value !== 'scheduled');
+      });
+      document.getElementById('triggerForceUpdateBtn').addEventListener('click', triggerForceUpdate);
+      document.getElementById('disableForceUpdateBtn').addEventListener('click', disableForceUpdate);
+    }
+
+    wireEvents();
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        authText.textContent = 'Not signed in. Sign in at gomission.netlify.app first, then reopen this page.';
+        showStatus('Authentication required.', 'warn', true);
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'goMission_members', user.uid));
+        const profile = userDoc.exists() ? userDoc.data() : {};
+        const isAdmin = ADMIN_UIDS.includes(user.uid) || !!profile?.roles?.isAdmin || user.email === 'michael.marga@gmail.com';
+
+        if (!isAdmin) {
+          authText.textContent = `Access denied. ${user.email || user.uid} is not configured as admin.`;
+          showStatus('Access denied. Add your UID/email to admin rules.', 'error', true);
+          return;
+        }
+
+        authPanel.classList.add('hidden');
+        workspace.classList.remove('hidden');
+        showStatus(`Signed in as admin: ${user.email || user.uid}`, 'success');
+
+        await initializeWorkspace();
+      } catch (error) {
+        authText.textContent = `Error checking admin access: ${error.message}`;
+        showStatus('Failed to verify admin status.', 'error', true);
+      }
+    });
+  </script>
 </body>
 </html>
