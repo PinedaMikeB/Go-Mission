@@ -307,6 +307,7 @@ const GroupMeeting = {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableDeepLinking: true,
+          disableInviteFunctions: true,
 
           // Make XMPP endpoints explicit (helps some reverse-proxy setups).
           bosh: `https://${activeDomain}/http-bind`,
