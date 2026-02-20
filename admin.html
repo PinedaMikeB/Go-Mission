@@ -186,6 +186,40 @@
       min-height: 16px;
     }
 
+    .metric-card.metric-clickable {
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card.metric-clickable:hover,
+    .metric-card.metric-clickable:focus-visible {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+      outline: none;
+    }
+
+    .metric-hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .metric-details-panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 10px;
+    }
+
+    .metric-details-title {
+      margin: 0;
+      font-size: 14px;
+      color: var(--gold-strong);
+      letter-spacing: 0.02em;
+    }
+
     .row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -462,6 +496,15 @@
           <h2>Mission Group Health</h2>
           <p class="sub">Snapshot of discipleship movement from users, groups, devotions, and weekly reports.</p>
           <div id="metricsGrid" class="metrics-grid"></div>
+          <div class="metric-hint">Click a metric card to view who is included in that number.</div>
+          <div id="metricDetailsPanel" class="metric-details-panel hidden">
+            <div class="split" style="margin-top:0;">
+              <h3 id="metricDetailsTitle" class="metric-details-title">Metric Details</h3>
+              <button id="closeMetricDetailsBtn" class="secondary" style="width:auto;padding:6px 10px;">Close</button>
+            </div>
+            <div id="metricDetailsSummary" class="small" style="margin-top:4px;"></div>
+            <div id="metricDetailsList" class="list" style="margin-top:8px;"></div>
+          </div>
           <div class="actions" style="margin-top:12px;">
             <button id="refreshHealthBtn" class="secondary">Refresh Health Data</button>
           </div>
@@ -988,6 +1031,43 @@ match /goMission/sunday-videos/{allPaths=**} {
     let cachedGroups = [];
     let cachedWatchSeries = [];
     let currentRoleUser = null;
+    let latestMissionHealth = null;
+    let activeMetricKey = null;
+
+    const METRIC_DETAILS_CONFIG = {
+      active_users: {
+        title: 'Active Users',
+        description: 'Users active in the last 7 days, excluding profiles marked inactive/paused.'
+      },
+      mission_members: {
+        title: 'Mission Members',
+        description: 'Users in disciple stages or users connected to a discipleship group.'
+      },
+      leaders: {
+        title: 'Leaders',
+        description: 'Profiles with leader/trainer/shepherd/admin role flags or groupRole=leader.'
+      },
+      spending_with_god: {
+        title: 'Spending Time with God',
+        description: 'Users with devotion/debrief evidence in the last 7 days.'
+      },
+      sharing_gospel: {
+        title: 'Sharing Gospel',
+        description: 'Users who shared in devotions/debriefs within the last 30 days.'
+      },
+      total_users: {
+        title: 'Total App Users',
+        description: 'All profiles found in goMission_members.'
+      },
+      in_groups: {
+        title: 'In Discipleship Group',
+        description: 'Users with groupId, uplineGroupId, or guest group membership.'
+      },
+      active_groups: {
+        title: 'Active Groups',
+        description: 'Groups with status empty, active, or multiplying.'
+      }
+    };
 
     const authPanel = document.getElementById('authPanel');
     const authText = document.getElementById('authText');
@@ -1156,19 +1236,145 @@ match /goMission/sunday-videos/{allPaths=**} {
       }
     }
 
-    function buildMetricCard(label, value, foot = '') {
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getMemberDisplayName(member) {
+      return member?.name || member?.displayName || member?.email || member?.id || 'Unknown member';
+    }
+
+    function getGroupDisplayName(group) {
+      return group?.name || group?.groupName || group?.id || 'Unknown group';
+    }
+
+    function getGroupNamesByIds(groupIds = [], groupsById = new Map()) {
+      return [...new Set(groupIds.filter(Boolean))]
+        .map((id) => groupsById.get(id)?.name || groupsById.get(id)?.groupName || id);
+    }
+
+    function extractMemberGroupIds(member) {
+      const ids = [];
+      if (member?.groupId) ids.push(member.groupId);
+      if (member?.uplineGroupId) ids.push(member.uplineGroupId);
+      if (Array.isArray(member?.guestGroups)) ids.push(...member.guestGroups);
+      return [...new Set(ids.filter(Boolean))];
+    }
+
+    function buildMemberRow(member, groupsById) {
+      const name = getMemberDisplayName(member);
+      const email = member?.email || 'No email';
+      const stage = member?.stage || 'n/a';
+      const roleList = [];
+      const roles = member?.roles || {};
+      if (roles.isAdmin) roleList.push('admin');
+      if (roles.isGroupLeader) roleList.push('group leader');
+      if (roles.isTrainer) roleList.push('trainer');
+      if (roles.isShepherd) roleList.push('shepherd');
+      if (member?.groupRole === 'leader') roleList.push('groupRole:leader');
+      const groups = getGroupNamesByIds(extractMemberGroupIds(member), groupsById);
+      const groupText = groups.length ? groups.join(', ') : 'No group';
+      return {
+        title: `${name}`,
+        meta: `${email} | stage: ${stage} | roles: ${roleList.length ? roleList.join(', ') : 'none'} | groups: ${groupText} | uid: ${member.id}`
+      };
+    }
+
+    function buildGroupRow(group) {
+      const title = getGroupDisplayName(group);
+      const status = String(group?.status || 'unknown').toLowerCase();
+      const leader = group?.leaderName || group?.leaderEmail || group?.leaderId || group?.leaderUid || group?.ownerId || 'n/a';
+      return {
+        title,
+        meta: `status: ${status} | leader: ${leader} | id: ${group?.id || 'n/a'}`
+      };
+    }
+
+    function sortRows(rows = []) {
+      return [...rows].sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    }
+
+    function renderMetricDetails(metricKey) {
+      const panel = document.getElementById('metricDetailsPanel');
+      const titleEl = document.getElementById('metricDetailsTitle');
+      const summaryEl = document.getElementById('metricDetailsSummary');
+      const listEl = document.getElementById('metricDetailsList');
+
+      if (!panel || !titleEl || !summaryEl || !listEl || !latestMissionHealth) {
+        return;
+      }
+
+      const config = METRIC_DETAILS_CONFIG[metricKey];
+      if (!config) {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      const groupsById = latestMissionHealth.groupsById || new Map();
+      let rows = [];
+
+      if (metricKey === 'active_groups') {
+        rows = sortRows((latestMissionHealth.activeGroupsList || []).map(buildGroupRow));
+      } else {
+        const members = latestMissionHealth[`${metricKey}Members`] || [];
+        rows = sortRows(members.map((member) => buildMemberRow(member, groupsById)));
+      }
+
+      titleEl.textContent = `${config.title} Details`;
+      summaryEl.textContent = `${config.description} Showing ${rows.length} record(s).`;
+      listEl.innerHTML = rows.length
+        ? rows.map((row) => `
+            <div class="list-item">
+              <b>${escapeHtml(row.title)}</b>
+              <div class="meta">${escapeHtml(row.meta)}</div>
+            </div>
+          `).join('')
+        : '<div class="list-item">No records found for this metric.</div>';
+
+      panel.classList.remove('hidden');
+      activeMetricKey = metricKey;
+    }
+
+    function closeMetricDetails() {
+      const panel = document.getElementById('metricDetailsPanel');
+      if (panel) {
+        panel.classList.add('hidden');
+      }
+      activeMetricKey = null;
+    }
+
+    function wireMetricCardEvents() {
+      const cards = document.querySelectorAll('.metric-card[data-metric-key]');
+      cards.forEach((card) => {
+        const metricKey = card.getAttribute('data-metric-key');
+        card.addEventListener('click', () => renderMetricDetails(metricKey));
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            renderMetricDetails(metricKey);
+          }
+        });
+      });
+    }
+
+    function buildMetricCard(metricKey, label, value, foot = '') {
       return `
-        <article class="metric-card">
+        <article class="metric-card metric-clickable" role="button" tabindex="0" data-metric-key="${metricKey}">
           <div class="metric-label">${label}</div>
           <div class="metric-value">${value}</div>
-          <div class="metric-foot">${foot}</div>
+          <div class="metric-foot">${foot} | View details</div>
         </article>
       `;
     }
 
     async function loadMissionHealth() {
       const metricsGrid = document.getElementById('metricsGrid');
-      metricsGrid.innerHTML = buildMetricCard('Loading', '...', 'Reading collections');
+      metricsGrid.innerHTML = buildMetricCard('total_users', 'Loading', '...', 'Reading collections');
 
       const weekStart = new Date(Date.now() - (6 * DAY_MS));
       const monthStart = new Date(Date.now() - (30 * DAY_MS));
@@ -1188,11 +1394,17 @@ match /goMission/sunday-videos/{allPaths=**} {
 
       cachedGroups = groups;
 
-      const totalUsers = members.length;
-      const activeUsers = members.filter(isActiveMember).length;
-      const missionMembers = members.filter(isMissionMember).length;
-      const leaders = members.filter(isLeaderProfile).length;
-      const inGroups = members.filter(hasGroupMembership).length;
+      const totalUsersMembers = [...members];
+      const activeUsersMembers = members.filter(isActiveMember);
+      const missionMembersMembers = members.filter(isMissionMember);
+      const leadersMembers = members.filter(isLeaderProfile);
+      const inGroupsMembers = members.filter(hasGroupMembership);
+
+      const totalUsers = totalUsersMembers.length;
+      const activeUsers = activeUsersMembers.length;
+      const missionMembers = missionMembersMembers.length;
+      const leaders = leadersMembers.length;
+      const inGroups = inGroupsMembers.length;
 
       const groupStatuses = groups.reduce((acc, group) => {
         const status = String(group?.status || 'unknown').toLowerCase();
@@ -1200,10 +1412,11 @@ match /goMission/sunday-videos/{allPaths=**} {
         return acc;
       }, {});
 
-      const activeGroups = groups.filter((g) => {
+      const activeGroupsList = groups.filter((g) => {
         const status = String(g?.status || '').toLowerCase();
         return status === '' || status === 'active' || status === 'multiplying';
-      }).length;
+      });
+      const activeGroups = activeGroupsList.length;
 
       const spendingWithGod = new Set();
       if (weekDevotionsSnap) {
@@ -1241,18 +1454,42 @@ match /goMission/sunday-videos/{allPaths=**} {
         });
       }
 
+      const membersById = new Map(members.map((member) => [member.id, member]));
+      const spendingWithGodMembers = [...spendingWithGod]
+        .map((memberId) => membersById.get(memberId) || { id: memberId, name: `Unknown member (${memberId})` });
+      const sharingGospelMembers = [...sharedGospel]
+        .map((memberId) => membersById.get(memberId) || { id: memberId, name: `Unknown member (${memberId})` });
+
+      latestMissionHealth = {
+        members,
+        groups,
+        groupsById: new Map(groups.map((group) => [group.id, group])),
+        active_usersMembers: activeUsersMembers,
+        mission_membersMembers: missionMembersMembers,
+        leadersMembers,
+        spending_with_godMembers: spendingWithGodMembers,
+        sharing_gospelMembers: sharingGospelMembers,
+        total_usersMembers: totalUsersMembers,
+        in_groupsMembers: inGroupsMembers,
+        activeGroupsList
+      };
+
       const cardsHtml = [
-        buildMetricCard('Active Users', activeUsers, 'Last 7 days'),
-        buildMetricCard('Mission Members', missionMembers, 'Disciple-stage or grouped users'),
-        buildMetricCard('Leaders', leaders, 'Leader, trainer, shepherd, or admin'),
-        buildMetricCard('Spending Time with God', spendingWithGod.size, 'Devotions/debriefs in last 7 days'),
-        buildMetricCard('Sharing Gospel', sharedGospel.size, 'Shared in last 30 days'),
-        buildMetricCard('Total App Users', totalUsers, 'All profiles in goMission_members'),
-        buildMetricCard('In Discipleship Group', inGroups, 'Users with group membership'),
-        buildMetricCard('Active Groups', activeGroups, `Total groups: ${groups.length}`)
+        buildMetricCard('active_users', 'Active Users', activeUsers, 'Last 7 days'),
+        buildMetricCard('mission_members', 'Mission Members', missionMembers, 'Disciple-stage or grouped users'),
+        buildMetricCard('leaders', 'Leaders', leaders, 'Leader, trainer, shepherd, or admin'),
+        buildMetricCard('spending_with_god', 'Spending Time with God', spendingWithGod.size, 'Devotions/debriefs in last 7 days'),
+        buildMetricCard('sharing_gospel', 'Sharing Gospel', sharedGospel.size, 'Shared in last 30 days'),
+        buildMetricCard('total_users', 'Total App Users', totalUsers, 'All profiles in goMission_members'),
+        buildMetricCard('in_groups', 'In Discipleship Group', inGroups, 'Users with group membership'),
+        buildMetricCard('active_groups', 'Active Groups', activeGroups, `Total groups: ${groups.length}`)
       ].join('');
 
       metricsGrid.innerHTML = cardsHtml;
+      wireMetricCardEvents();
+      if (activeMetricKey) {
+        renderMetricDetails(activeMetricKey);
+      }
       document.getElementById('lastRefreshText').textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
 
       const statusBreakdown = Object.entries(groupStatuses)
@@ -2077,6 +2314,7 @@ match /goMission/sunday-videos/{allPaths=**} {
 
     function wireEvents() {
       document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
+      document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {
         const wrap = document.getElementById('groupAudienceWrap');
