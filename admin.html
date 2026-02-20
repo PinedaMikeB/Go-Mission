@@ -220,6 +220,94 @@
       letter-spacing: 0.02em;
     }
 
+    .group-detail {
+      border: 1px solid rgba(245, 189, 89, 0.14);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.18);
+      margin: 8px 0;
+      overflow: hidden;
+    }
+
+    .group-detail summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .group-detail summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .group-detail summary .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .group-detail summary .label b {
+      color: var(--gold-strong);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 520px;
+    }
+
+    .group-detail summary .meta {
+      color: var(--text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .group-members {
+      border-top: 1px solid rgba(245, 189, 89, 0.12);
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .group-member-row {
+      padding: 8px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(245, 189, 89, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+      margin-bottom: 8px;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .group-member-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-left: 6px;
+    }
+
+    .status-pill.active {
+      color: #0d2f1f;
+      background: #73c097;
+    }
+
+    .status-pill.inactive {
+      color: #36140d;
+      background: #d95f4a;
+    }
+
     .row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1285,14 +1373,34 @@ match /goMission/sunday-videos/{allPaths=**} {
       };
     }
 
-    function buildGroupRow(group) {
-      const title = getGroupDisplayName(group);
-      const status = String(group?.status || 'unknown').toLowerCase();
-      const leader = group?.leaderName || group?.leaderEmail || group?.leaderId || group?.leaderUid || group?.ownerId || 'n/a';
+    function getMemberActivityMeta(member) {
+      const lastActiveDate = pickDate(member?.lastActiveDate, member?.lastActive, member?.lastSeenAt, member?.updatedAt);
+      const lastActiveText = lastActiveDate ? formatDateTime(lastActiveDate) : 'No activity timestamp';
+      const isActive = isActiveMember(member);
       return {
-        title,
-        meta: `status: ${status} | leader: ${leader} | id: ${group?.id || 'n/a'}`
+        isActive,
+        statusText: isActive ? 'active' : 'inactive',
+        lastActiveText
       };
+    }
+
+    function getGroupMemberEntries(groupId, members = []) {
+      const entries = [];
+
+      members.forEach((member) => {
+        const links = [];
+        if (member?.groupId === groupId) links.push('primary');
+        if (member?.uplineGroupId === groupId) links.push('upline');
+        if (Array.isArray(member?.guestGroups) && member.guestGroups.includes(groupId)) links.push('guest');
+        if (!links.length) return;
+
+        entries.push({
+          member,
+          relation: links.join(', ')
+        });
+      });
+
+      return entries.sort((a, b) => getMemberDisplayName(a.member).localeCompare(getMemberDisplayName(b.member)));
     }
 
     function sortRows(rows = []) {
@@ -1319,7 +1427,68 @@ match /goMission/sunday-videos/{allPaths=**} {
       let rows = [];
 
       if (metricKey === 'active_groups') {
-        rows = sortRows((latestMissionHealth.activeGroupsList || []).map(buildGroupRow));
+        const groups = [...(latestMissionHealth.activeGroupsList || [])]
+          .sort((a, b) => getGroupDisplayName(a).localeCompare(getGroupDisplayName(b)));
+        const memberPool = latestMissionHealth.members || [];
+
+        titleEl.textContent = `${config.title} Details`;
+        summaryEl.textContent = `${config.description} Showing ${groups.length} group(s). Expand a group to see members and activity.`;
+        listEl.innerHTML = groups.length
+          ? groups.map((group) => {
+              const groupId = group?.id || '';
+              const memberEntries = getGroupMemberEntries(groupId, memberPool);
+              const membersWithActivity = memberEntries.map((entry) => ({
+                ...entry,
+                activity: getMemberActivityMeta(entry.member)
+              }));
+              const activeMembers = membersWithActivity.filter((entry) => entry.activity.isActive).length;
+
+              const membersHtml = membersWithActivity.length
+                ? membersWithActivity.map((entry) => {
+                    const member = entry.member;
+                    const activity = entry.activity;
+                    const name = escapeHtml(getMemberDisplayName(member));
+                    const email = escapeHtml(member?.email || 'No email');
+                    const stage = escapeHtml(member?.stage || 'n/a');
+                    const relation = escapeHtml(entry.relation || 'linked');
+                    const uid = escapeHtml(member?.id || 'n/a');
+                    const lastActiveText = escapeHtml(activity.lastActiveText);
+                    const pillClass = activity.isActive ? 'active' : 'inactive';
+                    return `
+                      <div class="group-member-row">
+                        <b>${name}</b>
+                        <span class="status-pill ${pillClass}">${activity.statusText}</span>
+                        <div class="meta">${email} | stage: ${stage} | relation: ${relation}</div>
+                        <div class="meta">Last activity: ${lastActiveText} | uid: ${uid}</div>
+                      </div>
+                    `;
+                  }).join('')
+                : '<div class="group-member-row">No linked members found from goMission_members for this group.</div>';
+
+              const groupTitle = escapeHtml(getGroupDisplayName(group));
+              const status = escapeHtml(String(group?.status || 'unknown').toLowerCase());
+              const leader = escapeHtml(group?.leaderName || group?.leaderEmail || group?.leaderId || group?.leaderUid || group?.ownerId || 'n/a');
+              const groupMeta = `status: ${status} | leader: ${leader} | id: ${escapeHtml(groupId || 'n/a')}`;
+              return `
+                <details class="group-detail">
+                  <summary>
+                    <span class="label">
+                      <b>${groupTitle}</b>
+                    </span>
+                    <span class="meta">${activeMembers}/${membersWithActivity.length} active members</span>
+                  </summary>
+                  <div class="group-members">
+                    <div class="meta" style="margin-bottom:8px;">${groupMeta}</div>
+                    ${membersHtml}
+                  </div>
+                </details>
+              `;
+            }).join('')
+          : '<div class="list-item">No active groups found.</div>';
+
+        panel.classList.remove('hidden');
+        activeMetricKey = metricKey;
+        return;
       } else {
         const members = latestMissionHealth[`${metricKey}Members`] || [];
         rows = sortRows(members.map((member) => buildMemberRow(member, groupsById)));
