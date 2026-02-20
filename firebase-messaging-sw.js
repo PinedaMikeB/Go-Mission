@@ -219,7 +219,10 @@ messaging.onBackgroundMessage((payload) => {
 function getNotificationActions(type) {
     switch (type) {
         case 'chat':
+        case 'chat_mention':
             return [{ action: 'open', title: 'Open Chat' }];
+        case 'dm':
+            return [{ action: 'open', title: 'Open Message' }];
         case 'devotion':
             return [{ action: 'open', title: 'View' }];
         default:
@@ -236,6 +239,10 @@ self.addEventListener('notificationclick', (event) => {
     
     if (data.type === 'chat' && data.groupId) {
         url = '/?openChat=' + data.groupId;
+    } else if (data.type === 'chat_mention' && data.groupId) {
+        url = '/?openChat=' + data.groupId;
+    } else if (data.type === 'dm' && data.senderId) {
+        url = '/?openMessages=direct&openDmWith=' + encodeURIComponent(data.senderId);
     } else if (data.type === 'devotion') {
         url = '/?openDevotion=true';
     }

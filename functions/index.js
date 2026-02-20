@@ -202,6 +202,83 @@ async function sendToGroup(groupId, notification, excludeUserId = null) {
   }
 }
 
+function uniqueUserIds(values = []) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map((value) => value.trim()))];
+}
+
+function collectMentionedUserIds(message = {}) {
+  const fromArray = [];
+  if (Array.isArray(message.mentionedUserIds)) {
+    fromArray.push(...message.mentionedUserIds);
+  }
+  if (Array.isArray(message.mentions)) {
+    message.mentions.forEach((entry) => {
+      if (typeof entry === 'string') fromArray.push(entry);
+      else if (entry && typeof entry.uid === 'string') fromArray.push(entry.uid);
+    });
+  }
+  return uniqueUserIds(fromArray);
+}
+
+function getGroupParticipantIds(groupData = {}) {
+  const members = Array.isArray(groupData.members) ? groupData.members : [];
+  const guestIds = (Array.isArray(groupData.guests) ? groupData.guests : [])
+    .map((guest) => guest?.odId)
+    .filter(Boolean);
+  return uniqueUserIds([...members, ...guestIds]);
+}
+
+function toDateOrNull(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return Number.isNaN(date?.getTime?.()) ? null : date;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function truncateText(value, maxLength = 120) {
+  const str = String(value || '');
+  if (str.length <= maxLength) return str;
+  return `${str.slice(0, Math.max(1, maxLength - 1))}…`;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function filterRecipientsByActiveContext(userIds = [], contextField, contextValue) {
+  const uniqueIds = uniqueUserIds(userIds);
+  if (!uniqueIds.length) return [];
+  if (!contextField) return uniqueIds;
+
+  const recipients = [];
+  for (const userId of uniqueIds) {
+    try {
+      const userDoc = await db.collection('goMission_members').doc(userId).get();
+      if (!userDoc.exists) continue;
+      const data = userDoc.data() || {};
+      if (data[contextField] === contextValue) {
+        continue;
+      }
+      recipients.push(userId);
+    } catch (error) {
+      console.warn(`[Notifications] Could not evaluate active context for ${userId}:`, error);
+      recipients.push(userId);
+    }
+  }
+  return recipients;
+}
+
 function normalizeRequest(request) {
   if (!request || typeof request !== 'object') return null;
   const requesterId = request.odId || request.uid || null;
@@ -253,31 +330,127 @@ async function sendEventEmailToUser(userId, subject, html) {
 // FIRESTORE TRIGGERS
 // ============================================
 
-exports.onNewChatMessage = onDocumentCreated('goMission_chats/{messageId}', async (event) => {
-  const message = event.data.data();
+exports.onNewChatMessage = onDocumentCreated({
+  document: 'goMission_chats/{messageId}',
+  secrets: [gmailEmail, gmailPassword]
+}, async (event) => {
+  const message = event.data?.data() || {};
   const { groupId, senderId, senderName, text, type } = message;
-  
+  if (!groupId || !senderId) return null;
   if (type === 'system') return null;
-  
+
   const groupDoc = await db.collection('goMission_groups').doc(groupId).get();
-  const groupName = groupDoc.exists ? groupDoc.data().name : 'Your Group';
-  
-  let body = text;
-  if (type === 'devotion') {
-    body = `${senderName} shared a reflection`;
+  const groupData = groupDoc.exists ? (groupDoc.data() || {}) : {};
+  const groupName = groupData.name || 'Your Group';
+  const senderLabel = senderName || 'Someone';
+
+  const baseBody = type === 'devotion'
+    ? `${senderLabel} shared a reflection`
+    : `${senderLabel}: ${truncateText(text, 100) || 'New message'}`;
+
+  const participantIds = getGroupParticipantIds(groupData).filter((id) => id !== senderId);
+  if (!participantIds.length) return null;
+
+  const mentionedIds = collectMentionedUserIds(message)
+    .filter((id) => id !== senderId && participantIds.includes(id));
+
+  const mentionRecipients = await filterRecipientsByActiveContext(mentionedIds, 'activeChat', groupId);
+  if (mentionRecipients.length) {
+    const mentionNotification = {
+      title: `📣 Mention in ${groupName}`,
+      body: `${senderLabel} mentioned you: ${truncateText(text, 100) || 'Open chat to reply.'}`,
+      data: {
+        type: 'chat_mention',
+        groupId,
+        messageId: event.params.messageId,
+        senderId
+      }
+    };
+    await sendToUsers(mentionRecipients, mentionNotification);
+
+    const mentionEmailHtml = `
+      <div style="font-family:Arial,sans-serif;line-height:1.5">
+        <h2 style="margin:0 0 12px">📣 You were mentioned in ${escapeHtml(groupName)}</h2>
+        <p><strong>${escapeHtml(senderLabel)}</strong> mentioned you in group chat.</p>
+        <p style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa;">${escapeHtml(truncateText(text, 280) || 'Open Go Mission to view the message.')}</p>
+      </div>
+    `;
+    await Promise.all(mentionRecipients.map((userId) => (
+      sendEventEmailToUser(
+        userId,
+        `${senderLabel} mentioned you in ${groupName}`,
+        mentionEmailHtml
+      )
+    )));
   }
-  
+
+  const regularRecipients = participantIds.filter((id) => !mentionedIds.includes(id));
+  const regularRecipientsFiltered = await filterRecipientsByActiveContext(regularRecipients, 'activeChat', groupId);
+  if (regularRecipientsFiltered.length) {
+    const notification = {
+      title: `💬 ${groupName}`,
+      body: baseBody,
+      data: {
+        type: 'chat',
+        groupId,
+        messageId: event.params.messageId,
+        senderId
+      }
+    };
+    await sendToUsers(regularRecipientsFiltered, notification);
+  }
+
+  return null;
+});
+
+exports.onNewDirectMessage = onDocumentCreated({
+  document: 'goMission_dmMessages/{messageId}',
+  secrets: [gmailEmail, gmailPassword]
+}, async (event) => {
+  const message = event.data?.data() || {};
+  const senderId = message.senderId;
+  const senderName = message.senderName || 'Someone';
+  const threadId = message.threadId;
+  const participants = uniqueUserIds(message.participants || []);
+  if (!senderId || !threadId || !participants.length) return null;
+  if (message.type === 'system') return null;
+
+  const recipientIds = participants.filter((id) => id !== senderId);
+  if (!recipientIds.length) return null;
+
+  const recipients = await filterRecipientsByActiveContext(recipientIds, 'activeDmThread', threadId);
+  if (!recipients.length) return null;
+
+  const body = truncateText(message.text || 'Sent you a message.', 110);
   const notification = {
-    title: `💬 ${groupName}`,
-    body: `${senderName}: ${body?.substring(0, 100) || ''}`,
+    title: `💬 ${senderName}`,
+    body,
     data: {
-      type: 'chat',
-      groupId: groupId,
+      type: 'dm',
+      threadId,
+      senderId,
       messageId: event.params.messageId
     }
   };
-  
-  await sendToGroup(groupId, notification, senderId);
+
+  await sendToUsers(recipients, notification);
+
+  const emailHtml = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5">
+      <h2 style="margin:0 0 12px">💬 New direct message</h2>
+      <p><strong>${escapeHtml(senderName)}</strong> sent you a message in Go Mission.</p>
+      <p style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa;">${escapeHtml(body)}</p>
+      <p>Open Go Mission to reply.</p>
+    </div>
+  `;
+  await Promise.all(recipients.map((userId) => (
+    sendEventEmailToUser(
+      userId,
+      `${senderName} sent you a message`,
+      emailHtml
+    )
+  )));
+
   return null;
 });
 

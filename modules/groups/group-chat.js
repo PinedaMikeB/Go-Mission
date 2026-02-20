@@ -63,6 +63,8 @@ const GroupChat = {
     { emoji: '⛪', keywords: 'church worship' },
     { emoji: '✝️', keywords: 'cross jesus faith' }
   ],
+  groupMemberDirectory: [],
+  groupMemberDirectoryForGroupId: null,
   
   /**
    * Initialize chat module
@@ -126,6 +128,7 @@ const GroupChat = {
     this.isOpen = true;
     this.currentGroupId = groupId; // Store for reference
     this.updateGroupHeader();
+    await this.loadGroupMemberDirectory(true);
     
     // FIRST: Set active chat in Firestore (prevents notifications while chat is open)
     // Wait for this to complete before proceeding
@@ -316,6 +319,7 @@ const GroupChat = {
   async sendMessage(text) {
     if (!text || !text.trim()) return;
     if (!Groups.currentGroup || !window.currentUser || !window.db) return;
+    const trimmedText = text.trim();
     
     // Verify user is still a member or guest of the group
     const isMember = Groups.currentGroup.members?.includes(window.currentUser.uid);
@@ -328,20 +332,23 @@ const GroupChat = {
     }
     
     try {
+      const mentions = await this.extractMentionsFromText(trimmedText);
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
         senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
-        text: text.trim(),
+        text: trimmedText,
         type: 'text',
+        mentions,
+        mentionedUserIds: mentions.map((mention) => mention.uid),
         createdAt: window.serverTimestamp()
       };
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
         type: 'text',
-        text: text.trim(),
+        text: trimmedText,
         senderName: message.senderName
       });
       
@@ -462,7 +469,7 @@ const GroupChat = {
                    class="w-8 h-8 rounded-full flex-shrink-0">
               <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
-                <p class="text-sm text-[var(--text-color)]">${this.escapeHtml(msg.text)}</p>
+                <p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(msg.text || ''))}</p>
                 <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
@@ -696,6 +703,125 @@ const GroupChat = {
     } catch (error) {
       console.error('[GroupChat] Error toggling reaction:', error);
     }
+  },
+
+  /**
+   * Load member profile directory for mention resolution
+   */
+  async loadGroupMemberDirectory(force = false) {
+    const groupId = Groups.currentGroup?.id;
+    if (!groupId || !window.db) {
+      this.groupMemberDirectory = [];
+      this.groupMemberDirectoryForGroupId = null;
+      return [];
+    }
+
+    if (!force && this.groupMemberDirectoryForGroupId === groupId && this.groupMemberDirectory.length) {
+      return this.groupMemberDirectory;
+    }
+
+    const group = Groups.currentGroup || {};
+    const memberIds = [
+      ...(Array.isArray(group.members) ? group.members : []),
+      ...((Array.isArray(group.guests) ? group.guests : []).map((guest) => guest?.odId).filter(Boolean))
+    ];
+    const uniqueIds = [...new Set(memberIds)];
+
+    const directory = [];
+    for (const uid of uniqueIds) {
+      try {
+        const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', uid));
+        if (!memberDoc.exists()) continue;
+        const data = memberDoc.data() || {};
+        const displayName = data.displayName || data.name || data.email?.split('@')[0] || 'Member';
+        const email = data.email || '';
+
+        const aliasSet = new Set();
+        const addAlias = (value) => {
+          const normalized = this.normalizeMentionToken(value);
+          if (!normalized) return;
+          aliasSet.add(normalized);
+        };
+
+        addAlias(displayName);
+        addAlias(data.username || '');
+        displayName.split(/\s+/).forEach(addAlias);
+        if (email) {
+          addAlias(email.split('@')[0]);
+        }
+
+        directory.push({
+          uid,
+          displayName,
+          email,
+          aliases: Array.from(aliasSet)
+        });
+      } catch (error) {
+        console.warn('[GroupChat] Failed loading member for mention directory:', uid, error);
+      }
+    }
+
+    this.groupMemberDirectory = directory;
+    this.groupMemberDirectoryForGroupId = groupId;
+    return directory;
+  },
+
+  /**
+   * Normalize potential mention token
+   */
+  normalizeMentionToken(value) {
+    return String(value || '')
+      .trim()
+      .replace(/^@+/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
+  },
+
+  /**
+   * Extract mention targets from outgoing message text
+   */
+  async extractMentionsFromText(text) {
+    if (!text) return [];
+
+    await this.loadGroupMemberDirectory();
+    const directory = this.groupMemberDirectory || [];
+    if (!directory.length) return [];
+
+    const senderId = window.currentUser?.uid;
+    const matches = String(text).match(/@([a-zA-Z0-9._-]{2,32})/g) || [];
+    const seen = new Set();
+    const mentions = [];
+
+    for (const raw of matches) {
+      const token = this.normalizeMentionToken(raw);
+      if (!token || seen.has(token)) continue;
+      seen.add(token);
+
+      const member = directory.find((entry) => {
+        if (entry.uid === senderId) return false;
+        if (entry.aliases.includes(token)) return true;
+        return entry.aliases.some((alias) => alias.startsWith(token));
+      });
+      if (!member) continue;
+
+      mentions.push({
+        uid: member.uid,
+        name: member.displayName,
+        token
+      });
+    }
+
+    return mentions;
+  },
+
+  /**
+   * Style @mentions in rendered message text
+   */
+  highlightMentions(escapedText) {
+    return String(escapedText || '').replace(
+      /(^|\s)(@[a-zA-Z0-9._-]{2,32})/g,
+      '$1<span class="text-amber-500 font-semibold">$2</span>'
+    );
   },
   
   /**

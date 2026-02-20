@@ -2811,12 +2811,38 @@
                         if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
                     }
                     
-                    // Check for join code in URL (?join=CODE)
+                    // Handle deep-link params from notifications
                     const urlParams = new URLSearchParams(window.location.search);
+                    const openChatGroupId = urlParams.get('openChat');
+                    const openDmWith = urlParams.get('openDmWith');
+                    const openMessagesTab = urlParams.get('openMessages');
                     const joinCode = urlParams.get('join');
+
+                    if (openChatGroupId) {
+                        const targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+                            ? MyGroups.getGroupById(openChatGroupId)
+                            : null;
+                        if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
+                            Groups.currentGroup = targetGroup;
+                            await GroupChat.open();
+                        } else if (typeof ChatApp !== 'undefined') {
+                            await ChatApp.open();
+                            ChatApp.setTab('groups');
+                        }
+                    }
+
+                    if (openDmWith && typeof ChatApp !== 'undefined') {
+                        await ChatApp.open();
+                        ChatApp.setTab('direct');
+                        await ChatApp.openDirectChat(openDmWith);
+                    } else if (openMessagesTab && typeof ChatApp !== 'undefined') {
+                        await ChatApp.open();
+                        if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
+                            ChatApp.setTab(openMessagesTab);
+                        }
+                    }
+
                     if (joinCode && !Groups.currentGroup) {
-                        // Clear the URL parameter
-                        window.history.replaceState({}, document.title, window.location.pathname);
                         // Show join modal with pre-filled code
                         Groups.showJoinWithCodeModal();
                         setTimeout(() => {
@@ -2825,6 +2851,11 @@
                                 codeInput.value = joinCode.toUpperCase();
                             }
                         }, 200);
+                    }
+
+                    // Clear one-time URL parameters.
+                    if (openChatGroupId || openDmWith || openMessagesTab || joinCode) {
+                        window.history.replaceState({}, document.title, window.location.pathname);
                     }
                     
                     // Initialize Push Notifications and show prompt if needed
@@ -2839,12 +2870,16 @@
                     }
                 }
             } else {
-                window.currentUser = null;
                 if (typeof ChatApp !== 'undefined') {
-                    ChatApp.close();
-                    ChatApp.closeDirectChat();
-                    ChatApp.closePeopleFinder();
+                    if (typeof ChatApp.cleanup === 'function') {
+                        ChatApp.cleanup();
+                    } else {
+                        ChatApp.close();
+                        ChatApp.closeDirectChat();
+                        ChatApp.closePeopleFinder();
+                    }
                 }
+                window.currentUser = null;
                 loginScreen.classList.remove('hidden');
                 mainApp.classList.add('hidden');
             }

@@ -25,15 +25,24 @@ const ChatApp = {
   activeDmPeerId: null,
   dmMessages: [],
   dmPollTimer: null,
+  dmNotificationUnsubscribe: null,
+  dmLastSeenAt: null,
 
   /**
    * Initialize module
    */
   async init() {
-    if (this.initialized) return;
+    if (this.initialized) {
+      await this.refresh();
+      if (!this.dmNotificationUnsubscribe) {
+        this.initDirectMessageNotifier();
+      }
+      return;
+    }
     this.initialized = true;
     this.setTab('groups');
     await this.refresh();
+    this.initDirectMessageNotifier();
   },
 
   /**
@@ -60,6 +69,21 @@ const ChatApp = {
     const screen = document.getElementById('messagesInboxScreen');
     if (screen) screen.classList.add('hidden');
     this.isOpen = false;
+  },
+
+  /**
+   * Cleanup listeners/state (used on sign-out)
+   */
+  cleanup() {
+    this.close();
+    this.closeDirectChat();
+    this.closePeopleFinder();
+    if (this.dmNotificationUnsubscribe) {
+      this.dmNotificationUnsubscribe();
+      this.dmNotificationUnsubscribe = null;
+    }
+    this.initialized = false;
+    this.dmLastSeenAt = null;
   },
 
   /**
@@ -554,6 +578,8 @@ const ChatApp = {
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.remove('hidden');
 
+    await this.setActiveDmThread(this.activeDmThreadId);
+    this.markDmSeenNow();
     await this.loadDirectMessages(true);
     this.startDmPolling();
   },
@@ -562,12 +588,16 @@ const ChatApp = {
    * Close DM modal
    */
   closeDirectChat() {
+    const previousThreadId = this.activeDmThreadId;
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.add('hidden');
     this.activeDmThreadId = null;
     this.activeDmPeerId = null;
     this.dmMessages = [];
     this.stopDmPolling();
+    if (previousThreadId) {
+      this.setActiveDmThread(null);
+    }
   },
 
   /**
@@ -595,6 +625,7 @@ const ChatApp = {
       });
       this.dmMessages = messages;
       this.renderDirectMessages(scrollToBottom);
+      this.markDmSeenNow();
     } catch (error) {
       console.error('[ChatApp] Failed loading direct messages:', error);
       container.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Could not load messages.</p>';
@@ -734,6 +765,112 @@ const ChatApp = {
     if (this.dmPollTimer) {
       clearInterval(this.dmPollTimer);
       this.dmPollTimer = null;
+    }
+  },
+
+  /**
+   * Subscribe to direct message stream for in-app notifications
+   */
+  initDirectMessageNotifier() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db || !window.onSnapshot) return;
+
+    if (this.dmNotificationUnsubscribe) {
+      this.dmNotificationUnsubscribe();
+      this.dmNotificationUnsubscribe = null;
+    }
+
+    const key = `dmLastSeen_${uid}`;
+    const saved = localStorage.getItem(key);
+    const parsed = saved ? this.parseTimestamp(saved) : null;
+    this.dmLastSeenAt = parsed || new Date();
+
+    const q = window.query(
+      window.collection(window.db, 'goMission_dmMessages'),
+      window.where('participants', 'array-contains', uid),
+      window.limit(150)
+    );
+
+    this.dmNotificationUnsubscribe = window.onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== 'added') return;
+        const message = { id: change.doc.id, ...change.doc.data() };
+        this.handleIncomingDirectMessageNotification(message);
+      });
+    }, (error) => {
+      console.error('[ChatApp] DM notification listener error:', error);
+    });
+  },
+
+  /**
+   * Handle a newly-observed DM for in-app alerting
+   */
+  handleIncomingDirectMessageNotification(message) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !message) return;
+    if (message.senderId === uid) return;
+
+    const messageTime = this.parseTimestamp(message.createdAt);
+    if (!messageTime) return;
+    if (this.dmLastSeenAt && messageTime <= this.dmLastSeenAt) return;
+
+    if (this.activeDmThreadId && message.threadId === this.activeDmThreadId) {
+      this.setDmLastSeen(messageTime);
+      return;
+    }
+
+    if (typeof Notifications !== 'undefined' && typeof Notifications.addNotification === 'function') {
+      Notifications.addNotification({
+        title: message.senderName || 'Direct message',
+        body: this.truncateText(message.text || 'Sent you a message', 100),
+        icon: message.senderPhoto || null,
+        type: 'dm',
+        data: {
+          type: 'dm',
+          threadId: message.threadId,
+          senderId: message.senderId,
+          messageId: message.id
+        }
+      });
+    }
+
+    this.setDmLastSeen(messageTime);
+  },
+
+  /**
+   * Save "last seen DM" marker
+   */
+  setDmLastSeen(value) {
+    const uid = window.currentUser?.uid;
+    if (!uid) return;
+    const date = value instanceof Date ? value : this.parseTimestamp(value) || new Date();
+    this.dmLastSeenAt = date;
+    localStorage.setItem(`dmLastSeen_${uid}`, date.toISOString());
+  },
+
+  /**
+   * Mark current time as DM seen
+   */
+  markDmSeenNow() {
+    this.setDmLastSeen(new Date());
+  },
+
+  /**
+   * Track active DM thread in profile so push can skip while open
+   */
+  async setActiveDmThread(threadId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', uid),
+        {
+          activeDmThread: threadId || null
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.warn('[ChatApp] Failed setting active DM thread:', error);
     }
   },
 
@@ -1077,6 +1214,15 @@ const ChatApp = {
    */
   pairKey(a, b) {
     return [a, b].sort().join('__');
+  },
+
+  /**
+   * Truncate helper for preview strings
+   */
+  truncateText(text, max = 80) {
+    const value = (text || '').toString();
+    if (value.length <= max) return value;
+    return `${value.slice(0, max - 1)}…`;
   },
 
   /**

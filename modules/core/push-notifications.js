@@ -234,7 +234,7 @@ const PushNotifications = {
     const { notification, data } = payload;
     
     // SKIP notification if it's for a chat that's currently open
-    if (data?.type === 'chat' && data?.groupId) {
+    if ((data?.type === 'chat' || data?.type === 'chat_mention') && data?.groupId) {
       // Check if GroupChat is open with this group
       if (typeof GroupChat !== 'undefined' && GroupChat.isOpen) {
         const currentGroupId = GroupChat.currentGroupId || Groups?.currentGroup?.id;
@@ -244,19 +244,25 @@ const PushNotifications = {
         }
       }
     }
+
+    if (data?.type === 'dm' && data?.threadId) {
+      if (typeof ChatApp !== 'undefined' && ChatApp.activeDmThreadId === data.threadId) {
+        console.log('[PushNotifications] Skipping notification - direct message thread is open');
+        return;
+      }
+    }
     
     // Update in-app notification badge
-    if (typeof Notifications !== 'undefined') {
+    if (typeof Notifications !== 'undefined' && typeof Notifications.addNotification === 'function') {
       Notifications.addNotification({
         title: notification?.title || 'New notification',
         body: notification?.body || '',
         type: data?.type || 'general',
         data: data
       });
+    } else {
+      this.showToast(notification?.title || 'New notification', notification?.body || '');
     }
-    
-    // Show toast notification
-    this.showToast(notification?.title || 'New notification', notification?.body || '');
   },
   
   /**

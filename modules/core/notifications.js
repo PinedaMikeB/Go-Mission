@@ -208,6 +208,82 @@ const Notifications = {
       navigator.vibrate(200);
     }
   },
+
+  /**
+   * Add a generic in-app notification (used by push notification foreground handler)
+   */
+  addNotification(notification = {}) {
+    const title = notification.title || 'New notification';
+    const body = notification.body || '';
+    const icon = notification.icon || null;
+    const data = notification.data || {};
+    const type = notification.type || notification.data?.type || 'general';
+    let onClick = typeof notification.onClick === 'function' ? notification.onClick : null;
+
+    if (!onClick && (type === 'dm' || type === 'direct_message') && data.senderId) {
+      onClick = () => {
+        if (typeof ChatApp !== 'undefined' && typeof ChatApp.openDirectChat === 'function') {
+          Promise.resolve(ChatApp.open())
+            .then(() => {
+              ChatApp.setTab?.('direct');
+              return ChatApp.openDirectChat(data.senderId);
+            })
+            .catch((error) => {
+              console.warn('[Notifications] DM click handler failed:', error);
+            });
+        }
+      };
+    }
+
+    if (!onClick && (type === 'chat' || type === 'chat_mention') && data.groupId) {
+      onClick = () => {
+        const group = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+          ? MyGroups.getGroupById(data.groupId)
+          : null;
+        if (group && typeof Groups !== 'undefined') {
+          Groups.currentGroup = group;
+          GroupChat?.open?.();
+          return;
+        }
+        if (typeof ChatApp !== 'undefined') {
+          Promise.resolve(ChatApp.open())
+            .then(() => ChatApp.setTab?.('groups'))
+            .catch((error) => {
+              console.warn('[Notifications] Group click fallback failed:', error);
+            });
+        }
+      };
+    }
+
+    // Prevent duplicate chat alerts when chat module already handles them.
+    if (type === 'chat' && typeof GroupChat !== 'undefined' && GroupChat?.isOpen) {
+      return;
+    }
+
+    this.unreadCount++;
+    this.updateBadge();
+
+    if (this.settings.toast) {
+      this.showToast({
+        title,
+        body,
+        icon,
+        onClick
+      });
+    }
+
+    if (document.hidden) {
+      this.showBrowserNotification(title, body, icon);
+    }
+
+    if (this.settings.sound) {
+      this.playSound();
+    }
+
+    if (this.settings.vibrate && navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+  },
   
   /**
    * Show a toast notification
@@ -323,6 +399,11 @@ const Notifications = {
       document.title = `(${count}) Go Mission`;
     } else {
       document.title = 'Go Mission - Making Disciple-Makers';
+    }
+
+    // Keep Messages inbox badge in sync with notification state.
+    if (typeof ChatApp !== 'undefined' && typeof ChatApp.updateBadges === 'function') {
+      ChatApp.updateBadges();
     }
   },
   
