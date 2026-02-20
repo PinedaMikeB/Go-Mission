@@ -10,6 +10,44 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.4] - 2026-02-20 👥 Mission Groups Role Safety + Guest Visibility
+
+### ✅ Summary
+Fixed `Upline/Downline` regressions in Mission Groups so role-based views are correct, guest-joined groups are visible, and leader-only dashboard blocks are restricted to downline context.
+
+### Included Changes
+1. **Guest group visibility hardening**
+   - Added resilient guest fallback rendering in `/modules/groups/my-groups.js`.
+   - Added `guestGroupMeta` persistence on guest approval for stable labels when direct group fetch is unavailable.
+2. **Leader Dashboard upline data model fix**
+   - `Upline` tab now includes non-led upline + guest groups.
+   - Self-led groups are excluded from `Upline` (remain in `Downline` only).
+3. **Leader-only section isolation**
+   - `This Week's Focus`, `Needs Attention`, `Group Health`, `All Members`, and `Prayer List` now render in `Downline` only.
+   - `Upline` keeps shared sections such as `Group Status`.
+4. **Notification deployment alignment**
+   - Redeployed `onMemberJoined` with `GMAIL_EMAIL` and `GMAIL_PASSWORD` secrets so join/request email path is active in production.
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/modules/dashboard/leader-dashboard.js`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Production Commits
+- `abf48aa`
+- `b6a6554`
+- `bf11713`
+- `cdd283f`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert cdd283f bf11713 b6a6554 abf48aa
+```
+
+---
+
 ## [v2.2.3] - 2026-02-15 🧭 Stability + UI Alignment
 
 ### ✅ Summary

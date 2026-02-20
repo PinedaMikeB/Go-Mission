@@ -10,6 +10,55 @@
 
 ---
 
+## Current Task Status (2026-02-20) — Thread 5 Mission Groups (Critical Guardrails)
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/modules/dashboard/leader-dashboard.js`
+  - `/functions/index.js` (deployed `onMemberJoined` fix)
+- **Goal completed**: Mission Groups `Upline/Downline` behavior is now role-correct and guest visibility is resilient.
+- **Production commits (must preserve)**
+  - `abf48aa` — Guest-group fallback visibility in MyGroups + guest metadata persistence
+  - `b6a6554` — LeaderDashboard `Upline` includes guest groups
+  - `bf11713` — Exclude self-led groups from `Upline`; leader metrics hidden on `Upline`
+  - `cdd283f` — Hide `All Members` + `Prayer List` on `Upline`
+- **Deployed function fix**
+  - `onMemberJoined` redeployed with `GMAIL_EMAIL` + `GMAIL_PASSWORD` secrets attached.
+  - Prevents silent miss on join/request email notifications.
+
+### Mission Groups UI Rules (Do Not Break)
+
+- `Downline` tab = groups user leads/assists only.
+- `Upline` tab = non-led upline group + guest groups only.
+- A group with `leaderId === currentUser.uid` must never render in `Upline`.
+- `Group Status` can render in both tabs.
+- Leader-only sections render **Downline only**:
+  - `This Week's Focus`
+  - `Needs Attention`
+  - `Group Health`
+  - `All Members`
+  - `Prayer List`
+- `Upline/Guest` cards must not show leader-only `Invite`.
+
+### Data Contract to Preserve
+
+- Guest membership visibility depends on:
+  - `goMission_members/{uid}.guestGroups` (group id list)
+  - `goMission_groups/{groupId}.guests` (guest objects with `odId`/id variants)
+  - `goMission_members/{uid}.guestGroupMeta` (fallback label data for rendering if group doc fetch fails)
+- When approving as guest, write both:
+  - group `guests[]`
+  - member `guestGroups[]` (+ `guestGroupMeta[groupId]`)
+
+### Regression Checklist (Run Before Push)
+
+- In `Upline`: should show only upline + guest groups; no self-led groups.
+- In `Upline`: no `This Week's Focus`, `Needs Attention`, `Group Health`, `All Members`, `Prayer List`.
+- In `Downline`: leader sections visible and actionable.
+- Guest-joined group appears in `Upline` after refresh.
+
+---
+
 ## Current Task Status (2026-02-18)
 
 - **Active module**: Training module navigation + live meeting card
