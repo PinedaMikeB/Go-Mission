@@ -1102,7 +1102,7 @@ match /goMission/sunday-videos/{allPaths=**} {
       addDoc,
       serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-    import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+    import { getFunctions, httpsCallable, httpsCallableFromURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
     import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
 
     const firebaseConfig = {
@@ -1819,6 +1819,35 @@ match /goMission/sunday-videos/{allPaths=**} {
       return { targetType: 'all', targetId: null, targetFilter: {} };
     }
 
+    function isRetryableCallableError(error) {
+      const code = String(error?.code || '').toLowerCase();
+      const message = String(error?.message || '').toLowerCase();
+      return (
+        code.includes('internal') ||
+        code.includes('unavailable') ||
+        code.includes('deadline-exceeded') ||
+        message.includes('cors') ||
+        message.includes('network')
+      );
+    }
+
+    async function callCustomNotification(payload) {
+      const primary = httpsCallable(functions, 'sendCustomNotification');
+      try {
+        return await primary(payload);
+      } catch (primaryError) {
+        if (!isRetryableCallableError(primaryError)) {
+          throw primaryError;
+        }
+
+        const fallback = httpsCallableFromURL(
+          functions,
+          'https://sendcustomnotification-xd2iudssya-uc.a.run.app'
+        );
+        return await fallback(payload);
+      }
+    }
+
     async function saveAndSendAnnouncement() {
       const title = document.getElementById('announcementTitle').value.trim();
       const body = document.getElementById('announcementBody').value.trim();
@@ -1879,10 +1908,9 @@ match /goMission/sunday-videos/{allPaths=**} {
         };
 
         const sendPushNow = async () => {
-          const callable = httpsCallable(functions, 'sendCustomNotification');
           const target = mapAudienceToNotificationTarget(audience, groupId, memberTarget?.uid || null);
 
-          const response = await callable({
+          const response = await callCustomNotification({
             targetType: target.targetType,
             targetId: target.targetId,
             targetFilter: target.targetFilter,
