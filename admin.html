@@ -367,15 +367,65 @@
       text-decoration: none;
     }
 
+    .publish-map {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .map-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.24);
+    }
+
+    .map-card b {
+      display: block;
+      color: var(--gold-strong);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .map-card p {
+      margin: 7px 0 0;
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .map-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #231107;
+      background: linear-gradient(120deg, #f5bd59, #ef9f51);
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-weight: 700;
+    }
+
+    .inline-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
     @media (max-width: 1100px) {
       .col-8, .col-6, .col-4 { grid-column: span 12; }
       .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .publish-map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 680px) {
       .shell { padding: 14px; }
       .hero { padding: 20px; }
       .metrics-grid { grid-template-columns: 1fr; }
+      .publish-map { grid-template-columns: 1fr; }
       .row { grid-template-columns: 1fr; }
       .actions { flex-direction: column; }
       .role-grid { grid-template-columns: 1fr; }
@@ -414,6 +464,33 @@
           <div id="metricsGrid" class="metrics-grid"></div>
           <div class="actions" style="margin-top:12px;">
             <button id="refreshHealthBtn" class="secondary">Refresh Health Data</button>
+          </div>
+        </div>
+
+        <div class="col-12 panel">
+          <h2>Publishing Destinations</h2>
+          <p class="sub">Use the correct block below so admins can clearly see what each post is for and where it appears.</p>
+          <div class="publish-map">
+            <article class="map-card">
+              <span class="map-tag">Home Feed</span>
+              <b>Announcements</b>
+              <p>Writes to <code>goMission_announcements</code>. Appears in app announcement surfaces and optional push notifications.</p>
+            </article>
+            <article class="map-card">
+              <span class="map-tag">Home Video</span>
+              <b>Sunday Video Publishing</b>
+              <p>Writes to <code>goMission_sundayVideos</code> and active config. Used for weekly Sunday stream/video modules.</p>
+            </article>
+            <article class="map-card">
+              <span class="map-tag">Watch</span>
+              <b>Watch Series Folders</b>
+              <p>Writes to <code>video_series</code>. Shows as series cards at <code>/watch.html</code>.</p>
+            </article>
+            <article class="map-card">
+              <span class="map-tag">Watch</span>
+              <b>Watch Episodes</b>
+              <p>Writes to <code>video_episodes</code>. Opens player via <code>/watch/player.html?episodeId=...</code>.</p>
+            </article>
           </div>
         </div>
 
@@ -494,6 +571,114 @@
           </div>
           <div id="sundayProgress" class="small"></div>
           <div class="list" id="sundayVideoList"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Watch: Series Folders</h2>
+          <p class="sub">Create folders for the Watch tab grid. Set destination timing with published/scheduled/draft status.</p>
+          <div class="row">
+            <div>
+              <label for="watchSeriesDocId">Series ID (optional)</label>
+              <input id="watchSeriesDocId" maxlength="90" placeholder="ex: gospel-foundations-2026">
+            </div>
+            <div>
+              <label for="watchSeriesStatus">Status</label>
+              <select id="watchSeriesStatus">
+                <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="watchSeriesTitle">Series title</label>
+              <input id="watchSeriesTitle" maxlength="160" placeholder="Foundations of Faith">
+            </div>
+            <div>
+              <label for="watchSeriesOrder">Display order</label>
+              <input id="watchSeriesOrder" type="number" min="1" value="100">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="watchSeriesDescription">Series description</label>
+            <textarea id="watchSeriesDescription" maxlength="1500" placeholder="Short context for this series."></textarea>
+          </div>
+          <div class="row">
+            <div>
+              <label for="watchSeriesCoverImageUrl">Cover image URL</label>
+              <input id="watchSeriesCoverImageUrl" placeholder="https://...">
+            </div>
+            <div>
+              <label for="watchSeriesPublishAt">Publish at (for scheduled)</label>
+              <input id="watchSeriesPublishAt" type="datetime-local">
+            </div>
+          </div>
+          <div class="actions">
+            <button id="saveWatchSeriesBtn">Save Watch Series</button>
+            <button id="clearWatchSeriesBtn" class="secondary">Clear</button>
+            <button id="reloadWatchSeriesBtn" class="secondary">Reload</button>
+          </div>
+          <div id="watchSeriesStatusText" class="small"></div>
+          <div class="list" id="watchSeriesList"></div>
+        </div>
+
+        <div class="col-6 panel">
+          <h2>Watch: Episodes</h2>
+          <p class="sub">Attach each episode to a series and YouTube video. This powers <code>/watch/series.html</code> and player pages.</p>
+          <div class="row">
+            <div>
+              <label for="watchEpisodeDocId">Episode ID (optional)</label>
+              <input id="watchEpisodeDocId" maxlength="90" placeholder="ex: foundations-week-1">
+            </div>
+            <div>
+              <label for="watchEpisodeStatus">Status</label>
+              <select id="watchEpisodeStatus">
+                <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="watchEpisodeSeriesId">Series ID</label>
+              <input id="watchEpisodeSeriesId" list="watchSeriesOptions" placeholder="Select or type a series ID">
+              <datalist id="watchSeriesOptions"></datalist>
+            </div>
+            <div>
+              <label for="watchEpisodeWeekNumber">Week number</label>
+              <input id="watchEpisodeWeekNumber" type="number" min="1" value="1">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="watchEpisodeTitle">Episode title</label>
+              <input id="watchEpisodeTitle" maxlength="180" placeholder="Week 1 - New Life in Christ">
+            </div>
+            <div>
+              <label for="watchEpisodeOrder">Display order</label>
+              <input id="watchEpisodeOrder" type="number" min="1" value="100">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="watchEpisodeYoutubeInput">YouTube URL or Video ID</label>
+              <input id="watchEpisodeYoutubeInput" placeholder="https://youtube.com/watch?v=...">
+            </div>
+            <div>
+              <label for="watchEpisodePublishAt">Publish at (for scheduled)</label>
+              <input id="watchEpisodePublishAt" type="datetime-local">
+            </div>
+          </div>
+          <p class="inline-note">Only YouTube IDs are stored in <code>youtubeVideoId</code> so player analytics stay consistent.</p>
+          <div class="actions">
+            <button id="saveWatchEpisodeBtn">Save Watch Episode</button>
+            <button id="clearWatchEpisodeBtn" class="secondary">Clear</button>
+            <button id="reloadWatchEpisodeBtn" class="secondary">Reload</button>
+          </div>
+          <div id="watchEpisodeStatusText" class="small"></div>
+          <div class="list" id="watchEpisodeList"></div>
         </div>
 
         <div class="col-6 panel">
@@ -737,6 +922,21 @@ match /goMission_trainingContent/{docId} {
   allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
 }
 
+match /video_series/{docId} {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
+match /video_episodes/{docId} {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
+match /video_events/{docId} {
+  allow create: if true;
+  allow read, update, delete: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
 // Storage example
 match /goMission/sunday-videos/{allPaths=**} {
   allow read: if true;
@@ -786,6 +986,7 @@ match /goMission/sunday-videos/{allPaths=**} {
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     let cachedGroups = [];
+    let cachedWatchSeries = [];
     let currentRoleUser = null;
 
     const authPanel = document.getElementById('authPanel');
@@ -864,6 +1065,56 @@ match /goMission/sunday-videos/{allPaths=**} {
       if (diff === 0) diff = 7;
       const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
       return formatDateKey(target);
+    }
+
+    function slugify(value, fallbackPrefix = 'item') {
+      const cleaned = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 70);
+
+      if (cleaned) return cleaned;
+      return `${fallbackPrefix}-${Date.now()}`;
+    }
+
+    function toIsoFromDateTimeLocal(value) {
+      if (!value) return null;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    }
+
+    function statusBadge(status = 'published') {
+      const normalized = String(status || 'published').toLowerCase();
+      if (normalized === 'draft') return 'draft';
+      if (normalized === 'scheduled') return 'scheduled';
+      return 'published';
+    }
+
+    function extractYoutubeVideoId(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+
+      const idRegex = /^[a-zA-Z0-9_-]{11}$/;
+      if (idRegex.test(raw)) return raw;
+
+      try {
+        const url = new URL(raw);
+        if (url.hostname.includes('youtu.be')) {
+          const id = url.pathname.replace(/^\/+/, '').split('/')[0];
+          return idRegex.test(id) ? id : '';
+        }
+
+        const paramId = url.searchParams.get('v');
+        if (idRegex.test(paramId || '')) return paramId;
+
+        const shortId = url.pathname.split('/').filter(Boolean).pop();
+        return idRegex.test(shortId || '') ? shortId : '';
+      } catch (error) {
+        return '';
+      }
     }
 
     function hasGroupMembership(member) {
@@ -1311,6 +1562,229 @@ match /goMission/sunday-videos/{allPaths=**} {
       }
     }
 
+    function populateWatchSeriesOptions() {
+      const dataList = document.getElementById('watchSeriesOptions');
+      if (!dataList) return;
+
+      dataList.innerHTML = cachedWatchSeries.map((series) => {
+        const title = (series.title || '').replace(/"/g, '&quot;');
+        return `<option value="${series.id}">${title}</option>`;
+      }).join('');
+    }
+
+    async function saveWatchSeries() {
+      const btn = document.getElementById('saveWatchSeriesBtn');
+      const manualId = document.getElementById('watchSeriesDocId').value.trim();
+      const title = document.getElementById('watchSeriesTitle').value.trim();
+      const description = document.getElementById('watchSeriesDescription').value.trim();
+      const coverImageUrl = document.getElementById('watchSeriesCoverImageUrl').value.trim();
+      const status = document.getElementById('watchSeriesStatus').value;
+      const orderValue = Number(document.getElementById('watchSeriesOrder').value || 100);
+      const publishAt = toIsoFromDateTimeLocal(document.getElementById('watchSeriesPublishAt').value);
+
+      if (!title) {
+        setInlineStatus('watchSeriesStatusText', 'Series title is required.', 'warn');
+        return;
+      }
+
+      if (status === 'scheduled' && !publishAt) {
+        setInlineStatus('watchSeriesStatusText', 'Set a publish time for scheduled series.', 'warn');
+        return;
+      }
+
+      const id = manualId || slugify(title, 'series');
+
+      btn.disabled = true;
+      setInlineStatus('watchSeriesStatusText', 'Saving watch series...', 'info');
+
+      try {
+        const ref = doc(db, 'video_series', id);
+        const existing = await getDoc(ref);
+
+        await setDoc(ref, {
+          id,
+          title,
+          description,
+          coverImageUrl,
+          order: Number.isFinite(orderValue) ? orderValue : 100,
+          status,
+          publishAt: publishAt || null,
+          createdAt: existing.exists() ? existing.data()?.createdAt || serverTimestamp() : serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+
+        setInlineStatus('watchSeriesStatusText', `Watch series saved: ${id}`, 'success');
+        await loadWatchSeries();
+      } catch (error) {
+        setInlineStatus('watchSeriesStatusText', `Failed to save watch series: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearWatchSeriesForm() {
+      document.getElementById('watchSeriesDocId').value = '';
+      document.getElementById('watchSeriesTitle').value = '';
+      document.getElementById('watchSeriesDescription').value = '';
+      document.getElementById('watchSeriesCoverImageUrl').value = '';
+      document.getElementById('watchSeriesOrder').value = '100';
+      document.getElementById('watchSeriesStatus').value = 'published';
+      document.getElementById('watchSeriesPublishAt').value = '';
+      setInlineStatus('watchSeriesStatusText', 'Watch series form cleared.', 'info');
+    }
+
+    async function loadWatchSeries() {
+      const list = document.getElementById('watchSeriesList');
+      list.innerHTML = '<div class="list-item">Loading watch series...</div>';
+
+      try {
+        let snap;
+        try {
+          snap = await getDocs(query(collection(db, 'video_series'), orderBy('order', 'asc'), limit(50)));
+        } catch (error) {
+          snap = await getDocs(collection(db, 'video_series'));
+        }
+
+        cachedWatchSeries = snap.docs
+          .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+          .sort((a, b) => Number(a.order || 100) - Number(b.order || 100));
+
+        populateWatchSeriesOptions();
+
+        if (!cachedWatchSeries.length) {
+          list.innerHTML = '<div class="list-item">No watch series yet.</div>';
+          return;
+        }
+
+        list.innerHTML = cachedWatchSeries.map((item) => {
+          const state = statusBadge(item.status);
+          const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
+          return `
+            <div class="list-item">
+              <b>${item.title || 'Untitled Series'}</b>
+              <div class="meta">ID: ${item.id} | order: ${item.order ?? 100}${publishInfo}</div>
+              <div class="meta">Destination: /watch.html</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="list-item">Failed to load watch series: ${error.message}</div>`;
+      }
+    }
+
+    async function saveWatchEpisode() {
+      const btn = document.getElementById('saveWatchEpisodeBtn');
+      const manualId = document.getElementById('watchEpisodeDocId').value.trim();
+      const seriesId = document.getElementById('watchEpisodeSeriesId').value.trim();
+      const title = document.getElementById('watchEpisodeTitle').value.trim();
+      const status = document.getElementById('watchEpisodeStatus').value;
+      const weekNumber = Number(document.getElementById('watchEpisodeWeekNumber').value || 1);
+      const orderValue = Number(document.getElementById('watchEpisodeOrder').value || 100);
+      const youtubeInput = document.getElementById('watchEpisodeYoutubeInput').value.trim();
+      const publishAt = toIsoFromDateTimeLocal(document.getElementById('watchEpisodePublishAt').value);
+      const youtubeVideoId = extractYoutubeVideoId(youtubeInput);
+
+      if (!seriesId || !title) {
+        setInlineStatus('watchEpisodeStatusText', 'Series ID and episode title are required.', 'warn');
+        return;
+      }
+
+      if (!youtubeVideoId) {
+        setInlineStatus('watchEpisodeStatusText', 'Enter a valid YouTube URL or 11-char video ID.', 'warn');
+        return;
+      }
+
+      if (status === 'scheduled' && !publishAt) {
+        setInlineStatus('watchEpisodeStatusText', 'Set a publish time for scheduled episodes.', 'warn');
+        return;
+      }
+
+      const id = manualId || slugify(`${seriesId}-${title}`, 'episode');
+
+      btn.disabled = true;
+      setInlineStatus('watchEpisodeStatusText', 'Saving watch episode...', 'info');
+
+      try {
+        const ref = doc(db, 'video_episodes', id);
+        const existing = await getDoc(ref);
+
+        await setDoc(ref, {
+          id,
+          seriesId,
+          weekNumber: Number.isFinite(weekNumber) ? weekNumber : 1,
+          title,
+          youtubeVideoId,
+          order: Number.isFinite(orderValue) ? orderValue : 100,
+          status,
+          publishAt: publishAt || null,
+          createdAt: existing.exists() ? existing.data()?.createdAt || serverTimestamp() : serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+
+        setInlineStatus('watchEpisodeStatusText', `Watch episode saved: ${id}`, 'success');
+        await loadWatchEpisodes();
+      } catch (error) {
+        setInlineStatus('watchEpisodeStatusText', `Failed to save watch episode: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearWatchEpisodeForm() {
+      document.getElementById('watchEpisodeDocId').value = '';
+      document.getElementById('watchEpisodeSeriesId').value = '';
+      document.getElementById('watchEpisodeTitle').value = '';
+      document.getElementById('watchEpisodeWeekNumber').value = '1';
+      document.getElementById('watchEpisodeOrder').value = '100';
+      document.getElementById('watchEpisodeStatus').value = 'published';
+      document.getElementById('watchEpisodeYoutubeInput').value = '';
+      document.getElementById('watchEpisodePublishAt').value = '';
+      setInlineStatus('watchEpisodeStatusText', 'Watch episode form cleared.', 'info');
+    }
+
+    async function loadWatchEpisodes() {
+      const list = document.getElementById('watchEpisodeList');
+      list.innerHTML = '<div class="list-item">Loading watch episodes...</div>';
+
+      try {
+        let snap;
+        try {
+          snap = await getDocs(query(collection(db, 'video_episodes'), orderBy('updatedAt', 'desc'), limit(60)));
+        } catch (error) {
+          snap = await getDocs(collection(db, 'video_episodes'));
+        }
+
+        const items = snap.docs
+          .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+          .sort((a, b) => {
+            const aDate = pickDate(a.updatedAt, a.createdAt)?.getTime() || 0;
+            const bDate = pickDate(b.updatedAt, b.createdAt)?.getTime() || 0;
+            return bDate - aDate;
+          });
+
+        if (!items.length) {
+          list.innerHTML = '<div class="list-item">No watch episodes yet.</div>';
+          return;
+        }
+
+        list.innerHTML = items.map((item) => {
+          const state = statusBadge(item.status);
+          const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
+          return `
+            <div class="list-item">
+              <b>W${item.weekNumber || '?'} - ${item.title || 'Untitled Episode'}</b>
+              <div class="meta">ID: ${item.id} | series: ${item.seriesId || 'n/a'} | order: ${item.order ?? 100}${publishInfo}</div>
+              <div class="meta">YouTube: ${item.youtubeVideoId || 'missing'} | Destination: /watch/player.html?episodeId=${item.id}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        list.innerHTML = `<div class="list-item">Failed to load watch episodes: ${error.message}</div>`;
+      }
+    }
+
     function collectTrainingForm() {
       return {
         language: document.getElementById('trainingLanguage').value,
@@ -1595,6 +2069,8 @@ match /goMission/sunday-videos/{allPaths=**} {
         loadEmailSequence(),
         loadPushSettings(),
         loadSundayVideos(),
+        loadWatchSeries(),
+        loadWatchEpisodes(),
         loadRecentTraining()
       ]);
     }
@@ -1611,6 +2087,14 @@ match /goMission/sunday-videos/{allPaths=**} {
 
       document.getElementById('publishSundayVideoBtn').addEventListener('click', saveSundayVideo);
       document.getElementById('clearSundayVideoBtn').addEventListener('click', clearSundayVideoForm);
+
+      document.getElementById('saveWatchSeriesBtn').addEventListener('click', saveWatchSeries);
+      document.getElementById('clearWatchSeriesBtn').addEventListener('click', clearWatchSeriesForm);
+      document.getElementById('reloadWatchSeriesBtn').addEventListener('click', loadWatchSeries);
+
+      document.getElementById('saveWatchEpisodeBtn').addEventListener('click', saveWatchEpisode);
+      document.getElementById('clearWatchEpisodeBtn').addEventListener('click', clearWatchEpisodeForm);
+      document.getElementById('reloadWatchEpisodeBtn').addEventListener('click', loadWatchEpisodes);
 
       document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
       document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);

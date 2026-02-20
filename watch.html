@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch | Go Mission</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/watch/watch.css">
+</head>
+<body>
+  <div class="watch-shell">
+    <header class="watch-header">
+      <div class="watch-header-row">
+        <a href="/" class="back-link" aria-label="Back to home">← Home</a>
+      </div>
+      <p class="watch-kicker">Go Mission</p>
+      <h1 class="watch-title">Watch Series</h1>
+      <p class="watch-subtitle">Choose a series and continue each week with your mission community.</p>
+    </header>
+
+    <main>
+      <p id="watchState" class="state-message">Loading series...</p>
+      <section id="seriesGrid" class="series-grid" aria-label="Video series"></section>
+    </main>
+  </div>
+
+  <nav class="watch-footer-nav" aria-label="Bottom navigation">
+    <div class="watch-footer-row">
+      <a href="/" class="watch-footer-link">Home</a>
+      <a href="/watch.html" class="watch-footer-link active" aria-current="page">Watch</a>
+      <a href="/groups" class="watch-footer-link">Groups</a>
+    </div>
+  </nav>
+
+  <script type="module" src="/watch/watch-home.js"></script>
+</body>
+</html>
