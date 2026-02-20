@@ -184,6 +184,7 @@ const LeaderDashboard = {
     if (!window.currentUser || !window.db) return;
 
     try {
+      const currentUid = window.currentUser.uid;
       const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
       const userDoc = await window.getDoc(userRef);
       if (!userDoc.exists()) return;
@@ -196,6 +197,8 @@ const LeaderDashboard = {
       if (!groupDoc.exists()) return;
 
       const groupData = groupDoc.data();
+      // Never classify a group you lead as upline.
+      if (groupData.leaderId === currentUid) return;
       const isMember = groupData.members?.includes(window.currentUser.uid);
       const isGuest = groupData.guests?.some?.(g => g.odId === window.currentUser.uid);
       if (!isMember && !isGuest) return;
@@ -284,6 +287,7 @@ const LeaderDashboard = {
           const groupDoc = await window.getDoc(groupRef);
           if (groupDoc.exists()) {
             const data = groupDoc.data() || {};
+            if (data.leaderId === uid) continue;
             if (isGuestInGroup(data, uid) || declaredGuestGroupIds.includes(groupId)) {
               guestGroupMap.set(groupId, { id: groupId, ...data, role: 'guest' });
             }
@@ -301,6 +305,7 @@ const LeaderDashboard = {
           const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
           allGroupsSnapshot.forEach((doc) => {
             const data = doc.data() || {};
+            if (data.leaderId === uid) return;
             if (isGuestInGroup(data, uid)) {
               guestGroupMap.set(doc.id, { id: doc.id, ...data, role: 'guest' });
             }
@@ -322,9 +327,11 @@ const LeaderDashboard = {
   getTabGroups(tab = this.dashboardTab) {
     if (tab === 'upline') {
       const uplineGroups = [];
+      const downlineIds = new Set((this.myGroups || []).map((group) => group.id));
       if (this.uplineGroup) uplineGroups.push(this.uplineGroup);
       (this.guestGroups || []).forEach((group) => {
         if (!group?.id) return;
+        if (downlineIds.has(group.id)) return;
         if (!uplineGroups.some((existing) => existing.id === group.id)) {
           uplineGroups.push(group);
         }
@@ -881,6 +888,7 @@ const LeaderDashboard = {
     const needsAttentionMembers = this.members.filter(m => this.needsAttention(m).length > 0);
     const thisWeekAccountability = this.getThisWeeksAccountability();
     const groupStats = this.calculateGroupStats();
+    const isDownlineView = this.dashboardTab === 'downline';
     
     modal.innerHTML = `
       <div class="absolute inset-0 bg-[var(--bg-color)]">
@@ -936,6 +944,7 @@ const LeaderDashboard = {
 
           ${tabGroups.length ? `
           
+          ${isDownlineView ? `
           <!-- This Week's Focus -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
             <div class="p-4 border-b border-[var(--card-border)]">
@@ -977,7 +986,7 @@ const LeaderDashboard = {
               `}
             </div>
           </div>
-          
+
           <!-- Needs Attention -->
           ${needsAttentionMembers.length > 0 ? `
           <div class="bg-[var(--card-bg)] rounded-2xl border border-red-500/30 overflow-hidden">
@@ -1018,7 +1027,7 @@ const LeaderDashboard = {
             </div>
           </div>
           ` : ''}
-          
+
           <!-- Group Stats -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
             <div class="p-4 border-b border-[var(--card-border)]">
@@ -1045,7 +1054,8 @@ const LeaderDashboard = {
               </div>
             </div>
           </div>
-          
+          ` : ''}
+
           <!-- All Members -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
             <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
