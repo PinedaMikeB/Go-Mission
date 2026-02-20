@@ -27,6 +27,8 @@ Fixed `Upline/Downline` regressions in Mission Groups so role-based views are co
    - `Upline` keeps shared sections such as `Group Status`.
 4. **Notification deployment alignment**
    - Redeployed `onMemberJoined` with `GMAIL_EMAIL` and `GMAIL_PASSWORD` secrets so join/request email path is active in production.
+5. **Member approval pointer hardening**
+   - Approve-as-member now always writes canonical member pointers (`uplineGroupId`, `groupId`, `groupRole`) so approved members reliably see their member group card in `Upline`.
 
 ### Files Modified
 - `/modules/groups/my-groups.js`

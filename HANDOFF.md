@@ -46,6 +46,9 @@
   - `goMission_members/{uid}.guestGroups` (group id list)
   - `goMission_groups/{groupId}.guests` (guest objects with `odId`/id variants)
   - `goMission_members/{uid}.guestGroupMeta` (fallback label data for rendering if group doc fetch fails)
+- Member approval visibility depends on canonical pointer writes:
+  - On approve-as-member, always write `goMission_members/{uid}.uplineGroupId = groupId`
+  - Also mirror `groupId` and `groupRole = member` for legacy/compat paths
 - When approving as guest, write both:
   - group `guests[]`
   - member `guestGroups[]` (+ `guestGroupMeta[groupId]`)

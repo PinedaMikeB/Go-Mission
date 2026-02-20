@@ -2334,14 +2334,17 @@ const MyGroups = {
                     { merge: true }
                 );
                 
-                // Update user's uplineGroupId (only if they don't have one or it's a transfer)
-                if (!request.hasExistingGroup) {
-                    await window.setDoc(
-                        window.doc(window.db, 'goMission_members', odId),
-                        { uplineGroupId: groupId },
-                        { merge: true }
-                    );
-                }
+                // Canonical membership pointer: member approvals must always appear in Upline.
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_members', odId),
+                    {
+                        uplineGroupId: groupId,
+                        groupId: groupId,
+                        groupRole: 'member',
+                        guestGroups: window.arrayRemove(groupId)
+                    },
+                    { merge: true }
+                );
                 
                 alert(`${request.name} is now a member!`);
                 

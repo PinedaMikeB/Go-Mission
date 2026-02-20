@@ -578,8 +578,10 @@ const Groups = {
       // Update member's profile
       const memberRef = window.doc(window.db, 'goMission_members', requestUid);
       await window.setDoc(memberRef, {
+        uplineGroupId: this.currentGroup.id,
         groupId: this.currentGroup.id,
-        groupRole: 'member'
+        groupRole: 'member',
+        guestGroups: window.arrayRemove(this.currentGroup.id)
       }, { merge: true });
       
       // Refresh local data
