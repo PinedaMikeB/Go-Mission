@@ -19,6 +19,7 @@ const LeaderDashboard = {
   isOpen: false,
   myGroups: [],           // Groups where user is leader
   uplineGroup: null,      // Group where user is being discipled
+  guestGroups: [],        // Groups where user is a guest
   dashboardTab: 'downline', // 'downline' | 'upline'
   selectedGroup: null,    // Currently viewing group
   members: [],            // Members of selected group
@@ -62,17 +63,18 @@ const LeaderDashboard = {
     // Load groups where user is leader + their upline group.
     await this.loadMyGroups();
     await this.loadUplineGroup();
+    await this.loadGuestGroups();
 
     // Keep selected tab valid with available data.
-    if (this.dashboardTab === 'upline' && !this.uplineGroup) {
+    if (this.dashboardTab === 'upline' && !this.uplineGroup && !(this.guestGroups || []).length) {
       this.dashboardTab = 'downline';
     }
-    if (this.dashboardTab === 'downline' && !this.myGroups.length && this.uplineGroup) {
+    if (this.dashboardTab === 'downline' && !this.myGroups.length && (this.uplineGroup || (this.guestGroups || []).length)) {
       this.dashboardTab = 'upline';
     }
     
     // Show dashboard card if user has groups
-    if (this.myGroups.length > 0) {
+    if (this.myGroups.length > 0 || this.uplineGroup || (this.guestGroups || []).length) {
       this.showDashboardCard();
     }
     
@@ -209,11 +211,125 @@ const LeaderDashboard = {
   },
 
   /**
+   * Load groups where current user is a guest.
+   */
+  async loadGuestGroups() {
+    this.guestGroups = [];
+    if (!window.currentUser || !window.db) return;
+
+    const uid = window.currentUser.uid;
+    const guestGroupMap = new Map();
+
+    const parseIdList = (value) => {
+      if (!value) return [];
+      if (typeof value === 'string') return value ? [value] : [];
+      if (Array.isArray(value)) {
+        return [...new Set(value.map((entry) => (
+          typeof entry === 'string'
+            ? entry
+            : (entry?.groupId || entry?.id || entry?.odId || entry?.uid || null)
+        )).filter(Boolean))];
+      }
+      if (typeof value === 'object') {
+        return [...new Set(Object.entries(value).map(([key, entry]) => (
+          typeof entry === 'string'
+            ? entry
+            : (entry?.groupId || entry?.id || entry?.odId || entry?.uid || key)
+        )).filter(Boolean))];
+      }
+      return [];
+    };
+
+    const isGuestInGroup = (groupData = {}, userId = '') => {
+      const guests = Array.isArray(groupData.guests)
+        ? groupData.guests
+        : (groupData.guests && typeof groupData.guests === 'object' ? Object.values(groupData.guests) : []);
+      return guests.some((guest) => (
+        guest === userId ||
+        guest?.odId === userId ||
+        guest?.uid === userId ||
+        guest?.id === userId ||
+        guest?.userId === userId
+      ));
+    };
+
+    const buildFallbackGuestGroup = (groupId, meta = null) => {
+      const safeMeta = (meta && typeof meta === 'object') ? meta : {};
+      return {
+        id: groupId,
+        name: safeMeta.name || safeMeta.groupName || `Guest Group (${String(groupId).slice(0, 6)})`,
+        leaderId: safeMeta.leaderId || null,
+        meetingSchedule: null,
+        members: [],
+        guests: [{ odId: uid, name: window.currentUser?.displayName || 'You' }],
+        role: 'guest',
+        _fallbackGuestGroup: true
+      };
+    };
+
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', uid);
+      const userDoc = await window.getDoc(userRef);
+      if (!userDoc.exists()) return;
+
+      const userData = userDoc.data() || {};
+      const declaredGuestGroupIds = parseIdList(userData.guestGroups);
+      const guestGroupMeta = (userData.guestGroupMeta && typeof userData.guestGroupMeta === 'object')
+        ? userData.guestGroupMeta
+        : {};
+
+      for (const groupId of declaredGuestGroupIds) {
+        try {
+          const groupRef = window.doc(window.db, 'goMission_groups', groupId);
+          const groupDoc = await window.getDoc(groupRef);
+          if (groupDoc.exists()) {
+            const data = groupDoc.data() || {};
+            if (isGuestInGroup(data, uid) || declaredGuestGroupIds.includes(groupId)) {
+              guestGroupMap.set(groupId, { id: groupId, ...data, role: 'guest' });
+            }
+          } else {
+            guestGroupMap.set(groupId, buildFallbackGuestGroup(groupId, guestGroupMeta[groupId]));
+          }
+        } catch (_) {
+          guestGroupMap.set(groupId, buildFallbackGuestGroup(groupId, guestGroupMeta[groupId]));
+        }
+      }
+
+      // Recovery scan for legacy data (when guestGroups pointer is missing/stale).
+      if (guestGroupMap.size === 0) {
+        try {
+          const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+          allGroupsSnapshot.forEach((doc) => {
+            const data = doc.data() || {};
+            if (isGuestInGroup(data, uid)) {
+              guestGroupMap.set(doc.id, { id: doc.id, ...data, role: 'guest' });
+            }
+          });
+        } catch (scanError) {
+          console.warn('[LeaderDashboard] Guest recovery scan failed:', scanError);
+        }
+      }
+    } catch (error) {
+      console.error('[LeaderDashboard] Error loading guest groups:', error);
+    }
+
+    this.guestGroups = [...guestGroupMap.values()];
+  },
+
+  /**
    * Get groups for currently selected dashboard tab
    */
   getTabGroups(tab = this.dashboardTab) {
     if (tab === 'upline') {
-      return this.uplineGroup ? [this.uplineGroup] : [];
+      const uplineGroups = [];
+      if (this.uplineGroup) uplineGroups.push(this.uplineGroup);
+      (this.guestGroups || []).forEach((group) => {
+        if (!group?.id) return;
+        if (!uplineGroups.some((existing) => existing.id === group.id)) {
+          uplineGroups.push(group);
+        }
+      });
+      return uplineGroups;
     }
     return this.myGroups || [];
   },
@@ -317,7 +433,9 @@ const LeaderDashboard = {
    */
   async selectGroup(groupId) {
     const group = this.myGroups.find(g => g.id === groupId)
-      || (this.uplineGroup?.id === groupId ? this.uplineGroup : null);
+      || (this.uplineGroup?.id === groupId ? this.uplineGroup : null)
+      || (this.guestGroups || []).find((g) => g.id === groupId)
+      || null;
     if (!group) return;
     
     this.selectedGroup = group;
@@ -707,6 +825,9 @@ const LeaderDashboard = {
    */
   async open() {
     this.isOpen = true;
+    await this.loadMyGroups();
+    await this.loadUplineGroup();
+    await this.loadGuestGroups();
     const tabGroups = this.getTabGroups();
     if (!tabGroups.length && this.dashboardTab === 'upline' && this.myGroups.length) {
       this.dashboardTab = 'downline';
@@ -755,7 +876,7 @@ const LeaderDashboard = {
     const tabGroups = this.getTabGroups();
     const statusGroups = this.getStatusGroupsForTab(tabGroups);
     const hasDownline = this.myGroups.length > 0;
-    const hasUpline = !!this.uplineGroup;
+    const hasUpline = !!this.uplineGroup || (this.guestGroups || []).length > 0;
     const showTabToggle = hasDownline || hasUpline;
     const needsAttentionMembers = this.members.filter(m => this.needsAttention(m).length > 0);
     const thisWeekAccountability = this.getThisWeeksAccountability();
@@ -809,7 +930,7 @@ const LeaderDashboard = {
 
           ${!tabGroups.length ? `
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center">
-            <p class="text-[var(--text-muted)]">${this.dashboardTab === 'upline' ? 'No upline group yet.' : 'No downline groups yet.'}</p>
+            <p class="text-[var(--text-muted)]">${this.dashboardTab === 'upline' ? 'No upline or guest group yet.' : 'No downline groups yet.'}</p>
           </div>
           ` : ''}
 
@@ -1009,8 +1130,12 @@ const LeaderDashboard = {
                 const groupName = this.escapeHtml(group.name || 'My Group');
                 const members = group.members?.length || 0;
                 const isUplineTab = this.dashboardTab === 'upline';
-                const roleText = this.dashboardTab === 'upline' ? 'Upline' : 'Downline';
-                const roleColor = this.dashboardTab === 'upline' ? 'text-blue-500' : 'text-green-500';
+                const roleText = this.dashboardTab === 'upline'
+                  ? (group.role === 'guest' ? 'Guest' : 'Upline')
+                  : 'Downline';
+                const roleColor = this.dashboardTab === 'upline'
+                  ? (group.role === 'guest' ? 'text-blue-400' : 'text-blue-500')
+                  : 'text-green-500';
                 const scheduleText = this.escapeHtml(this.formatScheduleText(group));
                 return `
                 <div class="rounded-xl border border-[var(--card-border)] p-4">
