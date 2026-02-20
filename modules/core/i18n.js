@@ -89,7 +89,7 @@ const i18n = {
     },
     tl: {
       // Journey Card
-      myJourney: 'Aking Paglalakbay',
+      myJourney: 'My Journey',
       whereGodHasYou: 'KUNG SAAN KA NILALAGAY NG DIYOS NGAYON',
       next: 'Susunod:',
       viewNextSteps: 'Tingnan ang Mga Susunod na Hakbang',

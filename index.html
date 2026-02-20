@@ -299,8 +299,8 @@
         
         /* === EXACT COPY FROM PROTOTYPE - STAGE NODE === */
         .stage-node {
-            width: 100px;
-            height: 100px;
+            width: 114px;
+            height: 114px;
             background: var(--node-bg);
             border: 5px solid var(--node-border);
             border-radius: 50%;
@@ -376,12 +376,12 @@
         .path-wrapper {
             position: relative;
             margin-top: 1.2rem;
-            padding: 2.35rem 0 1rem;
+            padding: 2.75rem 0 1rem;
         }
         
         .path-line-container {
             position: absolute;
-            top: 86px;
+            top: 94px;
             left: 0;
             right: 0;
             height: 8px;
@@ -435,7 +435,7 @@
         /* === STAGES SCROLL - EXACT FROM PROTOTYPE === */
         .stages-scroll {
             display: flex;
-            gap: 1.25rem;
+            gap: 1rem;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
@@ -450,9 +450,9 @@
         /* === STAGE ITEM - EXACT FROM PROTOTYPE === */
         .stage {
             flex: 0 0 auto;
-            width: calc(50% - 0.75rem);
-            min-width: 160px;
-            max-width: 180px;
+            width: clamp(180px, 52vw, 215px);
+            min-width: 180px;
+            max-width: 215px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1836,6 +1836,12 @@
                         <span id="userInitial">M</span>
                     </div>
                     <img id="userPhoto" class="w-8 h-8 rounded-full ring-2 ring-[var(--card-border)] hidden" src="" alt="">
+                    <input
+                        id="profilePhotoInput"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        onchange="handleProfilePhotoSelected(event)">
                     <!-- Menu -->
                     <button onclick="toggleMainMenu()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2800,6 +2806,153 @@
             }
         }, 15000);
 
+        const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+        let isProfilePhotoUploading = false;
+
+        function fallbackAvatarUrl(user) {
+            return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.displayName || 'User') + '&background=4a0404&color=fbbf24';
+        }
+
+        function applyCurrentUserIdentity(user) {
+            const userNameEl = document.getElementById('userName');
+            const userPhotoEl = document.getElementById('userPhoto');
+            const adminPhotoEl = document.getElementById('adminPhoto');
+            const userInitialEl = document.getElementById('userInitial');
+            const hasPhoto = !!user?.photoURL;
+            const photoSrc = user?.photoURL || fallbackAvatarUrl(user);
+
+            if (userNameEl) userNameEl.textContent = user?.displayName || user?.email || '';
+            if (userInitialEl) userInitialEl.textContent = (user?.displayName || user?.email || 'U').charAt(0).toUpperCase();
+            if (userPhotoEl) {
+                userPhotoEl.src = photoSrc;
+                userPhotoEl.classList.toggle('hidden', !hasPhoto);
+            }
+            if (adminPhotoEl) adminPhotoEl.src = photoSrc;
+            if (userInitialEl?.parentElement) {
+                userInitialEl.parentElement.classList.toggle('hidden', hasPhoto);
+            }
+        }
+
+        function notifyProfilePhoto(title, body = '', kind = 'info') {
+            if (typeof Notifications !== 'undefined' && typeof Notifications.showToast === 'function') {
+                const icon = kind === 'error' ? '⚠️' : kind === 'success' ? '✅' : '🖼️';
+                Notifications.showToast({ title, body, icon, duration: 2600 });
+                return;
+            }
+            if (kind === 'error') {
+                alert(title);
+            } else {
+                console.log('[Profile Photo]', title, body);
+            }
+        }
+
+        window.triggerProfilePhotoPicker = function() {
+            if (isProfilePhotoUploading) return;
+            if (!window.currentUser?.uid) {
+                alert('Please sign in first.');
+                return;
+            }
+            const input = document.getElementById('profilePhotoInput');
+            if (!input) {
+                alert('Profile photo input is missing.');
+                return;
+            }
+            input.value = '';
+            input.click();
+        };
+
+        window.handleProfilePhotoSelected = async function(event) {
+            const file = event?.target?.files?.[0];
+            if (event?.target) event.target.value = '';
+            if (!file) return;
+            if (!window.currentUser?.uid) {
+                alert('Please sign in first.');
+                return;
+            }
+            if (!file.type || !file.type.startsWith('image/')) {
+                alert('Please select an image file.');
+                return;
+            }
+            if (file.size > PROFILE_PHOTO_MAX_BYTES) {
+                alert('Image is too large. Please use a file smaller than 5MB.');
+                return;
+            }
+            if (!window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+                alert('Storage is not ready. Please try again.');
+                return;
+            }
+            if (!window.db || !window.setDoc || !window.doc) {
+                alert('Database is not ready. Please try again.');
+                return;
+            }
+            if (isProfilePhotoUploading) return;
+
+            isProfilePhotoUploading = true;
+            notifyProfilePhoto('Uploading profile photo...', 'Please wait a moment.');
+            try {
+                const uid = window.currentUser.uid;
+                const safeName = String(file.name || 'profile.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+                const path = `profile-photos/${uid}/${Date.now()}_${safeName}`;
+                const ref = window.storageRef(window.storage, path);
+                const uploaded = await window.uploadBytes(ref, file, {
+                    contentType: file.type || 'image/jpeg',
+                    cacheControl: 'public,max-age=3600'
+                });
+                const photoURL = await window.getDownloadURL(uploaded.ref);
+
+                if (auth.currentUser) {
+                    await updateProfile(auth.currentUser, { photoURL });
+                    try {
+                        await auth.currentUser.reload();
+                    } catch (reloadError) {
+                        console.warn('[Profile Photo] Could not reload auth user:', reloadError);
+                    }
+                }
+
+                const refreshedUser = auth.currentUser || window.currentUser;
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_members', uid),
+                    {
+                        name: refreshedUser?.displayName || window.currentUser?.displayName || '',
+                        displayName: refreshedUser?.displayName || window.currentUser?.displayName || '',
+                        photoURL,
+                        updatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString()
+                    },
+                    { merge: true }
+                );
+
+                if (refreshedUser) {
+                    window.currentUser = refreshedUser;
+                }
+                if (window.currentUser) {
+                    try {
+                        window.currentUser.photoURL = photoURL;
+                    } catch (setPhotoError) {
+                        console.debug('[Profile Photo] Current user photoURL is read-only:', setPhotoError);
+                    }
+                }
+                const identityUser = {
+                    displayName: window.currentUser?.displayName || refreshedUser?.displayName || '',
+                    email: window.currentUser?.email || refreshedUser?.email || '',
+                    photoURL
+                };
+                applyCurrentUserIdentity(identityUser);
+
+                if (typeof ChatApp !== 'undefined' && ChatApp.memberCache?.has(uid)) {
+                    const cached = ChatApp.memberCache.get(uid) || {};
+                    cached.photoURL = photoURL;
+                    ChatApp.memberCache.set(uid, cached);
+                }
+
+                notifyProfilePhoto('Profile photo updated', '', 'success');
+            } catch (error) {
+                console.error('[Profile Photo] Update failed:', error);
+                notifyProfilePhoto(error?.message || 'Could not update profile photo.', '', 'error');
+            } finally {
+                isProfilePhotoUploading = false;
+            }
+        };
+
         onAuthStateChanged(auth, async (user) => {
             authBootResolved = true;
             clearTimeout(authBootWatchdog);
@@ -2807,23 +2960,7 @@
             
             if (user) {
                 window.currentUser = user;
-                // Safely update user display elements (some may not exist in minimal UI)
-                const userNameEl = document.getElementById('userName');
-                const userPhotoEl = document.getElementById('userPhoto');
-                const adminPhotoEl = document.getElementById('adminPhoto');
-                const userInitialEl = document.getElementById('userInitial');
-                
-                if (userNameEl) userNameEl.textContent = user.displayName || user.email;
-                if (userPhotoEl) {
-                    userPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
-                    if (user.photoURL) {
-                        userPhotoEl.classList.remove('hidden');
-                        // Hide the initial badge when photo is available
-                        if (userInitialEl) userInitialEl.parentElement.classList.add('hidden');
-                    }
-                }
-                if (adminPhotoEl) adminPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
-                if (userInitialEl) userInitialEl.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+                applyCurrentUserIdentity(user);
                 
                 await ensureUserExists(user);
                 loginScreen.classList.add('hidden');
@@ -3853,6 +3990,10 @@
                                 <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
+                                </button>
+                                <button onclick="if(window.triggerProfilePhotoPicker){window.triggerProfilePhotoPicker();} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">🖼️</span>
+                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Palitan ang Profile Photo' : 'Change Profile Photo'}</span>
                                 </button>
                                 <button onclick="AutoUpdate.showUpdateDetails(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🔄</span>
