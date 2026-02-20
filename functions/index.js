@@ -19,6 +19,12 @@ initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
 const adminAuth = getAuth();
+const ADMIN_UID_ALLOWLIST = new Set([
+  '9zVKHJ11zaXD0f4GI6P7LHD6re32'
+]);
+const ADMIN_EMAIL_ALLOWLIST = new Set([
+  'michael.marga@gmail.com'
+]);
 
 // ============================================
 // EMAIL CONFIGURATION (using Firebase Secrets)
@@ -669,7 +675,11 @@ exports.sendCustomNotification = onCall(async (request) => {
   const userData = userDoc.data() || {};
   const roleFlags = (userData.roles && !Array.isArray(userData.roles)) ? userData.roles : {};
   const roleList = Array.isArray(userData.roles) ? userData.roles : [];
-  const isAdmin = !!roleFlags.isAdmin || roleList.includes('admin');
+  const callerEmail = String(request.auth.token?.email || userData.email || '').toLowerCase();
+  const isAllowlistedAdmin =
+    ADMIN_UID_ALLOWLIST.has(request.auth.uid) ||
+    ADMIN_EMAIL_ALLOWLIST.has(callerEmail);
+  const isAdmin = isAllowlistedAdmin || !!roleFlags.isAdmin || roleList.includes('admin');
   const isLeader = !!roleFlags.isGroupLeader ||
     !!roleFlags.isTrainer ||
     !!roleFlags.isShepherd ||
