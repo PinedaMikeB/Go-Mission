@@ -312,6 +312,8 @@ const PWAUpdater = {
     }
 };
 
+window.PWAUpdater = PWAUpdater;
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => PWAUpdater.init());

@@ -18,6 +18,7 @@ const AutoUpdate = {
     registration: null,
     updatePending: false,
     updateDetails: null,
+    LEGACY_SW_ENABLED: !window.GO_MISSION_DISABLE_LEGACY_SW_UPDATER,
     
     // Update details - EDIT THIS when pushing updates
     CURRENT_UPDATE: {
@@ -42,7 +43,15 @@ const AutoUpdate = {
         
         // Check for admin force update from Firestore
         await this.checkAdminForceUpdate();
-        
+        // Keep scheduled admin checks regardless of updater mode.
+        this.checkScheduledUpdate();
+
+        // PWAUpdater handles SW lifecycle; keep this module for admin/update UI only.
+        if (!this.LEGACY_SW_ENABLED) {
+            console.log('[AutoUpdate] Legacy SW lifecycle disabled (PWAUpdater active)');
+            return;
+        }
+
         // Check for version mismatch
         this.checkVersionMismatch();
         
@@ -54,9 +63,6 @@ const AutoUpdate = {
         
         // Setup background checks
         this.setupBackgroundChecks();
-        
-        // Check for scheduled force update (e.g., 12am)
-        this.checkScheduledUpdate();
         
         console.log('[AutoUpdate] Ready');
     },
@@ -168,6 +174,15 @@ const AutoUpdate = {
      */
     async forceUpdate() {
         console.log('[AutoUpdate] Forcing update...');
+
+        if (!this.LEGACY_SW_ENABLED && window.PWAUpdater && typeof window.PWAUpdater.forceRefresh === 'function') {
+            try {
+                await window.PWAUpdater.forceRefresh();
+                return;
+            } catch (error) {
+                console.warn('[AutoUpdate] PWAUpdater.forceRefresh failed, falling back:', error);
+            }
+        }
         
         try {
             if ('caches' in window) {

@@ -11,24 +11,26 @@
     <script>
         // Auto-generated build timestamp - changes on every deployment
         const BUILD_TIMESTAMP = '1769521046000';
+        // PWAUpdater is the active updater; keep legacy updater in passive mode.
+        window.GO_MISSION_DISABLE_LEGACY_SW_UPDATER = true;
     </script>
     <script src="modules/core/auto-update.js"></script>
     
-    <!-- PWA Auto-Calibration: Redirect to clean URL when opened from home screen -->
+    <!-- PWA launch guard: keep notification/deep-link params intact -->
     <script>
         (function() {
             // Check if running as installed PWA (standalone mode)
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                                  window.navigator.standalone === true;
             
-            // If PWA and URL has parameters or is on install page, clean it
+            // If PWA and on install page, clean it.
+            // Keep query params because push/deep-link launches rely on them.
             if (isStandalone) {
                 const url = new URL(window.location.href);
-                const hasParams = url.search.length > 0;
                 const isInstallPage = url.pathname.includes('install');
                 
-                if (hasParams || isInstallPage) {
-                    console.log('[PWA] Cleaning URL for standalone mode');
+                if (isInstallPage) {
+                    console.log('[PWA] Cleaning install route for standalone mode');
                     // Redirect to clean home page
                     window.location.replace(url.origin + '/');
                 }
