@@ -1908,21 +1908,14 @@ match /goMission/sunday-videos/{allPaths=**} {
         let pushSummary = 'Saved without push.';
         const isSpecificMemberTest = audience === 'specific_member';
 
-        if (isSpecificMemberTest && pushNow) {
-          pushSummary = await sendPushNow();
-
-          try {
-            savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
-          } catch (saveError) {
-            const saveMessage = saveError?.message || String(saveError);
-            const permissionDenied = /permission/i.test(saveMessage);
-            const warningMessage = permissionDenied
-              ? 'Test push sent. Could not save announcement due to Firestore permissions.'
-              : `Test push sent, but save failed: ${saveMessage}`;
-
-            setInlineStatus('announcementStatus', `${warningMessage} ${pushSummary}`, 'warn');
+        if (isSpecificMemberTest) {
+          if (!pushNow) {
+            setInlineStatus('announcementStatus', 'For member test sends, keep "Send push notification now" enabled.', 'warn');
             return;
           }
+          pushSummary = await sendPushNow();
+          setInlineStatus('announcementStatus', `Test push sent successfully. ${pushSummary} Not saved to announcements feed.`, 'success');
+          return;
         } else {
           savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
           if (pushNow) {
