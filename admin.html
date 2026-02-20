@@ -1921,8 +1921,11 @@ match /goMission/sunday-videos/{allPaths=**} {
 
           let summary = 'Push request completed.';
           const data = response?.data || {};
+          const resolvedTargetCount = (typeof data.targetCount === 'number')
+            ? data.targetCount
+            : (target.targetType === 'user' ? 1 : null);
           if (typeof data.successCount === 'number' || typeof data.targetCount === 'number') {
-            summary = `Push sent. Success: ${data.successCount ?? 0}, Failures: ${data.failureCount ?? 0}, Targets: ${data.targetCount ?? 0}.`;
+            summary = `Push sent. Success: ${data.successCount ?? 0}, Failures: ${data.failureCount ?? 0}${resolvedTargetCount !== null ? `, Targets: ${resolvedTargetCount}` : ''}.`;
           }
 
           if (audience === 'specific_member' && memberTarget?.uid) {
