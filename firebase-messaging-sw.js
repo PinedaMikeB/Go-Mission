@@ -15,8 +15,10 @@
 // ============================================
 // 🔥 AUTO-UPDATING VERSION - Changes every deploy
 // ============================================
-const CACHE_VERSION = 'v20260221-0048';
+const CACHE_VERSION = 'v20260221-0110';
 const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
+const PUSH_CLICK_CACHE = 'go-mission-push-state';
+const PUSH_CLICK_KEY = '/__push-click';
 
 // Files to cache for offline
 const STATIC_CACHE = [
@@ -236,6 +238,18 @@ function getNotificationActions(type) {
     }
 }
 
+async function storePendingPushClick(payload = {}) {
+    try {
+        const cache = await caches.open(PUSH_CLICK_CACHE);
+        const response = new Response(JSON.stringify(payload || {}), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        await cache.put(PUSH_CLICK_KEY, response);
+    } catch (error) {
+        console.warn('[SW] Failed to store pending push click payload:', error);
+    }
+}
+
 // Notification click handler
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
@@ -272,20 +286,36 @@ self.addEventListener('notificationclick', (event) => {
             url += '&announcementId=' + encodeURIComponent(data.announcementId);
         }
     }
+
+    const clickPayload = {
+        type: data.type || (hasAnnouncementContent ? 'announcement' : ''),
+        groupId: data.groupId || null,
+        messageId: data.messageId || null,
+        senderId: data.senderId || null,
+        announcementId: data.announcementId || null,
+        notificationTitle: announcementTitle || '',
+        notificationBody: announcementBody || '',
+        deepLinkUrl: url,
+        ts: Date.now()
+    };
     
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Focus existing window
-            for (const client of windowClients) {
-                if (client.url.includes('gomission') && 'focus' in client) {
-                    client.navigate(url);
-                    return client.focus();
+        Promise.all([
+            storePendingPushClick(clickPayload),
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+                // Focus existing window
+                for (const client of windowClients) {
+                    if (client.url.includes('gomission') && 'focus' in client) {
+                        client.navigate(url);
+                        return client.focus();
+                    }
                 }
-            }
-            // Open new window
-            if (clients.openWindow) {
-                return clients.openWindow(url);
-            }
-        })
+                // Open new window
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+                return null;
+            })
+        ])
     );
 });

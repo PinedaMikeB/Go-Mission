@@ -92,6 +92,55 @@ async function incrementUnreadCount(userId) {
   }
 }
 
+const APP_BASE_URL = 'https://gomission.netlify.app';
+
+function normalizeNotificationData(data = {}, title = '', body = '') {
+  const normalized = {};
+  Object.entries((data && typeof data === 'object') ? data : {}).forEach(([key, value]) => {
+    if (!key || value === undefined || value === null) return;
+    normalized[key] = String(value);
+  });
+  if (title) normalized.notificationTitle = String(title);
+  if (body) normalized.notificationBody = String(body);
+  return normalized;
+}
+
+function buildNotificationDeepLink(data = {}, title = '', body = '') {
+  const payload = (data && typeof data === 'object') ? data : {};
+  const type = String(payload.type || '').toLowerCase();
+
+  if ((type === 'chat' || type === 'chat_mention') && payload.groupId) {
+    const params = new URLSearchParams({ openChat: String(payload.groupId) });
+    if (payload.messageId) params.set('openChatMessage', String(payload.messageId));
+    return `${APP_BASE_URL}/?${params.toString()}`;
+  }
+
+  if (type === 'dm' && payload.senderId) {
+    const params = new URLSearchParams({
+      openMessages: 'direct',
+      openDmWith: String(payload.senderId)
+    });
+    return `${APP_BASE_URL}/?${params.toString()}`;
+  }
+
+  if (type === 'devotion') {
+    return `${APP_BASE_URL}/?openDevotion=true`;
+  }
+
+  if (type === 'announcement' || (!type && (title || body))) {
+    const params = new URLSearchParams({
+      openAnnouncement: '1',
+      openMessages: 'groups'
+    });
+    if (title) params.set('announcementTitle', truncateText(String(title), 180));
+    if (body) params.set('announcementBody', truncateText(String(body), 2000));
+    if (payload.announcementId) params.set('announcementId', String(payload.announcementId));
+    return `${APP_BASE_URL}/?${params.toString()}`;
+  }
+
+  return `${APP_BASE_URL}/`;
+}
+
 async function sendToUser(userId, notification) {
   try {
     const userDoc = await db.collection('goMission_members').doc(userId).get();
@@ -106,13 +155,24 @@ async function sendToUser(userId, notification) {
     if (tokens.length === 0) {
       return { success: false, error: 'No tokens', badgeCount };
     }
+
+    const normalizedData = normalizeNotificationData(
+      notification.data || {},
+      notification.title,
+      notification.body
+    );
+    const deepLink = buildNotificationDeepLink(
+      normalizedData,
+      notification.title,
+      notification.body
+    );
     
     const message = {
       notification: {
         title: notification.title,
         body: notification.body,
       },
-      data: notification.data || {},
+      data: normalizedData,
       android: {
         notification: {
           channelId: 'default',
@@ -133,6 +193,9 @@ async function sendToUser(userId, notification) {
           badge: '/icons/icon-192.png',
           icon: '/icons/icon-192.png',
           vibrate: [100, 50, 100]
+        },
+        fcmOptions: {
+          link: deepLink
         }
       },
       tokens: tokens

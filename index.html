@@ -2912,6 +2912,28 @@
             document.body.appendChild(wrapper);
         }
 
+        async function consumePendingPushClickPayload() {
+            if (!('caches' in window)) return null;
+            const cacheName = 'go-mission-push-state';
+            const cacheKey = '/__push-click';
+            try {
+                const cache = await caches.open(cacheName);
+                const match = await cache.match(cacheKey);
+                if (!match) return null;
+                await cache.delete(cacheKey);
+                const payload = await match.json();
+                if (!payload || typeof payload !== 'object') return null;
+                const ts = Number(payload.ts || 0);
+                if (ts > 0 && (Date.now() - ts) > (15 * 60 * 1000)) {
+                    return null;
+                }
+                return payload;
+            } catch (error) {
+                console.warn('[DeepLink] Could not consume pending push payload:', error);
+                return null;
+            }
+        }
+
         window.triggerProfilePhotoPicker = function() {
             if (isProfilePhotoUploading) return;
             if (!window.currentUser?.uid) {
@@ -3098,14 +3120,37 @@
                     
                     // Handle deep-link params from notifications
                     const urlParams = new URLSearchParams(window.location.search);
-                    const openChatGroupId = urlParams.get('openChat');
-                    const openChatMessageId = urlParams.get('openChatMessage');
-                    const openDmWith = urlParams.get('openDmWith');
-                    const openMessagesTab = urlParams.get('openMessages');
-                    const openAnnouncement = urlParams.get('openAnnouncement');
-                    const announcementTitle = urlParams.get('announcementTitle');
-                    const announcementBody = urlParams.get('announcementBody');
+                    let openChatGroupId = urlParams.get('openChat');
+                    let openChatMessageId = urlParams.get('openChatMessage');
+                    let openDmWith = urlParams.get('openDmWith');
+                    let openMessagesTab = urlParams.get('openMessages');
+                    let openAnnouncement = urlParams.get('openAnnouncement');
+                    let announcementTitle = urlParams.get('announcementTitle');
+                    let announcementBody = urlParams.get('announcementBody');
                     const joinCode = urlParams.get('join');
+                    const pendingPushTap = await consumePendingPushClickPayload();
+
+                    if (pendingPushTap) {
+                        const pendingType = String(pendingPushTap.type || '').toLowerCase();
+                        if (!openChatGroupId && (pendingType === 'chat' || pendingType === 'chat_mention') && pendingPushTap.groupId) {
+                            openChatGroupId = String(pendingPushTap.groupId);
+                            openChatMessageId = pendingPushTap.messageId ? String(pendingPushTap.messageId) : null;
+                        }
+                        if (!openDmWith && pendingType === 'dm' && pendingPushTap.senderId) {
+                            openDmWith = String(pendingPushTap.senderId);
+                            openMessagesTab = 'direct';
+                        }
+                        if (!openAnnouncement && (pendingType === 'announcement' || pendingPushTap.notificationTitle || pendingPushTap.notificationBody)) {
+                            openAnnouncement = '1';
+                            if (!openMessagesTab) openMessagesTab = 'groups';
+                            if (!announcementTitle && pendingPushTap.notificationTitle) {
+                                announcementTitle = String(pendingPushTap.notificationTitle);
+                            }
+                            if (!announcementBody && pendingPushTap.notificationBody) {
+                                announcementBody = String(pendingPushTap.notificationBody);
+                            }
+                        }
+                    }
 
                     if (openChatGroupId) {
                         let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
