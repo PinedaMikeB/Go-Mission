@@ -640,12 +640,19 @@
                 <option value="group_members">Users in discipleship groups</option>
                 <option value="leaders_only">Leaders only</option>
                 <option value="specific_group">Specific group</option>
+                <option value="specific_member">Specific member (test)</option>
               </select>
             </div>
           </div>
           <div id="groupAudienceWrap" class="hidden" style="margin-top:10px;">
             <label for="announcementGroupId">Target group</label>
             <select id="announcementGroupId"></select>
+          </div>
+          <div id="memberAudienceWrap" class="hidden" style="margin-top:10px;">
+            <label for="announcementMemberLookup">Target member (UID or email)</label>
+            <input id="announcementMemberLookup" list="announcementMemberOptions" placeholder="member@email.com or uid">
+            <datalist id="announcementMemberOptions"></datalist>
+            <div class="small">Use this for test sends before sending to everyone.</div>
           </div>
           <div style="margin-top:10px;">
             <label for="announcementBody">Message</label>
@@ -1671,6 +1678,7 @@ match /goMission/sunday-videos/{allPaths=**} {
       );
 
       populateGroupSelect();
+      populateAnnouncementMemberOptions();
     }
 
     function populateGroupSelect() {
@@ -1680,6 +1688,29 @@ match /goMission/sunday-videos/{allPaths=**} {
       select.innerHTML = sortedGroups.length
         ? sortedGroups.map((group) => `<option value="${group.id}">${group.name || group.id}</option>`).join('')
         : '<option value="">No groups found</option>';
+    }
+
+    function populateAnnouncementMemberOptions() {
+      const options = document.getElementById('announcementMemberOptions');
+      if (!options) return;
+
+      const members = (latestMissionHealth?.members || [])
+        .slice()
+        .sort((a, b) => getMemberDisplayName(a).localeCompare(getMemberDisplayName(b)));
+
+      if (!members.length) {
+        options.innerHTML = '';
+        return;
+      }
+
+      options.innerHTML = members.map((member) => {
+        const name = escapeHtml(getMemberDisplayName(member));
+        const email = escapeHtml(member?.email || '');
+        const uid = escapeHtml(member?.id || '');
+        const value = email || uid;
+        const label = email ? `${name} | UID: ${uid}` : `${name}`;
+        return `<option value="${value}" label="${label}"></option>`;
+      }).join('');
     }
 
     async function loadForceUpdateStatus() {
@@ -1744,9 +1775,40 @@ match /goMission/sunday-videos/{allPaths=**} {
       }
     }
 
-    function mapAudienceToNotificationTarget(audience, groupId) {
+    async function resolveAnnouncementMemberTarget(rawLookup) {
+      const lookup = String(rawLookup || '').trim();
+      if (!lookup) return null;
+
+      if (lookup.includes('@')) {
+        const email = lookup.toLowerCase();
+        const snap = await getDocs(query(collection(db, 'goMission_members'), where('email', '==', email), limit(1)));
+        if (snap.empty) return null;
+        const docSnap = snap.docs[0];
+        const data = docSnap.data() || {};
+        return {
+          uid: docSnap.id,
+          email: data.email || email,
+          name: data.name || data.displayName || data.email || docSnap.id
+        };
+      }
+
+      const ref = doc(db, 'goMission_members', lookup);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return null;
+      const data = snap.data() || {};
+      return {
+        uid: snap.id,
+        email: data.email || '',
+        name: data.name || data.displayName || data.email || snap.id
+      };
+    }
+
+    function mapAudienceToNotificationTarget(audience, groupId, memberUid) {
       if (audience === 'specific_group') {
         return { targetType: 'group', targetId: groupId, targetFilter: null };
+      }
+      if (audience === 'specific_member') {
+        return { targetType: 'user', targetId: memberUid, targetFilter: null };
       }
       if (audience === 'group_members') {
         return { targetType: 'all', targetId: null, targetFilter: { inGroup: true } };
@@ -1762,6 +1824,7 @@ match /goMission/sunday-videos/{allPaths=**} {
       const body = document.getElementById('announcementBody').value.trim();
       const audience = document.getElementById('announcementAudience').value;
       const groupId = document.getElementById('announcementGroupId').value;
+      const memberLookupRaw = document.getElementById('announcementMemberLookup').value.trim();
       const pushNow = document.getElementById('announcementPushNow').checked;
 
       if (!title || !body) {
@@ -1774,6 +1837,24 @@ match /goMission/sunday-videos/{allPaths=**} {
         return;
       }
 
+      let memberTarget = null;
+      if (audience === 'specific_member') {
+        if (!memberLookupRaw) {
+          setInlineStatus('announcementStatus', 'Enter target member UID/email for test send.', 'warn');
+          return;
+        }
+        try {
+          memberTarget = await resolveAnnouncementMemberTarget(memberLookupRaw);
+        } catch (error) {
+          setInlineStatus('announcementStatus', `Could not look up member: ${error.message}`, 'error');
+          return;
+        }
+        if (!memberTarget?.uid) {
+          setInlineStatus('announcementStatus', 'Target member not found. Use exact member email or UID.', 'warn');
+          return;
+        }
+      }
+
       const saveBtn = document.getElementById('sendAnnouncementBtn');
       saveBtn.disabled = true;
       setInlineStatus('announcementStatus', 'Saving announcement...', 'info');
@@ -1784,6 +1865,8 @@ match /goMission/sunday-videos/{allPaths=**} {
           body,
           audience,
           groupId: audience === 'specific_group' ? groupId : null,
+          memberId: audience === 'specific_member' ? memberTarget?.uid || null : null,
+          memberLookup: audience === 'specific_member' ? memberLookupRaw : null,
           pushRequested: pushNow,
           createdByUid: auth.currentUser?.uid || null,
           createdByEmail: auth.currentUser?.email || null,
@@ -1796,7 +1879,7 @@ match /goMission/sunday-videos/{allPaths=**} {
 
         if (pushNow) {
           const callable = httpsCallable(functions, 'sendCustomNotification');
-          const target = mapAudienceToNotificationTarget(audience, groupId);
+          const target = mapAudienceToNotificationTarget(audience, groupId, memberTarget?.uid || null);
 
           const response = await callable({
             targetType: target.targetType,
@@ -1813,6 +1896,10 @@ match /goMission/sunday-videos/{allPaths=**} {
           } else {
             pushSummary = 'Push request completed.';
           }
+
+          if (audience === 'specific_member' && memberTarget?.uid) {
+            pushSummary += ` Target: ${memberTarget.name || memberTarget.uid} (${memberTarget.uid}).`;
+          }
         }
 
         setInlineStatus('announcementStatus', `Announcement saved (${savedRef.id}). ${pushSummary}`, 'success');
@@ -1828,7 +1915,9 @@ match /goMission/sunday-videos/{allPaths=**} {
       document.getElementById('announcementBody').value = '';
       document.getElementById('announcementAudience').value = 'all_users';
       document.getElementById('announcementPushNow').checked = true;
+      document.getElementById('announcementMemberLookup').value = '';
       document.getElementById('groupAudienceWrap').classList.add('hidden');
+      document.getElementById('memberAudienceWrap').classList.add('hidden');
       setInlineStatus('announcementStatus', 'Announcement form cleared.', 'info');
     }
 
@@ -2486,8 +2575,11 @@ match /goMission/sunday-videos/{allPaths=**} {
       document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {
-        const wrap = document.getElementById('groupAudienceWrap');
-        wrap.classList.toggle('hidden', event.target.value !== 'specific_group');
+        const groupWrap = document.getElementById('groupAudienceWrap');
+        const memberWrap = document.getElementById('memberAudienceWrap');
+        const value = event.target.value;
+        groupWrap.classList.toggle('hidden', value !== 'specific_group');
+        memberWrap.classList.toggle('hidden', value !== 'specific_member');
       });
       document.getElementById('sendAnnouncementBtn').addEventListener('click', saveAndSendAnnouncement);
       document.getElementById('clearAnnouncementBtn').addEventListener('click', clearAnnouncementForm);
