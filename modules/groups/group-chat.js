@@ -65,6 +65,10 @@ const GroupChat = {
   ],
   groupMemberDirectory: [],
   groupMemberDirectoryForGroupId: null,
+  mentionPickerOpen: false,
+  mentionQuery: '',
+  mentionRange: null,
+  selectedMentionsByToken: {},
   
   /**
    * Initialize chat module
@@ -141,7 +145,10 @@ const GroupChat = {
     }
     this.composeEmojiPickerOpen = false;
     this.activeReactionPickerMessageId = null;
+    this.mentionPickerOpen = false;
+    this.selectedMentionsByToken = {};
     this.closeComposeEmojiPicker();
+    this.closeMentionPicker();
     this.renderEmojiPicker();
     
     // Update member count in header
@@ -169,7 +176,10 @@ const GroupChat = {
     this.isOpen = false;
     this.composeEmojiPickerOpen = false;
     this.activeReactionPickerMessageId = null;
+    this.mentionPickerOpen = false;
+    this.selectedMentionsByToken = {};
     this.closeComposeEmojiPicker();
+    this.closeMentionPicker();
     
     // Hide modal
     const modal = document.getElementById('chatModal');
@@ -356,6 +366,8 @@ const GroupChat = {
       const input = document.getElementById('chatInput');
       if (input) input.value = '';
       this.closeComposeEmojiPicker(true);
+      this.closeMentionPicker();
+      this.selectedMentionsByToken = {};
       
       // Reload messages
       await this.loadMessages();
@@ -499,6 +511,7 @@ const GroupChat = {
     const input = document.getElementById('chatInput');
     if (input) {
       this.closeComposeEmojiPicker();
+      this.closeMentionPicker();
       this.sendMessage(input.value);
     }
   },
@@ -514,12 +527,140 @@ const GroupChat = {
   },
 
   /**
+   * Handle text input changes for mention suggestions
+   */
+  async handleInputChange(event) {
+    const input = event?.target || document.getElementById('chatInput');
+    if (!input) return;
+    await this.renderMentionSuggestions(input.value || '', input.selectionStart ?? input.value.length);
+  },
+
+  /**
+   * Extract active mention query near cursor
+   */
+  getActiveMentionQuery(text, cursorPos) {
+    const value = String(text || '');
+    const cursor = Math.max(0, Math.min(cursorPos ?? value.length, value.length));
+    const prefix = value.slice(0, cursor);
+    const atIndex = prefix.lastIndexOf('@');
+    if (atIndex < 0) return null;
+
+    // Require start or whitespace before '@'
+    if (atIndex > 0) {
+      const prevChar = prefix.charAt(atIndex - 1);
+      if (!/\s/.test(prevChar)) return null;
+    }
+
+    const raw = prefix.slice(atIndex + 1);
+    if (raw.length > 32 || /\s/.test(raw)) return null;
+    if (!raw.length) {
+      return { query: '', start: atIndex, end: cursor };
+    }
+    if (!/^[a-zA-Z0-9._-]{1,32}$/.test(raw)) return null;
+
+    return { query: raw.toLowerCase(), start: atIndex, end: cursor };
+  },
+
+  /**
+   * Render mention suggestions dropdown
+   */
+  async renderMentionSuggestions(text, cursorPos) {
+    const picker = document.getElementById('chatMentionPicker');
+    const list = document.getElementById('chatMentionList');
+    if (!picker || !list) return;
+
+    const mention = this.getActiveMentionQuery(text, cursorPos);
+    if (!mention) {
+      this.closeMentionPicker();
+      return;
+    }
+
+    await this.loadGroupMemberDirectory();
+    const directory = this.groupMemberDirectory || [];
+    const senderId = window.currentUser?.uid;
+    const query = mention.query || '';
+
+    const matches = directory
+      .filter((member) => member.uid !== senderId)
+      .filter((member) => {
+        if (!query) return true;
+        if ((member.displayName || '').toLowerCase().includes(query)) return true;
+        return (member.aliases || []).some((alias) => alias.startsWith(query));
+      })
+      .slice(0, 8);
+
+    if (!matches.length) {
+      this.closeMentionPicker();
+      return;
+    }
+
+    this.mentionPickerOpen = true;
+    this.mentionQuery = query;
+    this.mentionRange = { start: mention.start, end: mention.end };
+    this.closeComposeEmojiPicker();
+    picker.classList.remove('hidden');
+
+    list.innerHTML = matches.map((member) => {
+      const shortName = (member.displayName || 'Member').split(/\s+/)[0] || member.displayName || 'member';
+      const token = this.normalizeMentionToken(shortName) || this.normalizeMentionToken(member.aliases?.[0]) || 'member';
+      return `
+        <button onclick="GroupChat.selectMention('${member.uid}', '${(member.displayName || '').replace(/'/g, "\\'")}', '${token.replace(/'/g, "\\'")}')" class="w-full text-left flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-amber-500/10 transition-colors">
+          <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'Member')}&background=4a0404&color=fbbf24" class="w-8 h-8 rounded-full border border-[var(--card-border)]" alt="${this.escapeHtml(member.displayName || 'Member')}">
+          <div class="min-w-0">
+            <p class="text-sm text-[var(--text-color)] font-semibold truncate">${this.escapeHtml(member.displayName || 'Member')}</p>
+            <p class="text-[11px] text-[var(--text-muted)] truncate">@${this.escapeHtml(token)}</p>
+          </div>
+        </button>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Insert selected mention from picker
+   */
+  selectMention(uid, displayName, token) {
+    const input = document.getElementById('chatInput');
+    if (!input || !uid) return;
+
+    const safeToken = this.normalizeMentionToken(token) || this.normalizeMentionToken(displayName) || 'member';
+    const mentionText = `@${safeToken}`;
+    const range = this.mentionRange || { start: input.value.length, end: input.value.length };
+    const value = input.value || '';
+    const nextValue = `${value.slice(0, range.start)}${mentionText} ${value.slice(range.end)}`;
+    const cursorPos = range.start + mentionText.length + 1;
+    input.value = nextValue;
+    input.setSelectionRange(cursorPos, cursorPos);
+    input.focus();
+
+    this.selectedMentionsByToken[safeToken] = {
+      uid,
+      name: displayName || safeToken
+    };
+
+    this.closeMentionPicker();
+  },
+
+  /**
+   * Hide mention picker
+   */
+  closeMentionPicker() {
+    const picker = document.getElementById('chatMentionPicker');
+    if (picker) picker.classList.add('hidden');
+    this.mentionPickerOpen = false;
+    this.mentionQuery = '';
+    this.mentionRange = null;
+  },
+
+  /**
    * Toggle compose emoji picker
    */
   toggleEmojiPicker() {
     const picker = document.getElementById('chatEmojiPicker');
     if (!picker) return;
     this.composeEmojiPickerOpen = !this.composeEmojiPickerOpen;
+    if (this.composeEmojiPickerOpen) {
+      this.closeMentionPicker();
+    }
     picker.classList.toggle('hidden', !this.composeEmojiPickerOpen);
     if (this.composeEmojiPickerOpen) {
       this.renderEmojiPicker();
@@ -580,6 +721,7 @@ const GroupChat = {
     const nextPos = start + emoji.length;
     input.setSelectionRange(nextPos, nextPos);
     input.focus();
+    this.renderMentionSuggestions(input.value, nextPos);
   },
 
   /**
@@ -797,11 +939,27 @@ const GroupChat = {
       if (!token || seen.has(token)) continue;
       seen.add(token);
 
-      const member = directory.find((entry) => {
+      const selected = this.selectedMentionsByToken[token];
+      if (selected?.uid && selected.uid !== senderId) {
+        mentions.push({
+          uid: selected.uid,
+          name: selected.name || token,
+          token
+        });
+        continue;
+      }
+
+      const rankedMembers = directory.filter((entry) => {
         if (entry.uid === senderId) return false;
-        if (entry.aliases.includes(token)) return true;
-        return entry.aliases.some((alias) => alias.startsWith(token));
+        return entry.aliases.includes(token) || entry.aliases.some((alias) => alias.startsWith(token));
       });
+      rankedMembers.sort((a, b) => {
+        const aExact = a.aliases.includes(token) ? 1 : 0;
+        const bExact = b.aliases.includes(token) ? 1 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+        return (a.displayName || '').localeCompare(b.displayName || '');
+      });
+      const member = rankedMembers[0];
       if (!member) continue;
 
       mentions.push({

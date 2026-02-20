@@ -13,7 +13,12 @@ const Notifications = {
   // State
   unreadCount: 0,
   lastReadTimestamp: null,
-  unsubscribe: null,
+  unsubscribe: null, // legacy single listener
+  groupUnsubscribes: [],
+  groupWatchSignature: '',
+  groupWatchSyncInterval: null,
+  seenMessageIds: new Set(),
+  seenMessageOrder: [],
   toastQueue: [],
   isProcessingQueue: false,
   
@@ -46,15 +51,8 @@ const Notifications = {
     // Create notification container if not exists
     this.createNotificationContainer();
     
-    // Show header chat button if user is in a group
-    if (Groups?.currentGroup) {
-      const headerBtn = document.getElementById('headerChatBadge');
-      if (headerBtn) {
-        headerBtn.classList.remove('hidden');
-      }
-      // Start listening for new messages
-      this.subscribeToGroupMessages();
-    }
+    await this.refreshGroupSubscriptions();
+    this.startGroupWatchSync();
     
     console.log('[Notifications] Ready');
   },
@@ -89,49 +87,135 @@ const Notifications = {
   },
   
   /**
-   * Subscribe to real-time group messages
+   * Resolve all groups user should watch for chat notifications
    */
-  subscribeToGroupMessages() {
-    if (!Groups?.currentGroup || !window.db) return;
-    
-    // Unsubscribe from previous listener
-    if (this.unsubscribe) {
-      this.unsubscribe();
+  getWatchGroupIds() {
+    const ids = [];
+    const push = (id) => {
+      if (!id || ids.includes(id)) return;
+      ids.push(id);
+    };
+
+    if (Groups?.currentGroup?.id) {
+      push(Groups.currentGroup.id);
     }
-    
-    console.log('[Notifications] Subscribing to group messages:', Groups.currentGroup.id);
-    
-    try {
-      const chatRef = window.collection(window.db, 'goMission_chats');
-      
-      // Simple query - just filter by groupId (no orderBy to avoid index requirement)
-      const q = window.query(
-        chatRef,
-        window.where('groupId', '==', Groups.currentGroup.id)
-      );
-      
-      // Use onSnapshot for real-time updates
-      if (window.onSnapshot) {
-        this.unsubscribe = window.onSnapshot(q, (snapshot) => {
-          console.log('[Notifications] Snapshot received, changes:', snapshot.docChanges().length);
+
+    if (typeof MyGroups !== 'undefined') {
+      if (MyGroups.uplineGroup?.id) push(MyGroups.uplineGroup.id);
+      (MyGroups.downlineGroups || []).forEach((group) => push(group?.id));
+      (MyGroups.guestGroups || []).forEach((group) => push(group?.id));
+    }
+
+    return ids;
+  },
+
+  /**
+   * Build stable hash key for watched group IDs
+   */
+  getWatchGroupSignature(groupIds = []) {
+    return [...new Set(groupIds.filter(Boolean))].sort().join('|');
+  },
+
+  /**
+   * Keep subscriptions in sync if group membership changes while app is open
+   */
+  startGroupWatchSync() {
+    if (this.groupWatchSyncInterval) {
+      clearInterval(this.groupWatchSyncInterval);
+      this.groupWatchSyncInterval = null;
+    }
+
+    this.groupWatchSyncInterval = setInterval(() => {
+      const nextSignature = this.getWatchGroupSignature(this.getWatchGroupIds());
+      if (nextSignature === this.groupWatchSignature) return;
+      Promise.resolve(this.refreshGroupSubscriptions()).catch((error) => {
+        console.warn('[Notifications] Failed to refresh group subscriptions:', error);
+      });
+    }, 4000);
+  },
+
+  /**
+   * Refresh real-time subscriptions for group messages
+   */
+  async refreshGroupSubscriptions() {
+    if (!window.db || !window.currentUser) return;
+
+    const groupIds = this.getWatchGroupIds();
+    this.groupWatchSignature = this.getWatchGroupSignature(groupIds);
+    this.clearGroupSubscriptions();
+
+    const headerBtn = document.getElementById('headerChatBadge');
+    if (headerBtn) {
+      if (groupIds.length > 0) headerBtn.classList.remove('hidden');
+      else headerBtn.classList.add('hidden');
+    }
+
+    if (!groupIds.length) return;
+
+    if (!window.onSnapshot) {
+      console.warn('[Notifications] onSnapshot not available, falling back to polling');
+      this.startPolling();
+      return;
+    }
+
+    console.log('[Notifications] Subscribing to group messages:', groupIds);
+    for (const groupId of groupIds) {
+      try {
+        const q = window.query(
+          window.collection(window.db, 'goMission_chats'),
+          window.where('groupId', '==', groupId)
+        );
+
+        const unsubscribe = window.onSnapshot(q, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const message = { id: change.doc.id, ...change.doc.data() };
-              console.log('[Notifications] New message detected:', message.senderName);
-              this.handleNewMessage(message);
-            }
+            if (change.type !== 'added') return;
+            const message = { id: change.doc.id, ...change.doc.data() };
+            if (!this.rememberSeenMessage(message.id)) return;
+            this.handleNewMessage(message, groupId);
           });
         }, (error) => {
-          console.error('[Notifications] Snapshot error:', error);
+          console.error('[Notifications] Snapshot error:', groupId, error);
         });
-        console.log('[Notifications] Subscribed successfully');
-      } else {
-        console.warn('[Notifications] onSnapshot not available, falling back to polling');
-        // Fallback to polling
-        this.startPolling();
+
+        this.groupUnsubscribes.push(unsubscribe);
+      } catch (error) {
+        console.error('[Notifications] Error subscribing to group:', groupId, error);
       }
-    } catch (error) {
-      console.error('[Notifications] Error subscribing:', error);
+    }
+  },
+
+  /**
+   * Keep a bounded set of recently-seen message IDs to avoid duplicate toasts
+   */
+  rememberSeenMessage(messageId) {
+    if (!messageId) return true;
+    if (this.seenMessageIds.has(messageId)) return false;
+    this.seenMessageIds.add(messageId);
+    this.seenMessageOrder.push(messageId);
+    if (this.seenMessageOrder.length > 800) {
+      const oldest = this.seenMessageOrder.shift();
+      if (oldest) this.seenMessageIds.delete(oldest);
+    }
+    return true;
+  },
+
+  /**
+   * Clear active group subscriptions
+   */
+  clearGroupSubscriptions() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
+    if (this.groupUnsubscribes.length) {
+      this.groupUnsubscribes.forEach((fn) => {
+        try { fn(); } catch (_) {}
+      });
+      this.groupUnsubscribes = [];
+    }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
     }
   },
   
@@ -142,21 +226,24 @@ const Notifications = {
     if (this.pollInterval) clearInterval(this.pollInterval);
     
     this.pollInterval = setInterval(async () => {
-      if (!Groups?.currentGroup || GroupChat?.isOpen) return;
+      const groupIds = this.getWatchGroupIds();
+      if (!groupIds.length) return;
       
       try {
-        const chatRef = window.collection(window.db, 'goMission_chats');
-        const q = window.query(
-          chatRef,
-          window.where('groupId', '==', Groups.currentGroup.id),
-          window.limit(10)
-        );
-        
-        const snapshot = await window.getDocs(q);
-        snapshot.forEach(doc => {
-          const message = { id: doc.id, ...doc.data() };
-          this.handleNewMessage(message);
-        });
+        for (const groupId of groupIds) {
+          const q = window.query(
+            window.collection(window.db, 'goMission_chats'),
+            window.where('groupId', '==', groupId),
+            window.limit(25)
+          );
+          
+          const snapshot = await window.getDocs(q);
+          snapshot.forEach(doc => {
+            const message = { id: doc.id, ...doc.data() };
+            if (!this.rememberSeenMessage(message.id)) return;
+            this.handleNewMessage(message, groupId);
+          });
+        }
       } catch (e) {
         console.error('[Notifications] Polling error:', e);
       }
@@ -166,21 +253,32 @@ const Notifications = {
   /**
    * Handle new incoming message
    */
-  handleNewMessage(message) {
+  handleNewMessage(message, groupIdOverride = null) {
+    const groupId = groupIdOverride || message.groupId || null;
+
     // Don't notify for own messages
     if (message.senderId === window.currentUser?.uid) return;
+
+    const currentUid = window.currentUser?.uid;
+    const mentionIds = Array.isArray(message.mentionedUserIds)
+      ? message.mentionedUserIds
+      : Array.isArray(message.mentions)
+        ? message.mentions.map((mention) => (typeof mention === 'string' ? mention : mention?.uid)).filter(Boolean)
+        : [];
+    const isMention = !!(currentUid && mentionIds.includes(currentUid));
     
     // Don't notify for old messages (before last read)
     const msgTime = message.createdAt?.toDate?.() || new Date(message.createdAt);
     if (msgTime <= this.lastReadTimestamp) return;
     
-    // Don't notify if chat is currently open
-    if (GroupChat?.isOpen) {
-      this.markAsRead();
+    // Don't notify for active group thread unless user was directly mentioned.
+    if (GroupChat?.isOpen && groupId && GroupChat.currentGroupId === groupId && !isMention) {
       return;
     }
     
-    console.log('[Notifications] New message from:', message.senderName);
+    const senderLabel = message.senderName || 'Someone';
+
+    console.log('[Notifications] New message from:', senderLabel, 'group:', groupId, 'mention:', isMention);
     
     // Increment unread count
     this.unreadCount++;
@@ -189,12 +287,14 @@ const Notifications = {
     // Show toast notification
     if (this.settings.toast) {
       this.showToast({
-        title: message.senderName,
-        body: message.type === 'devotion' 
-          ? '📖 Shared a devotion' 
-          : this.truncate(message.text, 50),
+        title: isMention ? `📣 Mention by ${senderLabel}` : senderLabel,
+        body: message.type === 'devotion'
+          ? '📖 Shared a devotion'
+          : isMention
+            ? `mentioned you: ${this.truncate(message.text, 70)}`
+            : this.truncate(message.text, 50),
         icon: message.senderPhoto,
-        onClick: () => GroupChat?.open()
+        onClick: () => this.openGroupFromNotification(groupId)
       });
     }
     
@@ -206,6 +306,31 @@ const Notifications = {
     // Vibrate (mobile)
     if (this.settings.vibrate && navigator.vibrate) {
       navigator.vibrate(200);
+    }
+  },
+
+  /**
+   * Open a specific group thread from notification context
+   */
+  openGroupFromNotification(groupId) {
+    if (!groupId) return;
+
+    const group = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+      ? MyGroups.getGroupById(groupId)
+      : null;
+
+    if (group && typeof Groups !== 'undefined') {
+      Groups.currentGroup = group;
+      GroupChat?.open?.();
+      return;
+    }
+
+    if (typeof ChatApp !== 'undefined') {
+      Promise.resolve(ChatApp.open())
+        .then(() => ChatApp.setTab?.('groups'))
+        .catch((error) => {
+          console.warn('[Notifications] Could not open group from notification:', error);
+        });
     }
   },
 
@@ -236,27 +361,16 @@ const Notifications = {
     }
 
     if (!onClick && (type === 'chat' || type === 'chat_mention') && data.groupId) {
-      onClick = () => {
-        const group = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
-          ? MyGroups.getGroupById(data.groupId)
-          : null;
-        if (group && typeof Groups !== 'undefined') {
-          Groups.currentGroup = group;
-          GroupChat?.open?.();
-          return;
-        }
-        if (typeof ChatApp !== 'undefined') {
-          Promise.resolve(ChatApp.open())
-            .then(() => ChatApp.setTab?.('groups'))
-            .catch((error) => {
-              console.warn('[Notifications] Group click fallback failed:', error);
-            });
-        }
-      };
+      onClick = () => this.openGroupFromNotification(data.groupId);
     }
 
     // Prevent duplicate chat alerts when chat module already handles them.
-    if (type === 'chat' && typeof GroupChat !== 'undefined' && GroupChat?.isOpen) {
+    if (
+      type === 'chat'
+      && typeof GroupChat !== 'undefined'
+      && GroupChat?.isOpen
+      && (!data.groupId || GroupChat.currentGroupId === data.groupId)
+    ) {
       return;
     }
 
@@ -487,10 +601,14 @@ const Notifications = {
    * Cleanup
    */
   destroy() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
+    this.clearGroupSubscriptions();
+    if (this.groupWatchSyncInterval) {
+      clearInterval(this.groupWatchSyncInterval);
+      this.groupWatchSyncInterval = null;
     }
+    this.groupWatchSignature = '';
+    this.seenMessageIds.clear();
+    this.seenMessageOrder = [];
   },
   
   // Utility functions
