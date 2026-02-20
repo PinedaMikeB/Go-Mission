@@ -72,6 +72,8 @@ const GroupChat = {
   pendingFocusMessageId: null,
   composerReplyTo: null,
   composerReplyToMessageId: null,
+  pendingAttachment: null,
+  isSendingAttachment: false,
   forwardSourceMessageId: null,
   forwardGroupTargets: {},
   forwardDmTargets: {},
@@ -155,6 +157,9 @@ const GroupChat = {
     this.selectedMentionsByToken = {};
     this.composerReplyTo = null;
     this.composerReplyToMessageId = null;
+    this.releasePendingAttachmentPreview();
+    this.pendingAttachment = null;
+    this.isSendingAttachment = false;
     this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
@@ -164,6 +169,7 @@ const GroupChat = {
     if (input) input.value = '';
     this.renderComposerPreview('');
     this.renderReplyDraft();
+    this.renderAttachmentDraft();
     this.syncComposerPreviewScroll({ target: input });
     
     // Update member count in header
@@ -196,6 +202,9 @@ const GroupChat = {
     this.pendingFocusMessageId = null;
     this.composerReplyTo = null;
     this.composerReplyToMessageId = null;
+    this.releasePendingAttachmentPreview();
+    this.pendingAttachment = null;
+    this.isSendingAttachment = false;
     this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
@@ -204,6 +213,7 @@ const GroupChat = {
     if (input) input.value = '';
     this.renderComposerPreview('');
     this.renderReplyDraft();
+    this.renderAttachmentDraft();
     this.syncComposerPreviewScroll({ target: input });
     
     // Hide modal
@@ -352,9 +362,11 @@ const GroupChat = {
    * Send a message
    */
   async sendMessage(text) {
-    if (!text || !text.trim()) return;
     if (!Groups.currentGroup || !window.currentUser || !window.db) return;
-    const trimmedText = text.trim();
+    const trimmedText = String(text || '').trim();
+    const attachment = this.pendingAttachment;
+    if (!trimmedText && !attachment?.file) return;
+    if (this.isSendingAttachment) return;
     
     // Verify user is still a member or guest of the group
     const isMember = Groups.currentGroup.members?.includes(window.currentUser.uid);
@@ -367,18 +379,32 @@ const GroupChat = {
     }
     
     try {
-      const mentions = await this.extractMentionsFromText(trimmedText);
+      let imagePayload = null;
+      if (attachment?.file) {
+        this.isSendingAttachment = true;
+        imagePayload = await this.uploadImageAttachment(attachment.file);
+      }
+
+      const mentions = trimmedText ? await this.extractMentionsFromText(trimmedText) : [];
       const replySource = this.composerReplyToMessageId
         ? (this.messages.find((item) => item.id === this.composerReplyToMessageId) || this.composerReplyTo)
         : this.composerReplyTo;
       const replyTo = this.normalizeReplyPayload(replySource);
+      const hasImage = !!imagePayload?.url;
+      const messageText = trimmedText || (hasImage ? '📷 Photo' : '');
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
         senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
-        text: trimmedText,
-        type: 'text',
+        text: messageText,
+        type: hasImage ? 'image' : 'text',
+        imageUrl: imagePayload?.url || '',
+        imagePath: imagePayload?.path || '',
+        imageName: imagePayload?.name || '',
+        imageSize: imagePayload?.size || 0,
+        imageMimeType: imagePayload?.mimeType || '',
+        imageCaption: trimmedText || '',
         replyTo: replyTo || null,
         replyToMessageId: replyTo?.messageId || this.composerReplyToMessageId || null,
         replyToSenderName: replyTo?.senderName || '',
@@ -390,8 +416,8 @@ const GroupChat = {
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
-        type: 'text',
-        text: trimmedText,
+        type: hasImage ? 'image' : 'text',
+        text: trimmedText || (hasImage ? '📷 Photo' : ''),
         senderName: message.senderName
       });
       
@@ -403,8 +429,12 @@ const GroupChat = {
       this.selectedMentionsByToken = {};
       this.composerReplyTo = null;
       this.composerReplyToMessageId = null;
+      this.releasePendingAttachmentPreview();
+      this.pendingAttachment = null;
+      this.resetAttachmentInputs();
       this.renderComposerPreview('');
       this.renderReplyDraft();
+      this.renderAttachmentDraft();
       
       // Reload messages
       await this.loadMessages();
@@ -413,6 +443,8 @@ const GroupChat = {
     } catch (error) {
       console.error('[GroupChat] Error sending message:', error);
       alert('Error sending message. Please try again.');
+    } finally {
+      this.isSendingAttachment = false;
     }
   },
   
@@ -522,7 +554,8 @@ const GroupChat = {
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
                 ${this.renderReplyBlock(msg)}
-                <p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(msg.text || ''))}</p>
+                ${this.renderImageContent(msg)}
+                ${this.renderMessageText(msg)}
                 <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
@@ -586,6 +619,40 @@ const GroupChat = {
       </div>
     `;
   },
+
+  /**
+   * Render image payload in message bubble.
+   */
+  renderImageContent(message) {
+    const imageUrl = message?.imageUrl || '';
+    if (!imageUrl) return '';
+    const safeUrl = this.escapeHtml(imageUrl);
+    const altText = this.escapeHtml(message?.imageName || 'Chat image');
+    return `
+      <button onclick="GroupChat.openImagePreview('${safeUrl}')" class="block mb-2 rounded-xl overflow-hidden border border-[var(--card-border)] bg-black/10">
+        <img src="${safeUrl}" alt="${altText}" class="max-h-64 w-full object-cover">
+      </button>
+    `;
+  },
+
+  /**
+   * Render message text body, skipping synthetic label for image-only messages.
+   */
+  renderMessageText(message) {
+    const rawText = String(message?.text || '').trim();
+    const hasImage = !!message?.imageUrl;
+    const caption = String(message?.imageCaption || '').trim();
+
+    if (hasImage) {
+      if (caption) {
+        return `<p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(caption))}</p>`;
+      }
+      if (rawText === '📷 Photo' || !rawText) return '';
+    }
+
+    if (!rawText) return '';
+    return `<p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(rawText))}</p>`;
+  },
   
   /**
    * Scroll chat to bottom
@@ -617,6 +684,156 @@ const GroupChat = {
       event.preventDefault();
       this.handleSend();
     }
+  },
+
+  /**
+   * Open gallery picker for image attachment.
+   */
+  pickAttachmentFromGallery() {
+    const input = document.getElementById('chatGalleryInput');
+    if (input) input.click();
+  },
+
+  /**
+   * Open camera capture for image attachment.
+   */
+  captureAttachmentFromCamera() {
+    const input = document.getElementById('chatCameraInput');
+    if (input) input.click();
+  },
+
+  /**
+   * Handle selected/captured image attachment.
+   */
+  handleAttachmentSelected(event, source = 'gallery') {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      alert('Only image files are supported.');
+      this.resetAttachmentInputs();
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxBytes) {
+      alert('Image is too large. Please select a photo under 10 MB.');
+      this.resetAttachmentInputs();
+      return;
+    }
+
+    this.releasePendingAttachmentPreview();
+    this.pendingAttachment = {
+      file,
+      source,
+      name: file.name || 'photo.jpg',
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg',
+      previewUrl: URL.createObjectURL(file)
+    };
+    this.renderAttachmentDraft();
+    this.resetAttachmentInputs();
+  },
+
+  /**
+   * Revoke blob URL for pending attachment preview.
+   */
+  releasePendingAttachmentPreview() {
+    const previewUrl = this.pendingAttachment?.previewUrl;
+    if (previewUrl && typeof previewUrl === 'string' && previewUrl.startsWith('blob:')) {
+      try { URL.revokeObjectURL(previewUrl); } catch (_) {}
+    }
+  },
+
+  /**
+   * Clear selected image attachment.
+   */
+  clearAttachmentDraft() {
+    this.releasePendingAttachmentPreview();
+    this.pendingAttachment = null;
+    this.renderAttachmentDraft();
+    this.resetAttachmentInputs();
+  },
+
+  /**
+   * Keep file inputs reset so same file can be selected repeatedly.
+   */
+  resetAttachmentInputs() {
+    const gallery = document.getElementById('chatGalleryInput');
+    const camera = document.getElementById('chatCameraInput');
+    if (gallery) gallery.value = '';
+    if (camera) camera.value = '';
+  },
+
+  /**
+   * Render image attachment preview in composer.
+   */
+  renderAttachmentDraft() {
+    const container = document.getElementById('chatAttachmentDraft');
+    if (!container) return;
+
+    if (!this.pendingAttachment?.previewUrl) {
+      container.classList.add('hidden');
+      container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Photo attachment</p>';
+      return;
+    }
+
+    const sizeKb = Math.max(1, Math.round((this.pendingAttachment.size || 0) / 1024));
+    const name = this.escapeHtml(this.pendingAttachment.name || 'photo.jpg');
+    const preview = this.escapeHtml(this.pendingAttachment.previewUrl);
+    container.classList.remove('hidden');
+    container.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-2 min-w-0">
+          <img src="${preview}" alt="${name}" class="w-14 h-14 rounded-lg object-cover border border-[var(--card-border)]">
+          <div class="min-w-0">
+            <p class="text-[10px] font-bold text-amber-500">📷 Photo ready to send</p>
+            <p class="text-xs text-[var(--text-color)] truncate">${name}</p>
+            <p class="text-[10px] text-[var(--text-muted)]">${sizeKb} KB</p>
+          </div>
+        </div>
+        <button onclick="GroupChat.clearAttachmentDraft()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] rounded-full p-1" title="Remove photo">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+  },
+
+  /**
+   * Upload selected image to Firebase Storage.
+   */
+  async uploadImageAttachment(file) {
+    if (!file || !window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+      throw new Error('Storage is not initialized');
+    }
+    const groupId = Groups.currentGroup?.id || 'group';
+    const uid = window.currentUser?.uid || 'user';
+    const safeName = String(file.name || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `chat-attachments/${groupId}/${uid}/${Date.now()}_${safeName}`;
+    const ref = window.storageRef(window.storage, path);
+    const result = await window.uploadBytes(ref, file, {
+      contentType: file.type || 'image/jpeg',
+      cacheControl: 'public,max-age=3600'
+    });
+    const url = await window.getDownloadURL(result.ref);
+    return {
+      url,
+      path,
+      name: file.name || safeName,
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg'
+    };
+  },
+
+  /**
+   * Open image in a new tab for full-screen view.
+   */
+  openImagePreview(url) {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
   },
 
   /**
