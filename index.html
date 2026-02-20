@@ -2242,7 +2242,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Bible</span>
                 </button>
                 <!-- Messages -->
-                <button id="bottomNavMessagesBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="(window.Notifications && window.Notifications.openLastUnreadTarget) ? window.Notifications.openLastUnreadTarget() : (window.ChatApp && window.ChatApp.open && window.ChatApp.open())">
+                <button id="bottomNavMessagesBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="(typeof Notifications !== 'undefined' && Notifications.openLastUnreadTarget) ? Notifications.openLastUnreadTarget() : (window.ChatApp && window.ChatApp.open && window.ChatApp.open())">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
@@ -2830,20 +2830,43 @@
                     // Handle deep-link params from notifications
                     const urlParams = new URLSearchParams(window.location.search);
                     const openChatGroupId = urlParams.get('openChat');
+                    const openChatMessageId = urlParams.get('openChatMessage');
                     const openDmWith = urlParams.get('openDmWith');
                     const openMessagesTab = urlParams.get('openMessages');
                     const joinCode = urlParams.get('join');
 
                     if (openChatGroupId) {
-                        const targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+                        let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
                             ? MyGroups.getGroupById(openChatGroupId)
                             : null;
+                        if (!targetGroup && typeof window.getDoc === 'function' && typeof window.doc === 'function' && window.db) {
+                            try {
+                                const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', openChatGroupId));
+                                if (groupDoc.exists()) {
+                                    const groupData = groupDoc.data() || {};
+                                    const uid = window.currentUser?.uid;
+                                    const isMember = Array.isArray(groupData.members) && groupData.members.includes(uid);
+                                    const isGuest = Array.isArray(groupData.guests) && groupData.guests.some((g) => g?.odId === uid);
+                                    if (isMember || isGuest) {
+                                        targetGroup = { id: groupDoc.id, ...groupData };
+                                    }
+                                }
+                            } catch (error) {
+                                console.warn('[DeepLink] Failed loading chat group by id:', openChatGroupId, error);
+                            }
+                        }
                         if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
                             Groups.currentGroup = targetGroup;
+                            GroupChat.pendingFocusMessageId = openChatMessageId || null;
                             await GroupChat.open();
                         } else if (typeof ChatApp !== 'undefined') {
                             await ChatApp.open();
-                            ChatApp.setTab('groups');
+                            const opened = (typeof ChatApp.openGroupChat === 'function')
+                                ? ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
+                                : false;
+                            if (!opened) {
+                                ChatApp.setTab('groups');
+                            }
                         }
                     }
 
@@ -2870,7 +2893,7 @@
                     }
 
                     // Clear one-time URL parameters.
-                    if (openChatGroupId || openDmWith || openMessagesTab || joinCode) {
+                    if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || joinCode) {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                     

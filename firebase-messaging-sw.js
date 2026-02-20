@@ -238,9 +238,15 @@ self.addEventListener('notificationclick', (event) => {
     let url = '/';
     
     if (data.type === 'chat' && data.groupId) {
-        url = '/?openChat=' + data.groupId;
+        url = '/?openChat=' + encodeURIComponent(data.groupId);
+        if (data.messageId) {
+            url += '&openChatMessage=' + encodeURIComponent(data.messageId);
+        }
     } else if (data.type === 'chat_mention' && data.groupId) {
-        url = '/?openChat=' + data.groupId;
+        url = '/?openChat=' + encodeURIComponent(data.groupId);
+        if (data.messageId) {
+            url += '&openChatMessage=' + encodeURIComponent(data.messageId);
+        }
     } else if (data.type === 'dm' && data.senderId) {
         url = '/?openMessages=direct&openDmWith=' + encodeURIComponent(data.senderId);
     } else if (data.type === 'devotion') {

@@ -54,7 +54,7 @@ const Notifications = {
     
     await this.refreshGroupSubscriptions();
     this.startGroupWatchSync();
-    this.lastUnreadTarget = null;
+    this.lastUnreadTarget = this.loadStoredUnreadTarget();
     
     console.log('[Notifications] Ready');
   },
@@ -261,6 +261,46 @@ const Notifications = {
       ...target,
       capturedAt: Date.now()
     };
+    this.persistUnreadTarget();
+  },
+
+  /**
+   * Storage key for latest unread target
+   */
+  getUnreadTargetStorageKey() {
+    const uid = window.currentUser?.uid;
+    return uid ? `lastUnreadTarget_${uid}` : null;
+  },
+
+  /**
+   * Persist unread target so badge routing survives refresh/reopen.
+   */
+  persistUnreadTarget() {
+    try {
+      const key = this.getUnreadTargetStorageKey();
+      if (!key) return;
+      if (!this.lastUnreadTarget) {
+        localStorage.removeItem(key);
+        return;
+      }
+      localStorage.setItem(key, JSON.stringify(this.lastUnreadTarget));
+    } catch (_) {}
+  },
+
+  /**
+   * Load unread target from storage.
+   */
+  loadStoredUnreadTarget() {
+    try {
+      const key = this.getUnreadTargetStorageKey();
+      if (!key) return null;
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === 'object') ? parsed : null;
+    } catch (_) {
+      return null;
+    }
   },
 
   /**
@@ -269,6 +309,7 @@ const Notifications = {
   openLastUnreadTarget() {
     const target = this.lastUnreadTarget;
     this.lastUnreadTarget = null;
+    this.persistUnreadTarget();
 
     if (!target) {
       if (typeof ChatApp !== 'undefined' && typeof ChatApp.open === 'function') {
@@ -603,6 +644,7 @@ const Notifications = {
   markAsRead() {
     this.unreadCount = 0;
     this.lastUnreadTarget = null;
+    this.persistUnreadTarget();
     this.lastReadTimestamp = new Date();
     localStorage.setItem(`lastRead_${window.currentUser?.uid}`, this.lastReadTimestamp.toISOString());
     this.updateBadge();
@@ -687,6 +729,7 @@ const Notifications = {
     this.seenMessageIds.clear();
     this.seenMessageOrder = [];
     this.lastUnreadTarget = null;
+    this.persistUnreadTarget();
   },
   
   // Utility functions
