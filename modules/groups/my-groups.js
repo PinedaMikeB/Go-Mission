@@ -58,6 +58,23 @@ const MyGroups = {
     },
 
     /**
+     * Build a resilient fallback guest-group object when group doc fetch fails.
+     */
+    buildGuestFallbackGroup(groupId, meta = null, userId = null) {
+        const safeMeta = (meta && typeof meta === 'object') ? meta : {};
+        const fallbackName = safeMeta.name || safeMeta.groupName || `Guest Group (${String(groupId).slice(0, 6)})`;
+        return {
+            id: groupId,
+            name: fallbackName,
+            leaderId: safeMeta.leaderId || null,
+            meetingSchedule: null,
+            members: [],
+            guests: userId ? [{ odId: userId, name: window.currentUser?.displayName || 'You' }] : [],
+            _fallbackGuestGroup: true
+        };
+    },
+
+    /**
      * Check if a user is listed in a group's guests array
      */
     isUserGuestInGroupData(groupData, userId) {
@@ -104,6 +121,8 @@ const MyGroups = {
         try {
             const uid = window.currentUser.uid;
             this.uplineGroup = null;
+            this.downlineGroups = [];
+            this.guestGroups = [];
             const userDoc = await window.getDoc(
                 window.doc(window.db, 'goMission_members', uid)
             );
@@ -214,9 +233,11 @@ const MyGroups = {
             }));
             
             // Load guest groups (where user is in guests array)
-            this.guestGroups = [];
             const guestGroupMap = new Map();
             const declaredGuestGroupIds = this.extractIdList(userData.guestGroups);
+            const declaredGuestGroupMeta = (userData.guestGroupMeta && typeof userData.guestGroupMeta === 'object')
+                ? userData.guestGroupMeta
+                : {};
 
             if (declaredGuestGroupIds.length > 0) {
                 for (const groupId of declaredGuestGroupIds) {
@@ -230,9 +251,18 @@ const MyGroups = {
                             if (this.isUserGuestInGroupData(groupData, uid) || declaredGuestGroupIds.includes(groupId)) {
                                 guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
                             }
+                        } else {
+                            guestGroupMap.set(
+                                groupId,
+                                this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
+                            );
                         }
                     } catch (e) {
                         console.log('[MyGroups] Error loading guest group:', groupId, e);
+                        guestGroupMap.set(
+                            groupId,
+                            this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
+                        );
                     }
                 }
             }
@@ -263,6 +293,16 @@ const MyGroups = {
                 } catch (scanError) {
                     console.warn('[MyGroups] Guest recovery scan failed:', scanError);
                 }
+            }
+
+            // Keep explicit guest-group pointers visible even when direct group reads are unavailable.
+            if (guestGroupMap.size === 0 && declaredGuestGroupIds.length > 0) {
+                declaredGuestGroupIds.forEach((groupId) => {
+                    guestGroupMap.set(
+                        groupId,
+                        this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
+                    );
+                });
             }
 
             // Final profile-hints fallback for legacy user documents
@@ -2332,7 +2372,18 @@ const MyGroups = {
                 // Also update user's guestGroups array
                 await window.setDoc(
                     window.doc(window.db, 'goMission_members', odId),
-                    { guestGroups: window.arrayUnion(groupId) },
+                    {
+                        guestGroups: window.arrayUnion(groupId),
+                        guestGroupMeta: {
+                            [groupId]: {
+                                groupId,
+                                name: group.name || 'Mission Group',
+                                leaderId: group.leaderId || null,
+                                approvedAt: new Date().toISOString(),
+                                approvedBy: window.currentUser.uid
+                            }
+                        }
+                    },
                     { merge: true }
                 );
                 
