@@ -1857,7 +1857,11 @@ match /goMission/sunday-videos/{allPaths=**} {
 
       const saveBtn = document.getElementById('sendAnnouncementBtn');
       saveBtn.disabled = true;
-      setInlineStatus('announcementStatus', 'Saving announcement...', 'info');
+      setInlineStatus(
+        'announcementStatus',
+        audience === 'specific_member' ? 'Sending test announcement...' : 'Saving announcement...',
+        'info'
+      );
 
       try {
         const announcementDoc = {
@@ -1874,10 +1878,7 @@ match /goMission/sunday-videos/{allPaths=**} {
           updatedAt: serverTimestamp()
         };
 
-        const savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
-        let pushSummary = 'Saved without push.';
-
-        if (pushNow) {
+        const sendPushNow = async () => {
           const callable = httpsCallable(functions, 'sendCustomNotification');
           const target = mapAudienceToNotificationTarget(audience, groupId, memberTarget?.uid || null);
 
@@ -1890,19 +1891,49 @@ match /goMission/sunday-videos/{allPaths=**} {
             notificationType: 'announcement'
           });
 
+          let summary = 'Push request completed.';
           const data = response?.data || {};
           if (typeof data.successCount === 'number' || typeof data.targetCount === 'number') {
-            pushSummary = `Push sent. Success: ${data.successCount ?? 0}, Failures: ${data.failureCount ?? 0}, Targets: ${data.targetCount ?? 0}.`;
-          } else {
-            pushSummary = 'Push request completed.';
+            summary = `Push sent. Success: ${data.successCount ?? 0}, Failures: ${data.failureCount ?? 0}, Targets: ${data.targetCount ?? 0}.`;
           }
 
           if (audience === 'specific_member' && memberTarget?.uid) {
-            pushSummary += ` Target: ${memberTarget.name || memberTarget.uid} (${memberTarget.uid}).`;
+            summary += ` Target: ${memberTarget.name || memberTarget.uid} (${memberTarget.uid}).`;
+          }
+
+          return summary;
+        };
+
+        let savedRef = null;
+        let pushSummary = 'Saved without push.';
+        const isSpecificMemberTest = audience === 'specific_member';
+
+        if (isSpecificMemberTest && pushNow) {
+          pushSummary = await sendPushNow();
+
+          try {
+            savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
+          } catch (saveError) {
+            const saveMessage = saveError?.message || String(saveError);
+            const permissionDenied = /permission/i.test(saveMessage);
+            const warningMessage = permissionDenied
+              ? 'Test push sent. Could not save announcement due to Firestore permissions.'
+              : `Test push sent, but save failed: ${saveMessage}`;
+
+            setInlineStatus('announcementStatus', `${warningMessage} ${pushSummary}`, 'warn');
+            return;
+          }
+        } else {
+          savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
+          if (pushNow) {
+            pushSummary = await sendPushNow();
           }
         }
 
-        setInlineStatus('announcementStatus', `Announcement saved (${savedRef.id}). ${pushSummary}`, 'success');
+        const saveLabel = savedRef?.id
+          ? `Announcement saved (${savedRef.id}). `
+          : '';
+        setInlineStatus('announcementStatus', `${saveLabel}${pushSummary}`, 'success');
       } catch (error) {
         setInlineStatus('announcementStatus', `Failed to save/send announcement: ${error.message}`, 'error');
       } finally {
