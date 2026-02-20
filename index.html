@@ -2584,6 +2584,9 @@
                         <p class="text-xs text-[var(--text-muted)] text-center py-3">No matches.</p>
                     </div>
                 </div>
+                <div id="chatReplyDraft" class="hidden mb-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-2">
+                    <p class="text-xs text-[var(--text-muted)]">Replying...</p>
+                </div>
 
                 <div class="flex gap-2 items-center">
                     <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
@@ -2605,6 +2608,39 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                         </svg>
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chatForwardModal" class="fixed inset-0 z-[130] hidden bg-black/70 p-4 flex items-center justify-center" onclick="if(event.target===this){ GroupChat.closeForwardModal(); }">
+        <div class="w-full max-w-md rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] max-h-[85vh] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                <h3 class="text-base font-bold text-[var(--text-color)]">Forward Message</h3>
+                <button onclick="GroupChat.closeForwardModal()" class="text-[var(--text-muted)] hover:text-[var(--text-color)]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 border-b border-[var(--card-border)]">
+                <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.12em] mb-2">Message</p>
+                <div id="chatForwardSource" class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-3 text-sm text-[var(--text-color)]">
+                    Select a message to forward.
+                </div>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[52vh] space-y-4">
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.12em] mb-2">Mission Groups</p>
+                    <div id="chatForwardGroupList" class="space-y-2">
+                        <p class="text-xs text-[var(--text-muted)]">Loading groups...</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.12em] mb-2">Direct Messages</p>
+                    <div id="chatForwardDmList" class="space-y-2">
+                        <p class="text-xs text-[var(--text-muted)]">Loading friends...</p>
+                    </div>
                 </div>
             </div>
         </div>

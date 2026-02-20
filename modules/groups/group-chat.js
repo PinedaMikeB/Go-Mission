@@ -70,6 +70,10 @@ const GroupChat = {
   mentionRange: null,
   selectedMentionsByToken: {},
   pendingFocusMessageId: null,
+  composerReplyTo: null,
+  forwardSourceMessageId: null,
+  forwardGroupTargets: {},
+  forwardDmTargets: {},
   
   /**
    * Initialize chat module
@@ -148,12 +152,16 @@ const GroupChat = {
     this.activeReactionPickerMessageId = null;
     this.mentionPickerOpen = false;
     this.selectedMentionsByToken = {};
+    this.composerReplyTo = null;
+    this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
+    this.closeForwardModal(true);
     this.renderEmojiPicker();
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
     this.renderComposerPreview('');
+    this.renderReplyDraft();
     this.syncComposerPreviewScroll({ target: input });
     
     // Update member count in header
@@ -184,11 +192,15 @@ const GroupChat = {
     this.mentionPickerOpen = false;
     this.selectedMentionsByToken = {};
     this.pendingFocusMessageId = null;
+    this.composerReplyTo = null;
+    this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
+    this.closeForwardModal(true);
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
     this.renderComposerPreview('');
+    this.renderReplyDraft();
     this.syncComposerPreviewScroll({ target: input });
     
     // Hide modal
@@ -353,6 +365,7 @@ const GroupChat = {
     
     try {
       const mentions = await this.extractMentionsFromText(trimmedText);
+      const replyTo = this.normalizeReplyPayload(this.composerReplyTo);
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
@@ -360,6 +373,7 @@ const GroupChat = {
         senderPhoto: window.currentUser.photoURL || '',
         text: trimmedText,
         type: 'text',
+        replyTo: replyTo || null,
         mentions,
         mentionedUserIds: mentions.map((mention) => mention.uid),
         createdAt: window.serverTimestamp()
@@ -378,7 +392,9 @@ const GroupChat = {
       this.closeComposeEmojiPicker(true);
       this.closeMentionPicker();
       this.selectedMentionsByToken = {};
+      this.composerReplyTo = null;
       this.renderComposerPreview('');
+      this.renderReplyDraft();
       
       // Reload messages
       await this.loadMessages();
@@ -467,12 +483,14 @@ const GroupChat = {
       if (msg.type === 'devotion') {
         // Devotion share
         html += `
-          <div id="chatMessage_${msg.id}" class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
+          <div id="chatMessage_${msg.id}" class="group mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
               <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
+                ${this.renderForwardedFlag(msg.forwardedFrom)}
+                ${this.renderReplyBlock(msg.replyTo)}
                 <div class="border-l-2 border-amber-500/50 pl-2 mb-2">
                   <p class="text-xs text-amber-500 font-bold">${msg.devotion.book} ${msg.devotion.chapter}:${msg.devotion.verses?.join(',') || ''}</p>
                   <p class="text-xs text-[var(--text-muted)] italic mt-1">"${msg.devotion.reflection}"</p>
@@ -486,12 +504,14 @@ const GroupChat = {
       } else {
         // Regular text message
         html += `
-          <div id="chatMessage_${msg.id}" class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
+          <div id="chatMessage_${msg.id}" class="group mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
               <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
+                ${this.renderForwardedFlag(msg.forwardedFrom)}
+                ${this.renderReplyBlock(msg.replyTo)}
                 <p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(msg.text || ''))}</p>
                 <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
@@ -521,6 +541,34 @@ const GroupChat = {
     setTimeout(() => {
       messageEl.classList.remove('ring-2', 'ring-amber-500/70', 'rounded-xl');
     }, 2200);
+  },
+
+  /**
+   * Render "forwarded" label for forwarded messages.
+   */
+  renderForwardedFlag(forwardedFrom) {
+    if (!forwardedFrom) return '';
+    const sourceName = this.escapeHtml(forwardedFrom.senderName || 'Someone');
+    return `
+      <p class="text-[10px] text-[var(--text-muted)] mb-1">
+        ↪ Forwarded${sourceName ? ` from ${sourceName}` : ''}
+      </p>
+    `;
+  },
+
+  /**
+   * Render quoted reply block shown inside message bubble.
+   */
+  renderReplyBlock(replyTo) {
+    if (!replyTo) return '';
+    const senderName = this.escapeHtml(replyTo.senderName || 'Someone');
+    const preview = this.highlightMentions(this.escapeHtml(replyTo.text || ''));
+    return `
+      <div class="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1">
+        <p class="text-[10px] text-amber-500 font-bold">↩ Reply to ${senderName}</p>
+        <p class="text-[11px] text-[var(--text-color)]/90 max-h-9 overflow-hidden">${preview || '<span class="italic text-[var(--text-muted)]">Original message</span>'}</p>
+      </div>
+    `;
   },
   
   /**
@@ -553,6 +601,72 @@ const GroupChat = {
       event.preventDefault();
       this.handleSend();
     }
+  },
+
+  /**
+   * Set reply target from a message.
+   */
+  replyToMessage(messageId) {
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) return;
+    this.composerReplyTo = this.normalizeReplyPayload(message);
+    this.renderReplyDraft();
+    const input = document.getElementById('chatInput');
+    if (input) input.focus();
+  },
+
+  /**
+   * Clear current reply draft.
+   */
+  clearReplyDraft() {
+    this.composerReplyTo = null;
+    this.renderReplyDraft();
+  },
+
+  /**
+   * Render reply attachment shown above the composer.
+   */
+  renderReplyDraft() {
+    const container = document.getElementById('chatReplyDraft');
+    if (!container) return;
+
+    if (!this.composerReplyTo) {
+      container.classList.add('hidden');
+      container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Replying...</p>';
+      return;
+    }
+
+    const senderName = this.escapeHtml(this.composerReplyTo.senderName || 'Someone');
+    const preview = this.highlightMentions(this.escapeHtml(this.composerReplyTo.text || ''));
+    container.classList.remove('hidden');
+    container.innerHTML = `
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-[10px] font-bold text-amber-500">↩ Replying to ${senderName}</p>
+          <p class="text-xs text-[var(--text-color)] truncate">${preview || '<span class="text-[var(--text-muted)] italic">Original message</span>'}</p>
+        </div>
+        <button onclick="GroupChat.clearReplyDraft()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] rounded-full p-1" title="Cancel reply">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+  },
+
+  /**
+   * Build reply metadata payload to store on outgoing message.
+   */
+  normalizeReplyPayload(message) {
+    if (!message || typeof message !== 'object') return null;
+    const previewText = this.buildMessagePreviewText(message, 150);
+    return {
+      messageId: message.id || null,
+      senderId: message.senderId || '',
+      senderName: message.senderName || 'Someone',
+      type: message.type || 'text',
+      text: previewText
+    };
   },
 
   /**
@@ -843,6 +957,12 @@ const GroupChat = {
           <button data-reaction-toggle="1" onclick="GroupChat.toggleReactionPicker('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40">
             😊 React
           </button>
+          <button onclick="GroupChat.replyToMessage('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40 transition-colors md:opacity-0 md:group-hover:opacity-100">
+            ↩ Reply
+          </button>
+          <button onclick="GroupChat.openForwardModal('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40 transition-colors md:opacity-0 md:group-hover:opacity-100">
+            ↪ Forward
+          </button>
         </div>
         ${pickerHtml}
       </div>
@@ -934,6 +1054,217 @@ const GroupChat = {
       this.renderMessages();
     } catch (error) {
       console.error('[GroupChat] Error toggling reaction:', error);
+    }
+  },
+
+  /**
+   * Open forward modal for selected source message.
+   */
+  async openForwardModal(messageId) {
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) return;
+
+    this.forwardSourceMessageId = messageId;
+    const modal = document.getElementById('chatForwardModal');
+    const source = document.getElementById('chatForwardSource');
+    if (!modal || !source) return;
+
+    const senderName = this.escapeHtml(message.senderName || 'Someone');
+    const preview = this.highlightMentions(this.escapeHtml(this.buildMessagePreviewText(message, 220)));
+    source.innerHTML = `
+      <p class="text-[11px] text-[var(--text-muted)] mb-1">${senderName}</p>
+      <p class="text-sm text-[var(--text-color)]">${preview}</p>
+    `;
+
+    modal.classList.remove('hidden');
+    await this.loadForwardTargets();
+    this.renderForwardTargets();
+  },
+
+  /**
+   * Close forward modal.
+   */
+  closeForwardModal(silent = false) {
+    const modal = document.getElementById('chatForwardModal');
+    if (modal) modal.classList.add('hidden');
+    this.forwardSourceMessageId = null;
+    this.forwardGroupTargets = {};
+    this.forwardDmTargets = {};
+    if (!silent && this.isOpen) {
+      const input = document.getElementById('chatInput');
+      if (input) input.focus();
+    }
+  },
+
+  /**
+   * Gather groups and direct-message threads available for forwarding.
+   */
+  async loadForwardTargets() {
+    const groupMap = new Map();
+    const pushGroup = (group) => {
+      if (!group?.id) return;
+      if (group.id === Groups.currentGroup?.id) return;
+      if (groupMap.has(group.id)) return;
+      groupMap.set(group.id, group);
+    };
+
+    if (typeof MyGroups !== 'undefined') {
+      pushGroup(MyGroups.uplineGroup);
+      (MyGroups.downlineGroups || []).forEach(pushGroup);
+      (MyGroups.guestGroups || []).forEach(pushGroup);
+    }
+
+    const groups = Array.from(groupMap.values())
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    this.forwardGroupTargets = {};
+    groups.forEach((group) => {
+      this.forwardGroupTargets[group.id] = {
+        id: group.id,
+        name: group.name || 'Mission Group',
+        memberCount: (group.members || []).length || group.currentCount || 0
+      };
+    });
+
+    let directThreads = [];
+    if (typeof ChatApp !== 'undefined') {
+      try {
+        if (typeof ChatApp.loadFriendData === 'function') {
+          await ChatApp.loadFriendData();
+        }
+        directThreads = Array.isArray(ChatApp.directThreads) ? ChatApp.directThreads : [];
+      } catch (error) {
+        console.warn('[GroupChat] Could not load direct threads for forwarding:', error);
+      }
+    }
+
+    this.forwardDmTargets = {};
+    directThreads.forEach((thread) => {
+      if (!thread?.friendId || !thread?.threadId) return;
+      this.forwardDmTargets[thread.friendId] = {
+        friendId: thread.friendId,
+        threadId: thread.threadId,
+        name: thread.name || 'Friend'
+      };
+    });
+  },
+
+  /**
+   * Render forward target buttons inside modal.
+   */
+  renderForwardTargets() {
+    const groupList = document.getElementById('chatForwardGroupList');
+    const dmList = document.getElementById('chatForwardDmList');
+    if (!groupList || !dmList) return;
+
+    const groups = Object.values(this.forwardGroupTargets);
+    const dms = Object.values(this.forwardDmTargets);
+
+    if (!groups.length) {
+      groupList.innerHTML = '<p class="text-xs text-[var(--text-muted)]">No other groups available.</p>';
+    } else {
+      groupList.innerHTML = groups.map((group) => `
+        <button onclick="GroupChat.forwardMessageToTarget('group', '${String(group.id).replace(/'/g, "\\'")}')" class="w-full text-left rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] px-3 py-2 hover:border-amber-500/45 transition-colors">
+          <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(group.name)}</p>
+          <p class="text-[11px] text-[var(--text-muted)]">${group.memberCount} members</p>
+        </button>
+      `).join('');
+    }
+
+    if (!dms.length) {
+      dmList.innerHTML = '<p class="text-xs text-[var(--text-muted)]">No direct chats yet. Add friends first.</p>';
+    } else {
+      dmList.innerHTML = dms.map((dm) => `
+        <button onclick="GroupChat.forwardMessageToTarget('dm', '${String(dm.friendId).replace(/'/g, "\\'")}')" class="w-full text-left rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] px-3 py-2 hover:border-amber-500/45 transition-colors">
+          <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(dm.name)}</p>
+          <p class="text-[11px] text-[var(--text-muted)]">Direct message</p>
+        </button>
+      `).join('');
+    }
+  },
+
+  /**
+   * Forward selected message to a group or direct thread.
+   */
+  async forwardMessageToTarget(kind, targetId) {
+    const message = this.messages.find((item) => item.id === this.forwardSourceMessageId);
+    if (!message || !targetId || !window.db || !window.currentUser) return;
+
+    const forwardText = this.buildMessagePreviewText(message, 900);
+    if (!forwardText) return;
+
+    try {
+      const senderName = window.currentUser.displayName || window.currentUser.email || 'Unknown';
+      const senderPhoto = window.currentUser.photoURL || '';
+      const forwardedFrom = {
+        messageId: message.id || null,
+        groupId: Groups.currentGroup?.id || null,
+        senderId: message.senderId || null,
+        senderName: message.senderName || 'Someone',
+        type: message.type || 'text'
+      };
+
+      if (kind === 'group') {
+        const target = this.forwardGroupTargets[targetId];
+        if (!target) return;
+
+        await window.addDoc(window.collection(window.db, 'goMission_chats'), {
+          groupId: target.id,
+          senderId: window.currentUser.uid,
+          senderName,
+          senderPhoto,
+          text: forwardText,
+          type: 'text',
+          forwardedFrom,
+          mentions: [],
+          mentionedUserIds: [],
+          createdAt: window.serverTimestamp()
+        });
+
+        await this.updateGroupThreadPreview({
+          groupId: target.id,
+          type: 'text',
+          text: forwardText,
+          senderName
+        });
+      } else if (kind === 'dm') {
+        const target = this.forwardDmTargets[targetId];
+        if (!target) return;
+        const participants = [window.currentUser.uid, target.friendId].sort();
+
+        await window.addDoc(window.collection(window.db, 'goMission_dmMessages'), {
+          threadId: target.threadId,
+          participants,
+          senderId: window.currentUser.uid,
+          senderName,
+          senderPhoto,
+          text: forwardText,
+          type: 'text',
+          forwardedFrom,
+          createdAt: window.serverTimestamp()
+        });
+
+        await window.setDoc(
+          window.doc(window.db, 'goMission_dmThreads', target.threadId),
+          {
+            participants,
+            pairKey: target.threadId,
+            lastMessageText: forwardText,
+            lastMessageSenderId: window.currentUser.uid,
+            lastMessageSenderName: senderName,
+            lastMessageAt: window.serverTimestamp(),
+            updatedAt: window.serverTimestamp()
+          },
+          { merge: true }
+        );
+      } else {
+        return;
+      }
+
+      this.closeForwardModal();
+      alert('Message forwarded.');
+    } catch (error) {
+      console.error('[GroupChat] Failed forwarding message:', error);
+      alert('Could not forward message. Please try again.');
     }
   },
 
@@ -1070,6 +1401,27 @@ const GroupChat = {
       /(^|\s)(@[a-zA-Z0-9._-]{2,32})/g,
       '$1<span class="text-amber-500 font-semibold">$2</span>'
     );
+  },
+
+  /**
+   * Build a plain-text preview for text/devotion messages.
+   */
+  buildMessagePreviewText(message, maxLength = 220) {
+    if (!message || typeof message !== 'object') return '';
+    let text = '';
+
+    if (message.type === 'devotion' && message.devotion) {
+      const devotion = message.devotion || {};
+      const ref = `${devotion.book || ''} ${devotion.chapter || ''}${Array.isArray(devotion.verses) && devotion.verses.length ? `:${devotion.verses.join(',')}` : ''}`.trim();
+      const reflection = String(devotion.reflection || '').trim();
+      text = `📖 ${ref}${reflection ? ` — ${reflection}` : ''}`.trim();
+    } else {
+      text = String(message.text || '').trim();
+    }
+
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, Math.max(1, maxLength - 1))}…`;
   },
   
   /**
@@ -1251,11 +1603,12 @@ const GroupChat = {
   /**
    * Save latest group-message preview data for inbox thread list
    */
-  async updateGroupThreadPreview({ type = 'text', text = '', senderName = '' } = {}) {
-    if (!Groups.currentGroup?.id || !window.db) return;
+  async updateGroupThreadPreview({ groupId = null, type = 'text', text = '', senderName = '' } = {}) {
+    const targetGroupId = groupId || Groups.currentGroup?.id;
+    if (!targetGroupId || !window.db) return;
     try {
       await window.setDoc(
-        window.doc(window.db, 'goMission_groups', Groups.currentGroup.id),
+        window.doc(window.db, 'goMission_groups', targetGroupId),
         {
           lastChatMessageType: type,
           lastChatMessageText: text || '',
