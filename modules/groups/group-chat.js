@@ -71,6 +71,7 @@ const GroupChat = {
   selectedMentionsByToken: {},
   pendingFocusMessageId: null,
   composerReplyTo: null,
+  composerReplyToMessageId: null,
   forwardSourceMessageId: null,
   forwardGroupTargets: {},
   forwardDmTargets: {},
@@ -153,6 +154,7 @@ const GroupChat = {
     this.mentionPickerOpen = false;
     this.selectedMentionsByToken = {};
     this.composerReplyTo = null;
+    this.composerReplyToMessageId = null;
     this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
@@ -193,6 +195,7 @@ const GroupChat = {
     this.selectedMentionsByToken = {};
     this.pendingFocusMessageId = null;
     this.composerReplyTo = null;
+    this.composerReplyToMessageId = null;
     this.forwardSourceMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
@@ -365,7 +368,10 @@ const GroupChat = {
     
     try {
       const mentions = await this.extractMentionsFromText(trimmedText);
-      const replyTo = this.normalizeReplyPayload(this.composerReplyTo);
+      const replySource = this.composerReplyToMessageId
+        ? (this.messages.find((item) => item.id === this.composerReplyToMessageId) || this.composerReplyTo)
+        : this.composerReplyTo;
+      const replyTo = this.normalizeReplyPayload(replySource);
       const message = {
         groupId: Groups.currentGroup.id,
         senderId: window.currentUser.uid,
@@ -374,6 +380,9 @@ const GroupChat = {
         text: trimmedText,
         type: 'text',
         replyTo: replyTo || null,
+        replyToMessageId: replyTo?.messageId || this.composerReplyToMessageId || null,
+        replyToSenderName: replyTo?.senderName || '',
+        replyToText: replyTo?.text || '',
         mentions,
         mentionedUserIds: mentions.map((mention) => mention.uid),
         createdAt: window.serverTimestamp()
@@ -393,6 +402,7 @@ const GroupChat = {
       this.closeMentionPicker();
       this.selectedMentionsByToken = {};
       this.composerReplyTo = null;
+      this.composerReplyToMessageId = null;
       this.renderComposerPreview('');
       this.renderReplyDraft();
       
@@ -490,7 +500,7 @@ const GroupChat = {
               <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
-                ${this.renderReplyBlock(msg.replyTo)}
+                ${this.renderReplyBlock(msg)}
                 <div class="border-l-2 border-amber-500/50 pl-2 mb-2">
                   <p class="text-xs text-amber-500 font-bold">${msg.devotion.book} ${msg.devotion.chapter}:${msg.devotion.verses?.join(',') || ''}</p>
                   <p class="text-xs text-[var(--text-muted)] italic mt-1">"${msg.devotion.reflection}"</p>
@@ -511,7 +521,7 @@ const GroupChat = {
               <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
-                ${this.renderReplyBlock(msg.replyTo)}
+                ${this.renderReplyBlock(msg)}
                 <p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(msg.text || ''))}</p>
                 <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
@@ -559,13 +569,19 @@ const GroupChat = {
   /**
    * Render quoted reply block shown inside message bubble.
    */
-  renderReplyBlock(replyTo) {
-    if (!replyTo) return '';
-    const senderName = this.escapeHtml(replyTo.senderName || 'Someone');
-    const preview = this.highlightMentions(this.escapeHtml(replyTo.text || ''));
+  renderReplyBlock(message) {
+    const replyTo = (message && typeof message.replyTo === 'object') ? message.replyTo : null;
+    const replySenderRaw = replyTo?.senderName || message?.replyToSenderName || '';
+    const replyTextRaw = replyTo?.text || message?.replyToText || '';
+    if (!replySenderRaw && !replyTextRaw) return '';
+
+    const replySender = this.escapeHtml(replySenderRaw || 'Someone');
+    const preview = this.highlightMentions(this.escapeHtml(replyTextRaw || ''));
+    const isOwnMessage = message?.senderId === window.currentUser?.uid;
+    const headline = isOwnMessage ? `↩ You replied to ${replySender}` : `↩ Replied to ${replySender}`;
     return `
-      <div class="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1">
-        <p class="text-[10px] text-amber-500 font-bold">↩ Reply to ${senderName}</p>
+      <div class="mb-2 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] px-2 py-1">
+        <p class="text-[10px] text-[var(--text-muted)] font-bold">${headline}</p>
         <p class="text-[11px] text-[var(--text-color)]/90 max-h-9 overflow-hidden">${preview || '<span class="italic text-[var(--text-muted)]">Original message</span>'}</p>
       </div>
     `;
@@ -609,6 +625,7 @@ const GroupChat = {
   replyToMessage(messageId) {
     const message = this.messages.find((item) => item.id === messageId);
     if (!message) return;
+    this.composerReplyToMessageId = messageId;
     this.composerReplyTo = this.normalizeReplyPayload(message);
     this.renderReplyDraft();
     const input = document.getElementById('chatInput');
@@ -620,6 +637,7 @@ const GroupChat = {
    */
   clearReplyDraft() {
     this.composerReplyTo = null;
+    this.composerReplyToMessageId = null;
     this.renderReplyDraft();
   },
 
@@ -661,10 +679,10 @@ const GroupChat = {
     if (!message || typeof message !== 'object') return null;
     const previewText = this.buildMessagePreviewText(message, 150);
     return {
-      messageId: message.id || null,
-      senderId: message.senderId || '',
-      senderName: message.senderName || 'Someone',
-      type: message.type || 'text',
+      messageId: message.id || message.messageId || message.replyToMessageId || null,
+      senderId: message.senderId || message.replyToSenderId || '',
+      senderName: message.senderName || message.replyToSenderName || 'Someone',
+      type: message.type || message.replyToType || 'text',
       text: previewText
     };
   },
@@ -1415,6 +1433,8 @@ const GroupChat = {
       const ref = `${devotion.book || ''} ${devotion.chapter || ''}${Array.isArray(devotion.verses) && devotion.verses.length ? `:${devotion.verses.join(',')}` : ''}`.trim();
       const reflection = String(devotion.reflection || '').trim();
       text = `📖 ${ref}${reflection ? ` — ${reflection}` : ''}`.trim();
+    } else if (typeof message.replyToText === 'string' && message.replyToText.trim()) {
+      text = message.replyToText.trim();
     } else {
       text = String(message.text || '').trim();
     }
