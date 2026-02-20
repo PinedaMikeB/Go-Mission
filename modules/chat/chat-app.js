@@ -533,10 +533,16 @@ const ChatApp = {
   /**
    * Open selected group chat
    */
-  openGroupChat(groupId) {
-    if (!groupId) return;
-    const groupThread = this.groupThreads.find((thread) => thread.id === groupId);
-    if (!groupThread) return;
+  openGroupChat(groupId, focusMessageId = null) {
+    if (!groupId) return false;
+    let groupThread = this.groupThreads.find((thread) => thread.id === groupId);
+    if (!groupThread) {
+      const group = this.groups.find((item) => item?.id === groupId);
+      if (group) {
+        groupThread = { id: groupId, group };
+      }
+    }
+    if (!groupThread?.group) return false;
 
     if (typeof Groups !== 'undefined') {
       Groups.currentGroup = groupThread.group;
@@ -544,11 +550,15 @@ const ChatApp = {
 
     this.close();
     if (typeof GroupChat !== 'undefined' && typeof GroupChat.open === 'function') {
+      if (focusMessageId) {
+        GroupChat.pendingFocusMessageId = focusMessageId;
+      }
       GroupChat.open();
       if (typeof Notifications !== 'undefined') {
         Notifications.markAsRead();
       }
     }
+    return true;
   },
 
   /**

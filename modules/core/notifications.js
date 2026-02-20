@@ -19,6 +19,7 @@ const Notifications = {
   groupWatchSyncInterval: null,
   seenMessageIds: new Set(),
   seenMessageOrder: [],
+  lastUnreadTarget: null,
   toastQueue: [],
   isProcessingQueue: false,
   
@@ -53,6 +54,7 @@ const Notifications = {
     
     await this.refreshGroupSubscriptions();
     this.startGroupWatchSync();
+    this.lastUnreadTarget = null;
     
     console.log('[Notifications] Ready');
   },
@@ -251,6 +253,55 @@ const Notifications = {
   },
   
   /**
+   * Remember the newest unread thread target for quick navigation.
+   */
+  setLastUnreadTarget(target = null) {
+    if (!target || typeof target !== 'object') return;
+    this.lastUnreadTarget = {
+      ...target,
+      capturedAt: Date.now()
+    };
+  },
+
+  /**
+   * Open the most recent unread target; fallback to Messages inbox.
+   */
+  openLastUnreadTarget() {
+    const target = this.lastUnreadTarget;
+    this.lastUnreadTarget = null;
+
+    if (!target) {
+      if (typeof ChatApp !== 'undefined' && typeof ChatApp.open === 'function') {
+        ChatApp.open();
+      }
+      return;
+    }
+
+    if (target.type === 'group' && target.groupId) {
+      this.openGroupFromNotification(target.groupId, target.messageId || null);
+      return;
+    }
+
+    if (target.type === 'dm' && target.senderId) {
+      if (typeof ChatApp !== 'undefined' && typeof ChatApp.openDirectChat === 'function') {
+        Promise.resolve(ChatApp.open())
+          .then(() => {
+            ChatApp.setTab?.('direct');
+            return ChatApp.openDirectChat(target.senderId);
+          })
+          .catch((error) => {
+            console.warn('[Notifications] Could not open DM from unread target:', error);
+          });
+      }
+      return;
+    }
+
+    if (typeof ChatApp !== 'undefined' && typeof ChatApp.open === 'function') {
+      ChatApp.open();
+    }
+  },
+
+  /**
    * Handle new incoming message
    */
   handleNewMessage(message, groupIdOverride = null) {
@@ -282,6 +333,11 @@ const Notifications = {
     
     // Increment unread count
     this.unreadCount++;
+    this.setLastUnreadTarget({
+      type: 'group',
+      groupId,
+      messageId: message.id || null
+    });
     this.updateBadge();
     
     // Show toast notification
@@ -294,7 +350,7 @@ const Notifications = {
             ? `mentioned you: ${this.truncate(message.text, 70)}`
             : this.truncate(message.text, 50),
         icon: message.senderPhoto,
-        onClick: () => this.openGroupFromNotification(groupId)
+        onClick: () => this.openGroupFromNotification(groupId, message.id || null)
       });
     }
     
@@ -312,7 +368,7 @@ const Notifications = {
   /**
    * Open a specific group thread from notification context
    */
-  openGroupFromNotification(groupId) {
+  openGroupFromNotification(groupId, messageId = null) {
     if (!groupId) return;
 
     const group = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
@@ -321,13 +377,22 @@ const Notifications = {
 
     if (group && typeof Groups !== 'undefined') {
       Groups.currentGroup = group;
+      if (typeof GroupChat !== 'undefined') {
+        GroupChat.pendingFocusMessageId = messageId || null;
+      }
       GroupChat?.open?.();
       return;
     }
 
     if (typeof ChatApp !== 'undefined') {
       Promise.resolve(ChatApp.open())
-        .then(() => ChatApp.setTab?.('groups'))
+        .then(() => {
+          if (typeof ChatApp.openGroupChat === 'function') {
+            const opened = ChatApp.openGroupChat(groupId, messageId || null);
+            if (opened) return;
+          }
+          ChatApp.setTab?.('groups');
+        })
         .catch((error) => {
           console.warn('[Notifications] Could not open group from notification:', error);
         });
@@ -346,6 +411,12 @@ const Notifications = {
     let onClick = typeof notification.onClick === 'function' ? notification.onClick : null;
 
     if (!onClick && (type === 'dm' || type === 'direct_message') && data.senderId) {
+      this.setLastUnreadTarget({
+        type: 'dm',
+        senderId: data.senderId,
+        threadId: data.threadId || null,
+        messageId: data.messageId || null
+      });
       onClick = () => {
         if (typeof ChatApp !== 'undefined' && typeof ChatApp.openDirectChat === 'function') {
           Promise.resolve(ChatApp.open())
@@ -361,7 +432,12 @@ const Notifications = {
     }
 
     if (!onClick && (type === 'chat' || type === 'chat_mention') && data.groupId) {
-      onClick = () => this.openGroupFromNotification(data.groupId);
+      this.setLastUnreadTarget({
+        type: 'group',
+        groupId: data.groupId,
+        messageId: data.messageId || null
+      });
+      onClick = () => this.openGroupFromNotification(data.groupId, data.messageId || null);
     }
 
     // Prevent duplicate chat alerts when chat module already handles them.
@@ -526,6 +602,7 @@ const Notifications = {
    */
   markAsRead() {
     this.unreadCount = 0;
+    this.lastUnreadTarget = null;
     this.lastReadTimestamp = new Date();
     localStorage.setItem(`lastRead_${window.currentUser?.uid}`, this.lastReadTimestamp.toISOString());
     this.updateBadge();
@@ -609,6 +686,7 @@ const Notifications = {
     this.groupWatchSignature = '';
     this.seenMessageIds.clear();
     this.seenMessageOrder = [];
+    this.lastUnreadTarget = null;
   },
   
   // Utility functions

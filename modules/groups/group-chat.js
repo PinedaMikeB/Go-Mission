@@ -69,6 +69,7 @@ const GroupChat = {
   mentionQuery: '',
   mentionRange: null,
   selectedMentionsByToken: {},
+  pendingFocusMessageId: null,
   
   /**
    * Initialize chat module
@@ -150,6 +151,10 @@ const GroupChat = {
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
     this.renderEmojiPicker();
+    const input = document.getElementById('chatInput');
+    if (input) input.value = '';
+    this.renderComposerPreview('');
+    this.syncComposerPreviewScroll({ target: input });
     
     // Update member count in header
     this.updateMemberCount();
@@ -178,8 +183,13 @@ const GroupChat = {
     this.activeReactionPickerMessageId = null;
     this.mentionPickerOpen = false;
     this.selectedMentionsByToken = {};
+    this.pendingFocusMessageId = null;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
+    const input = document.getElementById('chatInput');
+    if (input) input.value = '';
+    this.renderComposerPreview('');
+    this.syncComposerPreviewScroll({ target: input });
     
     // Hide modal
     const modal = document.getElementById('chatModal');
@@ -368,6 +378,7 @@ const GroupChat = {
       this.closeComposeEmojiPicker(true);
       this.closeMentionPicker();
       this.selectedMentionsByToken = {};
+      this.renderComposerPreview('');
       
       // Reload messages
       await this.loadMessages();
@@ -456,7 +467,7 @@ const GroupChat = {
       if (msg.type === 'devotion') {
         // Devotion share
         html += `
-          <div class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
+          <div id="chatMessage_${msg.id}" class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
@@ -475,7 +486,7 @@ const GroupChat = {
       } else {
         // Regular text message
         html += `
-          <div class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
+          <div id="chatMessage_${msg.id}" class="mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
             <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
               <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
                    class="w-8 h-8 rounded-full flex-shrink-0">
@@ -492,6 +503,24 @@ const GroupChat = {
     }
     
     container.innerHTML = html;
+    if (this.pendingFocusMessageId) {
+      this.focusMessage(this.pendingFocusMessageId);
+      this.pendingFocusMessageId = null;
+    }
+  },
+
+  /**
+   * Bring a specific message into view and pulse-highlight it briefly.
+   */
+  focusMessage(messageId) {
+    if (!messageId) return;
+    const messageEl = document.getElementById(`chatMessage_${messageId}`);
+    if (!messageEl) return;
+    messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    messageEl.classList.add('ring-2', 'ring-amber-500/70', 'rounded-xl');
+    setTimeout(() => {
+      messageEl.classList.remove('ring-2', 'ring-amber-500/70', 'rounded-xl');
+    }, 2200);
   },
   
   /**
@@ -532,7 +561,63 @@ const GroupChat = {
   async handleInputChange(event) {
     const input = event?.target || document.getElementById('chatInput');
     if (!input) return;
+    this.renderComposerPreview(input.value || '');
+    this.syncComposerPreviewScroll({ target: input });
     await this.renderMentionSuggestions(input.value || '', input.selectionStart ?? input.value.length);
+  },
+
+  /**
+   * Keep highlighted preview aligned with horizontal input scrolling.
+   */
+  syncComposerPreviewScroll(event) {
+    const input = event?.target || document.getElementById('chatInput');
+    const previewText = document.getElementById('chatInputPreviewText');
+    if (!input || !previewText) return;
+    previewText.style.transform = `translateX(${-1 * (input.scrollLeft || 0)}px)`;
+  },
+
+  /**
+   * Render compose text preview with mention highlighting.
+   */
+  renderComposerPreview(text = null) {
+    const input = document.getElementById('chatInput');
+    const previewText = document.getElementById('chatInputPreviewText');
+    if (!previewText) return;
+
+    const value = text !== null ? String(text) : (input?.value || '');
+    previewText.innerHTML = this.renderComposerPreviewHtml(value);
+  },
+
+  /**
+   * Build highlighted HTML for compose preview layer.
+   */
+  renderComposerPreviewHtml(text = '') {
+    const escaped = this.escapeHtml(String(text || ''));
+    if (!escaped) return '';
+
+    return escaped.replace(
+      /(^|\s)(@[a-zA-Z0-9._-]{2,32})/g,
+      (match, prefix, mention) => {
+        const token = this.normalizeMentionToken(mention);
+        const isResolved = this.isMentionTokenResolved(token);
+        const mentionClass = isResolved ? 'text-amber-500 font-semibold' : 'text-[var(--text-color)]';
+        return `${prefix}<span class="${mentionClass}">${mention}</span>`;
+      }
+    );
+  },
+
+  /**
+   * Determine if a typed mention token resolves to a group member.
+   */
+  isMentionTokenResolved(token) {
+    if (!token) return false;
+    if (this.selectedMentionsByToken[token]) return true;
+
+    const senderId = window.currentUser?.uid;
+    return (this.groupMemberDirectory || []).some((member) => {
+      if (!member || member.uid === senderId) return false;
+      return (member.aliases || []).includes(token) || (member.aliases || []).some((alias) => alias.startsWith(token));
+    });
   },
 
   /**
@@ -576,6 +661,7 @@ const GroupChat = {
     }
 
     await this.loadGroupMemberDirectory();
+    this.renderComposerPreview(text);
     const directory = this.groupMemberDirectory || [];
     const senderId = window.currentUser?.uid;
     const query = mention.query || '';
@@ -638,6 +724,8 @@ const GroupChat = {
     };
 
     this.closeMentionPicker();
+    this.renderComposerPreview(nextValue);
+    this.syncComposerPreviewScroll({ target: input });
   },
 
   /**
@@ -721,6 +809,8 @@ const GroupChat = {
     const nextPos = start + emoji.length;
     input.setSelectionRange(nextPos, nextPos);
     input.focus();
+    this.renderComposerPreview(input.value);
+    this.syncComposerPreviewScroll({ target: input });
     this.renderMentionSuggestions(input.value, nextPos);
   },
 

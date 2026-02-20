@@ -2242,7 +2242,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Bible</span>
                 </button>
                 <!-- Messages -->
-                <button id="bottomNavMessagesBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.ChatApp && window.ChatApp.open && window.ChatApp.open()">
+                <button id="bottomNavMessagesBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="(window.Notifications && window.Notifications.openLastUnreadTarget) ? window.Notifications.openLastUnreadTarget() : (window.ChatApp && window.ChatApp.open && window.ChatApp.open())">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
@@ -2589,10 +2589,19 @@
                     <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
                         😊
                     </button>
-                    <input type="text" id="chatInput" placeholder="Type a message..." 
-                           class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
-                           oninput="GroupChat.handleInputChange(event)"
-                           onkeypress="GroupChat.handleKeyPress(event)">
+                    <div class="flex-1 relative">
+                        <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[var(--text-color)] whitespace-pre overflow-hidden rounded-xl">
+                            <span id="chatInputPreviewText" class="inline-block min-w-full"></span>
+                        </div>
+                        <input type="text" id="chatInput" placeholder="Type a message..." 
+                               class="relative z-10 w-full bg-transparent border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-transparent placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
+                               style="caret-color: var(--text-color);"
+                               oninput="GroupChat.handleInputChange(event)"
+                               onscroll="GroupChat.syncComposerPreviewScroll(event)"
+                               onkeyup="GroupChat.syncComposerPreviewScroll(event)"
+                               onclick="GroupChat.syncComposerPreviewScroll(event)"
+                               onkeypress="GroupChat.handleKeyPress(event)">
+                    </div>
                     <button onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 h-12 rounded-xl font-bold hover:bg-amber-400 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
