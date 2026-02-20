@@ -1056,6 +1056,7 @@ const LeaderDashboard = {
           </div>
           ` : ''}
 
+          ${isDownlineView ? `
           <!-- All Members -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
             <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
@@ -1125,6 +1126,7 @@ const LeaderDashboard = {
               `}
             </div>
           </div>
+          ` : ''}
 
           <!-- Group Status -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
