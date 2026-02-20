@@ -192,13 +192,28 @@ const InstallModal = {
         this.isInstalled = this.checkIfInstalled();
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');
+        const deepLinkKeys = [
+            'openAnnouncement',
+            'announcementTitle',
+            'announcementBody',
+            'announcementId',
+            'openChat',
+            'openChatMessage',
+            'openDmWith',
+            'openMessages',
+            'openDevotion',
+            'join'
+        ];
+        const hasDeepLinkParams = deepLinkKeys.some((key) => params.has(key));
         
         // PWA SELF-CALIBRATION: If running as PWA, ensure clean URL and skip install
         if (this.isInstalled) {
             // Clean any URL parameters when running as installed PWA
-            if (window.location.search || window.location.pathname !== '/') {
+            if ((window.location.search || window.location.pathname !== '/') && !hasDeepLinkParams) {
                 console.log('[InstallModal] PWA detected with dirty URL, cleaning...');
                 window.history.replaceState({}, '', '/');
+            } else if (hasDeepLinkParams) {
+                console.log('[InstallModal] Preserving deep-link params for launch routing');
             }
         }
         

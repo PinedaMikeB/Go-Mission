@@ -15,7 +15,7 @@
 // ============================================
 // 🔥 AUTO-UPDATING VERSION - Changes every deploy
 // ============================================
-const CACHE_VERSION = 'v20260127-2137';
+const CACHE_VERSION = 'v20260221-0048';
 const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
 
 // Files to cache for offline
@@ -244,6 +244,7 @@ self.addEventListener('notificationclick', (event) => {
     let url = '/';
     const announcementTitle = String(data.notificationTitle || event.notification.title || '').trim();
     const announcementBody = String(data.notificationBody || event.notification.body || '').trim();
+    const hasAnnouncementContent = Boolean(announcementTitle || announcementBody);
     
     if (data.type === 'chat' && data.groupId) {
         url = '/?openChat=' + encodeURIComponent(data.groupId);
@@ -259,7 +260,7 @@ self.addEventListener('notificationclick', (event) => {
         url = '/?openMessages=direct&openDmWith=' + encodeURIComponent(data.senderId);
     } else if (data.type === 'devotion') {
         url = '/?openDevotion=true';
-    } else if (data.type === 'announcement') {
+    } else if (data.type === 'announcement' || (!data.type && hasAnnouncementContent)) {
         url = '/?openAnnouncement=1&openMessages=groups';
         if (announcementTitle) {
             url += '&announcementTitle=' + encodeURIComponent(announcementTitle.slice(0, 180));
