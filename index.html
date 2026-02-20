@@ -2846,6 +2846,70 @@
             }
         }
 
+        function showAnnouncementFromPush(title, body) {
+            const modalId = 'pushAnnouncementModal';
+            const existing = document.getElementById(modalId);
+            if (existing) existing.remove();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = modalId;
+            wrapper.className = 'fixed inset-0 z-[220] bg-black/70 p-4 flex items-end sm:items-center justify-center';
+
+            const card = document.createElement('div');
+            card.className = 'w-full max-w-lg rounded-2xl border border-amber-500/35 bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden';
+
+            const header = document.createElement('div');
+            header.className = 'px-5 py-4 border-b border-amber-500/20 flex items-center justify-between gap-3';
+
+            const titleEl = document.createElement('p');
+            titleEl.className = 'text-sm font-black uppercase tracking-wide text-amber-400';
+            titleEl.textContent = title || 'Go Mission Update';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-lg border border-amber-500/35 text-amber-300 hover:bg-amber-500/10';
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => wrapper.remove());
+
+            header.appendChild(titleEl);
+            header.appendChild(closeBtn);
+
+            const bodyWrap = document.createElement('div');
+            bodyWrap.className = 'px-5 py-4 max-h-[50vh] overflow-y-auto';
+
+            const bodyEl = document.createElement('p');
+            bodyEl.className = 'text-[var(--text-color)] text-sm leading-relaxed whitespace-pre-wrap';
+            bodyEl.textContent = body || 'Open the app for the latest update.';
+            bodyWrap.appendChild(bodyEl);
+
+            const footer = document.createElement('div');
+            footer.className = 'px-5 py-4 border-t border-amber-500/20';
+
+            const openMessagesBtn = document.createElement('button');
+            openMessagesBtn.type = 'button';
+            openMessagesBtn.className = 'w-full py-3 rounded-xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-black text-sm uppercase tracking-wide';
+            openMessagesBtn.textContent = 'Open Messages';
+            openMessagesBtn.addEventListener('click', async () => {
+                if (typeof ChatApp !== 'undefined' && typeof ChatApp.open === 'function') {
+                    await ChatApp.open();
+                    ChatApp.setTab?.('groups');
+                }
+                wrapper.remove();
+            });
+
+            footer.appendChild(openMessagesBtn);
+            card.appendChild(header);
+            card.appendChild(bodyWrap);
+            card.appendChild(footer);
+            wrapper.appendChild(card);
+
+            wrapper.addEventListener('click', (event) => {
+                if (event.target === wrapper) wrapper.remove();
+            });
+
+            document.body.appendChild(wrapper);
+        }
+
         window.triggerProfilePhotoPicker = function() {
             if (isProfilePhotoUploading) return;
             if (!window.currentUser?.uid) {
@@ -3036,6 +3100,9 @@
                     const openChatMessageId = urlParams.get('openChatMessage');
                     const openDmWith = urlParams.get('openDmWith');
                     const openMessagesTab = urlParams.get('openMessages');
+                    const openAnnouncement = urlParams.get('openAnnouncement');
+                    const announcementTitle = urlParams.get('announcementTitle');
+                    const announcementBody = urlParams.get('announcementBody');
                     const joinCode = urlParams.get('join');
 
                     if (openChatGroupId) {
@@ -3095,8 +3162,17 @@
                         }, 200);
                     }
 
+                    if ((openAnnouncement === '1' || announcementTitle || announcementBody) && !openChatGroupId && !openDmWith) {
+                        setTimeout(() => {
+                            showAnnouncementFromPush(
+                                announcementTitle || 'Go Mission Update',
+                                announcementBody || 'You have a new announcement.'
+                            );
+                        }, 220);
+                    }
+
                     // Clear one-time URL parameters.
-                    if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || joinCode) {
+                    if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || openAnnouncement || announcementTitle || announcementBody || joinCode) {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                     

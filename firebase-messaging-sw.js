@@ -203,14 +203,20 @@ messaging.onBackgroundMessage((payload) => {
     console.log('[SW] Background message:', payload);
     
     const title = payload.notification?.title || 'Go Mission';
+    const body = payload.notification?.body || 'You have a new notification';
+    const payloadData = (payload.data && typeof payload.data === 'object') ? payload.data : {};
     const options = {
-        body: payload.notification?.body || 'You have a new notification',
+        body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-        tag: payload.data?.type || 'default',
-        data: payload.data,
+        tag: payloadData.type || 'default',
+        data: {
+            ...payloadData,
+            notificationTitle: title,
+            notificationBody: body
+        },
         vibrate: [100, 50, 100],
-        actions: getNotificationActions(payload.data?.type)
+        actions: getNotificationActions(payloadData.type)
     };
     
     return self.registration.showNotification(title, options);
@@ -236,6 +242,8 @@ self.addEventListener('notificationclick', (event) => {
     
     const data = event.notification.data || {};
     let url = '/';
+    const announcementTitle = String(data.notificationTitle || event.notification.title || '').trim();
+    const announcementBody = String(data.notificationBody || event.notification.body || '').trim();
     
     if (data.type === 'chat' && data.groupId) {
         url = '/?openChat=' + encodeURIComponent(data.groupId);
@@ -251,6 +259,17 @@ self.addEventListener('notificationclick', (event) => {
         url = '/?openMessages=direct&openDmWith=' + encodeURIComponent(data.senderId);
     } else if (data.type === 'devotion') {
         url = '/?openDevotion=true';
+    } else if (data.type === 'announcement') {
+        url = '/?openAnnouncement=1&openMessages=groups';
+        if (announcementTitle) {
+            url += '&announcementTitle=' + encodeURIComponent(announcementTitle.slice(0, 180));
+        }
+        if (announcementBody) {
+            url += '&announcementBody=' + encodeURIComponent(announcementBody.slice(0, 2000));
+        }
+        if (data.announcementId) {
+            url += '&announcementId=' + encodeURIComponent(data.announcementId);
+        }
     }
     
     event.waitUntil(
