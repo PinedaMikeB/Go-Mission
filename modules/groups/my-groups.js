@@ -13,6 +13,29 @@ const MyGroups = {
     openedFromDashboard: false,
     pendingRequestsCount: 0,
     dashboardTab: 'downline', // 'downline' | 'upline'
+
+    /**
+     * Resolve guest user id across schemas
+     */
+    getGuestUserId(guest) {
+        return guest?.odId || guest?.uid || guest?.id || null;
+    },
+
+    /**
+     * Check if a user is listed in a group's guests array
+     */
+    isUserGuestInGroupData(groupData, userId) {
+        if (!groupData || !Array.isArray(groupData.guests) || !userId) return false;
+        return groupData.guests.some((guest) => this.getGuestUserId(guest) === userId);
+    },
+
+    /**
+     * Find guest object by user id
+     */
+    findGuestInGroup(group, guestId) {
+        if (!group || !Array.isArray(group.guests) || !guestId) return null;
+        return group.guests.find((guest) => this.getGuestUserId(guest) === guestId) || null;
+    },
     
     /**
      * Initialize module
@@ -32,38 +55,49 @@ const MyGroups = {
         if (!window.currentUser) return;
         
         try {
+            const uid = window.currentUser.uid;
+            this.uplineGroup = null;
             const userDoc = await window.getDoc(
-                window.doc(window.db, 'goMission_members', window.currentUser.uid)
+                window.doc(window.db, 'goMission_members', uid)
             );
             
             if (!userDoc.exists()) return;
             
             const userData = userDoc.data();
             
-            // Load upline group
-            if (userData.uplineGroupId) {
+            // Load upline/member group (supports legacy userData.groupId)
+            const memberGroupId = userData.uplineGroupId || userData.groupId || null;
+            if (memberGroupId) {
                 const uplineDoc = await window.getDoc(
-                    window.doc(window.db, 'goMission_groups', userData.uplineGroupId)
+                    window.doc(window.db, 'goMission_groups', memberGroupId)
                 );
                 if (uplineDoc.exists()) {
                     const groupData = uplineDoc.data();
                     // Verify user is still a member of this group
-                    const isMember = groupData.members?.includes(window.currentUser.uid);
-                    const isGuest = groupData.guests?.some(g => g.odId === window.currentUser.uid);
+                    const isMember = groupData.members?.includes(uid);
+                    const isGuest = this.isUserGuestInGroupData(groupData, uid);
                     
                     if (isMember || isGuest) {
                         this.uplineGroup = { id: uplineDoc.id, ...groupData };
+                        // Backfill canonical field for legacy profiles.
+                        if (!userData.uplineGroupId && userData.groupId) {
+                            await window.setDoc(
+                                window.doc(window.db, 'goMission_members', uid),
+                                { uplineGroupId: userData.groupId },
+                                { merge: true }
+                            );
+                        }
                         // Also set Groups.currentGroup for chat
                         if (typeof Groups !== 'undefined') {
                             Groups.currentGroup = this.uplineGroup;
                         }
                     } else {
-                        // User was removed - clear their uplineGroupId
-                        console.log('[MyGroups] User was removed from upline group, clearing reference');
+                        // User was removed - clear stale member-group references
+                        console.log('[MyGroups] User was removed from member group, clearing references');
                         this.uplineGroup = null;
                         await window.setDoc(
-                            window.doc(window.db, 'goMission_members', window.currentUser.uid),
-                            { uplineGroupId: null },
+                            window.doc(window.db, 'goMission_members', uid),
+                            { uplineGroupId: null, groupId: null },
                             { merge: true }
                         );
                     }
@@ -71,17 +105,46 @@ const MyGroups = {
                     // Group doesn't exist anymore
                     this.uplineGroup = null;
                     await window.setDoc(
-                        window.doc(window.db, 'goMission_members', window.currentUser.uid),
-                        { uplineGroupId: null },
+                        window.doc(window.db, 'goMission_members', uid),
+                        { uplineGroupId: null, groupId: null },
                         { merge: true }
                     );
+                }
+            }
+
+            // Recovery path for member profiles with missing uplineGroupId/groupId.
+            if (!this.uplineGroup) {
+                try {
+                    const memberQuery = window.query(
+                        window.collection(window.db, 'goMission_groups'),
+                        window.where('members', 'array-contains', uid)
+                    );
+                    const memberSnapshot = await window.getDocs(memberQuery);
+                    const memberGroupDoc = memberSnapshot.docs.find((doc) => {
+                        const data = doc.data() || {};
+                        return data.leaderId !== uid;
+                    }) || null;
+
+                    if (memberGroupDoc) {
+                        this.uplineGroup = { id: memberGroupDoc.id, ...memberGroupDoc.data() };
+                        await window.setDoc(
+                            window.doc(window.db, 'goMission_members', uid),
+                            { uplineGroupId: memberGroupDoc.id, groupId: memberGroupDoc.id },
+                            { merge: true }
+                        );
+                        if (typeof Groups !== 'undefined') {
+                            Groups.currentGroup = this.uplineGroup;
+                        }
+                    }
+                } catch (memberRecoveryError) {
+                    console.warn('[MyGroups] Member recovery query failed:', memberRecoveryError);
                 }
             }
             
             // Load downline groups (where user is leader)
             const downlineQuery = window.query(
                 window.collection(window.db, 'goMission_groups'),
-                window.where('leaderId', '==', window.currentUser.uid)
+                window.where('leaderId', '==', uid)
             );
             const downlineSnapshot = await window.getDocs(downlineQuery);
             this.downlineGroups = downlineSnapshot.docs.map(doc => ({
@@ -91,8 +154,13 @@ const MyGroups = {
             
             // Load guest groups (where user is in guests array)
             this.guestGroups = [];
-            if (userData.guestGroups?.length > 0) {
-                for (const groupId of userData.guestGroups) {
+            const guestGroupMap = new Map();
+            const declaredGuestGroupIds = Array.isArray(userData.guestGroups)
+                ? [...new Set(userData.guestGroups.filter(Boolean))]
+                : [];
+
+            if (declaredGuestGroupIds.length > 0) {
+                for (const groupId of declaredGuestGroupIds) {
                     try {
                         const guestGroupDoc = await window.getDoc(
                             window.doc(window.db, 'goMission_groups', groupId)
@@ -100,8 +168,8 @@ const MyGroups = {
                         if (guestGroupDoc.exists()) {
                             const groupData = guestGroupDoc.data();
                             // Verify user is still a guest
-                            if (groupData.guests?.some(g => g.odId === window.currentUser.uid)) {
-                                this.guestGroups.push({ id: guestGroupDoc.id, ...groupData });
+                            if (this.isUserGuestInGroupData(groupData, uid)) {
+                                guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
                             }
                         }
                     } catch (e) {
@@ -109,6 +177,36 @@ const MyGroups = {
                     }
                 }
             }
+
+            // Recovery path: handle legacy data where member.guestGroups is missing or stale.
+            // This ensures guest groups still appear in My Mission Groups modal.
+            if (guestGroupMap.size === 0) {
+                try {
+                    const allGroupsSnapshot = await window.getDocs(
+                        window.collection(window.db, 'goMission_groups')
+                    );
+                    allGroupsSnapshot.forEach((groupDoc) => {
+                        const groupData = groupDoc.data();
+                        if (this.isUserGuestInGroupData(groupData, uid)) {
+                            guestGroupMap.set(groupDoc.id, { id: groupDoc.id, ...groupData });
+                        }
+                    });
+
+                    const recoveredGroupIds = [...guestGroupMap.keys()]
+                        .filter((groupId) => !declaredGuestGroupIds.includes(groupId));
+                    if (recoveredGroupIds.length > 0) {
+                        await window.setDoc(
+                            window.doc(window.db, 'goMission_members', uid),
+                            { guestGroups: window.arrayUnion(...recoveredGroupIds) },
+                            { merge: true }
+                        );
+                    }
+                } catch (scanError) {
+                    console.warn('[MyGroups] Guest recovery scan failed:', scanError);
+                }
+            }
+
+            this.guestGroups = [...guestGroupMap.values()];
             
             console.log('[MyGroups] Loaded:', {
                 upline: this.uplineGroup?.name || 'None',
@@ -148,7 +246,7 @@ const MyGroups = {
     countPendingRequests() {
         let total = 0;
         for (const group of this.downlineGroups) {
-            total += (group.joinRequests?.length || 0);
+            total += this.getUnifiedJoinRequests(group).length;
         }
         this.pendingRequestsCount = total;
         return total;
@@ -265,11 +363,13 @@ const MyGroups = {
         this.updateBadges();
 
         // Choose a sensible default tab based on available groups.
-        // If user has no downline groups but has an upline group, default to upline.
-        if (this.dashboardTab === 'downline' && !(this.downlineGroups?.length) && this.uplineGroup) {
+        // If user has no downline groups but has upline or guest groups, default to upline.
+        if (this.dashboardTab === 'downline'
+            && !(this.downlineGroups?.length)
+            && (this.uplineGroup || (this.guestGroups?.length > 0))) {
             this.dashboardTab = 'upline';
         }
-        if (this.dashboardTab === 'upline' && !this.uplineGroup) {
+        if (this.dashboardTab === 'upline' && !this.uplineGroup && !(this.guestGroups?.length)) {
             this.dashboardTab = 'downline';
         }
 
@@ -351,6 +451,67 @@ const MyGroups = {
             month: 'short',
             day: 'numeric'
         });
+    },
+
+    /**
+     * Normalize join request shape across legacy (pendingRequests) and current (joinRequests)
+     */
+    normalizeJoinRequest(request, source = 'joinRequests') {
+        if (!request || typeof request !== 'object') return null;
+        const odId = request.odId || request.uid || null;
+        if (!odId) return null;
+
+        return {
+            ...request,
+            odId,
+            uid: odId,
+            name: request.name || request.displayName || 'Unknown',
+            email: request.email || '',
+            photo: request.photo || request.photoURL || '',
+            requestedAt: request.requestedAt || request.createdAt || null,
+            hasExistingGroup: request.hasExistingGroup === true,
+            existingGroupId: request.existingGroupId || null,
+            existingGroupName: request.existingGroupName || null,
+            existingLeaderName: request.existingLeaderName || null,
+            _requestSource: source
+        };
+    },
+
+    /**
+     * Get deduped requests from both joinRequests and pendingRequests
+     */
+    getUnifiedJoinRequests(group) {
+        if (!group) return [];
+
+        const out = [];
+        const seen = new Set();
+        const pushUnique = (request, source) => {
+            const normalized = this.normalizeJoinRequest(request, source);
+            if (!normalized || seen.has(normalized.odId)) return;
+            seen.add(normalized.odId);
+            out.push(normalized);
+        };
+
+        const joinRequests = Array.isArray(group.joinRequests) ? group.joinRequests : [];
+        const pendingRequests = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+
+        joinRequests.forEach((request) => pushUnique(request, 'joinRequests'));
+        pendingRequests.forEach((request) => pushUnique(request, 'pendingRequests'));
+
+        return out;
+    },
+
+    /**
+     * Remove request from both request arrays
+     */
+    getRequestsAfterRemoval(group, odId) {
+        const removeId = String(odId || '');
+        const keep = (request) => String(request?.odId || request?.uid || '') !== removeId;
+
+        return {
+            joinRequests: (Array.isArray(group?.joinRequests) ? group.joinRequests : []).filter(keep),
+            pendingRequests: (Array.isArray(group?.pendingRequests) ? group.pendingRequests : []).filter(keep)
+        };
     },
 
     /**
@@ -589,6 +750,7 @@ const MyGroups = {
         const allGroups = [];
         if (tab === 'upline') {
             if (this.uplineGroup) allGroups.push({ ...this.uplineGroup, role: 'upline' });
+            this.guestGroups.forEach((group) => allGroups.push({ ...group, role: 'guest' }));
         } else {
             this.downlineGroups.forEach((group) => allGroups.push({ ...group, role: 'downline' }));
         }
@@ -645,7 +807,7 @@ const MyGroups = {
         if (!statusListEl) return;
 
         if (uniqueGroups.length === 0) {
-            const emptyLabel = tab === 'upline' ? 'No upline group yet.' : 'No downline groups yet.';
+            const emptyLabel = tab === 'upline' ? 'No upline or guest group yet.' : 'No downline groups yet.';
             statusListEl.innerHTML = `
                 <div class="mission-groups-status-item p-4">
                     <p class="text-[var(--text-muted)] text-sm">${emptyLabel}</p>
@@ -672,7 +834,7 @@ const MyGroups = {
             const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
-            const pendingRequestsCount = Array.isArray(group.joinRequests) ? group.joinRequests.length : 0;
+            const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
 
             const last = meetingData.perGroupLastMeeting[group.id];
             const lastLine = last
@@ -720,7 +882,7 @@ const MyGroups = {
                             <span class="text-base leading-none">👁</span>
                             <span>View</span>
                             ${pendingRequestsCount > 0 ? `
-                                <span class="absolute -top-1 -right-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                <span class="absolute -top-1 -right-1 z-10 bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 border border-white/80">
                                     ${pendingRequestsCount}
                                 </span>
                             ` : ''}
@@ -820,7 +982,7 @@ const MyGroups = {
                 : 'No meeting schedule set';
             const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupNameSafe = this.escapeHtml(group.name || 'Mission Group');
-            const pendingRequestsCount = Array.isArray(group.joinRequests) ? group.joinRequests.length : 0;
+            const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
             const groupIdForJs = String(groupId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             const membersHtml = memberProfiles.map(({ id, data }) => {
@@ -863,7 +1025,7 @@ const MyGroups = {
 	                        <button onclick="window.MyGroups.showJoinRequests('${groupIdForJs}')"
 	                                class="w-full rounded-xl border border-[var(--mission-gold)]/35 bg-[var(--card-bg)] px-4 py-3 text-sm font-bold text-[var(--mission-gold)] flex items-center justify-between">
 	                            <span>🔔 Pending Requests</span>
-	                            <span class="bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2">${pendingRequestsCount}</span>
+	                            <span class="bg-red-500 text-white text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2 border border-white/80">${pendingRequestsCount}</span>
 	                        </button>
 	                        ` : ''}
 	                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
@@ -1143,7 +1305,7 @@ const MyGroups = {
     renderGroupCard(group, type) {
         const memberCount = group.members?.length || 0;
         const guestCount = group.guests?.length || 0;
-        const requestCount = group.joinRequests?.length || 0;
+        const requestCount = this.getUnifiedJoinRequests(group).length;
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
         
@@ -1224,7 +1386,7 @@ const MyGroups = {
                         </button>
                         <button onclick="window.MyGroups.showGroupMembers('${group.id}')" class="w-full border border-[var(--card-border)] text-[var(--text-muted)] font-medium py-2 rounded-lg text-sm relative">
                             👥 View Members ${guestCount > 0 ? `& Guests` : ''}
-                            ${requestCount > 0 ? `<span class="absolute right-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">${requestCount}</span>` : ''}
+                            ${requestCount > 0 ? `<span class="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 border border-white/80">${requestCount}</span>` : ''}
                         </button>
                     ` : ''}
                     ${type === 'guest' ? `
@@ -1408,7 +1570,7 @@ const MyGroups = {
             }
             
             // Check if already a guest
-            if (groupData.guests?.some(g => g.odId === window.currentUser.uid)) {
+            if (this.isUserGuestInGroupData(groupData, window.currentUser.uid)) {
                 if (errorEl) {
                     errorEl.textContent = 'You are already a guest in this group';
                     errorEl.classList.remove('hidden');
@@ -1417,7 +1579,7 @@ const MyGroups = {
             }
             
             // Check if already has pending request
-            if (groupData.joinRequests?.some(r => r.odId === window.currentUser.uid)) {
+            if (this.getUnifiedJoinRequests(groupData).some((r) => r.odId === window.currentUser.uid)) {
                 if (errorEl) {
                     errorEl.textContent = 'You already have a pending request for this group';
                     errorEl.classList.remove('hidden');
@@ -1948,7 +2110,7 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const requests = group.joinRequests || [];
+        const requests = this.getUnifiedJoinRequests(group);
         const modal = document.getElementById('groupModal');
         const content = document.getElementById('groupModalContent');
         
@@ -2028,12 +2190,12 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const request = group.joinRequests?.find(r => r.odId === odId);
+        const request = this.getUnifiedJoinRequests(group).find((r) => r.odId === odId);
         if (!request) return;
         
         try {
-            // Remove from joinRequests
-            const updatedRequests = (group.joinRequests || []).filter(r => r.odId !== odId);
+            // Remove request from both legacy and current arrays
+            const updatedRequests = this.getRequestsAfterRemoval(group, odId);
             
             if (type === 'member') {
                 // Add as full member
@@ -2041,7 +2203,8 @@ const MyGroups = {
                     window.doc(window.db, 'goMission_groups', groupId),
                     { 
                         members: window.arrayUnion(odId),
-                        joinRequests: updatedRequests
+                        joinRequests: updatedRequests.joinRequests,
+                        pendingRequests: updatedRequests.pendingRequests
                     },
                     { merge: true }
                 );
@@ -2075,7 +2238,8 @@ const MyGroups = {
                     window.doc(window.db, 'goMission_groups', groupId),
                     { 
                         guests: window.arrayUnion(guestData),
-                        joinRequests: updatedRequests
+                        joinRequests: updatedRequests.joinRequests,
+                        pendingRequests: updatedRequests.pendingRequests
                     },
                     { merge: true }
                 );
@@ -2111,18 +2275,21 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const request = group.joinRequests?.find(r => r.odId === odId);
+        const request = this.getUnifiedJoinRequests(group).find((r) => r.odId === odId);
         if (!request) return;
         
         if (!confirm(`Decline request from ${request.name}?`)) return;
         
         try {
-            // Remove from joinRequests
-            const updatedRequests = (group.joinRequests || []).filter(r => r.odId !== odId);
+            // Remove request from both legacy and current arrays
+            const updatedRequests = this.getRequestsAfterRemoval(group, odId);
             
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
-                { joinRequests: updatedRequests },
+                {
+                    joinRequests: updatedRequests.joinRequests,
+                    pendingRequests: updatedRequests.pendingRequests
+                },
                 { merge: true }
             );
             
@@ -2229,7 +2396,7 @@ const MyGroups = {
                                 </div>
                             </div>
                             ${isLeader ? `
-                                <button onclick="window.MyGroups.showGuestOptions('${groupId}', '${guest.odId}')" class="text-[var(--text-muted)]">•••</button>
+                                <button onclick="window.MyGroups.showGuestOptions('${groupId}', '${this.getGuestUserId(guest)}')" class="text-[var(--text-muted)]">•••</button>
                             ` : ''}
                         </div>
                     `;
@@ -2239,7 +2406,7 @@ const MyGroups = {
             membersHtml += '</div>';
             
             // Build pending requests section (if any and user is leader)
-            const requests = group.joinRequests || [];
+            const requests = this.getUnifiedJoinRequests(group);
             let pendingHtml = '';
             
             if (isLeader && requests.length > 0) {
@@ -2314,7 +2481,7 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const guest = group.guests?.find(g => g.odId === guestId);
+        const guest = this.findGuestInGroup(group, guestId);
         if (!guest) return;
         
         const modal = document.getElementById('groupModal');
@@ -2361,7 +2528,7 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const guest = group.guests?.find(g => g.odId === guestId);
+        const guest = this.findGuestInGroup(group, guestId);
         if (!guest) return;
         
         // For now, we'll create a transfer request that needs approval from original leader
@@ -2376,14 +2543,14 @@ const MyGroups = {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const guest = group.guests?.find(g => g.odId === guestId);
+        const guest = this.findGuestInGroup(group, guestId);
         if (!guest) return;
         
         if (!confirm(`Remove ${guest.name} as guest?`)) return;
         
         try {
             // Remove from guests array
-            const updatedGuests = (group.guests || []).filter(g => g.odId !== guestId);
+            const updatedGuests = (group.guests || []).filter((guestEntry) => this.getGuestUserId(guestEntry) !== guestId);
             
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
@@ -2471,7 +2638,7 @@ const MyGroups = {
         
         try {
             // Remove from group's guests array
-            const updatedGuests = (group.guests || []).filter(g => g.odId !== window.currentUser.uid);
+            const updatedGuests = (group.guests || []).filter((guestEntry) => this.getGuestUserId(guestEntry) !== window.currentUser.uid);
             
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
