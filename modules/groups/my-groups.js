@@ -15,10 +15,19 @@ const MyGroups = {
     dashboardTab: 'downline', // 'downline' | 'upline'
 
     /**
+     * Resolve user id from a string or object payload across schemas
+     */
+    getEntityUserId(entity) {
+        if (!entity) return null;
+        if (typeof entity === 'string') return entity;
+        return entity.odId || entity.uid || entity.id || entity.userId || entity.memberId || entity.profileId || null;
+    },
+
+    /**
      * Resolve guest user id across schemas
      */
     getGuestUserId(guest) {
-        return guest?.odId || guest?.uid || guest?.id || null;
+        return this.getEntityUserId(guest);
     },
 
     /**
@@ -27,6 +36,14 @@ const MyGroups = {
     isUserGuestInGroupData(groupData, userId) {
         if (!groupData || !Array.isArray(groupData.guests) || !userId) return false;
         return groupData.guests.some((guest) => this.getGuestUserId(guest) === userId);
+    },
+
+    /**
+     * Check if a user is listed in a group's members array
+     */
+    isUserMemberInGroupData(groupData, userId) {
+        if (!groupData || !Array.isArray(groupData.members) || !userId) return false;
+        return groupData.members.some((member) => this.getEntityUserId(member) === userId);
     },
 
     /**
@@ -74,7 +91,7 @@ const MyGroups = {
                 if (uplineDoc.exists()) {
                     const groupData = uplineDoc.data();
                     // Verify user is still a member of this group
-                    const isMember = groupData.members?.includes(uid);
+                    const isMember = this.isUserMemberInGroupData(groupData, uid);
                     const isGuest = this.isUserGuestInGroupData(groupData, uid);
                     
                     if (isMember || isGuest) {
@@ -92,23 +109,16 @@ const MyGroups = {
                             Groups.currentGroup = this.uplineGroup;
                         }
                     } else {
-                        // User was removed - clear stale member-group references
-                        console.log('[MyGroups] User was removed from member group, clearing references');
-                        this.uplineGroup = null;
-                        await window.setDoc(
-                            window.doc(window.db, 'goMission_members', uid),
-                            { uplineGroupId: null, groupId: null },
-                            { merge: true }
-                        );
+                        // Keep visible instead of clearing profile pointers on potential schema mismatch.
+                        console.warn('[MyGroups] Member group pointer exists but membership check failed; keeping visible');
+                        this.uplineGroup = { id: uplineDoc.id, ...groupData };
+                        if (typeof Groups !== 'undefined') {
+                            Groups.currentGroup = this.uplineGroup;
+                        }
                     }
                 } else {
                     // Group doesn't exist anymore
                     this.uplineGroup = null;
-                    await window.setDoc(
-                        window.doc(window.db, 'goMission_members', uid),
-                        { uplineGroupId: null, groupId: null },
-                        { merge: true }
-                    );
                 }
             }
 
@@ -134,6 +144,27 @@ const MyGroups = {
                         );
                         if (typeof Groups !== 'undefined') {
                             Groups.currentGroup = this.uplineGroup;
+                        }
+                    } else {
+                        // Final fallback for legacy members arrays that are not queryable by array-contains.
+                        const allGroupsSnapshot = await window.getDocs(
+                            window.collection(window.db, 'goMission_groups')
+                        );
+                        const legacyMemberGroupDoc = allGroupsSnapshot.docs.find((doc) => {
+                            const data = doc.data() || {};
+                            return data.leaderId !== uid && this.isUserMemberInGroupData(data, uid);
+                        }) || null;
+
+                        if (legacyMemberGroupDoc) {
+                            this.uplineGroup = { id: legacyMemberGroupDoc.id, ...legacyMemberGroupDoc.data() };
+                            await window.setDoc(
+                                window.doc(window.db, 'goMission_members', uid),
+                                { uplineGroupId: legacyMemberGroupDoc.id, groupId: legacyMemberGroupDoc.id },
+                                { merge: true }
+                            );
+                            if (typeof Groups !== 'undefined') {
+                                Groups.currentGroup = this.uplineGroup;
+                            }
                         }
                     }
                 } catch (memberRecoveryError) {
@@ -167,8 +198,8 @@ const MyGroups = {
                         );
                         if (guestGroupDoc.exists()) {
                             const groupData = guestGroupDoc.data();
-                            // Verify user is still a guest
-                            if (this.isUserGuestInGroupData(groupData, uid)) {
+                            // Trust explicit guestGroups pointers and tolerate legacy guest schemas.
+                            if (this.isUserGuestInGroupData(groupData, uid) || declaredGuestGroupIds.includes(groupId)) {
                                 guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
                             }
                         }
@@ -235,7 +266,7 @@ const MyGroups = {
         // Update group count
         const countEl = document.getElementById('missionGroupCount');
         if (countEl) {
-            const total = (this.uplineGroup ? 1 : 0) + this.downlineGroups.length;
+            const total = (this.uplineGroup ? 1 : 0) + (this.guestGroups?.length || 0) + this.downlineGroups.length;
             countEl.textContent = `${total} group${total !== 1 ? 's' : ''}`;
         }
     },
@@ -1561,7 +1592,7 @@ const MyGroups = {
             }
             
             // Check if already a member
-            if (groupData.members?.includes(window.currentUser.uid)) {
+            if (this.isUserMemberInGroupData(groupData, window.currentUser.uid)) {
                 if (errorEl) {
                     errorEl.textContent = 'You are already a member of this group';
                     errorEl.classList.remove('hidden');
