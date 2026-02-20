@@ -2605,11 +2605,18 @@
                     <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
                         😊
                     </button>
-                    <button onclick="GroupChat.pickAttachmentFromGallery()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-base hover:bg-amber-500/20 transition-colors" title="Pick photo">
-                        🖼️
+                    <button onclick="GroupChat.pickAttachmentFromGallery()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Pick photo" aria-label="Pick photo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 14l2.8-2.8a1 1 0 011.4 0L16 15"></path>
+                            <circle cx="9" cy="10" r="1.2" fill="currentColor"></circle>
+                        </svg>
                     </button>
-                    <button onclick="GroupChat.captureAttachmentFromCamera()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-base hover:bg-amber-500/20 transition-colors" title="Take photo">
-                        📷
+                    <button onclick="GroupChat.captureAttachmentFromCamera()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Take photo" aria-label="Take photo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 8h3l1.4-2h7.2L17 8h3a1.5 1.5 0 011.5 1.5v7A1.5 1.5 0 0120 18H4a1.5 1.5 0 01-1.5-1.5v-7A1.5 1.5 0 014 8z"></path>
+                            <circle cx="12" cy="13" r="3.2" stroke-width="1.9"></circle>
+                        </svg>
                     </button>
                     <div class="flex-1 relative">
                         <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[var(--text-color)] overflow-hidden rounded-xl"><span id="chatInputPreviewText" class="block min-w-full whitespace-pre"></span></div>
