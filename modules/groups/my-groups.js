@@ -20,7 +20,34 @@ const MyGroups = {
     getEntityUserId(entity) {
         if (!entity) return null;
         if (typeof entity === 'string') return entity;
-        return entity.odId || entity.uid || entity.id || entity.userId || entity.memberId || entity.profileId || null;
+        return entity.odId || entity.uid || entity.id || entity.userId || entity.memberId || entity.profileId || entity._key || null;
+    },
+
+    /**
+     * Normalize array-or-map collections into array entries
+     */
+    normalizeCollectionEntries(collectionValue) {
+        if (Array.isArray(collectionValue)) return collectionValue;
+        if (collectionValue && typeof collectionValue === 'object') {
+            return Object.entries(collectionValue).map(([key, value]) => {
+                if (value && typeof value === 'object') return { ...value, _key: key };
+                return { id: key, value, _key: key };
+            });
+        }
+        return [];
+    },
+
+    /**
+     * Extract id-like strings from array/map/string values
+     */
+    extractIdList(value) {
+        if (!value) return [];
+        if (typeof value === 'string') return value ? [value] : [];
+        const entries = this.normalizeCollectionEntries(value);
+        const ids = entries
+            .map((entry) => this.getEntityUserId(entry))
+            .filter(Boolean);
+        return [...new Set(ids)];
     },
 
     /**
@@ -34,24 +61,27 @@ const MyGroups = {
      * Check if a user is listed in a group's guests array
      */
     isUserGuestInGroupData(groupData, userId) {
-        if (!groupData || !Array.isArray(groupData.guests) || !userId) return false;
-        return groupData.guests.some((guest) => this.getGuestUserId(guest) === userId);
+        if (!groupData || !userId) return false;
+        const guestEntries = this.normalizeCollectionEntries(groupData.guests);
+        return guestEntries.some((guest) => this.getGuestUserId(guest) === userId);
     },
 
     /**
      * Check if a user is listed in a group's members array
      */
     isUserMemberInGroupData(groupData, userId) {
-        if (!groupData || !Array.isArray(groupData.members) || !userId) return false;
-        return groupData.members.some((member) => this.getEntityUserId(member) === userId);
+        if (!groupData || !userId) return false;
+        const memberEntries = this.normalizeCollectionEntries(groupData.members);
+        return memberEntries.some((member) => this.getEntityUserId(member) === userId);
     },
 
     /**
      * Find guest object by user id
      */
     findGuestInGroup(group, guestId) {
-        if (!group || !Array.isArray(group.guests) || !guestId) return null;
-        return group.guests.find((guest) => this.getGuestUserId(guest) === guestId) || null;
+        if (!group || !guestId) return null;
+        const guestEntries = this.normalizeCollectionEntries(group.guests);
+        return guestEntries.find((guest) => this.getGuestUserId(guest) === guestId) || null;
     },
     
     /**
@@ -186,9 +216,7 @@ const MyGroups = {
             // Load guest groups (where user is in guests array)
             this.guestGroups = [];
             const guestGroupMap = new Map();
-            const declaredGuestGroupIds = Array.isArray(userData.guestGroups)
-                ? [...new Set(userData.guestGroups.filter(Boolean))]
-                : [];
+            const declaredGuestGroupIds = this.extractIdList(userData.guestGroups);
 
             if (declaredGuestGroupIds.length > 0) {
                 for (const groupId of declaredGuestGroupIds) {
@@ -234,6 +262,39 @@ const MyGroups = {
                     }
                 } catch (scanError) {
                     console.warn('[MyGroups] Guest recovery scan failed:', scanError);
+                }
+            }
+
+            // Final profile-hints fallback for legacy user documents
+            if (!this.uplineGroup && guestGroupMap.size === 0) {
+                const hintGroupIds = [
+                    userData.uplineGroupId,
+                    userData.groupId,
+                    userData.activeGroupId,
+                    userData.currentGroupId,
+                    userData.lastGroupId
+                ].filter(Boolean);
+
+                for (const hintGroupId of [...new Set(hintGroupIds)]) {
+                    try {
+                        const hintDoc = await window.getDoc(
+                            window.doc(window.db, 'goMission_groups', hintGroupId)
+                        );
+                        if (!hintDoc.exists()) continue;
+                        const hintData = hintDoc.data() || {};
+
+                        const isGuestByProfile = userData.groupRole === 'guest' || userData.role === 'guest';
+                        if (isGuestByProfile) {
+                            guestGroupMap.set(hintDoc.id, { id: hintDoc.id, ...hintData });
+                        } else {
+                            this.uplineGroup = { id: hintDoc.id, ...hintData };
+                            if (typeof Groups !== 'undefined') {
+                                Groups.currentGroup = this.uplineGroup;
+                            }
+                        }
+                    } catch (hintError) {
+                        console.warn('[MyGroups] Hint group recovery failed:', hintGroupId, hintError);
+                    }
                 }
             }
 
@@ -393,16 +454,9 @@ const MyGroups = {
         await this.loadGroups();
         this.updateBadges();
 
-        // Choose a sensible default tab based on available groups.
-        // If user has no downline groups but has upline or guest groups, default to upline.
-        if (this.dashboardTab === 'downline'
-            && !(this.downlineGroups?.length)
-            && (this.uplineGroup || (this.guestGroups?.length > 0))) {
-            this.dashboardTab = 'upline';
-        }
-        if (this.dashboardTab === 'upline' && !this.uplineGroup && !(this.guestGroups?.length)) {
-            this.dashboardTab = 'downline';
-        }
+        // Default to joined groups (upline/guest) when available so newly joined groups are visible immediately.
+        if (this.uplineGroup || (this.guestGroups?.length > 0)) this.dashboardTab = 'upline';
+        else this.dashboardTab = 'downline';
 
         // Ensure My Groups detail screen is closed.
         const groupsScreen = document.getElementById('myGroupsScreen');
@@ -872,7 +926,7 @@ const MyGroups = {
                 ? `${this.formatMeetingDate(last.date)} • ${last.attended ? 'You attended' : 'You missed'}`
                 : 'No recorded meeting yet';
 
-            const memberCount = group.members?.length || 0;
+            const memberCount = this.normalizeCollectionEntries(group.members).length;
 
             return `
                 <div class="mission-groups-status-item p-4">
@@ -1334,8 +1388,8 @@ const MyGroups = {
      * Render a single group card
      */
     renderGroupCard(group, type) {
-        const memberCount = group.members?.length || 0;
-        const guestCount = group.guests?.length || 0;
+        const memberCount = this.normalizeCollectionEntries(group.members).length;
+        const guestCount = this.normalizeCollectionEntries(group.guests).length;
         const requestCount = this.getUnifiedJoinRequests(group).length;
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
@@ -2358,8 +2412,10 @@ const MyGroups = {
         
         try {
             // Load member details
-            const memberIds = group.members || [];
-            const guests = group.guests || [];
+            const memberIds = this.normalizeCollectionEntries(group.members)
+                .map((member) => this.getEntityUserId(member))
+                .filter(Boolean);
+            const guests = this.normalizeCollectionEntries(group.guests);
             const isLeader = group.leaderId === window.currentUser?.uid;
             
             let membersHtml = '<div class="space-y-3">';
@@ -2581,7 +2637,8 @@ const MyGroups = {
         
         try {
             // Remove from guests array
-            const updatedGuests = (group.guests || []).filter((guestEntry) => this.getGuestUserId(guestEntry) !== guestId);
+            const updatedGuests = this.normalizeCollectionEntries(group.guests)
+                .filter((guestEntry) => this.getGuestUserId(guestEntry) !== guestId);
             
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
@@ -2669,7 +2726,8 @@ const MyGroups = {
         
         try {
             // Remove from group's guests array
-            const updatedGuests = (group.guests || []).filter((guestEntry) => this.getGuestUserId(guestEntry) !== window.currentUser.uid);
+            const updatedGuests = this.normalizeCollectionEntries(group.guests)
+                .filter((guestEntry) => this.getGuestUserId(guestEntry) !== window.currentUser.uid);
             
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
