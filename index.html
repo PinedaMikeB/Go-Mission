@@ -2569,15 +2569,29 @@
         
         <!-- Chat Input -->
         <div class="bg-[var(--nav-bg)] border-t border-[var(--nav-border)] p-4 transition-colors duration-300">
-            <div class="flex gap-2">
-                <input type="text" id="chatInput" placeholder="Type a message..." 
-                       class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
-                       onkeypress="GroupChat.handleKeyPress(event)">
-                <button onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                    </svg>
-                </button>
+            <div class="relative">
+                <div id="chatEmojiPicker" class="hidden absolute bottom-full left-0 right-0 mb-2 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden z-20">
+                    <div class="p-3 border-b border-[var(--card-border)]">
+                        <input type="text" id="chatEmojiSearch" placeholder="Search emoji..." oninput="GroupChat.renderEmojiPicker()" class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-xs text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/60">
+                    </div>
+                    <div id="chatEmojiGrid" class="p-3 grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
+                        <p class="col-span-8 text-xs text-[var(--text-muted)] text-center py-4">Loading emojis...</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
+                        😊
+                    </button>
+                    <input type="text" id="chatInput" placeholder="Type a message..." 
+                           class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
+                           onkeypress="GroupChat.handleKeyPress(event)">
+                    <button onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 h-12 rounded-xl font-bold hover:bg-amber-400 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

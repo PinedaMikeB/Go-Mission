@@ -13,6 +13,56 @@ const GroupChat = {
   messages: [],
   unsubscribe: null,
   isOpen: false,
+  composeEmojiPickerOpen: false,
+  activeReactionPickerMessageId: null,
+  reactionOptions: ['❤️', '😂', '👍', '🙌', '🙏', '😢', '😮'],
+  emojiCatalog: [
+    { emoji: '😀', keywords: 'grinning smile happy joy' },
+    { emoji: '😃', keywords: 'smile happy joy' },
+    { emoji: '😄', keywords: 'smile laugh happy' },
+    { emoji: '😁', keywords: 'grin smile happy' },
+    { emoji: '😆', keywords: 'laugh funny lol' },
+    { emoji: '😂', keywords: 'laugh lol funny cry' },
+    { emoji: '🤣', keywords: 'rofl laugh funny' },
+    { emoji: '😊', keywords: 'blush smile happy' },
+    { emoji: '🙂', keywords: 'smile calm' },
+    { emoji: '😉', keywords: 'wink playful' },
+    { emoji: '😍', keywords: 'love heart eyes' },
+    { emoji: '🥰', keywords: 'love hearts smile' },
+    { emoji: '😘', keywords: 'kiss love heart' },
+    { emoji: '😇', keywords: 'angel blessed' },
+    { emoji: '🙏', keywords: 'pray prayer thanks amen' },
+    { emoji: '🙌', keywords: 'praise hands worship celebrate' },
+    { emoji: '👏', keywords: 'clap applause good job' },
+    { emoji: '👍', keywords: 'like yes approve' },
+    { emoji: '👎', keywords: 'dislike no' },
+    { emoji: '🤝', keywords: 'agree handshake unity' },
+    { emoji: '💪', keywords: 'strong courage faith' },
+    { emoji: '🔥', keywords: 'fire lit passion' },
+    { emoji: '✨', keywords: 'sparkles praise glory' },
+    { emoji: '❤️', keywords: 'heart love care' },
+    { emoji: '💛', keywords: 'heart yellow love' },
+    { emoji: '💙', keywords: 'heart blue love' },
+    { emoji: '💜', keywords: 'heart purple love' },
+    { emoji: '🤍', keywords: 'heart white love' },
+    { emoji: '🕊️', keywords: 'dove peace holy spirit' },
+    { emoji: '😮', keywords: 'wow surprise amazed' },
+    { emoji: '😢', keywords: 'cry sad tears' },
+    { emoji: '😭', keywords: 'crying tears sad' },
+    { emoji: '😅', keywords: 'relief sweat smile' },
+    { emoji: '🤗', keywords: 'hug support comfort' },
+    { emoji: '🤔', keywords: 'think question' },
+    { emoji: '😴', keywords: 'sleep tired' },
+    { emoji: '😎', keywords: 'cool sunglasses' },
+    { emoji: '🤩', keywords: 'star struck wow' },
+    { emoji: '😡', keywords: 'angry upset' },
+    { emoji: '🎉', keywords: 'party celebrate congrats' },
+    { emoji: '🙋', keywords: 'raise hand yes me' },
+    { emoji: '💯', keywords: 'hundred perfect true' },
+    { emoji: '📖', keywords: 'bible word devotion' },
+    { emoji: '⛪', keywords: 'church worship' },
+    { emoji: '✝️', keywords: 'cross jesus faith' }
+  ],
   
   /**
    * Initialize chat module
@@ -86,6 +136,10 @@ const GroupChat = {
     if (modal) {
       modal.classList.remove('hidden');
     }
+    this.composeEmojiPickerOpen = false;
+    this.activeReactionPickerMessageId = null;
+    this.closeComposeEmojiPicker();
+    this.renderEmojiPicker();
     
     // Update member count in header
     this.updateMemberCount();
@@ -110,6 +164,9 @@ const GroupChat = {
    */
   close() {
     this.isOpen = false;
+    this.composeEmojiPickerOpen = false;
+    this.activeReactionPickerMessageId = null;
+    this.closeComposeEmojiPicker();
     
     // Hide modal
     const modal = document.getElementById('chatModal');
@@ -291,6 +348,7 @@ const GroupChat = {
       // Clear input
       const input = document.getElementById('chatInput');
       if (input) input.value = '';
+      this.closeComposeEmojiPicker(true);
       
       // Reload messages
       await this.loadMessages();
@@ -390,6 +448,7 @@ const GroupChat = {
                   <p class="text-xs text-[var(--text-muted)] italic mt-1">"${msg.devotion.reflection}"</p>
                 </div>
                 <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}</p>
+                ${this.renderReactionControls(msg, isMe)}
               </div>
             </div>
           </div>
@@ -405,6 +464,7 @@ const GroupChat = {
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 <p class="text-sm text-[var(--text-color)]">${this.escapeHtml(msg.text)}</p>
                 <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
+                ${this.renderReactionControls(msg, isMe)}
               </div>
             </div>
           </div>
@@ -431,6 +491,7 @@ const GroupChat = {
   handleSend() {
     const input = document.getElementById('chatInput');
     if (input) {
+      this.closeComposeEmojiPicker();
       this.sendMessage(input.value);
     }
   },
@@ -442,6 +503,198 @@ const GroupChat = {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.handleSend();
+    }
+  },
+
+  /**
+   * Toggle compose emoji picker
+   */
+  toggleEmojiPicker() {
+    const picker = document.getElementById('chatEmojiPicker');
+    if (!picker) return;
+    this.composeEmojiPickerOpen = !this.composeEmojiPickerOpen;
+    picker.classList.toggle('hidden', !this.composeEmojiPickerOpen);
+    if (this.composeEmojiPickerOpen) {
+      this.renderEmojiPicker();
+      const search = document.getElementById('chatEmojiSearch');
+      if (search) search.focus();
+    }
+  },
+
+  /**
+   * Close compose emoji picker
+   */
+  closeComposeEmojiPicker(clearSearch = false) {
+    const picker = document.getElementById('chatEmojiPicker');
+    if (picker) picker.classList.add('hidden');
+    this.composeEmojiPickerOpen = false;
+    if (clearSearch) {
+      const search = document.getElementById('chatEmojiSearch');
+      if (search) search.value = '';
+    }
+  },
+
+  /**
+   * Render emoji grid for compose picker
+   */
+  renderEmojiPicker() {
+    const grid = document.getElementById('chatEmojiGrid');
+    if (!grid) return;
+    const search = (document.getElementById('chatEmojiSearch')?.value || '').toLowerCase().trim();
+    const filtered = this.emojiCatalog.filter((item) => {
+      if (!search) return true;
+      return item.emoji.includes(search) || item.keywords.includes(search);
+    });
+
+    if (!filtered.length) {
+      grid.innerHTML = '<p class="col-span-8 text-xs text-[var(--text-muted)] text-center py-4">No matching emoji.</p>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map((item) => `
+      <button onclick="GroupChat.insertEmoji('${item.emoji.replace(/'/g, "\\'")}')" class="h-9 w-9 rounded-lg hover:bg-amber-500/15 transition-colors text-xl leading-none flex items-center justify-center" title="${this.escapeHtml(item.keywords)}">
+        ${item.emoji}
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Insert selected emoji into compose input
+   */
+  insertEmoji(emoji) {
+    const input = document.getElementById('chatInput');
+    if (!input || !emoji) return;
+
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : input.value.length;
+    const value = input.value || '';
+    input.value = value.slice(0, start) + emoji + value.slice(end);
+
+    const nextPos = start + emoji.length;
+    input.setSelectionRange(nextPos, nextPos);
+    input.focus();
+  },
+
+  /**
+   * Render reaction controls under each message bubble
+   */
+  renderReactionControls(message, isMe) {
+    const reactions = this.getReactionSummary(message?.reactions);
+    const reactionsHtml = reactions.map((reaction) => `
+      <button onclick="GroupChat.toggleReaction('${message.id}', '${reaction.emoji.replace(/'/g, "\\'")}')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] transition-colors ${reaction.isMine ? 'border-amber-500/60 bg-amber-500/20 text-amber-500' : 'border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--text-color)]'}">
+        <span>${reaction.emoji}</span><span>${reaction.count}</span>
+      </button>
+    `).join('');
+
+    const pickerOpen = this.activeReactionPickerMessageId === message.id;
+    const pickerHtml = `
+      <div id="reactionPicker_${message.id}" class="${pickerOpen ? 'inline-flex' : 'hidden'} mt-1 flex-wrap gap-1 rounded-full border border-[var(--card-border)] bg-[var(--input-bg)] px-2 py-1">
+        ${this.reactionOptions.map((emoji) => `
+          <button onclick="GroupChat.toggleReaction('${message.id}', '${emoji.replace(/'/g, "\\'")}')" class="h-7 w-7 rounded-full hover:bg-amber-500/20 transition-colors text-base leading-none flex items-center justify-center" title="React ${emoji}">
+            ${emoji}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    return `
+      <div class="mt-2 ${isMe ? 'text-right' : ''}">
+        <div class="flex items-center gap-1 flex-wrap ${isMe ? 'justify-end' : ''}">
+          ${reactionsHtml}
+          <button data-reaction-toggle="1" onclick="GroupChat.toggleReactionPicker('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40">
+            😊 React
+          </button>
+        </div>
+        ${pickerHtml}
+      </div>
+    `;
+  },
+
+  /**
+   * Open/close reaction picker for a message
+   */
+  toggleReactionPicker(messageId) {
+    if (!messageId) return;
+    this.activeReactionPickerMessageId = this.activeReactionPickerMessageId === messageId ? null : messageId;
+    this.renderMessages();
+  },
+
+  /**
+   * Build normalized reaction summary
+   */
+  getReactionSummary(rawReactions) {
+    const reactions = this.normalizeReactions(rawReactions);
+    const uid = window.currentUser?.uid;
+    const summary = [];
+    const seen = new Set();
+
+    for (const emoji of this.reactionOptions) {
+      const users = reactions[emoji];
+      if (!users || !users.length) continue;
+      summary.push({ emoji, count: users.length, isMine: !!(uid && users.includes(uid)) });
+      seen.add(emoji);
+    }
+
+    // Render additional non-standard emojis if present in data.
+    Object.entries(reactions).forEach(([emoji, users]) => {
+      if (seen.has(emoji) || !users.length) return;
+      summary.push({ emoji, count: users.length, isMine: !!(uid && users.includes(uid)) });
+    });
+
+    return summary;
+  },
+
+  /**
+   * Normalize reactions object shape
+   */
+  normalizeReactions(rawReactions) {
+    if (!rawReactions || typeof rawReactions !== 'object') return {};
+    const normalized = {};
+    Object.entries(rawReactions).forEach(([emoji, users]) => {
+      if (!Array.isArray(users)) return;
+      const cleanUsers = [...new Set(users.filter((id) => typeof id === 'string' && id))];
+      if (cleanUsers.length) {
+        normalized[emoji] = cleanUsers;
+      }
+    });
+    return normalized;
+  },
+
+  /**
+   * Toggle own reaction for a message
+   */
+  async toggleReaction(messageId, emoji) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db || !messageId || !emoji) return;
+
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) return;
+
+    const reactions = this.normalizeReactions(message.reactions);
+    const users = [...(reactions[emoji] || [])];
+    const existingIndex = users.indexOf(uid);
+
+    if (existingIndex >= 0) users.splice(existingIndex, 1);
+    else users.push(uid);
+
+    if (users.length) reactions[emoji] = users;
+    else delete reactions[emoji];
+
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_chats', messageId),
+        {
+          reactions,
+          reactionsUpdatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      message.reactions = reactions;
+      this.activeReactionPickerMessageId = null;
+      this.renderMessages();
+    } catch (error) {
+      console.error('[GroupChat] Error toggling reaction:', error);
     }
   },
   
