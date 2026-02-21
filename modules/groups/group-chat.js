@@ -472,6 +472,8 @@ const GroupChat = {
           godSaidTitle: devotionData.godSaidTitle || '',
           godSaidReference: devotionData.godSaidReference || '',
           godSaidText: devotionData.godSaidText || '',
+          understandingTitle: devotionData.understandingTitle || devotionData.reflectionTitle || '',
+          understandingText: devotionData.understandingText || devotionData.reflectionText || devotionData.reflection || '',
           reflectionTitle: devotionData.reflectionTitle || '',
           reflectionText: devotionData.reflectionText || devotionData.reflection || '',
           actionTitle: devotionData.actionTitle || '',
@@ -499,14 +501,14 @@ const GroupChat = {
     if (lang === 'en') {
       return {
         godSaidTitle: 'What did God say',
-        reflectionTitle: 'My Reflection',
-        actionTitle: 'I will'
+        understandingTitle: 'What is my understanding',
+        actionTitle: 'What will I do'
       };
     }
     return {
       godSaidTitle: 'Ano ang sinabi ng Diyos',
-      reflectionTitle: 'Aking Pagninilay',
-      actionTitle: 'Aking gagawin'
+      understandingTitle: 'Ano ang aking pagkaunawa',
+      actionTitle: 'Ano ang aking gagawin'
     };
   },
 
@@ -531,11 +533,11 @@ const GroupChat = {
     const lang = devotion.language === 'en' ? 'en' : 'tl';
     const labels = this.getDevotionLabels(lang);
     const godSaidTitle = devotion.godSaidTitle || labels.godSaidTitle;
-    const reflectionTitle = devotion.reflectionTitle || labels.reflectionTitle;
+    const understandingTitle = devotion.understandingTitle || devotion.reflectionTitle || labels.understandingTitle;
     const actionTitle = devotion.actionTitle || labels.actionTitle;
     const reference = this.getDevotionReference(devotion);
     const godSaidText = String(devotion.godSaidText || '').trim();
-    const reflectionText = String(devotion.reflectionText || devotion.reflection || '').trim();
+    const understandingText = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
     const actionText = String(devotion.actionText || devotion.commitment || '').trim();
 
     return `
@@ -546,8 +548,8 @@ const GroupChat = {
           ${godSaidText ? `<p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(godSaidText)}</p>` : ''}
         </div>
         <div class="rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-2.5">
-          <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(reflectionTitle)}</p>
-          <p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(reflectionText)}</p>
+          <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(understandingTitle)}</p>
+          <p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(understandingText)}</p>
         </div>
         <div class="rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-2.5">
           <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(actionTitle)}</p>

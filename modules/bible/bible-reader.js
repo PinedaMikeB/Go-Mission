@@ -491,9 +491,9 @@ const BibleReader = {
         livingItOut: '🚶 Living It Out',
         godsLove: '❤️ God\'s Love',
         reflectionQuestion: '💭 Reflection Question',
-        yourAnswer: 'I will',
-        yourAnswerPlaceholder: 'Write your commitment to apply this today...',
-        iWill: 'I will',
+        yourAnswer: 'What is my understanding',
+        yourAnswerPlaceholder: 'Write what you learned and understood here...',
+        iWill: 'What will I do',
         iWillPlaceholder: 'Write your commitment to apply this today...',
         shareWithGroup: 'Share with my groups',
         shareWithGroupHelp: 'Help your leader walk with you',
@@ -514,9 +514,9 @@ const BibleReader = {
         livingItOut: '🚶 Isabuhay',
         godsLove: '❤️ Pag-ibig ng Diyos',
         reflectionQuestion: '💭 Tanong sa Pagninilay',
-        yourAnswer: 'Aking gagawin',
-        yourAnswerPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
-        iWill: 'Aking gagawin',
+        yourAnswer: 'Ano ang aking pagkaunawa',
+        yourAnswerPlaceholder: 'Isulat ang iyong natutunan at pagkaunawa dito...',
+        iWill: 'Ano ang aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
         shareWithGroup: 'I-share sa aking mga group',
         shareWithGroupHelp: 'Para masamahan ka ng leader mo',
@@ -565,6 +565,7 @@ const BibleReader = {
 
     const primaryQuestion = reflectionQuestions[0] || '';
     const reflectionValue = this.escapeHTML(this.inlineReflectionDraft.reflection || '');
+    const commitmentValue = this.escapeHTML(this.inlineReflectionDraft.commitment || '');
     const shareActive = !!this.inlineReflectionDraft.shareWithGroup;
     const shareTargets = Array.isArray(this.inlineShareTargets) ? this.inlineShareTargets : [];
     const selectedGroupIds = Array.isArray(this.inlineReflectionDraft.shareGroupIds)
@@ -646,13 +647,21 @@ const BibleReader = {
           </div>
         ` : ''}
 
-        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
+        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
                   rows="6"
                   class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
-                  placeholder="${L.iWillPlaceholder}">${reflectionValue}</textarea>
+                  placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
+
+        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
+        <textarea id="inlineInsightCommitmentInput"
+                  oninput="BibleReader.setInlineCommitment(this.value)"
+                  rows="6"
+                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  style="font-size:${baseFontPx}px; line-height:1.6;"
+                  placeholder="${L.iWillPlaceholder}">${commitmentValue}</textarea>
 
         <div class="flex items-start gap-3 mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/40">
           <div class="toggle-switch ${shareActive ? 'active' : ''}" id="inlineInsightShareToggle" onclick="BibleReader.toggleInlineShare()"></div>
@@ -801,13 +810,17 @@ const BibleReader = {
   async saveInlineReflection() {
     const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
     const isTagalog = lang === 'tl';
-    const commitment = (this.inlineReflectionDraft.reflection || '').trim();
-    const reflection = commitment;
+    const understanding = (this.inlineReflectionDraft.reflection || '').trim();
+    const action = (this.inlineReflectionDraft.commitment || '').trim();
     const question = this.getPrimaryReflectionQuestion();
     const shareWithGroup = !!this.inlineReflectionDraft.shareWithGroup;
     const shareGroupIds = shareWithGroup ? this.getSelectedInlineShareGroupIds() : [];
 
-    if (!commitment) {
+    if (!understanding) {
+      alert(isTagalog ? 'Pakisulat muna ang iyong pagkaunawa bago i-save.' : 'Please write your understanding before saving.');
+      return;
+    }
+    if (!action) {
       alert(isTagalog ? 'Pakisulat muna ang iyong "Aking gagawin" bago i-save.' : 'Please write your "I will" commitment before saving.');
       return;
     }
@@ -830,8 +843,8 @@ const BibleReader = {
       }
 
       const result = await window.saveReflectionFromInsights({
-        reflection,
-        commitment,
+        understanding,
+        action,
         question,
         shareWithGroup,
         shareGroupIds

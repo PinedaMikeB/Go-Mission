@@ -3963,15 +3963,15 @@
             if (lang === 'en') {
                 return {
                     godSaidTitle: 'What did God say',
-                    reflectionTitle: 'My Reflection',
-                    actionTitle: 'I will'
+                    understandingTitle: 'What is my understanding',
+                    actionTitle: 'What will I do'
                 };
             }
 
             return {
                 godSaidTitle: 'Ano ang sinabi ng Diyos',
-                reflectionTitle: 'Aking Pagninilay',
-                actionTitle: 'Aking gagawin'
+                understandingTitle: 'Ano ang aking pagkaunawa',
+                actionTitle: 'Ano ang aking gagawin'
             };
         }
 
@@ -4035,8 +4035,10 @@
             return verseNumbers.length > 0 ? `${base}:${verseNumbers.join(',')}` : base;
         }
 
-        async function persistDevotionEntry({ reflection, commitment = '', question, shareRequested, shareGroupIds = [] }) {
-            if (!window.currentUser || !reflection) {
+        async function persistDevotionEntry({ understanding = '', action = '', reflection = '', commitment = '', question, shareRequested, shareGroupIds = [] }) {
+            const understandingText = String(understanding || reflection || '').trim();
+            const actionText = String(action || commitment || '').trim();
+            if (!window.currentUser || !understandingText) {
                 return { saved: false, missingGroup: false };
             }
 
@@ -4080,15 +4082,18 @@
                 highlightedVerses: reading.highlightedVerses,
                 verses: scriptureSection.verseNumbers,
                 question: question,
-                reflection: reflection,
-                commitment: commitment || '',
+                reflection: understandingText,
+                commitment: actionText || '',
                 godSaidTitle: scriptureSection.title,
                 godSaidReference: scriptureSection.reference,
                 godSaidText: scriptureSection.text,
-                reflectionTitle: sectionLabels.reflectionTitle,
-                reflectionText: reflection,
+                understandingTitle: sectionLabels.understandingTitle,
+                understandingText: understandingText,
+                // Keep legacy aliases for old renderers/backward compatibility.
+                reflectionTitle: sectionLabels.understandingTitle,
+                reflectionText: understandingText,
                 actionTitle: sectionLabels.actionTitle,
-                actionText: commitment || '',
+                actionText: actionText || '',
                 sharedWithGroup: shouldShare,
                 groupId: primaryGroupId,
                 sharedGroupIds: shouldShare ? targetGroupIds : [],
@@ -4111,8 +4116,8 @@
                     sameGroupTargets &&
                     existingEntry.book === reading.book &&
                     existingEntry.chapter === reading.chapter &&
-                    existingEntry.reflection === reflection &&
-                    (existingEntry.commitment || '') === (commitment || '');
+                    existingEntry.reflection === understandingText &&
+                    (existingEntry.commitment || '') === (actionText || '');
 
                 if (!alreadySharedSame) {
                     const verseNumbers = (reading.highlightedVerses || [])
@@ -4132,16 +4137,18 @@
                                 chapter: reading.chapter,
                                 verses: scriptureSection.verseNumbers.length ? scriptureSection.verseNumbers : verseNumbers,
                                 question: question,
-                                reflection: reflection,
-                                commitment: commitment || '',
+                                reflection: understandingText,
+                                commitment: actionText || '',
                                 language: lang,
                                 godSaidTitle: scriptureSection.title,
                                 godSaidReference: scriptureSection.reference,
                                 godSaidText: scriptureSection.text,
-                                reflectionTitle: sectionLabels.reflectionTitle,
-                                reflectionText: reflection,
+                                understandingTitle: sectionLabels.understandingTitle,
+                                understandingText: understandingText,
+                                reflectionTitle: sectionLabels.understandingTitle,
+                                reflectionText: understandingText,
                                 actionTitle: sectionLabels.actionTitle,
-                                actionText: commitment || ''
+                                actionText: actionText || ''
                             },
                             createdAt: window.serverTimestamp()
                         });
@@ -4161,24 +4168,34 @@
             };
         }
 
-        window.saveReflectionFromInsights = async function({ reflection, commitment = '', question = '', shareWithGroup: shareRequested = false, shareGroupIds = [] }) {
+        window.saveReflectionFromInsights = async function({
+            understanding = '',
+            action = '',
+            reflection = '',
+            commitment = '',
+            question = '',
+            shareWithGroup: shareRequested = false,
+            shareGroupIds = []
+        }) {
             const lang = getDevotionLanguage();
+            const understandingText = String(understanding || reflection || '').trim();
+            const actionText = String(action || commitment || '').trim();
             if (!window.currentUser) {
                 alert('Please sign in to save your reflection.');
                 return { saved: false, missingGroup: false };
             }
-            if (!reflection || !reflection.trim()) {
-                alert(lang === 'tl' ? 'Pakisulat muna ang iyong pagninilay bago i-save.' : 'Please write your reflection before saving.');
+            if (!understandingText) {
+                alert(lang === 'tl' ? 'Pakisulat muna ang iyong pagkaunawa bago i-save.' : 'Please write your understanding before saving.');
                 return { saved: false, missingGroup: false };
             }
-            if (!commitment || !commitment.trim()) {
+            if (!actionText) {
                 alert(lang === 'tl' ? 'Pakisulat muna ang iyong "Aking gagawin" bago i-save.' : 'Please write your "I will" commitment before saving.');
                 return { saved: false, missingGroup: false };
             }
 
             const result = await persistDevotionEntry({
-                reflection: reflection.trim(),
-                commitment: commitment.trim(),
+                understanding: understandingText,
+                action: actionText,
                 question: (question || '').trim(),
                 shareRequested: !!shareRequested,
                 shareGroupIds
@@ -4534,8 +4551,8 @@
                     const scriptureTitle = data.godSaidTitle || sectionLabels.godSaidTitle;
                     const scriptureReference = data.godSaidReference || buildLegacyDevotionReference(data, lang);
                     const scriptureText = data.godSaidText || '';
-                    const reflectionTitle = data.reflectionTitle || sectionLabels.reflectionTitle;
-                    const reflectionText = data.reflectionText || data.reflection || '';
+                    const understandingTitle = data.understandingTitle || data.reflectionTitle || sectionLabels.understandingTitle;
+                    const understandingText = data.understandingText || data.reflectionText || data.reflection || '';
                     const actionTitle = data.actionTitle || sectionLabels.actionTitle;
                     const actionText = data.actionText || data.commitment || '';
                     
@@ -4552,8 +4569,8 @@
                             </div>
 
                             <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(reflectionTitle)}</p>
-                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(reflectionText)}</p>
+                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(understandingTitle)}</p>
+                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(understandingText)}</p>
                             </div>
 
                             <div class="p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
