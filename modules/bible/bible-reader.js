@@ -505,6 +505,7 @@ const BibleReader = {
         roleDownline: 'Downline',
         roleGuest: 'Guest',
         roleGroup: 'Group',
+        groupIdSuffix: 'ID',
         save: '💾 Save Reflection'
       },
       tl: {
@@ -526,6 +527,7 @@ const BibleReader = {
         roleDownline: 'Downline',
         roleGuest: 'Guest',
         roleGroup: 'Group',
+        groupIdSuffix: 'ID',
         save: '💾 I-save ang Reflection'
       }
     };
@@ -603,6 +605,7 @@ const BibleReader = {
         const groupRows = shareTargets.map((group) => {
           const groupId = String(group.id || '');
           const groupIdForJs = groupId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          const groupIdTail = groupId.length > 12 ? groupId.slice(-12) : groupId;
           const checked = selectedSet.has(groupId) ? 'checked' : '';
           const roleLabel = this.getInlineShareRoleLabel(group.type, L);
           return `
@@ -612,8 +615,8 @@ const BibleReader = {
                      onchange="BibleReader.toggleInlineShareGroup('${groupIdForJs}', this.checked)"
                      ${checked}>
               <span class="flex-1 min-w-0">
-                <span class="text-[var(--text-color)] font-medium block truncate" style="font-size:${metaFontPx}px;">${this.escapeHTML(group.name || 'Mission Group')}</span>
-                <span class="text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">${this.escapeHTML(roleLabel)}</span>
+                <span class="text-[var(--text-color)] font-medium block whitespace-normal break-words leading-snug" style="font-size:${metaFontPx}px;">${this.escapeHTML(group.name || 'Mission Group')}</span>
+                <span class="text-[var(--text-muted)] block mt-0.5 whitespace-normal break-all" style="font-size:${smallFontPx}px;">${this.escapeHTML(roleLabel)} • ${L.groupIdSuffix}: ${this.escapeHTML(groupIdTail)}</span>
               </span>
             </label>
           `;
@@ -757,7 +760,7 @@ const BibleReader = {
     const current = !!this.inlineReflectionDraft.shareWithGroup;
     this.inlineReflectionDraft.shareWithGroup = !current;
     if (this.inlineReflectionDraft.shareWithGroup) {
-      await this.ensureInlineShareTargetsLoaded();
+      await this.ensureInlineShareTargetsLoaded(true);
     }
     this.refreshFullscreenInsightsPanel();
   },

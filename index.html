@@ -3754,37 +3754,60 @@
 
         function normalizeShareGroupTarget(rawGroup, type = 'group') {
             if (!rawGroup?.id) return null;
+            const uid = window.currentUser?.uid || null;
+            const isLedByCurrentUser = !!uid && rawGroup.leaderId === uid;
+            const resolvedType = isLedByCurrentUser ? 'downline' : type;
             return {
                 id: String(rawGroup.id),
                 name: rawGroup.name || 'Mission Group',
-                type,
+                type: resolvedType,
                 memberCount: Number(rawGroup.currentCount || rawGroup.members?.length || 0)
             };
         }
 
+        function getShareGroupRolePriority(type) {
+            if (type === 'downline') return 4;
+            if (type === 'upline') return 3;
+            if (type === 'guest') return 2;
+            return 1;
+        }
+
+        function upsertShareGroup(groupMap, rawGroup, type = 'group') {
+            const normalized = normalizeShareGroupTarget(rawGroup, type);
+            if (!normalized) return;
+
+            const existing = groupMap.get(normalized.id);
+            if (!existing) {
+                groupMap.set(normalized.id, normalized);
+                return;
+            }
+
+            const existingPriority = getShareGroupRolePriority(existing.type);
+            const nextPriority = getShareGroupRolePriority(normalized.type);
+            if (nextPriority > existingPriority) {
+                groupMap.set(normalized.id, { ...existing, ...normalized });
+                return;
+            }
+
+            // Preserve richer name/memberCount even if role priority is unchanged.
+            groupMap.set(normalized.id, {
+                ...existing,
+                name: (normalized.name && normalized.name.length >= (existing.name || '').length) ? normalized.name : existing.name,
+                memberCount: Math.max(Number(existing.memberCount || 0), Number(normalized.memberCount || 0))
+            });
+        }
+
         function collectShareableGroupsFromMemory() {
             const groupMap = new Map();
-            const addGroup = (rawGroup, type = 'group') => {
-                const normalized = normalizeShareGroupTarget(rawGroup, type);
-                if (!normalized) return;
-                const existing = groupMap.get(normalized.id);
-                if (!existing) {
-                    groupMap.set(normalized.id, normalized);
-                    return;
-                }
-                if (existing.type === 'group' && normalized.type !== 'group') {
-                    groupMap.set(normalized.id, { ...existing, ...normalized });
-                }
-            };
 
             if (typeof Groups !== 'undefined' && Groups.currentGroup?.id) {
-                addGroup(Groups.currentGroup, 'group');
+                upsertShareGroup(groupMap, Groups.currentGroup, 'group');
             }
 
             if (typeof MyGroups !== 'undefined') {
-                addGroup(MyGroups.uplineGroup, 'upline');
-                (MyGroups.downlineGroups || []).forEach(group => addGroup(group, 'downline'));
-                (MyGroups.guestGroups || []).forEach(group => addGroup(group, 'guest'));
+                upsertShareGroup(groupMap, MyGroups.uplineGroup, 'upline');
+                (MyGroups.downlineGroups || []).forEach(group => upsertShareGroup(groupMap, group, 'downline'));
+                (MyGroups.guestGroups || []).forEach(group => upsertShareGroup(groupMap, group, 'guest'));
             }
 
             const roleOrder = { upline: 0, downline: 1, guest: 2, group: 3 };
@@ -3797,17 +3820,11 @@
 
         async function resolveShareableGroups() {
             const inMemory = collectShareableGroupsFromMemory();
-            if (inMemory.length > 0) return inMemory;
-            if (!window.currentUser?.uid || !window.db) return [];
+            if (!window.currentUser?.uid || !window.db) return inMemory;
 
             const uid = window.currentUser.uid;
             const groupMap = new Map();
-            const addGroup = (rawGroup, type = 'group') => {
-                const normalized = normalizeShareGroupTarget(rawGroup, type);
-                if (!normalized) return;
-                if (groupMap.has(normalized.id)) return;
-                groupMap.set(normalized.id, normalized);
-            };
+            inMemory.forEach(group => upsertShareGroup(groupMap, group, group.type || 'group'));
 
             try {
                 const userRef = window.doc(window.db, 'goMission_members', uid);
@@ -3818,7 +3835,7 @@
                 if (uplineGroupId) {
                     try {
                         const uplineDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', uplineGroupId));
-                        if (uplineDoc.exists()) addGroup({ id: uplineDoc.id, ...uplineDoc.data() }, 'upline');
+                        if (uplineDoc.exists()) upsertShareGroup(groupMap, { id: uplineDoc.id, ...uplineDoc.data() }, 'upline');
                     } catch (error) {
                         console.warn('[Devotion] Could not load upline group for sharing:', error);
                     }
@@ -3830,19 +3847,26 @@
                         window.where('leaderId', '==', uid)
                     );
                     const downlineSnapshot = await window.getDocs(downlineQuery);
-                    downlineSnapshot.forEach(docSnap => addGroup({ id: docSnap.id, ...docSnap.data() }, 'downline'));
+                    downlineSnapshot.forEach(docSnap => upsertShareGroup(groupMap, { id: docSnap.id, ...docSnap.data() }, 'downline'));
                 } catch (error) {
                     console.warn('[Devotion] Could not load downline groups for sharing:', error);
                 }
 
-                const guestGroupIds = Array.isArray(userData.guestGroups)
-                    ? userData.guestGroups.map(g => (typeof g === 'string' ? g : g?.groupId || g?.id)).filter(Boolean)
-                    : [];
+                const guestGroupIds = (() => {
+                    const raw = userData.guestGroups;
+                    if (Array.isArray(raw)) {
+                        return raw.map(g => (typeof g === 'string' ? g : g?.groupId || g?.id || g?.odId)).filter(Boolean);
+                    }
+                    if (raw && typeof raw === 'object') {
+                        return Object.keys(raw);
+                    }
+                    if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
+                    return [];
+                })();
                 for (const groupId of guestGroupIds) {
-                    if (groupMap.has(String(groupId))) continue;
                     try {
                         const guestDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', String(groupId)));
-                        if (guestDoc.exists()) addGroup({ id: guestDoc.id, ...guestDoc.data() }, 'guest');
+                        if (guestDoc.exists()) upsertShareGroup(groupMap, { id: guestDoc.id, ...guestDoc.data() }, 'guest');
                     } catch (error) {
                         console.warn('[Devotion] Could not load guest group for sharing:', groupId, error);
                     }
