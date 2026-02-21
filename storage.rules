@@ -1,0 +1,51 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminUid() {
+      return isSignedIn() &&
+        request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+    }
+
+    function isAdminEmail() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email in ['michael.marga@gmail.com'];
+    }
+
+    function isAdmin() {
+      return isAdminUid() || isAdminEmail();
+    }
+
+    // Public media for watch/sunday surfaces
+    match /goMission/sunday-videos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /goMission/watch-series-covers/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Profile photos
+    match /profile-photos/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // Chat attachments
+    match /chat-attachments/{groupId}/{uid}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Fallback for signed-in app users
+    match /{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

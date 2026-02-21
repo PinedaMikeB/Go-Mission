@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminUid() {
+      return isSignedIn() &&
+        request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+    }
+
+    function isAdminEmail() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email in ['michael.marga@gmail.com'];
+    }
+
+    function isAdmin() {
+      return isAdminUid() || isAdminEmail();
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Watch module (public read, admin write)
+    match /video_series/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /video_episodes/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /video_events/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Admin publishing collections
+    match /goMission_sundayVideos/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /goMission_announcements/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /goMission_trainingContent/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /goMission_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Member profiles
+    match /goMission_members/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(uid) || isAdmin();
+      allow update, delete: if isSelf(uid) || isAdmin();
+    }
+
+    // Core app data (signed-in users)
+    match /goMission_groups/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_chats/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_dmMessages/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_dmThreads/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_friendRequests/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_friendships/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_devotions/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_debriefs/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_meetings/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_meetingStats/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_groupInviteCodes/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_endorsementCodes/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_trainingProgress/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_trainingResponses/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_recentReadings/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_biblePreferences/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_bibleProgress/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_bibleTranslation/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_community_board/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /goMission_passwordResets/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Fallback for any additional app collections
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
