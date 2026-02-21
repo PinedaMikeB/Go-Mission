@@ -379,12 +379,15 @@ const BibleReader = {
         
         <!-- Insights Button -->
         <div class="flex items-center gap-2">
-          <button onclick="BibleReader.openJournalFromFullscreen()"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-[var(--input-bg)] text-[var(--text-color)] hover:bg-[var(--mission-gold)]/15 hover:text-[var(--mission-gold)]">
+          <button type="button"
+                  onclick="window.BibleReader && window.BibleReader.openJournalFromFullscreen && window.BibleReader.openJournalFromFullscreen()"
+                  id="fullscreenJournalBtn"
+                  class="relative z-10 pointer-events-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-[var(--input-bg)] text-[var(--text-color)] hover:bg-[var(--mission-gold)]/15 hover:text-[var(--mission-gold)]">
             <span>📖</span>
             <span>${journalLabel}</span>
           </button>
-          <button onclick="BibleReader.toggleFullscreenCommentary()" 
+          <button type="button"
+                  onclick="BibleReader.toggleFullscreenCommentary()" 
                   id="fullscreenCommentaryBtn"
                   class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/25' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
                   ${!hasHighlights ? 'disabled' : ''}>
@@ -479,10 +482,22 @@ const BibleReader = {
    * Open Journal modal from fullscreen header button.
    */
   openJournalFromFullscreen() {
-    if (typeof window.openJournal === 'function') {
-      window.openJournal();
+    try {
+      if (typeof window.openJournal === 'function') {
+        window.openJournal();
+        return;
+      }
+    } catch (error) {
+      console.error('[BibleReader] openJournal failed:', error);
+    }
+
+    // Fallback: show modal directly to avoid dead click in case global hook is missing.
+    const modal = document.getElementById('journalModal');
+    if (modal) {
+      modal.classList.remove('hidden');
       return;
     }
+
     alert('Journal is not available right now. Please refresh and try again.');
   },
 

@@ -123,6 +123,10 @@
   - Requested layout: main toolbar keeps `microphone`, `camera`, `share screen`, `more`, `leave`
   - `tile/grid`, `chat`, and `reactions` moved into `More` menu
   - Implemented in shared config (`/modules/groups/group-meeting.js`) for all embedded meetings
+- **Status**: 🔄 Bible fullscreen top-bar action fix in progress
+  - Active module: `/modules/bible/bible-reader.js`
+  - Issue: `Aking Journal` button intermittently not responding while `Insights` is clickable
+  - Fix: aligned Journal button with robust click wiring (`type="button"`, explicit `window.BibleReader...` call) and added fallback direct modal open when `window.openJournal` is unavailable
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
