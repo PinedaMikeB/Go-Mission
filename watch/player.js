@@ -5,6 +5,7 @@ import {
   getQueryParam,
   getSessionId,
   logVideoEvent,
+  submitWatchInboxMessage,
   setStateMessage
 } from './watch-shared.js';
 
@@ -12,6 +13,11 @@ let player;
 let progressTimer = null;
 const sessionId = getSessionId();
 const sentEvents = new Set();
+const MESSAGE_TYPE_PLACEHOLDERS = {
+  comment: 'Share what spoke to you from this episode.',
+  prayer_request: 'Share your prayer request. Our team will pray with you.',
+  chat_with_us: 'Tell us how we can walk with you right now.'
+};
 
 function stopProgressWatcher() {
   if (!progressTimer) {
@@ -147,6 +153,95 @@ function initPlayer(episode) {
     });
 }
 
+function setEngageStatus(statusEl, text, { error = false, success = false } = {}) {
+  if (!statusEl) {
+    return;
+  }
+
+  statusEl.textContent = text || '';
+  statusEl.classList.toggle('error', Boolean(error));
+  statusEl.classList.toggle('success', Boolean(success));
+}
+
+function initEngageComposer(episode) {
+  const messageInput = document.getElementById('engageMessageInput');
+  const nameInput = document.getElementById('engageNameInput');
+  const emailInput = document.getElementById('engageEmailInput');
+  const sendBtn = document.getElementById('engageSendBtn');
+  const statusEl = document.getElementById('engageStatusText');
+  const typeButtons = Array.from(document.querySelectorAll('.engage-type-btn'));
+
+  if (!messageInput || !nameInput || !emailInput || !sendBtn || !statusEl || typeButtons.length === 0) {
+    return;
+  }
+
+  let activeType = 'comment';
+  let sending = false;
+
+  const applyActiveType = (nextType) => {
+    if (!MESSAGE_TYPE_PLACEHOLDERS[nextType]) {
+      return;
+    }
+
+    activeType = nextType;
+    typeButtons.forEach((button) => {
+      const isActive = button.dataset.messageType === nextType;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+    messageInput.placeholder = MESSAGE_TYPE_PLACEHOLDERS[nextType];
+  };
+
+  typeButtons.forEach((button) => {
+    button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
+    button.addEventListener('click', () => {
+      applyActiveType(button.dataset.messageType);
+    });
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    if (sending) {
+      return;
+    }
+
+    const message = String(messageInput.value || '').trim();
+    if (message.length < 2) {
+      setEngageStatus(statusEl, 'Please write at least 2 characters.', { error: true });
+      messageInput.focus();
+      return;
+    }
+
+    sending = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+    setEngageStatus(statusEl, 'Sending your message...');
+
+    const result = await submitWatchInboxMessage({
+      episodeId: episode?.id || '',
+      seriesId: episode?.seriesId || '',
+      messageType: activeType,
+      message,
+      contactName: nameInput.value,
+      contactEmail: emailInput.value,
+      sessionId,
+      pagePath: `${window.location.pathname}${window.location.search}`.slice(0, 400)
+    });
+
+    if (result.ok) {
+      messageInput.value = '';
+      setEngageStatus(statusEl, 'Message sent. Our team will follow up soon.', { success: true });
+    } else {
+      setEngageStatus(statusEl, result.error || 'Could not send message right now. Please try again.', { error: true });
+    }
+
+    sending = false;
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send Message';
+  });
+
+  applyActiveType(activeType);
+}
+
 async function initPlayerPage() {
   applyStoredThemePreference();
 
@@ -198,6 +293,7 @@ async function initPlayerPage() {
         : 'Watch Episode';
     }
 
+    initEngageComposer(episode);
     initPlayer(episode);
   } catch (error) {
     console.error('[Watch] Could not load player page:', error);

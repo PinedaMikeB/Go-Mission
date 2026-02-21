@@ -21,6 +21,8 @@ import {
 const THEME_STORAGE_KEY = 'goMission_theme';
 const WATCH_SESSION_KEY = 'goMission_watch_session_id';
 const EVENT_TYPES = new Set(['onPlay', 'watched_30s', 'watched_90pct', 'onEnd']);
+const WATCH_MESSAGE_TYPES = new Set(['comment', 'prayer_request', 'chat_with_us']);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 let authReadyResolved = false;
 let currentUserId = 'guest';
@@ -60,6 +62,15 @@ try {
 function toNumeric(value, fallback = Number.MAX_SAFE_INTEGER) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeText(value, maxLength = 0) {
+  const text = String(value == null ? '' : value).trim();
+  if (maxLength <= 0) {
+    return text;
+  }
+
+  return text.slice(0, maxLength);
 }
 
 function compareStrings(a, b) {
@@ -316,6 +327,81 @@ export async function logVideoEvent({ episodeId, eventType, sessionId }) {
     });
 
     return false;
+  }
+}
+
+export async function submitWatchInboxMessage({
+  episodeId,
+  seriesId = '',
+  messageType = 'comment',
+  message = '',
+  contactName = '',
+  contactEmail = '',
+  sessionId = '',
+  pagePath = ''
+}) {
+  const normalizedEpisodeId = normalizeText(episodeId, 200);
+  const normalizedSeriesId = normalizeText(seriesId, 200);
+  const normalizedType = normalizeText(messageType, 40).toLowerCase();
+  const normalizedMessage = normalizeText(message, 1200);
+  const normalizedName = normalizeText(contactName, 120);
+  const normalizedEmail = normalizeText(contactEmail, 160).toLowerCase();
+  const normalizedSession = normalizeText(sessionId, 120) || getSessionId();
+  const normalizedPath = normalizeText(pagePath, 400)
+    || normalizeText(`${window.location.pathname}${window.location.search}`, 400);
+
+  if (!normalizedEpisodeId) {
+    return { ok: false, error: 'Episode is missing. Please reload this page.' };
+  }
+
+  if (!WATCH_MESSAGE_TYPES.has(normalizedType)) {
+    return { ok: false, error: 'Please choose a valid message type.' };
+  }
+
+  if (normalizedMessage.length < 2) {
+    return { ok: false, error: 'Please write at least 2 characters.' };
+  }
+
+  if (normalizedEmail && !EMAIL_PATTERN.test(normalizedEmail)) {
+    return { ok: false, error: 'Please enter a valid email address or leave it blank.' };
+  }
+
+  await authReady;
+
+  try {
+    const userAgent = normalizeText(navigator?.userAgent || '', 512);
+    const docRef = await addDoc(collection(db, 'video_inbox'), {
+      userId: currentUserId || 'guest',
+      episodeId: normalizedEpisodeId,
+      seriesId: normalizedSeriesId || null,
+      messageType: normalizedType,
+      message: normalizedMessage,
+      contactName: normalizedName || null,
+      contactEmail: normalizedEmail || null,
+      status: 'new',
+      source: 'watch_player',
+      ts: serverTimestamp(),
+      sessionId: normalizedSession,
+      pagePath: normalizedPath || null,
+      userAgent: userAgent || null
+    });
+
+    return { ok: true, id: docRef.id };
+  } catch (error) {
+    const code = String(error?.code || '');
+    const messageText = String(error?.message || '');
+    const isPermissionError = code.includes('permission-denied') || messageText.toLowerCase().includes('permission');
+
+    if (isPermissionError) {
+      return { ok: false, error: 'Permission denied. Please sign in as an approved user and retry.' };
+    }
+
+    console.error('[Watch] Failed to save inbox message:', {
+      episodeId: normalizedEpisodeId,
+      messageType: normalizedType,
+      message: messageText
+    });
+    return { ok: false, error: 'Could not send message right now. Please try again.' };
   }
 }
 

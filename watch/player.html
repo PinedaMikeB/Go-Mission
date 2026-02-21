@@ -28,7 +28,37 @@
         <div class="player-body">
           <h2 id="episodeTitle" class="player-title">Loading episode...</h2>
           <p id="episodeSubtitle" class="player-subtitle"></p>
-          <a href="/groups" class="cta-link">Join a Mission Group</a>
+
+          <section class="engage-wrap" aria-label="Comments and prayer request">
+            <h3 class="engage-title">We'd Love to Hear From You</h3>
+            <p class="engage-subtitle">Comments, Prayer Request, or Chat With Us.</p>
+            <p class="engage-note">Private one-on-one with our team (not public).</p>
+
+            <div class="engage-types" role="tablist" aria-label="Message type">
+              <button type="button" class="engage-type-btn active" data-message-type="comment">Comments</button>
+              <button type="button" class="engage-type-btn" data-message-type="prayer_request">Prayer Request</button>
+              <button type="button" class="engage-type-btn" data-message-type="chat_with_us">Chat With Us</button>
+            </div>
+
+            <textarea
+              id="engageMessageInput"
+              class="engage-textarea"
+              rows="4"
+              maxlength="1200"
+              placeholder="Share what spoke to you from this episode."
+            ></textarea>
+
+            <div class="engage-meta-row">
+              <input id="engageNameInput" class="engage-input" maxlength="120" placeholder="Your name (optional)">
+              <input id="engageEmailInput" class="engage-input" maxlength="160" placeholder="Your email (optional)">
+            </div>
+
+            <div class="engage-action-row">
+              <button type="button" id="engageSendBtn" class="engage-send-btn">Send Message</button>
+            </div>
+
+            <p id="engageStatusText" class="engage-status" aria-live="polite"></p>
+          </section>
         </div>
       </article>
 
