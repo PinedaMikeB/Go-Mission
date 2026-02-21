@@ -23,7 +23,8 @@ const ADMIN_UID_ALLOWLIST = new Set([
   '9zVKHJ11zaXD0f4GI6P7LHD6re32'
 ]);
 const ADMIN_EMAIL_ALLOWLIST = new Set([
-  'michael.marga@gmail.com'
+  'michael.marga@gmail.com',
+  'vasquezperlie18@gmail.com'
 ]);
 
 // ============================================

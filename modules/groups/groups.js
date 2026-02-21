@@ -19,12 +19,16 @@ const Groups = {
   // Available groups (for joining)
   availableGroups: [],
   
-  // Admin email (can bypass disciple-first rule)
-  ADMIN_EMAIL: 'michael.marga@gmail.com',
+  // Admin emails (can bypass disciple-first rule)
+  ADMIN_EMAILS: [
+    'michael.marga@gmail.com',
+    'vasquezperlie18@gmail.com'
+  ],
   
   // Check if current user is admin
   isAdmin() {
-    return window.currentUser?.email === this.ADMIN_EMAIL;
+    const email = String(window.currentUser?.email || '').toLowerCase();
+    return this.ADMIN_EMAILS.includes(email);
   },
   
   // Check if user has been a group member (disciple) before

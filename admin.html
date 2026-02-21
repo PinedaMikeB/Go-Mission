@@ -1136,6 +1136,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const storage = getStorage(app);
 
     const ADMIN_UIDS = ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+    const ADMIN_EMAILS = [
+      'michael.marga@gmail.com',
+      'vasquezperlie18@gmail.com'
+    ];
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     let cachedGroups = [];
@@ -2741,7 +2745,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
       try {
         const userDoc = await getDoc(doc(db, 'goMission_members', user.uid));
         const profile = userDoc.exists() ? userDoc.data() : {};
-        const isAdmin = ADMIN_UIDS.includes(user.uid) || !!profile?.roles?.isAdmin || user.email === 'michael.marga@gmail.com';
+        const normalizedEmail = String(user.email || '').toLowerCase();
+        const isAllowlistedAdmin = ADMIN_UIDS.includes(user.uid) || ADMIN_EMAILS.includes(normalizedEmail);
+        const isAdmin = isAllowlistedAdmin || !!profile?.roles?.isAdmin;
 
         if (!isAdmin) {
           authText.textContent = `Access denied. ${user.email || user.uid} is not configured as admin.`;

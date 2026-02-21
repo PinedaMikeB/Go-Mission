@@ -3247,7 +3247,11 @@
                     // Show/hide leader dashboard based on roles
                     const leaderDashboard = document.getElementById('leaderDashboardCard');
                     if (leaderDashboard) {
-                        const isAdmin = data.roles?.isAdmin || data.email === 'michael.marga@gmail.com';
+                        const normalizedEmail = String(data.email || '').toLowerCase();
+                        const isAdminEmail =
+                            normalizedEmail === 'michael.marga@gmail.com' ||
+                            normalizedEmail === 'vasquezperlie18@gmail.com';
+                        const isAdmin = data.roles?.isAdmin || isAdminEmail;
                         const isGroupLeader = data.roles?.isGroupLeader;
                         const isTrainer = data.roles?.isTrainer;
                         const isShepherd = data.roles?.isShepherd;

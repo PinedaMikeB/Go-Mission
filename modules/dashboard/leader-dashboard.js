@@ -95,7 +95,11 @@ const LeaderDashboard = {
         const data = userDoc.data();
         
         // Check for super admin
-        if (data.email === 'michael.marga@gmail.com' || data.isSuperAdmin) {
+        const normalizedEmail = String(data.email || '').toLowerCase();
+        const isAllowlistedAdminEmail =
+          normalizedEmail === 'michael.marga@gmail.com' ||
+          normalizedEmail === 'vasquezperlie18@gmail.com';
+        if (isAllowlistedAdminEmail || data.isSuperAdmin) {
           return 'super_admin';
         }
         
