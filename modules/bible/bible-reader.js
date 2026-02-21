@@ -483,7 +483,7 @@ const BibleReader = {
         livingItOut: '🚶 Living It Out',
         godsLove: '❤️ God\'s Love',
         reflectionQuestion: '💭 Reflection Question',
-        yourAnswer: 'Your Reflection',
+        yourAnswer: 'My Reflection',
         yourAnswerPlaceholder: 'Write your reflection here...',
         iWill: 'I will',
         iWillPlaceholder: 'Write your commitment to apply this today...',
@@ -496,9 +496,9 @@ const BibleReader = {
         livingItOut: '🚶 Isabuhay',
         godsLove: '❤️ Pag-ibig ng Diyos',
         reflectionQuestion: '💭 Tanong sa Pagninilay',
-        yourAnswer: 'Iyong Pagninilay',
+        yourAnswer: 'Aking Pagninilay',
         yourAnswerPlaceholder: 'Isulat ang iyong pagninilay dito...',
-        iWill: 'I will',
+        iWill: 'Aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
         shareWithGroup: 'I-share sa aking group',
         shareWithGroupHelp: 'Para masamahan ka ng leader mo',
@@ -611,17 +611,19 @@ const BibleReader = {
   },
 
   async saveInlineReflection() {
+    const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
+    const isTagalog = lang === 'tl';
     const reflection = (this.inlineReflectionDraft.reflection || '').trim();
     const commitment = (this.inlineReflectionDraft.commitment || '').trim();
     const question = this.getPrimaryReflectionQuestion();
     const shareWithGroup = !!this.inlineReflectionDraft.shareWithGroup;
 
     if (!reflection) {
-      alert('Please write your reflection before saving.');
+      alert(isTagalog ? 'Pakisulat muna ang iyong pagninilay bago i-save.' : 'Please write your reflection before saving.');
       return;
     }
     if (!commitment) {
-      alert('Please write your "I will" commitment before saving.');
+      alert(isTagalog ? 'Pakisulat muna ang iyong "Aking gagawin" bago i-save.' : 'Please write your "I will" commitment before saving.');
       return;
     }
 

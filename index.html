@@ -3779,6 +3779,87 @@
             }
         }
 
+        function getDevotionLanguage() {
+            const lang = window.i18n?.getLang?.() || 'tl';
+            return lang === 'en' ? 'en' : 'tl';
+        }
+
+        function getDevotionSectionLabels(lang = getDevotionLanguage()) {
+            if (lang === 'en') {
+                return {
+                    godSaidTitle: 'What did God say',
+                    reflectionTitle: 'My Reflection',
+                    actionTitle: 'I will'
+                };
+            }
+
+            return {
+                godSaidTitle: 'Ano ang sinabi ng Diyos',
+                reflectionTitle: 'Aking Pagninilay',
+                actionTitle: 'Aking gagawin'
+            };
+        }
+
+        function getVerseNumbersFromReading(reading) {
+            return (reading?.highlightedVerses || [])
+                .map(v => (typeof v === 'object' ? Number(v.verse) : Number(v)))
+                .filter(v => Number.isFinite(v))
+                .sort((a, b) => a - b);
+        }
+
+        function buildDevotionScriptureSection(reading, lang) {
+            const labels = getDevotionSectionLabels(lang);
+            const verseNumbers = getVerseNumbersFromReading(reading);
+            const translation = (typeof BibleReader !== 'undefined' && BibleReader?.bibleTranslation)
+                ? BibleReader.bibleTranslation
+                : (lang === 'en' ? 'en' : 'tl');
+            const bookName = (typeof BibleLoader !== 'undefined' && reading?.book)
+                ? BibleLoader.getBookName(reading.book, translation)
+                : (reading?.book || '');
+            const chapterLabel = `${bookName || reading?.book || ''} ${reading?.chapter || ''}`.trim();
+            const reference = verseNumbers.length > 0 ? `${chapterLabel}:${verseNumbers.join(',')}` : chapterLabel;
+
+            const chapterVerses = (typeof BibleReader !== 'undefined' && BibleReader?.chapterData?.verses)
+                ? BibleReader.chapterData.verses
+                : null;
+
+            const verseLines = verseNumbers.map(verseNum => {
+                const verseText = chapterVerses?.[String(verseNum)] || chapterVerses?.[verseNum] || '';
+                return verseText ? `${verseNum}. ${verseText}` : '';
+            }).filter(Boolean);
+
+            return {
+                title: labels.godSaidTitle,
+                reference,
+                text: verseLines.join('\n'),
+                verseNumbers,
+                verseLines
+            };
+        }
+
+        function escapeDevotionHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDevotionMultiline(value) {
+            return escapeDevotionHtml(value).replace(/\n/g, '<br>');
+        }
+
+        function buildLegacyDevotionReference(entry, lang) {
+            const translation = (lang === 'en') ? 'en' : 'tl';
+            const bookName = (typeof BibleLoader !== 'undefined' && entry?.book)
+                ? BibleLoader.getBookName(entry.book, translation)
+                : (entry?.book || '');
+            const verseNumbers = getVerseNumbersFromReading({ highlightedVerses: entry?.highlightedVerses || entry?.verses || [] });
+            const base = `${bookName || entry?.book || ''} ${entry?.chapter || ''}`.trim();
+            return verseNumbers.length > 0 ? `${base}:${verseNumbers.join(',')}` : base;
+        }
+
         async function persistDevotionEntry({ reflection, commitment = '', question, shareRequested }) {
             if (!window.currentUser || !reflection) {
                 return { saved: false, missingGroup: false };
@@ -3792,6 +3873,9 @@
             const reading = (typeof BibleReader !== 'undefined')
                 ? BibleReader.getCurrentReading()
                 : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+            const lang = getDevotionLanguage();
+            const sectionLabels = getDevotionSectionLabels(lang);
+            const scriptureSection = buildDevotionScriptureSection(reading, lang);
 
             let groupId = null;
             let shouldShare = !!shareRequested;
@@ -3810,12 +3894,20 @@
                 book: reading.book,
                 chapter: reading.chapter,
                 highlightedVerses: reading.highlightedVerses,
+                verses: scriptureSection.verseNumbers,
                 question: question,
                 reflection: reflection,
                 commitment: commitment || '',
+                godSaidTitle: scriptureSection.title,
+                godSaidReference: scriptureSection.reference,
+                godSaidText: scriptureSection.text,
+                reflectionTitle: sectionLabels.reflectionTitle,
+                reflectionText: reflection,
+                actionTitle: sectionLabels.actionTitle,
+                actionText: commitment || '',
                 sharedWithGroup: shouldShare,
                 groupId: shouldShare ? groupId : null,
-                language: window.i18n?.getLang?.() || 'tl',
+                language: lang,
                 savedAt: window.serverTimestamp()
             });
 
@@ -3844,10 +3936,18 @@
                         devotion: {
                             book: reading.book,
                             chapter: reading.chapter,
-                            verses: verseNumbers,
+                            verses: scriptureSection.verseNumbers.length ? scriptureSection.verseNumbers : verseNumbers,
                             question: question,
                             reflection: reflection,
-                            commitment: commitment || ''
+                            commitment: commitment || '',
+                            language: lang,
+                            godSaidTitle: scriptureSection.title,
+                            godSaidReference: scriptureSection.reference,
+                            godSaidText: scriptureSection.text,
+                            reflectionTitle: sectionLabels.reflectionTitle,
+                            reflectionText: reflection,
+                            actionTitle: sectionLabels.actionTitle,
+                            actionText: commitment || ''
                         },
                         createdAt: window.serverTimestamp()
                     });
@@ -3867,16 +3967,17 @@
         }
 
         window.saveReflectionFromInsights = async function({ reflection, commitment = '', question = '', shareWithGroup: shareRequested = false }) {
+            const lang = getDevotionLanguage();
             if (!window.currentUser) {
                 alert('Please sign in to save your reflection.');
                 return { saved: false, missingGroup: false };
             }
             if (!reflection || !reflection.trim()) {
-                alert('Please write your reflection before saving.');
+                alert(lang === 'tl' ? 'Pakisulat muna ang iyong pagninilay bago i-save.' : 'Please write your reflection before saving.');
                 return { saved: false, missingGroup: false };
             }
             if (!commitment || !commitment.trim()) {
-                alert('Please write your "I will" commitment before saving.');
+                alert(lang === 'tl' ? 'Pakisulat muna ang iyong "Aking gagawin" bago i-save.' : 'Please write your "I will" commitment before saving.');
                 return { saved: false, missingGroup: false };
             }
 
@@ -4232,17 +4333,37 @@
                     const data = doc.data();
                     const date = new Date(data.date);
                     const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    const bookName = (typeof BibleLoader !== 'undefined') ? BibleLoader.getBookName(data.book, 'en') : data.book;
+                    const lang = data.language === 'en' ? 'en' : 'tl';
+                    const sectionLabels = getDevotionSectionLabels(lang);
+                    const scriptureTitle = data.godSaidTitle || sectionLabels.godSaidTitle;
+                    const scriptureReference = data.godSaidReference || buildLegacyDevotionReference(data, lang);
+                    const scriptureText = data.godSaidText || '';
+                    const reflectionTitle = data.reflectionTitle || sectionLabels.reflectionTitle;
+                    const reflectionText = data.reflectionText || data.reflection || '';
+                    const actionTitle = data.actionTitle || sectionLabels.actionTitle;
+                    const actionText = data.actionText || data.commitment || '';
                     
                     html += `
                         <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center mb-2">
                                 <span class="text-amber-500 font-bold">${formattedDate}</span>
-                                <span class="text-xs text-[var(--text-muted)]">${bookName} ${data.chapter}</span>
                             </div>
-                            <p class="text-xs text-[var(--text-muted)] italic mb-2">"${data.question || ''}"</p>
-                            <p class="text-sm text-[var(--text-color)]">${data.reflection || ''}</p>
-                            ${data.commitment ? `<p class="text-xs text-emerald-300 mt-2"><span class="font-bold">I will:</span> ${data.commitment}</p>` : ''}
+
+                            <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(scriptureTitle)}</p>
+                                ${scriptureReference ? `<p class="text-xs text-[var(--text-muted)] mb-1">${escapeDevotionHtml(scriptureReference)}</p>` : ''}
+                                ${scriptureText ? `<p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(scriptureText)}</p>` : ''}
+                            </div>
+
+                            <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(reflectionTitle)}</p>
+                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(reflectionText)}</p>
+                            </div>
+
+                            <div class="p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(actionTitle)}</p>
+                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(actionText)}</p>
+                            </div>
                             ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
                         </div>
                     `;

@@ -466,7 +466,16 @@ const GroupChat = {
           chapter: devotionData.chapter,
           verses: devotionData.highlightedVerses,
           question: devotionData.question,
-          reflection: devotionData.reflection
+          reflection: devotionData.reflection,
+          commitment: devotionData.commitment || '',
+          language: devotionData.language || (window.i18n?.getLang?.() || 'tl'),
+          godSaidTitle: devotionData.godSaidTitle || '',
+          godSaidReference: devotionData.godSaidReference || '',
+          godSaidText: devotionData.godSaidText || '',
+          reflectionTitle: devotionData.reflectionTitle || '',
+          reflectionText: devotionData.reflectionText || devotionData.reflection || '',
+          actionTitle: devotionData.actionTitle || '',
+          actionText: devotionData.actionText || devotionData.commitment || ''
         },
         createdAt: window.serverTimestamp()
       };
@@ -484,6 +493,68 @@ const GroupChat = {
       console.error('[GroupChat] Error sharing devotion:', error);
       return false;
     }
+  },
+
+  getDevotionLabels(lang = 'tl') {
+    if (lang === 'en') {
+      return {
+        godSaidTitle: 'What did God say',
+        reflectionTitle: 'My Reflection',
+        actionTitle: 'I will'
+      };
+    }
+    return {
+      godSaidTitle: 'Ano ang sinabi ng Diyos',
+      reflectionTitle: 'Aking Pagninilay',
+      actionTitle: 'Aking gagawin'
+    };
+  },
+
+  getDevotionReference(devotion = {}) {
+    if (devotion.godSaidReference) return String(devotion.godSaidReference);
+    const book = String(devotion.book || '').trim();
+    const chapter = String(devotion.chapter || '').trim();
+    const verseNumbers = Array.isArray(devotion.verses)
+      ? devotion.verses
+        .map(v => (typeof v === 'object' ? Number(v.verse) : Number(v)))
+        .filter(v => Number.isFinite(v))
+      : [];
+    const verses = verseNumbers.length ? `:${verseNumbers.join(',')}` : '';
+    return `${book} ${chapter}${verses}`.trim();
+  },
+
+  formatDevotionMultiline(text) {
+    return this.escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+  },
+
+  renderDevotionSections(devotion = {}) {
+    const lang = devotion.language === 'en' ? 'en' : 'tl';
+    const labels = this.getDevotionLabels(lang);
+    const godSaidTitle = devotion.godSaidTitle || labels.godSaidTitle;
+    const reflectionTitle = devotion.reflectionTitle || labels.reflectionTitle;
+    const actionTitle = devotion.actionTitle || labels.actionTitle;
+    const reference = this.getDevotionReference(devotion);
+    const godSaidText = String(devotion.godSaidText || '').trim();
+    const reflectionText = String(devotion.reflectionText || devotion.reflection || '').trim();
+    const actionText = String(devotion.actionText || devotion.commitment || '').trim();
+
+    return `
+      <div class="space-y-2">
+        <div class="rounded-lg border border-amber-500/30 bg-amber-500/8 p-2.5">
+          <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(godSaidTitle)}</p>
+          ${reference ? `<p class="text-[11px] text-[var(--text-muted)] mt-0.5">${this.escapeHtml(reference)}</p>` : ''}
+          ${godSaidText ? `<p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(godSaidText)}</p>` : ''}
+        </div>
+        <div class="rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-2.5">
+          <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(reflectionTitle)}</p>
+          <p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(reflectionText)}</p>
+        </div>
+        <div class="rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-2.5">
+          <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(actionTitle)}</p>
+          <p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(actionText)}</p>
+        </div>
+      </div>
+    `;
   },
   
   /**
@@ -533,10 +604,7 @@ const GroupChat = {
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
                 ${this.renderReplyBlock(msg)}
-                <div class="border-l-2 border-amber-500/50 pl-2 mb-2">
-                  <p class="text-xs text-amber-500 font-bold">${msg.devotion.book} ${msg.devotion.chapter}:${msg.devotion.verses?.join(',') || ''}</p>
-                  <p class="text-xs text-[var(--text-muted)] italic mt-1">"${msg.devotion.reflection}"</p>
-                </div>
+                ${this.renderDevotionSections(msg.devotion || {})}
                 <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
@@ -1647,8 +1715,8 @@ const GroupChat = {
 
     if (message.type === 'devotion' && message.devotion) {
       const devotion = message.devotion || {};
-      const ref = `${devotion.book || ''} ${devotion.chapter || ''}${Array.isArray(devotion.verses) && devotion.verses.length ? `:${devotion.verses.join(',')}` : ''}`.trim();
-      const reflection = String(devotion.reflection || '').trim();
+      const ref = this.getDevotionReference(devotion);
+      const reflection = String(devotion.reflectionText || devotion.reflection || '').trim();
       text = `📖 ${ref}${reflection ? ` — ${reflection}` : ''}`.trim();
     } else if (typeof message.replyToText === 'string' && message.replyToText.trim()) {
       text = message.replyToText.trim();
