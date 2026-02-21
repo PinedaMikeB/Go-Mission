@@ -123,9 +123,22 @@ const Groups = {
       }
 
       // Check goMission_groupInviteCodes collection
-      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
-      const codeDoc = await window.getDoc(codeRef);
-      
+      let codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
+      let codeDoc = await window.getDoc(codeRef);
+
+      // Legacy compatibility: some old invite code docs were not keyed by the code value.
+      if (!codeDoc.exists()) {
+        const codeQuery = window.query(
+          window.collection(window.db, 'goMission_groupInviteCodes'),
+          window.where('code', '==', normalizedCode)
+        );
+        const codeSnapshot = await window.getDocs(codeQuery);
+        if (!codeSnapshot.empty) {
+          codeDoc = codeSnapshot.docs[0];
+          codeRef = codeDoc.ref;
+        }
+      }
+
       if (!codeDoc.exists()) {
         return { valid: false, message: 'Invalid invite code' };
       }
@@ -169,7 +182,8 @@ const Groups = {
         groupName: groupData.name,
         groupData: groupData,
         codeData: codeData,
-        normalizedCode: normalizedCode
+        normalizedCode: normalizedCode,
+        codeDocId: codeRef.id
       };
     } catch (error) {
       console.error('[Groups] Error validating invite code:', error);
@@ -227,8 +241,8 @@ const Groups = {
       }, { merge: true });
       
       // Increment code usage count
-      const normalizedCode = validation.normalizedCode || this.normalizeInviteCode(code);
-      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
+      const codeDocId = validation.codeDocId || validation.normalizedCode || this.normalizeInviteCode(code);
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', codeDocId);
       await window.setDoc(codeRef, {
         usedCount: (validation.codeData.usedCount || 0) + 1,
         lastUsedAt: new Date().toISOString(),

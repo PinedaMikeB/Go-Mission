@@ -27,7 +27,10 @@
 - Keep join behavior consistent across both entry points:
   - `My Mission Groups` join modal (`my-groups.js`)
   - `Groups` join modal (`groups.js`)
-- Usage count updates must use the normalized code key when writing to `goMission_groupInviteCodes/{code}`.
+- Invite-code lookup must support both storage styles:
+  - doc id equals code (current)
+  - legacy random doc id with `code` field
+- Usage count updates must target the resolved invite-code document id (not assume doc id always equals code).
 - UX text must state `6-character code` (not `6-digit`) to match actual invite format.
 
 ### Regression Checklist (Run Before Push)

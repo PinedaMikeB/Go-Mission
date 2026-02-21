@@ -23,8 +23,9 @@ Fixed false `Invalid invite code` results when users enter valid group invite co
    - Applied normalization in:
      - `/modules/groups/my-groups.js` (`My Mission Groups` join flow)
      - `/modules/groups/groups.js` (`Groups` module join flow)
+   - Added legacy lookup fallback via `where('code', '==', normalizedCode)` when invite code doc id is not the code itself.
 3. **Usage tracking consistency**
-   - `groups.js` now reuses normalized code when incrementing `goMission_groupInviteCodes.usedCount`.
+   - `groups.js` now writes usage updates to the resolved invite-code document id (works for both code-keyed and legacy random-id docs).
 4. **UX copy alignment**
    - Updated placeholder text from `6-digit` to `6-character` to match actual alphanumeric invite codes.
 

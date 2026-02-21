@@ -1631,10 +1631,22 @@ const MyGroups = {
         try {
             let groupDoc = null;
             let groupData = null;
+            let codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code);
+            let codeDoc = await window.getDoc(codeRef);
             
             // Method 1: Check goMission_groupInviteCodes collection (new system)
-            const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code);
-            const codeDoc = await window.getDoc(codeRef);
+            // Legacy compatibility: some old invite code docs were saved with random doc ids.
+            if (!codeDoc.exists()) {
+                const codeQuery = window.query(
+                    window.collection(window.db, 'goMission_groupInviteCodes'),
+                    window.where('code', '==', code)
+                );
+                const codeSnapshot = await window.getDocs(codeQuery);
+                if (!codeSnapshot.empty) {
+                    codeDoc = codeSnapshot.docs[0];
+                    codeRef = codeDoc.ref;
+                }
+            }
             
             if (codeDoc.exists()) {
                 const codeData = codeDoc.data();
