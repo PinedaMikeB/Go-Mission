@@ -323,6 +323,7 @@ const BibleReader = {
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     const hasHighlights = this.highlightedVerses.length > 0;
     const isMobile = window.innerWidth < 768;
+    const journalLabel = lang === 'tl' ? 'Aking Journal' : 'My Journal';
     
     overlay.innerHTML = `
       <!-- Fullscreen Header -->
@@ -378,6 +379,11 @@ const BibleReader = {
         
         <!-- Insights Button -->
         <div class="flex items-center gap-2">
+          <button onclick="BibleReader.openJournalFromFullscreen()"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-[var(--input-bg)] text-[var(--text-color)] hover:bg-[var(--mission-gold)]/15 hover:text-[var(--mission-gold)]">
+            <span>📖</span>
+            <span>${journalLabel}</span>
+          </button>
           <button onclick="BibleReader.toggleFullscreenCommentary()" 
                   id="fullscreenCommentaryBtn"
                   class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/25' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
@@ -467,6 +473,17 @@ const BibleReader = {
       panel.classList.add('hidden');
       btn?.classList.remove('bg-[var(--mission-gold)]/25');
     }
+  },
+
+  /**
+   * Open Journal modal from fullscreen header button.
+   */
+  openJournalFromFullscreen() {
+    if (typeof window.openJournal === 'function') {
+      window.openJournal();
+      return;
+    }
+    alert('Journal is not available right now. Please refresh and try again.');
   },
 
   /**

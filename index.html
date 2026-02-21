@@ -5013,7 +5013,10 @@
 
         // Open journal
         window.openJournal = async function() {
-            toggleDevotionMenu(); // Close menu
+            const devotionMenu = document.getElementById('devotionMenuModal');
+            if (devotionMenu && !devotionMenu.classList.contains('hidden')) {
+                devotionMenu.classList.add('hidden');
+            }
             const modal = document.getElementById('journalModal');
             if (!modal) return;
             modal.classList.remove('hidden');
