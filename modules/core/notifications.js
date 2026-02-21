@@ -590,16 +590,13 @@ const Notifications = {
     const headerBadge = document.getElementById('headerNotificationBadge');
     const headerBtn = document.getElementById('headerChatBadge');
     if (headerBadge && headerBtn) {
+      // Header inbox icon is now the primary Messages entry point; keep it visible.
+      headerBtn.classList.remove('hidden');
       if (count > 0) {
         headerBadge.textContent = badgeText;
         headerBadge.classList.remove('hidden');
-        headerBtn.classList.remove('hidden');
       } else {
         headerBadge.classList.add('hidden');
-        // Keep button visible if user is in a group
-        if (Groups?.currentGroup) {
-          headerBtn.classList.remove('hidden');
-        }
       }
     }
     
