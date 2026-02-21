@@ -119,6 +119,10 @@
 - **Status**: 🔄 Shared Jitsi chat access update in progress
   - Replaced tile/grid toolbar control with `chat` on embedded Jitsi primary toolbar
   - Applies globally via `/modules/groups/group-meeting.js` for Mission Groups + Wednesday Equipping + future `GroupMeeting.joinMeeting(...)` flows
+- **Status**: 🔄 Shared Jitsi toolbar layout adjustment in progress
+  - Requested layout: main toolbar keeps `microphone`, `camera`, `share screen`, `more`, `leave`
+  - `tile/grid`, `chat`, and `reactions` moved into `More` menu
+  - Implemented in shared config (`/modules/groups/group-meeting.js`) for all embedded meetings
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
