@@ -369,9 +369,10 @@ export async function submitWatchInboxMessage({
   await authReady;
 
   try {
+    const userId = auth?.currentUser?.uid || currentUserId || 'guest';
     const userAgent = normalizeText(navigator?.userAgent || '', 512);
     const docRef = await addDoc(collection(db, 'video_inbox'), {
-      userId: currentUserId || 'guest',
+      userId,
       episodeId: normalizedEpisodeId,
       seriesId: normalizedSeriesId || null,
       messageType: normalizedType,
