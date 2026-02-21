@@ -285,6 +285,11 @@ const BibleReader = {
     
     // Apply to reflection textarea
     if (reflectionTextarea) reflectionTextarea.style.fontSize = fontSize;
+
+    // Re-render fullscreen insights content so labels/questions/inputs stay in sync with Bible font size.
+    if (this.preferences.isFullscreen && document.getElementById('fullscreenCommentaryContent')) {
+      this.refreshFullscreenInsightsPanel();
+    }
   },
 
   /**
@@ -525,6 +530,11 @@ const BibleReader = {
       }
     };
     const L = labels[lang] || labels.en;
+    const baseFontPx = Math.max(12, Number(this.preferences.fontSize) || 16);
+    const headingFontPx = Math.max(14, Math.round(baseFontPx * 1.05));
+    const labelFontPx = Math.max(13, Math.round(baseFontPx * 0.92));
+    const metaFontPx = Math.max(12, Math.round(baseFontPx * 0.84));
+    const smallFontPx = Math.max(11, Math.round(baseFontPx * 0.78));
 
     const shareToggle = document.getElementById('shareToggle');
     if (this.inlineReflectionDraft.shareWithGroup === null) {
@@ -539,11 +549,11 @@ const BibleReader = {
       }
       html += `
         <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
-          <p class="text-[var(--mission-gold)] font-bold mb-2">Verse ${verseNum}</p>
+          <p class="text-[var(--mission-gold)] font-bold mb-2" style="font-size:${labelFontPx}px;">Verse ${verseNum}</p>
           <div class="space-y-3 text-[var(--text-color)]">
-            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
-            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
-            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.understanding}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.understanding || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.livingItOut}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.livingItOut || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.godsLove}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.godsLove || ''}</p></div>
           </div>
         </div>
       `;
@@ -569,19 +579,19 @@ const BibleReader = {
     if (shareActive) {
       if (this.inlineShareTargetsLoading) {
         shareGroupPickerHtml = `
-          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[11px] text-[var(--text-muted)]">
+          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
             ${lang === 'tl' ? 'Naglo-load ng mga group...' : 'Loading groups...'}
           </div>
         `;
       } else if (shareTargets.length === 0) {
         shareGroupPickerHtml = `
-          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[11px] text-[var(--text-muted)]">
+          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
             ${L.noShareGroups}
           </div>
         `;
       } else {
         const selectAllRow = shareTargets.length > 1 ? `
-          <label class="flex items-center gap-2 text-xs text-[var(--text-color)] mb-2 cursor-pointer">
+          <label class="flex items-center gap-2 text-[var(--text-color)] mb-2 cursor-pointer" style="font-size:${metaFontPx}px;">
             <input type="checkbox"
                    class="accent-[var(--mission-gold)]"
                    onchange="BibleReader.toggleInlineShareAll(this.checked)"
@@ -602,8 +612,8 @@ const BibleReader = {
                      onchange="BibleReader.toggleInlineShareGroup('${groupIdForJs}', this.checked)"
                      ${checked}>
               <span class="flex-1 min-w-0">
-                <span class="text-xs text-[var(--text-color)] font-medium block truncate">${this.escapeHTML(group.name || 'Mission Group')}</span>
-                <span class="text-[10px] text-[var(--text-muted)]">${this.escapeHTML(roleLabel)}</span>
+                <span class="text-[var(--text-color)] font-medium block truncate" style="font-size:${metaFontPx}px;">${this.escapeHTML(group.name || 'Mission Group')}</span>
+                <span class="text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">${this.escapeHTML(roleLabel)}</span>
               </span>
             </label>
           `;
@@ -611,10 +621,10 @@ const BibleReader = {
 
         shareGroupPickerHtml = `
           <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-            <p class="text-[11px] text-[var(--text-color)] font-semibold mb-1">${L.selectGroups}</p>
+            <p class="text-[var(--text-color)] font-semibold mb-1" style="font-size:${metaFontPx}px;">${L.selectGroups}</p>
             ${selectAllRow}
             <div class="max-h-32 overflow-y-auto pr-1">${groupRows}</div>
-            <p class="text-[10px] text-[var(--text-muted)] mt-2">${selectedCount} ${L.selectedCount}</p>
+            <p class="text-[var(--text-muted)] mt-2" style="font-size:${smallFontPx}px;">${selectedCount} ${L.selectedCount}</p>
           </div>
         `;
       }
@@ -624,37 +634,40 @@ const BibleReader = {
       <div class="mt-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
         ${primaryQuestion ? `
           <div class="mb-3">
-            <span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.reflectionQuestion}</span>
-            <p class="text-sm text-[var(--text-color)] italic">"${this.escapeHTML(primaryQuestion)}"</p>
+            <span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.reflectionQuestion}</span>
+            <p class="text-[var(--text-color)] italic" style="font-size:${headingFontPx}px; line-height:1.5;">"${this.escapeHTML(primaryQuestion)}"</p>
           </div>
         ` : ''}
 
-        <label class="text-[var(--mission-gold)]/80 text-xs font-semibold block mb-1">${L.yourAnswer}</label>
+        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
-                  rows="3"
-                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  rows="6"
+                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
 
-        <label class="text-[var(--mission-gold)]/80 text-xs font-semibold block mb-1">${L.iWill}</label>
+        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
         <textarea id="inlineInsightCommitmentInput"
                   oninput="BibleReader.setInlineCommitment(this.value)"
-                  rows="2"
-                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  rows="4"
+                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.iWillPlaceholder}">${commitmentValue}</textarea>
 
         <div class="flex items-start gap-3 mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/40">
           <div class="toggle-switch ${shareActive ? 'active' : ''}" id="inlineInsightShareToggle" onclick="BibleReader.toggleInlineShare()"></div>
           <div class="flex-1">
-            <p class="text-sm text-[var(--text-color)] font-medium">${L.shareWithGroup}</p>
-            <p class="text-[10px] text-[var(--text-muted)] mt-1">${L.shareWithGroupHelp}</p>
+            <p class="text-[var(--text-color)] font-medium" style="font-size:${labelFontPx}px;">${L.shareWithGroup}</p>
+            <p class="text-[var(--text-muted)] mt-1" style="font-size:${smallFontPx}px;">${L.shareWithGroupHelp}</p>
           </div>
         </div>
         ${shareGroupPickerHtml}
 
         <button id="inlineInsightSaveBtn"
                 onclick="BibleReader.saveInlineReflection()"
-                class="w-full py-3 rounded-lg bg-[var(--mission-red-bright)] hover:bg-[#8B0000] text-white font-bold text-sm transition-colors">
+                class="w-full py-3 rounded-lg bg-[var(--mission-red-bright)] hover:bg-[#8B0000] text-white font-bold transition-colors"
+                style="font-size:${labelFontPx}px;">
           ${L.save}
         </button>
       </div>
