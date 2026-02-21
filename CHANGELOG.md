@@ -10,6 +10,38 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.5] - 2026-02-21 🔐 Invite Code Join Reliability
+
+### ✅ Summary
+Fixed false `Invalid invite code` results when users enter valid group invite codes with mobile/paste formatting (spaces/symbols/casing differences).
+
+### Included Changes
+1. **Invite code normalization at input + submit**
+   - Join modals now sanitize code to uppercase alphanumeric and strip separators.
+   - Validation now requires exactly 6 characters after normalization.
+2. **Consistent behavior across both group entry points**
+   - Applied normalization in:
+     - `/modules/groups/my-groups.js` (`My Mission Groups` join flow)
+     - `/modules/groups/groups.js` (`Groups` module join flow)
+3. **Usage tracking consistency**
+   - `groups.js` now reuses normalized code when incrementing `goMission_groupInviteCodes.usedCount`.
+4. **UX copy alignment**
+   - Updated placeholder text from `6-digit` to `6-character` to match actual alphanumeric invite codes.
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.5>
+```
+
+---
+
 ## [v2.2.4] - 2026-02-20 👥 Mission Groups Role Safety + Guest Visibility
 
 ### ✅ Summary

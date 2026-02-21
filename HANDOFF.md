@@ -10,6 +10,35 @@
 
 ---
 
+## Current Task Status (2026-02-21) — Thread 5 Invite Code Invalid Fix
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+- **Goal completed**: Invite code join flow now tolerates mobile/paste formatting and no longer rejects valid 6-character codes due to spaces/separators.
+
+### Invite Code Guardrails (Do Not Break)
+
+- Always normalize invite code input as:
+  - uppercase
+  - alphanumeric only (`A-Z0-9`)
+  - max length 6
+- Validate invite codes as exactly 6 characters after normalization.
+- Keep join behavior consistent across both entry points:
+  - `My Mission Groups` join modal (`my-groups.js`)
+  - `Groups` join modal (`groups.js`)
+- Usage count updates must use the normalized code key when writing to `goMission_groupInviteCodes/{code}`.
+- UX text must state `6-character code` (not `6-digit`) to match actual invite format.
+
+### Regression Checklist (Run Before Push)
+
+- Entering code with spaces like `9 6 C Y R G` should normalize to `96CYRG` and submit.
+- Entering lowercase like `96cyrg` should normalize to `96CYRG`.
+- Invalid length after normalization must show clear error.
+- Valid code should create join request (or direct join path, depending on flow) without false `Invalid invite code`.
+
+---
+
 ## Current Task Status (2026-02-20) — Thread 5 Mission Groups (Critical Guardrails)
 
 - **Active modules**

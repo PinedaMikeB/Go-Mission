@@ -1535,6 +1535,16 @@ const MyGroups = {
         const h12 = h % 12 || 12;
         return `${h12}:${minutes} ${ampm}`;
     },
+
+    /**
+     * Normalize invite code input to uppercase alphanumeric without separators.
+     */
+    normalizeInviteCode(rawCode) {
+        return String(rawCode || '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '')
+            .slice(0, 6);
+    },
     
     /**
      * Show join group modal
@@ -1550,9 +1560,9 @@ const MyGroups = {
                     <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">✕</button>
                 </div>
                 <p class="text-[var(--text-muted)] text-sm mb-4">Enter the invite code given by your discipler:</p>
-                <input type="text" id="joinCodeInput" placeholder="Enter 6-digit code" 
+                <input type="text" id="joinCodeInput" placeholder="Enter 6-character code" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] text-center text-2xl tracking-[0.5em] uppercase mb-4"
-                    maxlength="6" oninput="this.value = this.value.toUpperCase()">
+                    maxlength="12" oninput="this.value = window.MyGroups.normalizeInviteCode(this.value)">
                 <div id="joinError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
                 <button onclick="window.MyGroups.joinWithCode()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Join Group
@@ -1602,12 +1612,17 @@ const MyGroups = {
      * Join group with invite code
      */
     async joinWithCode() {
-        const code = document.getElementById('joinCodeInput')?.value?.trim().toUpperCase();
+        const inputEl = document.getElementById('joinCodeInput');
+        const code = this.normalizeInviteCode(inputEl?.value);
         const errorEl = document.getElementById('joinError');
+
+        if (inputEl) {
+            inputEl.value = code;
+        }
         
-        if (!code || code.length < 4) {
+        if (!code || code.length !== 6) {
             if (errorEl) {
-                errorEl.textContent = 'Please enter a valid code';
+                errorEl.textContent = 'Please enter a valid 6-character code';
                 errorEl.classList.remove('hidden');
             }
             return;

@@ -24,6 +24,13 @@ const Groups = {
     'michael.marga@gmail.com',
     'vasquezperlie18@gmail.com'
   ],
+
+  normalizeInviteCode(rawCode) {
+    return String(rawCode || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 6);
+  },
   
   // Check if current user is admin
   isAdmin() {
@@ -110,8 +117,13 @@ const Groups = {
     if (!window.db || !code) return { valid: false, message: 'Invalid code' };
     
     try {
+      const normalizedCode = this.normalizeInviteCode(code);
+      if (!normalizedCode || normalizedCode.length !== 6) {
+        return { valid: false, message: 'Please enter a valid 6-character invite code' };
+      }
+
       // Check goMission_groupInviteCodes collection
-      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code.toUpperCase());
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
       const codeDoc = await window.getDoc(codeRef);
       
       if (!codeDoc.exists()) {
@@ -156,7 +168,8 @@ const Groups = {
         groupId: codeData.groupId,
         groupName: groupData.name,
         groupData: groupData,
-        codeData: codeData
+        codeData: codeData,
+        normalizedCode: normalizedCode
       };
     } catch (error) {
       console.error('[Groups] Error validating invite code:', error);
@@ -214,7 +227,8 @@ const Groups = {
       }, { merge: true });
       
       // Increment code usage count
-      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code.toUpperCase());
+      const normalizedCode = validation.normalizedCode || this.normalizeInviteCode(code);
+      const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
       await window.setDoc(codeRef, {
         usedCount: (validation.codeData.usedCount || 0) + 1,
         lastUsedAt: new Date().toISOString(),
@@ -1058,8 +1072,8 @@ const Groups = {
           <label class="block text-xs text-slate-400 mb-1">Invite Code</label>
           <input type="text" id="groupInviteCode" placeholder="Enter 6-character code" 
                  class="w-full bg-black/40 border border-amber-500/30 rounded-xl p-4 text-xl text-amber-400 placeholder-slate-500 uppercase tracking-widest text-center font-bold"
-                 style="text-transform: uppercase;" maxlength="6"
-                 oninput="this.value = this.value.toUpperCase()">
+                 style="text-transform: uppercase;" maxlength="12"
+                 oninput="this.value = Groups.normalizeInviteCode(this.value)">
         </div>
         
         <div id="inviteCodePreview" class="hidden mb-4 p-3 bg-green-500/10 rounded-xl border border-green-500/30">
@@ -1089,10 +1103,12 @@ const Groups = {
    * Submit join with code
    */
   async submitJoinWithCode() {
-    const code = document.getElementById('groupInviteCode')?.value?.trim()?.toUpperCase();
+    const inputEl = document.getElementById('groupInviteCode');
+    const code = this.normalizeInviteCode(inputEl?.value);
+    if (inputEl) inputEl.value = code;
     
-    if (!code || code.length < 4) {
-      alert('Please enter a valid invite code');
+    if (!code || code.length !== 6) {
+      alert('Please enter a valid 6-character invite code');
       return;
     }
     
