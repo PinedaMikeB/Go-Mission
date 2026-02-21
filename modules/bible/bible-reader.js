@@ -500,6 +500,7 @@ const BibleReader = {
         selectGroups: 'Choose group(s) to share with',
         selectAllGroups: 'Select all groups',
         noShareGroups: 'No mission groups available to share right now.',
+        availableCount: 'available group(s)',
         selectedCount: 'group(s) selected',
         roleUpline: 'Upline',
         roleDownline: 'Downline',
@@ -522,6 +523,7 @@ const BibleReader = {
         selectGroups: 'Piliin ang mga group na pagse-share-an',
         selectAllGroups: 'Piliin lahat ng group',
         noShareGroups: 'Wala kang available na mission group para i-share ngayon.',
+        availableCount: 'available na group',
         selectedCount: 'group ang napili',
         roleUpline: 'Upline',
         roleDownline: 'Downline',
@@ -605,9 +607,10 @@ const BibleReader = {
         const groupRows = shareTargets.map((group) => {
           const groupId = String(group.id || '');
           const groupIdForJs = groupId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-          const groupIdTail = groupId.length > 12 ? groupId.slice(-12) : groupId;
           const checked = selectedSet.has(groupId) ? 'checked' : '';
           const roleLabel = this.getInlineShareRoleLabel(group.type, L);
+          const memberCount = Number(group.memberCount || 0);
+          const memberText = memberCount > 0 ? ` • ${memberCount} member${memberCount === 1 ? '' : 's'}` : '';
           return `
             <label class="flex items-start gap-2 py-1.5 cursor-pointer">
               <input type="checkbox"
@@ -616,7 +619,8 @@ const BibleReader = {
                      ${checked}>
               <span class="flex-1 min-w-0">
                 <span class="text-[var(--text-color)] font-medium block whitespace-normal break-words leading-snug" style="font-size:${metaFontPx}px;">${this.escapeHTML(group.name || 'Mission Group')}</span>
-                <span class="text-[var(--text-muted)] block mt-0.5 whitespace-normal break-all" style="font-size:${smallFontPx}px;">${this.escapeHTML(roleLabel)} • ${L.groupIdSuffix}: ${this.escapeHTML(groupIdTail)}</span>
+                <span class="text-[var(--text-muted)] block mt-0.5 whitespace-normal break-words" style="font-size:${smallFontPx}px;">${this.escapeHTML(roleLabel)}${this.escapeHTML(memberText)}</span>
+                <span class="text-[var(--text-muted)] block mt-0.5 whitespace-normal break-all" style="font-size:${smallFontPx}px;">${L.groupIdSuffix}: ${this.escapeHTML(groupId)}</span>
               </span>
             </label>
           `;
@@ -626,7 +630,8 @@ const BibleReader = {
           <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
             <p class="text-[var(--text-color)] font-semibold mb-1" style="font-size:${metaFontPx}px;">${L.selectGroups}</p>
             ${selectAllRow}
-            <div class="max-h-32 overflow-y-auto pr-1">${groupRows}</div>
+            <p class="text-[var(--text-muted)] mb-2" style="font-size:${smallFontPx}px;">${shareTargets.length} ${L.availableCount}</p>
+            <div class="overflow-y-auto pr-1" style="max-height:45vh;">${groupRows}</div>
             <p class="text-[var(--text-muted)] mt-2" style="font-size:${smallFontPx}px;">${selectedCount} ${L.selectedCount}</p>
           </div>
         `;

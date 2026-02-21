@@ -3772,6 +3772,34 @@
             return 1;
         }
 
+        function normalizeGroupCollectionEntries(value) {
+            if (Array.isArray(value)) return value;
+            if (value && typeof value === 'object') {
+                return Object.entries(value).map(([key, entry]) => {
+                    if (entry && typeof entry === 'object') return { ...entry, _key: key };
+                    return { id: key, value: entry, _key: key };
+                });
+            }
+            if (typeof value === 'string' && value.trim()) return [value.trim()];
+            return [];
+        }
+
+        function resolveGroupEntityId(entry) {
+            if (!entry) return null;
+            if (typeof entry === 'string') return entry;
+            return entry.odId || entry.uid || entry.userId || entry.memberId || entry.id || entry._key || null;
+        }
+
+        function isUserInGroupCollection(collectionValue, uid) {
+            if (!uid || !collectionValue) return false;
+            const entries = normalizeGroupCollectionEntries(collectionValue);
+            return entries.some(entry => {
+                if (typeof entry === 'string') return entry === uid;
+                if (entry && typeof entry === 'object' && entry._key === uid) return true;
+                return resolveGroupEntityId(entry) === uid;
+            });
+        }
+
         function upsertShareGroup(groupMap, rawGroup, type = 'group') {
             const normalized = normalizeShareGroupTarget(rawGroup, type);
             if (!normalized) return;
@@ -3819,10 +3847,20 @@
         }
 
         async function resolveShareableGroups() {
-            const inMemory = collectShareableGroupsFromMemory();
-            if (!window.currentUser?.uid || !window.db) return inMemory;
+            if (!window.currentUser?.uid || !window.db) return collectShareableGroupsFromMemory();
 
             const uid = window.currentUser.uid;
+
+            // Refresh mission group caches before resolving share targets to avoid stale/incomplete lists.
+            if (typeof MyGroups !== 'undefined' && typeof MyGroups.loadGroups === 'function') {
+                try {
+                    await MyGroups.loadGroups();
+                } catch (error) {
+                    console.warn('[Devotion] Could not refresh MyGroups before loading share targets:', error);
+                }
+            }
+
+            const inMemory = collectShareableGroupsFromMemory();
             const groupMap = new Map();
             inMemory.forEach(group => upsertShareGroup(groupMap, group, group.type || 'group'));
 
@@ -3854,6 +3892,13 @@
 
                 const guestGroupIds = (() => {
                     const raw = userData.guestGroups;
+                    if (typeof MyGroups !== 'undefined' && typeof MyGroups.extractIdList === 'function') {
+                        try {
+                            return MyGroups.extractIdList(raw);
+                        } catch (error) {
+                            console.warn('[Devotion] Could not parse guestGroups via MyGroups.extractIdList:', error);
+                        }
+                    }
                     if (Array.isArray(raw)) {
                         return raw.map(g => (typeof g === 'string' ? g : g?.groupId || g?.id || g?.odId)).filter(Boolean);
                     }
@@ -3870,6 +3915,23 @@
                     } catch (error) {
                         console.warn('[Devotion] Could not load guest group for sharing:', groupId, error);
                     }
+                }
+
+                // Recovery scan: include any group where user appears as leader/member/guest,
+                // even if member profile pointers are stale or mismatched.
+                try {
+                    const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+                    allGroupsSnapshot.forEach(docSnap => {
+                        const groupData = docSnap.data() || {};
+                        const isDownline = groupData.leaderId === uid;
+                        const isMember = isUserInGroupCollection(groupData.members, uid);
+                        const isGuest = isUserInGroupCollection(groupData.guests, uid);
+                        if (!isDownline && !isMember && !isGuest) return;
+                        const resolvedType = isDownline ? 'downline' : (isGuest ? 'guest' : 'upline');
+                        upsertShareGroup(groupMap, { id: docSnap.id, ...groupData }, resolvedType);
+                    });
+                } catch (scanError) {
+                    console.warn('[Devotion] Recovery scan for share groups failed:', scanError);
                 }
             } catch (error) {
                 console.error('[Devotion] Could not resolve shareable groups:', error);
