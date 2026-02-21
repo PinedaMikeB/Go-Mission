@@ -1955,19 +1955,11 @@
                 </div>
             </div>
 
-            <!-- Collapsible Section Header for Other Cards -->
-            <div class="flex items-center justify-between px-2 mb-3 cursor-pointer" onclick="toggleOtherCards()">
-                <span class="text-xs text-[var(--text-muted)] uppercase tracking-wider" id="otherCardsLabel" data-i18n="otherFeatures">Other Features</span>
-                <svg id="otherCardsChevron" class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </div>
-
-            <!-- Other Dashboard Cards - Hidden by default -->
-            <div id="otherCardsContent" class="hidden">
+            <!-- Hidden support container (devotion/bible modal dependencies) -->
+            <div id="otherCardsContent" class="hidden" aria-hidden="true">
 
             <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
-            <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
+            <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up hidden" id="devotionCard">
                 <!-- Header with Menu -->
                 <div class="p-4 border-b border-[var(--card-border)] flex items-center">
                     <div class="flex items-center gap-2">
@@ -2171,56 +2163,6 @@
                 </div>
             </div>
 
-            <!-- Cards Grid -->
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                <!-- My Training Card (opens Training screen) -->
-                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up cursor-pointer hover:ring-1 hover:ring-[var(--mission-gold)]/30 transition-all" onclick="Training.openFullScreen()">
-                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
-                            <span class="text-amber-500">🎯</span>
-                            <span data-i18n="myTraining">My Training</span>
-                        </h3>
-                        <span class="text-[var(--text-muted)]">›</span>
-                    </div>
-                    <div class="p-4" id="myTrainingCardContent">
-                        <p id="trainingVerseText" class="text-[var(--text-muted)] text-sm italic mb-2">"Train yourself to be godly..."</p>
-                        <p id="trainingVerseRef" class="text-[var(--mission-gold)] text-xs font-medium">— 1 Timothy 4:7</p>
-                        <div class="mt-4 flex items-center justify-between text-xs">
-                            <span class="text-[var(--text-dim)]" id="trainingProgress">0/7 sessions</span>
-                            <span class="text-[var(--mission-gold)]">Continue →</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Leader Dashboard Card - Only visible for leaders/admins -->
-                <div id="leaderDashboardCard" onclick="window.LeaderDashboard.open()" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden cursor-pointer hover:border-amber-500/30 transition-all">
-                    <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
-                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
-                            <span class="text-amber-500">📊</span>
-                            Leader Dashboard
-                        </h3>
-                        <span class="text-amber-500 text-sm">View →</span>
-                    </div>
-                    <div class="p-4">
-                        <p class="text-sm text-[var(--text-muted)] mb-4">Manage your mission group members</p>
-                        <div class="grid grid-cols-3 gap-3 text-center">
-                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
-                                <p id="dashboardMemberCount" class="text-2xl font-bold text-[var(--text-color)]">-</p>
-                                <p class="text-[10px] text-[var(--text-muted)]">Members</p>
-                            </div>
-                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
-                                <p id="dashboardActiveCount" class="text-2xl font-bold text-green-500">-</p>
-                                <p class="text-[10px] text-[var(--text-muted)]">Active</p>
-                            </div>
-                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
-                                <p id="dashboardNeedsAttention" class="text-2xl font-bold text-red-500">-</p>
-                                <p class="text-[10px] text-[var(--text-muted)]">Need Care</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             </div><!-- End otherCardsContent -->
         </main>
 
@@ -3723,7 +3665,10 @@
 
         // Initialize devotion - now uses BibleReader module
         function initializeDevotion() {
-            document.getElementById('devotionDate').textContent = formatDate(new Date());
+            const devotionDateEl = document.getElementById('devotionDate');
+            if (devotionDateEl) {
+                devotionDateEl.textContent = formatDate(new Date());
+            }
             
             // Default reflection question (will be replaced when verse is highlighted)
             // BibleReader will auto-initialize and load from saved progress
@@ -4356,6 +4301,9 @@
         window.toggleOtherCards = function() {
 	            const content = document.getElementById('otherCardsContent');
 	            const chevron = document.getElementById('otherCardsChevron');
+            if (!content || !chevron) {
+                return;
+            }
             const isHidden = content.classList.contains('hidden');
             
             if (isHidden) {
@@ -4410,12 +4358,9 @@
 
         // Initialize collapsed sections on load
         document.addEventListener('DOMContentLoaded', function() {
-            // Other cards (below Journey) - collapsed by default, only expand if user previously expanded
-            const otherCardsExpanded = localStorage.getItem('otherCardsExpanded') === 'true';
-            if (otherCardsExpanded) {
-                document.getElementById('otherCardsContent')?.classList.remove('hidden');
-                document.getElementById('otherCardsChevron')?.classList.add('rotate-180');
-            }
+            // Other cards section is removed from Home UI; keep it hidden for support elements only.
+            document.getElementById('otherCardsContent')?.classList.add('hidden');
+            localStorage.removeItem('otherCardsExpanded');
             
             // Other features section
             const expanded = localStorage.getItem('otherFeaturesExpanded') === 'true';
