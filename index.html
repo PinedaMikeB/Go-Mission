@@ -3752,31 +3752,120 @@
             document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
         };
 
-        async function resolveActiveGroupId() {
+        function normalizeShareGroupTarget(rawGroup, type = 'group') {
+            if (!rawGroup?.id) return null;
+            return {
+                id: String(rawGroup.id),
+                name: rawGroup.name || 'Mission Group',
+                type,
+                memberCount: Number(rawGroup.currentCount || rawGroup.members?.length || 0)
+            };
+        }
+
+        function collectShareableGroupsFromMemory() {
+            const groupMap = new Map();
+            const addGroup = (rawGroup, type = 'group') => {
+                const normalized = normalizeShareGroupTarget(rawGroup, type);
+                if (!normalized) return;
+                const existing = groupMap.get(normalized.id);
+                if (!existing) {
+                    groupMap.set(normalized.id, normalized);
+                    return;
+                }
+                if (existing.type === 'group' && normalized.type !== 'group') {
+                    groupMap.set(normalized.id, { ...existing, ...normalized });
+                }
+            };
+
             if (typeof Groups !== 'undefined' && Groups.currentGroup?.id) {
-                return Groups.currentGroup.id;
+                addGroup(Groups.currentGroup, 'group');
             }
 
             if (typeof MyGroups !== 'undefined') {
-                if (MyGroups.uplineGroup?.id) return MyGroups.uplineGroup.id;
-                if (Array.isArray(MyGroups.guestGroups) && MyGroups.guestGroups[0]?.id) {
-                    return MyGroups.guestGroups[0].id;
-                }
+                addGroup(MyGroups.uplineGroup, 'upline');
+                (MyGroups.downlineGroups || []).forEach(group => addGroup(group, 'downline'));
+                (MyGroups.guestGroups || []).forEach(group => addGroup(group, 'guest'));
             }
 
-            if (!window.currentUser?.uid || !window.db) return null;
+            const roleOrder = { upline: 0, downline: 1, guest: 2, group: 3 };
+            return Array.from(groupMap.values()).sort((a, b) => {
+                const roleDelta = (roleOrder[a.type] ?? 99) - (roleOrder[b.type] ?? 99);
+                if (roleDelta !== 0) return roleDelta;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+        }
+
+        async function resolveShareableGroups() {
+            const inMemory = collectShareableGroupsFromMemory();
+            if (inMemory.length > 0) return inMemory;
+            if (!window.currentUser?.uid || !window.db) return [];
+
+            const uid = window.currentUser.uid;
+            const groupMap = new Map();
+            const addGroup = (rawGroup, type = 'group') => {
+                const normalized = normalizeShareGroupTarget(rawGroup, type);
+                if (!normalized) return;
+                if (groupMap.has(normalized.id)) return;
+                groupMap.set(normalized.id, normalized);
+            };
 
             try {
-                const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+                const userRef = window.doc(window.db, 'goMission_members', uid);
                 const userDoc = await window.getDoc(userRef);
-                if (!userDoc.exists()) return null;
+                const userData = userDoc.exists() ? (userDoc.data() || {}) : {};
 
-                const userData = userDoc.data() || {};
-                return userData.uplineGroupId || userData.groupId || (Array.isArray(userData.guestGroups) ? userData.guestGroups[0] : null) || null;
+                const uplineGroupId = userData.uplineGroupId || userData.groupId || null;
+                if (uplineGroupId) {
+                    try {
+                        const uplineDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', uplineGroupId));
+                        if (uplineDoc.exists()) addGroup({ id: uplineDoc.id, ...uplineDoc.data() }, 'upline');
+                    } catch (error) {
+                        console.warn('[Devotion] Could not load upline group for sharing:', error);
+                    }
+                }
+
+                try {
+                    const downlineQuery = window.query(
+                        window.collection(window.db, 'goMission_groups'),
+                        window.where('leaderId', '==', uid)
+                    );
+                    const downlineSnapshot = await window.getDocs(downlineQuery);
+                    downlineSnapshot.forEach(docSnap => addGroup({ id: docSnap.id, ...docSnap.data() }, 'downline'));
+                } catch (error) {
+                    console.warn('[Devotion] Could not load downline groups for sharing:', error);
+                }
+
+                const guestGroupIds = Array.isArray(userData.guestGroups)
+                    ? userData.guestGroups.map(g => (typeof g === 'string' ? g : g?.groupId || g?.id)).filter(Boolean)
+                    : [];
+                for (const groupId of guestGroupIds) {
+                    if (groupMap.has(String(groupId))) continue;
+                    try {
+                        const guestDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', String(groupId)));
+                        if (guestDoc.exists()) addGroup({ id: guestDoc.id, ...guestDoc.data() }, 'guest');
+                    } catch (error) {
+                        console.warn('[Devotion] Could not load guest group for sharing:', groupId, error);
+                    }
+                }
             } catch (error) {
-                console.error('[Devotion] Could not resolve active group:', error);
-                return null;
+                console.error('[Devotion] Could not resolve shareable groups:', error);
             }
+
+            const roleOrder = { upline: 0, downline: 1, guest: 2, group: 3 };
+            return Array.from(groupMap.values()).sort((a, b) => {
+                const roleDelta = (roleOrder[a.type] ?? 99) - (roleOrder[b.type] ?? 99);
+                if (roleDelta !== 0) return roleDelta;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+        }
+
+        window.getDevotionShareTargets = async function() {
+            return await resolveShareableGroups();
+        };
+
+        async function resolveActiveGroupId() {
+            const groups = await resolveShareableGroups();
+            return groups[0]?.id || null;
         }
 
         function getDevotionLanguage() {
@@ -3860,7 +3949,7 @@
             return verseNumbers.length > 0 ? `${base}:${verseNumbers.join(',')}` : base;
         }
 
-        async function persistDevotionEntry({ reflection, commitment = '', question, shareRequested }) {
+        async function persistDevotionEntry({ reflection, commitment = '', question, shareRequested, shareGroupIds = [] }) {
             if (!window.currentUser || !reflection) {
                 return { saved: false, missingGroup: false };
             }
@@ -3877,15 +3966,24 @@
             const sectionLabels = getDevotionSectionLabels(lang);
             const scriptureSection = buildDevotionScriptureSection(reading, lang);
 
-            let groupId = null;
+            let targetGroupIds = [];
             let shouldShare = !!shareRequested;
 
             if (shouldShare) {
-                groupId = await resolveActiveGroupId();
-                if (!groupId) {
+                targetGroupIds = Array.isArray(shareGroupIds)
+                    ? [...new Set(shareGroupIds.map(id => String(id || '').trim()).filter(Boolean))]
+                    : [];
+                if (targetGroupIds.length === 0) {
+                    const fallbackGroupId = await resolveActiveGroupId();
+                    if (fallbackGroupId) {
+                        targetGroupIds = [String(fallbackGroupId)];
+                    }
+                }
+                if (targetGroupIds.length === 0) {
                     shouldShare = false;
                 }
             }
+            const primaryGroupId = shouldShare ? targetGroupIds[0] : null;
 
             await window.setDoc(entryRef, {
                 uid: window.currentUser.uid,
@@ -3906,16 +4004,25 @@
                 actionTitle: sectionLabels.actionTitle,
                 actionText: commitment || '',
                 sharedWithGroup: shouldShare,
-                groupId: shouldShare ? groupId : null,
+                groupId: primaryGroupId,
+                sharedGroupIds: shouldShare ? targetGroupIds : [],
                 language: lang,
                 savedAt: window.serverTimestamp()
             });
 
-            if (shouldShare && groupId && window.db) {
+            if (shouldShare && targetGroupIds.length > 0 && window.db) {
+                const existingSharedGroupIds = Array.isArray(existingEntry?.sharedGroupIds) && existingEntry.sharedGroupIds.length > 0
+                    ? existingEntry.sharedGroupIds.map(id => String(id))
+                    : (existingEntry?.groupId ? [String(existingEntry.groupId)] : []);
+                existingSharedGroupIds.sort();
+                const requestedSharedGroupIds = [...targetGroupIds].sort();
+                const sameGroupTargets =
+                    existingSharedGroupIds.length === requestedSharedGroupIds.length &&
+                    existingSharedGroupIds.every((id, idx) => id === requestedSharedGroupIds[idx]);
                 const alreadySharedSame =
                     !!existingEntry &&
                     existingEntry.sharedWithGroup === true &&
-                    existingEntry.groupId === groupId &&
+                    sameGroupTargets &&
                     existingEntry.book === reading.book &&
                     existingEntry.chapter === reading.chapter &&
                     existingEntry.reflection === reflection &&
@@ -3927,30 +4034,32 @@
                         .filter(v => Number.isFinite(Number(v)))
                         .map(v => Number(v));
 
-                    await window.addDoc(window.collection(window.db, 'goMission_chats'), {
-                        groupId: groupId,
-                        senderId: window.currentUser.uid,
-                        senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
-                        senderPhoto: window.currentUser.photoURL || '',
-                        type: 'devotion',
-                        devotion: {
-                            book: reading.book,
-                            chapter: reading.chapter,
-                            verses: scriptureSection.verseNumbers.length ? scriptureSection.verseNumbers : verseNumbers,
-                            question: question,
-                            reflection: reflection,
-                            commitment: commitment || '',
-                            language: lang,
-                            godSaidTitle: scriptureSection.title,
-                            godSaidReference: scriptureSection.reference,
-                            godSaidText: scriptureSection.text,
-                            reflectionTitle: sectionLabels.reflectionTitle,
-                            reflectionText: reflection,
-                            actionTitle: sectionLabels.actionTitle,
-                            actionText: commitment || ''
-                        },
-                        createdAt: window.serverTimestamp()
-                    });
+                    for (const targetGroupId of targetGroupIds) {
+                        await window.addDoc(window.collection(window.db, 'goMission_chats'), {
+                            groupId: targetGroupId,
+                            senderId: window.currentUser.uid,
+                            senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
+                            senderPhoto: window.currentUser.photoURL || '',
+                            type: 'devotion',
+                            devotion: {
+                                book: reading.book,
+                                chapter: reading.chapter,
+                                verses: scriptureSection.verseNumbers.length ? scriptureSection.verseNumbers : verseNumbers,
+                                question: question,
+                                reflection: reflection,
+                                commitment: commitment || '',
+                                language: lang,
+                                godSaidTitle: scriptureSection.title,
+                                godSaidReference: scriptureSection.reference,
+                                godSaidText: scriptureSection.text,
+                                reflectionTitle: sectionLabels.reflectionTitle,
+                                reflectionText: reflection,
+                                actionTitle: sectionLabels.actionTitle,
+                                actionText: commitment || ''
+                            },
+                            createdAt: window.serverTimestamp()
+                        });
+                    }
                 }
             }
 
@@ -3962,11 +4071,11 @@
 
             return {
                 saved: true,
-                missingGroup: !!shareRequested && !groupId
+                missingGroup: !!shareRequested && targetGroupIds.length === 0
             };
         }
 
-        window.saveReflectionFromInsights = async function({ reflection, commitment = '', question = '', shareWithGroup: shareRequested = false }) {
+        window.saveReflectionFromInsights = async function({ reflection, commitment = '', question = '', shareWithGroup: shareRequested = false, shareGroupIds = [] }) {
             const lang = getDevotionLanguage();
             if (!window.currentUser) {
                 alert('Please sign in to save your reflection.');
@@ -3985,7 +4094,8 @@
                 reflection: reflection.trim(),
                 commitment: commitment.trim(),
                 question: (question || '').trim(),
-                shareRequested: !!shareRequested
+                shareRequested: !!shareRequested,
+                shareGroupIds
             });
 
             if (result.saved) {

@@ -23,8 +23,11 @@ const BibleReader = {
   inlineReflectionDraft: {
     reflection: '',
     commitment: '',
-    shareWithGroup: null
+    shareWithGroup: null,
+    shareGroupIds: []
   },
+  inlineShareTargets: [],
+  inlineShareTargetsLoading: false,
   commentaryRequestId: 0,
   insightsLoading: false,
   insightsLastError: null,
@@ -487,8 +490,16 @@ const BibleReader = {
         yourAnswerPlaceholder: 'Write your reflection here...',
         iWill: 'I will',
         iWillPlaceholder: 'Write your commitment to apply this today...',
-        shareWithGroup: 'Share with my group',
+        shareWithGroup: 'Share with my groups',
         shareWithGroupHelp: 'Help your leader walk with you',
+        selectGroups: 'Choose group(s) to share with',
+        selectAllGroups: 'Select all groups',
+        noShareGroups: 'No mission groups available to share right now.',
+        selectedCount: 'group(s) selected',
+        roleUpline: 'Upline',
+        roleDownline: 'Downline',
+        roleGuest: 'Guest',
+        roleGroup: 'Group',
         save: '💾 Save Reflection'
       },
       tl: {
@@ -500,8 +511,16 @@ const BibleReader = {
         yourAnswerPlaceholder: 'Isulat ang iyong pagninilay dito...',
         iWill: 'Aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
-        shareWithGroup: 'I-share sa aking group',
+        shareWithGroup: 'I-share sa aking mga group',
         shareWithGroupHelp: 'Para masamahan ka ng leader mo',
+        selectGroups: 'Piliin ang mga group na pagse-share-an',
+        selectAllGroups: 'Piliin lahat ng group',
+        noShareGroups: 'Wala kang available na mission group para i-share ngayon.',
+        selectedCount: 'group ang napili',
+        roleUpline: 'Upline',
+        roleDownline: 'Downline',
+        roleGuest: 'Guest',
+        roleGroup: 'Group',
         save: '💾 I-save ang Reflection'
       }
     };
@@ -534,6 +553,72 @@ const BibleReader = {
     const reflectionValue = this.escapeHTML(this.inlineReflectionDraft.reflection || '');
     const commitmentValue = this.escapeHTML(this.inlineReflectionDraft.commitment || '');
     const shareActive = !!this.inlineReflectionDraft.shareWithGroup;
+    const shareTargets = Array.isArray(this.inlineShareTargets) ? this.inlineShareTargets : [];
+    const selectedGroupIds = Array.isArray(this.inlineReflectionDraft.shareGroupIds)
+      ? this.inlineReflectionDraft.shareGroupIds.map(id => String(id))
+      : [];
+    const selectedSet = new Set(selectedGroupIds);
+    const selectedCount = shareTargets.filter(group => selectedSet.has(String(group.id))).length;
+    const allSelected = shareTargets.length > 0 && selectedCount === shareTargets.length;
+
+    if (shareActive && !this.inlineShareTargetsLoading && shareTargets.length === 0) {
+      this.ensureInlineShareTargetsLoaded();
+    }
+
+    let shareGroupPickerHtml = '';
+    if (shareActive) {
+      if (this.inlineShareTargetsLoading) {
+        shareGroupPickerHtml = `
+          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[11px] text-[var(--text-muted)]">
+            ${lang === 'tl' ? 'Naglo-load ng mga group...' : 'Loading groups...'}
+          </div>
+        `;
+      } else if (shareTargets.length === 0) {
+        shareGroupPickerHtml = `
+          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[11px] text-[var(--text-muted)]">
+            ${L.noShareGroups}
+          </div>
+        `;
+      } else {
+        const selectAllRow = shareTargets.length > 1 ? `
+          <label class="flex items-center gap-2 text-xs text-[var(--text-color)] mb-2 cursor-pointer">
+            <input type="checkbox"
+                   class="accent-[var(--mission-gold)]"
+                   onchange="BibleReader.toggleInlineShareAll(this.checked)"
+                   ${allSelected ? 'checked' : ''}>
+            <span>${L.selectAllGroups}</span>
+          </label>
+        ` : '';
+
+        const groupRows = shareTargets.map((group) => {
+          const groupId = String(group.id || '');
+          const groupIdForJs = groupId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          const checked = selectedSet.has(groupId) ? 'checked' : '';
+          const roleLabel = this.getInlineShareRoleLabel(group.type, L);
+          return `
+            <label class="flex items-start gap-2 py-1.5 cursor-pointer">
+              <input type="checkbox"
+                     class="mt-0.5 accent-[var(--mission-gold)]"
+                     onchange="BibleReader.toggleInlineShareGroup('${groupIdForJs}', this.checked)"
+                     ${checked}>
+              <span class="flex-1 min-w-0">
+                <span class="text-xs text-[var(--text-color)] font-medium block truncate">${this.escapeHTML(group.name || 'Mission Group')}</span>
+                <span class="text-[10px] text-[var(--text-muted)]">${this.escapeHTML(roleLabel)}</span>
+              </span>
+            </label>
+          `;
+        }).join('');
+
+        shareGroupPickerHtml = `
+          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+            <p class="text-[11px] text-[var(--text-color)] font-semibold mb-1">${L.selectGroups}</p>
+            ${selectAllRow}
+            <div class="max-h-32 overflow-y-auto pr-1">${groupRows}</div>
+            <p class="text-[10px] text-[var(--text-muted)] mt-2">${selectedCount} ${L.selectedCount}</p>
+          </div>
+        `;
+      }
+    }
 
     html += `
       <div class="mt-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
@@ -565,6 +650,7 @@ const BibleReader = {
             <p class="text-[10px] text-[var(--text-muted)] mt-1">${L.shareWithGroupHelp}</p>
           </div>
         </div>
+        ${shareGroupPickerHtml}
 
         <button id="inlineInsightSaveBtn"
                 onclick="BibleReader.saveInlineReflection()"
@@ -593,13 +679,103 @@ const BibleReader = {
     this.inlineReflectionDraft.commitment = value || '';
   },
 
-  toggleInlineShare() {
+  getInlineShareRoleLabel(type, labels) {
+    if (type === 'upline') return labels.roleUpline;
+    if (type === 'downline') return labels.roleDownline;
+    if (type === 'guest') return labels.roleGuest;
+    return labels.roleGroup;
+  },
+
+  async ensureInlineShareTargetsLoaded(force = false) {
+    if (!force && this.inlineShareTargets.length > 0) return;
+    if (this.inlineShareTargetsLoading) return;
+    if (typeof window.getDevotionShareTargets !== 'function') {
+      this.inlineShareTargets = [];
+      this.inlineReflectionDraft.shareGroupIds = [];
+      return;
+    }
+
+    this.inlineShareTargetsLoading = true;
+    this.refreshFullscreenInsightsPanel();
+
+    try {
+      const targets = await window.getDevotionShareTargets();
+      this.inlineShareTargets = Array.isArray(targets)
+        ? targets
+          .filter(group => group?.id)
+          .map(group => ({
+            id: String(group.id),
+            name: group.name || 'Mission Group',
+            type: group.type || 'group',
+            memberCount: Number(group.memberCount || 0)
+          }))
+        : [];
+
+      const validIds = new Set(this.inlineShareTargets.map(group => group.id));
+      const currentSelection = Array.isArray(this.inlineReflectionDraft.shareGroupIds)
+        ? this.inlineReflectionDraft.shareGroupIds.map(id => String(id)).filter(id => validIds.has(id))
+        : [];
+
+      if (currentSelection.length > 0) {
+        this.inlineReflectionDraft.shareGroupIds = currentSelection;
+      } else if (this.inlineShareTargets.length > 0) {
+        const currentGroupId = (typeof Groups !== 'undefined' && Groups.currentGroup?.id)
+          ? String(Groups.currentGroup.id)
+          : null;
+        if (currentGroupId && validIds.has(currentGroupId)) {
+          this.inlineReflectionDraft.shareGroupIds = [currentGroupId];
+        } else {
+          this.inlineReflectionDraft.shareGroupIds = [this.inlineShareTargets[0].id];
+        }
+      } else {
+        this.inlineReflectionDraft.shareGroupIds = [];
+      }
+    } catch (error) {
+      console.error('[BibleReader] Could not load share targets:', error);
+      this.inlineShareTargets = [];
+      this.inlineReflectionDraft.shareGroupIds = [];
+    } finally {
+      this.inlineShareTargetsLoading = false;
+      this.refreshFullscreenInsightsPanel();
+    }
+  },
+
+  async toggleInlineShare() {
     const current = !!this.inlineReflectionDraft.shareWithGroup;
     this.inlineReflectionDraft.shareWithGroup = !current;
-    const toggle = document.getElementById('inlineInsightShareToggle');
-    if (toggle) {
-      toggle.classList.toggle('active', this.inlineReflectionDraft.shareWithGroup);
+    if (this.inlineReflectionDraft.shareWithGroup) {
+      await this.ensureInlineShareTargetsLoaded();
     }
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  toggleInlineShareGroup(groupId, checked) {
+    const id = String(groupId || '');
+    if (!id) return;
+    const selected = new Set((this.inlineReflectionDraft.shareGroupIds || []).map(v => String(v)));
+    if (checked) {
+      selected.add(id);
+    } else {
+      selected.delete(id);
+    }
+    this.inlineReflectionDraft.shareGroupIds = Array.from(selected);
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  toggleInlineShareAll(checked) {
+    if (checked) {
+      this.inlineReflectionDraft.shareGroupIds = this.inlineShareTargets.map(group => String(group.id));
+    } else {
+      this.inlineReflectionDraft.shareGroupIds = [];
+    }
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  getSelectedInlineShareGroupIds() {
+    const validIds = new Set(this.inlineShareTargets.map(group => String(group.id)));
+    return (this.inlineReflectionDraft.shareGroupIds || [])
+      .map(id => String(id))
+      .filter(id => validIds.has(id));
   },
 
   getPrimaryReflectionQuestion() {
@@ -617,6 +793,7 @@ const BibleReader = {
     const commitment = (this.inlineReflectionDraft.commitment || '').trim();
     const question = this.getPrimaryReflectionQuestion();
     const shareWithGroup = !!this.inlineReflectionDraft.shareWithGroup;
+    const shareGroupIds = shareWithGroup ? this.getSelectedInlineShareGroupIds() : [];
 
     if (!reflection) {
       alert(isTagalog ? 'Pakisulat muna ang iyong pagninilay bago i-save.' : 'Please write your reflection before saving.');
@@ -624,6 +801,10 @@ const BibleReader = {
     }
     if (!commitment) {
       alert(isTagalog ? 'Pakisulat muna ang iyong "Aking gagawin" bago i-save.' : 'Please write your "I will" commitment before saving.');
+      return;
+    }
+    if (shareWithGroup && shareGroupIds.length === 0) {
+      alert(isTagalog ? 'Pakipili muna ng kahit isang group na pagse-share-an.' : 'Please choose at least one group to share with.');
       return;
     }
 
@@ -644,7 +825,8 @@ const BibleReader = {
         reflection,
         commitment,
         question,
-        shareWithGroup
+        shareWithGroup,
+        shareGroupIds
       });
 
       if (result?.missingGroup) {
@@ -1387,6 +1569,9 @@ const BibleReader = {
     this.inlineReflectionDraft.reflection = '';
     this.inlineReflectionDraft.commitment = '';
     this.inlineReflectionDraft.shareWithGroup = null;
+    this.inlineReflectionDraft.shareGroupIds = [];
+    this.inlineShareTargets = [];
+    this.inlineShareTargetsLoading = false;
     this.insightsLoading = false;
     this.insightsLastError = null;
     this.commentaryRequestId += 1;
