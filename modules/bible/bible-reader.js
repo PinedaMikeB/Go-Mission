@@ -23,6 +23,8 @@ const BibleReader = {
   inlineReflectionDraft: {
     reflection: '',
     commitment: '',
+    prayerRequests: [],
+    prayerDraft: '',
     shareWithGroup: null,
     shareGroupIds: []
   },
@@ -495,6 +497,12 @@ const BibleReader = {
         yourAnswerPlaceholder: 'Write what you learned and understood here...',
         iWill: 'What will I do',
         iWillPlaceholder: 'Write your commitment to apply this today...',
+        prayerRequests: 'Prayer requests',
+        prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
+        addPrayerRequest: 'Add',
+        noPrayerRequests: 'No prayer requests added yet.',
+        addedLabel: 'Added',
+        removePrayerRequest: 'Remove',
         shareWithGroup: 'Share with my groups',
         shareWithGroupHelp: 'Help your leader walk with you',
         selectGroups: 'Choose group(s) to share with',
@@ -518,6 +526,12 @@ const BibleReader = {
         yourAnswerPlaceholder: 'Isulat ang iyong natutunan at pagkaunawa dito...',
         iWill: 'Ano ang aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
+        prayerRequests: 'Mga prayer request',
+        prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
+        addPrayerRequest: 'Idagdag',
+        noPrayerRequests: 'Wala pang nailalagay na prayer request.',
+        addedLabel: 'Nagdagdag',
+        removePrayerRequest: 'Tanggalin',
         shareWithGroup: 'I-share sa aking mga group',
         shareWithGroupHelp: 'Para masamahan ka ng leader mo',
         selectGroups: 'Piliin ang mga group na pagse-share-an',
@@ -566,6 +580,8 @@ const BibleReader = {
     const primaryQuestion = reflectionQuestions[0] || '';
     const reflectionValue = this.escapeHTML(this.inlineReflectionDraft.reflection || '');
     const commitmentValue = this.escapeHTML(this.inlineReflectionDraft.commitment || '');
+    const prayerDraftValue = this.escapeHTML(this.inlineReflectionDraft.prayerDraft || '');
+    const prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
     const shareActive = !!this.inlineReflectionDraft.shareWithGroup;
     const shareTargets = Array.isArray(this.inlineShareTargets) ? this.inlineShareTargets : [];
     const selectedGroupIds = Array.isArray(this.inlineReflectionDraft.shareGroupIds)
@@ -663,6 +679,51 @@ const BibleReader = {
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.iWillPlaceholder}">${commitmentValue}</textarea>
 
+        <div class="mb-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-3">
+          <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">🙏 ${L.prayerRequests}</label>
+          <div class="flex items-center gap-2 mb-2">
+            <input id="inlineInsightPrayerDraftInput"
+                   type="text"
+                   oninput="BibleReader.setInlinePrayerDraft(this.value)"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();BibleReader.addInlinePrayerRequest();}"
+                   class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50"
+                   style="font-size:${baseFontPx}px; line-height:1.45;"
+                   placeholder="${L.prayerRequestsPlaceholder}"
+                   value="${prayerDraftValue}">
+            <button type="button"
+                    onclick="BibleReader.addInlinePrayerRequest()"
+                    class="px-3 py-2 rounded-lg border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] font-semibold hover:bg-[var(--mission-gold)]/10 transition-colors"
+                    style="font-size:${smallFontPx}px;">
+              ${L.addPrayerRequest}
+            </button>
+          </div>
+          ${prayerRequests.length > 0 ? `
+            <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
+              ${prayerRequests.map((item) => {
+                const prayerId = String(item.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const createdAtLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.createdAt, lang));
+                const text = this.escapeHTML(item.text || '');
+                return `
+                  <div class="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-2.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="text-[var(--text-color)] leading-snug flex-1" style="font-size:${metaFontPx}px;">${text}</p>
+                      <button type="button"
+                              onclick="BibleReader.removeInlinePrayerRequest('${prayerId}')"
+                              class="text-[var(--text-muted)] hover:text-[var(--mission-red-bright)] transition-colors"
+                              style="font-size:${smallFontPx}px;">
+                        ${L.removePrayerRequest}
+                      </button>
+                    </div>
+                    <p class="text-[var(--text-muted)] mt-1" style="font-size:${smallFontPx}px;">${L.addedLabel}: ${createdAtLabel}</p>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : `
+            <p class="text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">${L.noPrayerRequests}</p>
+          `}
+        </div>
+
         <div class="flex items-start gap-3 mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/40">
           <div class="toggle-switch ${shareActive ? 'active' : ''}" id="inlineInsightShareToggle" onclick="BibleReader.toggleInlineShare()"></div>
           <div class="flex-1">
@@ -698,6 +759,88 @@ const BibleReader = {
 
   setInlineCommitment(value) {
     this.inlineReflectionDraft.commitment = value || '';
+  },
+
+  setInlinePrayerDraft(value) {
+    this.inlineReflectionDraft.prayerDraft = value || '';
+  },
+
+  normalizeInlinePrayerRequests(prayerRequests) {
+    if (!Array.isArray(prayerRequests)) return [];
+    const seen = new Set();
+    const normalized = [];
+    prayerRequests.forEach((item) => {
+      const text = String(item?.text || '').trim();
+      if (!text) return;
+      const id = String(item?.id || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+      if (seen.has(id)) return;
+      seen.add(id);
+      normalized.push({
+        id,
+        text,
+        createdAt: item?.createdAt || new Date().toISOString(),
+        answered: !!item?.answered,
+        answeredAt: item?.answeredAt || null,
+        remarks: String(item?.remarks || '').trim()
+      });
+    });
+    return normalized;
+  },
+
+  formatInlinePrayerTimestamp(value, lang = 'en') {
+    if (!value) return '-';
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return String(value);
+      return dt.toLocaleString(lang === 'tl' ? 'fil-PH' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return String(value);
+    }
+  },
+
+  addInlinePrayerRequest() {
+    const draft = String(this.inlineReflectionDraft.prayerDraft || '').trim();
+    if (!draft) return;
+    const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
+    current.push({
+      id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      text: draft,
+      createdAt: new Date().toISOString(),
+      answered: false,
+      answeredAt: null,
+      remarks: ''
+    });
+    this.inlineReflectionDraft.prayerRequests = current;
+    this.inlineReflectionDraft.prayerDraft = '';
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  removeInlinePrayerRequest(prayerId) {
+    const targetId = String(prayerId || '');
+    if (!targetId) return;
+    this.inlineReflectionDraft.prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests)
+      .filter(item => String(item.id) !== targetId);
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  getInlinePrayerRequestsForSave() {
+    const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
+    const pendingDraft = String(this.inlineReflectionDraft.prayerDraft || '').trim();
+    if (!pendingDraft) return current;
+    current.push({
+      id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      text: pendingDraft,
+      createdAt: new Date().toISOString(),
+      answered: false,
+      answeredAt: null,
+      remarks: ''
+    });
+    return current;
   },
 
   getInlineShareRoleLabel(type, labels) {
@@ -812,6 +955,7 @@ const BibleReader = {
     const isTagalog = lang === 'tl';
     const understanding = (this.inlineReflectionDraft.reflection || '').trim();
     const action = (this.inlineReflectionDraft.commitment || '').trim();
+    const prayerRequests = this.getInlinePrayerRequestsForSave();
     const question = this.getPrimaryReflectionQuestion();
     const shareWithGroup = !!this.inlineReflectionDraft.shareWithGroup;
     const shareGroupIds = shareWithGroup ? this.getSelectedInlineShareGroupIds() : [];
@@ -845,6 +989,7 @@ const BibleReader = {
       const result = await window.saveReflectionFromInsights({
         understanding,
         action,
+        prayerRequests,
         question,
         shareWithGroup,
         shareGroupIds
@@ -857,6 +1002,8 @@ const BibleReader = {
       if (result?.saved) {
         this.inlineReflectionDraft.reflection = '';
         this.inlineReflectionDraft.commitment = '';
+        this.inlineReflectionDraft.prayerRequests = [];
+        this.inlineReflectionDraft.prayerDraft = '';
         this.refreshFullscreenInsightsPanel();
       }
     } catch (error) {
@@ -1589,6 +1736,8 @@ const BibleReader = {
     this.tyndaleData = null;
     this.inlineReflectionDraft.reflection = '';
     this.inlineReflectionDraft.commitment = '';
+    this.inlineReflectionDraft.prayerRequests = [];
+    this.inlineReflectionDraft.prayerDraft = '';
     this.inlineReflectionDraft.shareWithGroup = null;
     this.inlineReflectionDraft.shareGroupIds = [];
     this.inlineShareTargets = [];

@@ -3964,14 +3964,54 @@
                 return {
                     godSaidTitle: 'What did God say',
                     understandingTitle: 'What is my understanding',
-                    actionTitle: 'What will I do'
+                    actionTitle: 'What will I do',
+                    prayerStatusTitle: 'Prayer List Status',
+                    prayerRequestTitle: 'Prayer Requests'
                 };
             }
 
             return {
                 godSaidTitle: 'Ano ang sinabi ng Diyos',
                 understandingTitle: 'Ano ang aking pagkaunawa',
-                actionTitle: 'Ano ang aking gagawin'
+                actionTitle: 'Ano ang aking gagawin',
+                prayerStatusTitle: 'Kalagayan ng Prayer List',
+                prayerRequestTitle: 'Mga Prayer Request'
+            };
+        }
+
+        function getPrayerUiLabels(lang = getDevotionLanguage()) {
+            if (lang === 'en') {
+                return {
+                    statusOpen: 'Pending',
+                    statusAnswered: 'Answered',
+                    addedAt: 'Added',
+                    markAnswered: 'Mark answered',
+                    markPending: 'Mark pending',
+                    answeredDate: 'Answered date',
+                    remarks: 'Remarks',
+                    remarksPlaceholder: 'Add remarks or testimony details...',
+                    shareRequest: 'Share prayer request',
+                    shareThanks: 'Share testimony & thanks',
+                    sharedToGroups: 'Shared to group chat',
+                    prayerSupportTitle: 'People praying',
+                    noPrayerRequests: 'No prayer requests in this entry yet.'
+                };
+            }
+
+            return {
+                statusOpen: 'Naghihintay',
+                statusAnswered: 'Sinagot',
+                addedAt: 'Nagdagdag',
+                markAnswered: 'Markahan na sinagot',
+                markPending: 'Markahan na pending',
+                answeredDate: 'Petsa ng pagsagot',
+                remarks: 'Mga tala',
+                remarksPlaceholder: 'Maglagay ng remarks o detalye ng patotoo...',
+                shareRequest: 'I-share ang prayer request',
+                shareThanks: 'Ibahagi ang patotoo at pasasalamat',
+                sharedToGroups: 'Na-share na sa group chat',
+                prayerSupportTitle: 'Mga nananalangin',
+                noPrayerRequests: 'Wala pang prayer request sa entry na ito.'
             };
         }
 
@@ -4035,7 +4075,119 @@
             return verseNumbers.length > 0 ? `${base}:${verseNumbers.join(',')}` : base;
         }
 
-        async function persistDevotionEntry({ understanding = '', action = '', reflection = '', commitment = '', question, shareRequested, shareGroupIds = [] }) {
+        function normalizePrayerRequests(prayerRequests, existingPrayerRequests = []) {
+            const existingMap = new Map();
+            if (Array.isArray(existingPrayerRequests)) {
+                existingPrayerRequests.forEach((item) => {
+                    const id = String(item?.id || '').trim();
+                    if (!id) return;
+                    existingMap.set(id, item);
+                });
+            }
+
+            const normalized = [];
+            const seenIds = new Set();
+            (Array.isArray(prayerRequests) ? prayerRequests : []).forEach((rawItem) => {
+                const text = String(rawItem?.text || '').trim();
+                if (!text) return;
+                const rawId = String(rawItem?.id || '').trim();
+                const id = rawId || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                if (seenIds.has(id)) return;
+                seenIds.add(id);
+
+                const existing = existingMap.get(id) || {};
+                const createdAt = rawItem?.createdAt || existing.createdAt || new Date().toISOString();
+                const answered = typeof rawItem?.answered === 'boolean'
+                    ? rawItem.answered
+                    : !!existing.answered;
+                const answeredAt = answered
+                    ? (rawItem?.answeredAt || existing.answeredAt || new Date().toISOString())
+                    : null;
+                const remarks = String(rawItem?.remarks ?? existing.remarks ?? '').trim();
+                const sharedGroupIds = Array.isArray(rawItem?.sharedGroupIds)
+                    ? [...new Set(rawItem.sharedGroupIds.map(idValue => String(idValue || '').trim()).filter(Boolean))]
+                    : (Array.isArray(existing.sharedGroupIds)
+                        ? [...new Set(existing.sharedGroupIds.map(idValue => String(idValue || '').trim()).filter(Boolean))]
+                        : []);
+                const prayedBy = Array.isArray(rawItem?.prayedBy) ? rawItem.prayedBy : (Array.isArray(existing.prayedBy) ? existing.prayedBy : []);
+
+                normalized.push({
+                    id,
+                    text,
+                    createdAt,
+                    answered,
+                    answeredAt,
+                    remarks,
+                    sharedGroupIds,
+                    prayedBy,
+                    requestSharedAt: rawItem?.requestSharedAt || existing.requestSharedAt || null,
+                    testimonySharedAt: rawItem?.testimonySharedAt || existing.testimonySharedAt || null
+                });
+            });
+
+            return normalized;
+        }
+
+        function getPrayerRequestsSignature(prayerRequests) {
+            const normalized = normalizePrayerRequests(prayerRequests || []);
+            return normalized
+                .map(item => ({
+                    id: item.id,
+                    text: item.text,
+                    answered: !!item.answered,
+                    answeredAt: item.answeredAt || null,
+                    remarks: item.remarks || ''
+                }))
+                .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        }
+
+        function formatPrayerTimestamp(value, lang = getDevotionLanguage()) {
+            if (!value) return '-';
+            try {
+                const dt = new Date(value);
+                if (Number.isNaN(dt.getTime())) return String(value);
+                return dt.toLocaleString(lang === 'tl' ? 'fil-PH' : 'en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                return String(value);
+            }
+        }
+
+        async function persistPrayerItemToCommunityBoard({
+            type = 'request',
+            prayerItem,
+            devotionEntry,
+            targetGroupIds = []
+        }) {
+            if (!window.db || !window.currentUser || !prayerItem?.text) return;
+            try {
+                await window.addDoc(window.collection(window.db, 'goMission_community_board'), {
+                    type: 'prayer',
+                    prayerType: type === 'testimony' ? 'testimony' : 'request',
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
+                    senderPhoto: window.currentUser.photoURL || '',
+                    book: devotionEntry?.book || '',
+                    chapter: devotionEntry?.chapter || '',
+                    prayerId: prayerItem.id || null,
+                    prayerText: prayerItem.text || '',
+                    remarks: prayerItem.remarks || '',
+                    answered: !!prayerItem.answered,
+                    answeredAt: prayerItem.answeredAt || null,
+                    groupIds: targetGroupIds,
+                    createdAt: window.serverTimestamp()
+                });
+            } catch (error) {
+                console.warn('[Devotion] Could not publish prayer item to community board:', error);
+            }
+        }
+
+        async function persistDevotionEntry({ understanding = '', action = '', reflection = '', commitment = '', prayerRequests = null, question, shareRequested, shareGroupIds = [] }) {
             const understandingText = String(understanding || reflection || '').trim();
             const actionText = String(action || commitment || '').trim();
             if (!window.currentUser || !understandingText) {
@@ -4053,6 +4205,9 @@
             const lang = getDevotionLanguage();
             const sectionLabels = getDevotionSectionLabels(lang);
             const scriptureSection = buildDevotionScriptureSection(reading, lang);
+            const normalizedPrayerRequests = Array.isArray(prayerRequests)
+                ? normalizePrayerRequests(prayerRequests, existingEntry?.prayerRequests || [])
+                : normalizePrayerRequests(existingEntry?.prayerRequests || []);
 
             let targetGroupIds = [];
             let shouldShare = !!shareRequested;
@@ -4094,6 +4249,7 @@
                 reflectionText: understandingText,
                 actionTitle: sectionLabels.actionTitle,
                 actionText: actionText || '',
+                prayerRequests: normalizedPrayerRequests,
                 sharedWithGroup: shouldShare,
                 groupId: primaryGroupId,
                 sharedGroupIds: shouldShare ? targetGroupIds : [],
@@ -4117,7 +4273,8 @@
                     existingEntry.book === reading.book &&
                     existingEntry.chapter === reading.chapter &&
                     existingEntry.reflection === understandingText &&
-                    (existingEntry.commitment || '') === (actionText || '');
+                    (existingEntry.commitment || '') === (actionText || '') &&
+                    JSON.stringify(getPrayerRequestsSignature(existingEntry?.prayerRequests || [])) === JSON.stringify(getPrayerRequestsSignature(normalizedPrayerRequests));
 
                 if (!alreadySharedSame) {
                     const verseNumbers = (reading.highlightedVerses || [])
@@ -4148,9 +4305,19 @@
                                 reflectionTitle: sectionLabels.understandingTitle,
                                 reflectionText: understandingText,
                                 actionTitle: sectionLabels.actionTitle,
-                                actionText: actionText || ''
+                                actionText: actionText || '',
+                                prayerRequests: normalizedPrayerRequests
                             },
                             createdAt: window.serverTimestamp()
+                        });
+                    }
+                    for (const prayerItem of normalizedPrayerRequests) {
+                        if (!prayerItem?.text) continue;
+                        await persistPrayerItemToCommunityBoard({
+                            type: 'request',
+                            prayerItem,
+                            devotionEntry: { book: reading.book, chapter: reading.chapter },
+                            targetGroupIds
                         });
                     }
                 }
@@ -4173,6 +4340,7 @@
             action = '',
             reflection = '',
             commitment = '',
+            prayerRequests = null,
             question = '',
             shareWithGroup: shareRequested = false,
             shareGroupIds = []
@@ -4196,6 +4364,7 @@
             const result = await persistDevotionEntry({
                 understanding: understandingText,
                 action: actionText,
+                prayerRequests,
                 question: (question || '').trim(),
                 shareRequested: !!shareRequested,
                 shareGroupIds
@@ -4511,20 +4680,80 @@
             }
         }
         
-        // Open journal
-        window.openJournal = async function() {
-            toggleDevotionMenu(); // Close menu
-            const modal = document.getElementById('journalModal');
+        function escapeJsString(value) {
+            return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        function renderJournalPrayerStatus(entryId, entryData, lang) {
+            const prayerLabels = getPrayerUiLabels(lang);
+            const sectionLabels = getDevotionSectionLabels(lang);
+            const prayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
+
+            if (!prayerRequests.length) {
+                return `
+                    <div class="mt-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                        <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(sectionLabels.prayerStatusTitle)}</p>
+                        <p class="text-sm text-[var(--text-muted)]">${escapeDevotionHtml(prayerLabels.noPrayerRequests)}</p>
+                    </div>
+                `;
+            }
+
+            const entryIdForJs = escapeJsString(entryId);
+            const itemsHtml = prayerRequests.map((item) => {
+                const prayerIdForJs = escapeJsString(item.id);
+                const answered = !!item.answered;
+                const sharedCount = Array.isArray(item.sharedGroupIds) ? item.sharedGroupIds.length : 0;
+                return `
+                    <div class="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-3 mb-2">
+                        <div class="flex items-start justify-between gap-3">
+                            <p class="text-sm text-[var(--text-color)] leading-relaxed flex-1">${formatDevotionMultiline(item.text || '')}</p>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full ${answered ? 'bg-green-500/20 text-green-500' : 'bg-amber-500/20 text-amber-500'}">${answered ? prayerLabels.statusAnswered : prayerLabels.statusOpen}</span>
+                        </div>
+                        <p class="text-[11px] text-[var(--text-muted)] mt-2">${escapeDevotionHtml(prayerLabels.addedAt)}: ${escapeDevotionHtml(formatPrayerTimestamp(item.createdAt, lang))}</p>
+                        ${answered && item.answeredAt ? `<p class="text-[11px] text-green-500 mt-1">${escapeDevotionHtml(prayerLabels.answeredDate)}: ${escapeDevotionHtml(formatPrayerTimestamp(item.answeredAt, lang))}</p>` : ''}
+                        <label class="mt-2 flex items-center gap-2 text-xs text-[var(--text-color)]">
+                            <input type="checkbox"
+                                   class="accent-[var(--mission-gold)]"
+                                   onchange="toggleJournalPrayerAnswered('${entryIdForJs}', '${prayerIdForJs}', this.checked)"
+                                   ${answered ? 'checked' : ''}>
+                            <span>${answered ? prayerLabels.markPending : prayerLabels.markAnswered}</span>
+                        </label>
+                        <textarea class="w-full mt-2 p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs resize-none"
+                                  rows="2"
+                                  placeholder="${escapeDevotionHtml(prayerLabels.remarksPlaceholder)}"
+                                  onblur="saveJournalPrayerRemarks('${entryIdForJs}', '${prayerIdForJs}', this.value)">${escapeDevotionHtml(item.remarks || '')}</textarea>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')" class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                🙏 ${escapeDevotionHtml(prayerLabels.shareRequest)}
+                            </button>
+                            <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')" class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                🙌 ${escapeDevotionHtml(prayerLabels.shareThanks)}
+                            </button>
+                        </div>
+                        ${sharedCount > 0 ? `<p class="text-[10px] text-green-500 mt-2">${escapeDevotionHtml(prayerLabels.sharedToGroups)} (${sharedCount})</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="mt-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                    <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">${escapeDevotionHtml(sectionLabels.prayerStatusTitle)}</p>
+                    ${itemsHtml}
+                </div>
+            `;
+        }
+
+        async function renderJournalEntriesList() {
             const list = document.getElementById('journalEntriesList');
-            
-            modal.classList.remove('hidden');
+            if (!list) return;
+
             list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Loading...</p>';
-            
+
             if (!window.currentUser) {
                 list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Please sign in to view your journal.</p>';
                 return;
             }
-            
+
             try {
                 const devotionsRef = window.collection(window.db, 'goMission_devotions');
                 const q = window.query(
@@ -4533,17 +4762,16 @@
                     window.orderBy('savedAt', 'desc'),
                     window.limit(30)
                 );
-                
+
                 const snapshot = await window.getDocs(q);
-                
                 if (snapshot.empty) {
                     list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">No journal entries yet. Start your first devotion!</p>';
                     return;
                 }
-                
+
                 let html = '';
                 snapshot.forEach(doc => {
-                    const data = doc.data();
+                    const data = doc.data() || {};
                     const date = new Date(data.date);
                     const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                     const lang = data.language === 'en' ? 'en' : 'tl';
@@ -4555,7 +4783,7 @@
                     const understandingText = data.understandingText || data.reflectionText || data.reflection || '';
                     const actionTitle = data.actionTitle || sectionLabels.actionTitle;
                     const actionText = data.actionText || data.commitment || '';
-                    
+
                     html += `
                         <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
                             <div class="flex items-center mb-2">
@@ -4577,17 +4805,195 @@
                                 <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(actionTitle)}</p>
                                 <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(actionText)}</p>
                             </div>
+
+                            ${renderJournalPrayerStatus(doc.id, data, lang)}
                             ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
                         </div>
                     `;
                 });
-                
+
                 list.innerHTML = html;
-                
             } catch (error) {
                 console.error('Error loading journal:', error);
                 list.innerHTML = '<p class="text-red-400 text-center py-8">Error loading journal. Please try again.</p>';
             }
+        }
+
+        async function updatePrayerRequestInJournal(entryId, prayerId, mutator) {
+            if (!window.currentUser || !window.db || !entryId || !prayerId) return null;
+            const entryRef = window.doc(window.db, 'goMission_devotions', String(entryId));
+            const entryDoc = await window.getDoc(entryRef);
+            if (!entryDoc.exists()) return null;
+            const entryData = entryDoc.data() || {};
+            if (entryData.uid !== window.currentUser.uid) return null;
+
+            const prayerRequests = normalizePrayerRequests(entryData.prayerRequests || []);
+            const prayerIdx = prayerRequests.findIndex(item => String(item.id) === String(prayerId));
+            if (prayerIdx < 0) return null;
+
+            const updatedItem = mutator({ ...prayerRequests[prayerIdx] });
+            prayerRequests[prayerIdx] = updatedItem;
+
+            await window.setDoc(entryRef, {
+                prayerRequests,
+                savedAt: window.serverTimestamp()
+            }, { merge: true });
+
+            return {
+                entryRef,
+                entryData,
+                updatedItem,
+                prayerRequests
+            };
+        }
+
+        async function resolvePrayerShareGroups(entryData) {
+            let targetGroupIds = Array.isArray(entryData?.sharedGroupIds)
+                ? [...new Set(entryData.sharedGroupIds.map(id => String(id || '').trim()).filter(Boolean))]
+                : [];
+            if (targetGroupIds.length > 0) return targetGroupIds;
+
+            const groups = await resolveShareableGroups();
+            targetGroupIds = groups.map(group => String(group.id || '').trim()).filter(Boolean);
+            return [...new Set(targetGroupIds)];
+        }
+
+        async function sharePrayerToGroups({ entryId, prayerId, mode = 'request' }) {
+            const entryRef = window.doc(window.db, 'goMission_devotions', String(entryId));
+            const entryDoc = await window.getDoc(entryRef);
+            if (!entryDoc.exists()) throw new Error('Devotion entry not found.');
+            const entryData = entryDoc.data() || {};
+            if (entryData.uid !== window.currentUser?.uid) throw new Error('Unauthorized entry.');
+
+            const prayerRequests = normalizePrayerRequests(entryData.prayerRequests || []);
+            const prayerItem = prayerRequests.find(item => String(item.id) === String(prayerId));
+            if (!prayerItem || !prayerItem.text) throw new Error('Prayer request not found.');
+
+            if (mode === 'testimony' && !prayerItem.answered) {
+                throw new Error('Please mark this prayer as answered first.');
+            }
+
+            const targetGroupIds = await resolvePrayerShareGroups(entryData);
+            if (!targetGroupIds.length) {
+                throw new Error('No mission group found for sharing.');
+            }
+
+            const lang = entryData.language === 'en' ? 'en' : 'tl';
+            const scriptureReference = entryData.godSaidReference || buildLegacyDevotionReference(entryData, lang);
+            const senderName = window.currentUser.displayName || window.currentUser.email || 'Unknown';
+            const heading = mode === 'testimony'
+                ? (lang === 'tl' ? '🙌 Patotoo at Pasasalamat' : '🙌 Testimony and Thanksgiving')
+                : (lang === 'tl' ? '🙏 Prayer Request' : '🙏 Prayer Request');
+            const bodyLines = [
+                heading,
+                scriptureReference ? `${lang === 'tl' ? 'Talata' : 'Scripture'}: ${scriptureReference}` : '',
+                `${lang === 'tl' ? 'Panalangin' : 'Prayer'}: ${prayerItem.text}`
+            ];
+            if (prayerItem.remarks) {
+                bodyLines.push(`${lang === 'tl' ? 'Remarks' : 'Remarks'}: ${prayerItem.remarks}`);
+            }
+            if (mode === 'testimony' && prayerItem.answeredAt) {
+                bodyLines.push(`${lang === 'tl' ? 'Sinagot noong' : 'Answered on'}: ${formatPrayerTimestamp(prayerItem.answeredAt, lang)}`);
+            }
+            const chatText = bodyLines.filter(Boolean).join('\n');
+
+            for (const groupId of targetGroupIds) {
+                await window.addDoc(window.collection(window.db, 'goMission_chats'), {
+                    groupId,
+                    senderId: window.currentUser.uid,
+                    senderName,
+                    senderPhoto: window.currentUser.photoURL || '',
+                    type: 'text',
+                    text: chatText,
+                    prayerMeta: {
+                        devotionEntryId: String(entryId),
+                        prayerId: prayerItem.id,
+                        mode
+                    },
+                    createdAt: window.serverTimestamp()
+                });
+            }
+
+            const nowIso = new Date().toISOString();
+            const mergedSharedGroupIds = [...new Set([
+                ...(Array.isArray(prayerItem.sharedGroupIds) ? prayerItem.sharedGroupIds : []),
+                ...targetGroupIds
+            ])];
+
+            await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                ...item,
+                sharedGroupIds: mergedSharedGroupIds,
+                requestSharedAt: mode === 'request' ? nowIso : item.requestSharedAt || null,
+                testimonySharedAt: mode === 'testimony' ? nowIso : item.testimonySharedAt || null
+            }));
+
+            await persistPrayerItemToCommunityBoard({
+                type: mode,
+                prayerItem: {
+                    ...prayerItem,
+                    sharedGroupIds: mergedSharedGroupIds,
+                    requestSharedAt: mode === 'request' ? nowIso : prayerItem.requestSharedAt,
+                    testimonySharedAt: mode === 'testimony' ? nowIso : prayerItem.testimonySharedAt
+                },
+                devotionEntry: entryData,
+                targetGroupIds
+            });
+        }
+
+        window.toggleJournalPrayerAnswered = async function(entryId, prayerId, checked) {
+            try {
+                await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                    ...item,
+                    answered: !!checked,
+                    answeredAt: checked ? (item.answeredAt || new Date().toISOString()) : null
+                }));
+                await renderJournalEntriesList();
+            } catch (error) {
+                console.error('[Journal] Could not update prayer status:', error);
+                alert('Could not update prayer status. Please try again.');
+            }
+        };
+
+        window.saveJournalPrayerRemarks = async function(entryId, prayerId, remarksValue) {
+            try {
+                await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                    ...item,
+                    remarks: String(remarksValue || '').trim()
+                }));
+            } catch (error) {
+                console.error('[Journal] Could not save prayer remarks:', error);
+            }
+        };
+
+        window.shareJournalPrayerRequest = async function(entryId, prayerId) {
+            try {
+                await sharePrayerToGroups({ entryId, prayerId, mode: 'request' });
+                await renderJournalEntriesList();
+                alert('Prayer request shared.');
+            } catch (error) {
+                console.error('[Journal] Could not share prayer request:', error);
+                alert(error?.message || 'Could not share prayer request right now.');
+            }
+        };
+
+        window.shareJournalPrayerThanksgiving = async function(entryId, prayerId) {
+            try {
+                await sharePrayerToGroups({ entryId, prayerId, mode: 'testimony' });
+                await renderJournalEntriesList();
+                alert('Testimony and thanksgiving shared.');
+            } catch (error) {
+                console.error('[Journal] Could not share thanksgiving:', error);
+                alert(error?.message || 'Could not share testimony right now.');
+            }
+        };
+
+        // Open journal
+        window.openJournal = async function() {
+            toggleDevotionMenu(); // Close menu
+            const modal = document.getElementById('journalModal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            await renderJournalEntriesList();
         };
         
         // Close journal

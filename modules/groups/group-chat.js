@@ -477,7 +477,8 @@ const GroupChat = {
           reflectionTitle: devotionData.reflectionTitle || '',
           reflectionText: devotionData.reflectionText || devotionData.reflection || '',
           actionTitle: devotionData.actionTitle || '',
-          actionText: devotionData.actionText || devotionData.commitment || ''
+          actionText: devotionData.actionText || devotionData.commitment || '',
+          prayerRequests: Array.isArray(devotionData.prayerRequests) ? devotionData.prayerRequests : []
         },
         createdAt: window.serverTimestamp()
       };
@@ -502,13 +503,19 @@ const GroupChat = {
       return {
         godSaidTitle: 'What did God say',
         understandingTitle: 'What is my understanding',
-        actionTitle: 'What will I do'
+        actionTitle: 'What will I do',
+        prayerRequestTitle: 'Prayer Requests',
+        prayAction: 'I prayed',
+        prayedBy: 'People praying'
       };
     }
     return {
       godSaidTitle: 'Ano ang sinabi ng Diyos',
       understandingTitle: 'Ano ang aking pagkaunawa',
-      actionTitle: 'Ano ang aking gagawin'
+      actionTitle: 'Ano ang aking gagawin',
+      prayerRequestTitle: 'Mga Prayer Request',
+      prayAction: 'Nananalangin ako',
+      prayedBy: 'Mga nananalangin'
     };
   },
 
@@ -529,7 +536,61 @@ const GroupChat = {
     return this.escapeHtml(String(text || '')).replace(/\n/g, '<br>');
   },
 
-  renderDevotionSections(devotion = {}) {
+  normalizeDevotionPrayerRequests(rawPrayerRequests) {
+    if (!Array.isArray(rawPrayerRequests)) return [];
+    const seen = new Set();
+    const list = [];
+    rawPrayerRequests.forEach((item) => {
+      const text = String(item?.text || '').trim();
+      if (!text) return;
+      const id = String(item?.id || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+      if (seen.has(id)) return;
+      seen.add(id);
+      list.push({
+        id,
+        text,
+        answered: !!item?.answered,
+        answeredAt: item?.answeredAt || null,
+        remarks: String(item?.remarks || '').trim()
+      });
+    });
+    return list;
+  },
+
+  normalizePrayerSupportMap(rawSupports) {
+    if (!rawSupports || typeof rawSupports !== 'object') return {};
+    const normalized = {};
+    Object.entries(rawSupports).forEach(([prayerId, users]) => {
+      const id = String(prayerId || '').trim();
+      if (!id || !Array.isArray(users)) return;
+      const dedupe = new Map();
+      users.forEach((user) => {
+        const uid = String(user?.uid || '').trim();
+        if (!uid) return;
+        dedupe.set(uid, {
+          uid,
+          name: String(user?.name || 'Member').trim() || 'Member',
+          senderPhoto: String(user?.senderPhoto || '').trim(),
+          prayedAt: user?.prayedAt || null
+        });
+      });
+      if (dedupe.size > 0) normalized[id] = Array.from(dedupe.values());
+    });
+    return normalized;
+  },
+
+  getPrayerSupportSummary(supportMap, prayerId) {
+    const users = Array.isArray(supportMap?.[prayerId]) ? supportMap[prayerId] : [];
+    const uid = window.currentUser?.uid;
+    const count = users.length;
+    const isMine = !!uid && users.some(user => user.uid === uid);
+    const names = users
+      .map(user => String(user.name || '').trim())
+      .filter(Boolean);
+    return { count, isMine, names };
+  },
+
+  renderDevotionSections(devotion = {}, messageId = '') {
     const lang = devotion.language === 'en' ? 'en' : 'tl';
     const labels = this.getDevotionLabels(lang);
     const godSaidTitle = devotion.godSaidTitle || labels.godSaidTitle;
@@ -539,6 +600,9 @@ const GroupChat = {
     const godSaidText = String(devotion.godSaidText || '').trim();
     const understandingText = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
     const actionText = String(devotion.actionText || devotion.commitment || '').trim();
+    const prayerRequests = this.normalizeDevotionPrayerRequests(devotion.prayerRequests || []);
+    const prayerSupports = this.normalizePrayerSupportMap(devotion.prayerSupports || {});
+    const messageIdForJs = String(messageId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
     return `
       <div class="space-y-2">
@@ -555,8 +619,90 @@ const GroupChat = {
           <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide">${this.escapeHtml(actionTitle)}</p>
           <p class="text-xs text-[var(--text-color)] leading-relaxed mt-1">${this.formatDevotionMultiline(actionText)}</p>
         </div>
+        ${prayerRequests.length > 0 ? `
+          <div class="rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-2.5">
+            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${this.escapeHtml(labels.prayerRequestTitle)}</p>
+            <div class="space-y-2">
+              ${prayerRequests.map((item) => {
+                const prayerIdForJs = String(item.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const support = this.getPrayerSupportSummary(prayerSupports, item.id);
+                const namesPreview = support.names.slice(0, 3).join(', ');
+                const moreCount = support.names.length > 3 ? ` +${support.names.length - 3}` : '';
+                return `
+                  <div class="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-2">
+                    <p class="text-xs text-[var(--text-color)] leading-relaxed">${this.formatDevotionMultiline(item.text)}</p>
+                    ${item.remarks ? `<p class="text-[11px] text-[var(--text-muted)] mt-1">${this.formatDevotionMultiline(item.remarks)}</p>` : ''}
+                    <div class="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                      <button onclick="GroupChat.togglePrayerSupport('${messageIdForJs}', '${prayerIdForJs}')" class="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] transition-colors ${support.isMine ? 'border-amber-500/70 bg-amber-500/20 text-amber-500' : 'border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--text-color)]'}">
+                        <span>🙏</span>
+                        <span>${this.escapeHtml(labels.prayAction)}</span>
+                        <span>${support.count > 0 ? `(${support.count})` : ''}</span>
+                      </button>
+                      ${support.count > 0 ? `<p class="text-[10px] text-[var(--text-muted)]">${this.escapeHtml(labels.prayedBy)}: ${this.escapeHtml(namesPreview)}${this.escapeHtml(moreCount)}</p>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
       </div>
     `;
+  },
+
+  async togglePrayerSupport(messageId, prayerId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db || !messageId || !prayerId) return;
+
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message || message.type !== 'devotion') return;
+
+    const devotion = message.devotion || {};
+    const prayerRequests = this.normalizeDevotionPrayerRequests(devotion.prayerRequests || []);
+    const targetPrayer = prayerRequests.find(item => String(item.id) === String(prayerId));
+    if (!targetPrayer) return;
+
+    const supportMap = this.normalizePrayerSupportMap(devotion.prayerSupports || {});
+    const current = Array.isArray(supportMap[prayerId]) ? [...supportMap[prayerId]] : [];
+    const existingIndex = current.findIndex(user => user.uid === uid);
+
+    if (existingIndex >= 0) {
+      current.splice(existingIndex, 1);
+    } else {
+      current.push({
+        uid,
+        name: window.currentUser.displayName || window.currentUser.email || 'Member',
+        senderPhoto: window.currentUser.photoURL || '',
+        prayedAt: new Date().toISOString()
+      });
+    }
+
+    if (current.length > 0) {
+      supportMap[prayerId] = current;
+    } else {
+      delete supportMap[prayerId];
+    }
+
+    const updatedDevotion = {
+      ...devotion,
+      prayerSupports: supportMap
+    };
+
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_chats', messageId),
+        {
+          devotion: updatedDevotion,
+          reactionsUpdatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      message.devotion = updatedDevotion;
+      this.renderMessages();
+    } catch (error) {
+      console.error('[GroupChat] Error updating prayer support:', error);
+    }
   },
   
   /**
@@ -606,7 +752,7 @@ const GroupChat = {
                 <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
                 ${this.renderReplyBlock(msg)}
-                ${this.renderDevotionSections(msg.devotion || {})}
+                ${this.renderDevotionSections(msg.devotion || {}, msg.id)}
                 <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
