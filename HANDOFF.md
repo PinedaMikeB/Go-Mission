@@ -116,6 +116,9 @@
 - **Status**: 🔄 Training UI cleanup in progress
   - Removed Training sessions list block under "Paano Sumali sa Wednesday Equipping" including "Loading training content..."
   - Current Training fullscreen content now shows only: Wednesday Equipping card + join infographic
+- **Status**: 🔄 Shared Jitsi chat access update in progress
+  - Replaced tile/grid toolbar control with `chat` on embedded Jitsi primary toolbar
+  - Applies globally via `/modules/groups/group-meeting.js` for Mission Groups + Wednesday Equipping + future `GroupMeeting.joinMeeting(...)` flows
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`

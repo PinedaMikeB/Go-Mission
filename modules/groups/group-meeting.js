@@ -330,33 +330,29 @@ const GroupMeeting = {
           resolution: 480,
           p2p: { enabled: true },
 
-          // Keep core controls visible and route extras to the More menu.
+          // Keep core controls visible and make chat quickly accessible on mobile.
           toolbarButtons: [
             'microphone',
             'camera',
-            'tileview',
-            'overflowmenu',
-            'hangup',
-            'desktop',
-            'reactions'
+            'reactions',
+            'chat',
+            'hangup'
           ]
         },
         interfaceConfigOverwrite: {
-          // Keep main toolbar compact and place extras under "More actions".
+          // Show chat in the primary toolbar (replaces tile/grid button before hangup).
           TOOLBAR_BUTTONS: [
             'microphone',
             'camera',
-            'tileview',
-            'overflowmenu',
-            'hangup',
-            'desktop',
-            'reactions'
+            'reactions',
+            'chat',
+            'hangup'
           ],
           MAIN_TOOLBAR_BUTTONS: [
             'microphone',
             'camera',
-            'tileview',
-            'overflowmenu',
+            'reactions',
+            'chat',
             'hangup'
           ],
           
