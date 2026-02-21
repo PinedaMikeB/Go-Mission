@@ -5086,13 +5086,16 @@
         // - if unread badge exists -> jump directly to unread chat target
         // - otherwise -> open Messages inbox menu (groups/direct/requests tabs)
         window.handleInboxIconClick = async function() {
-            const unreadCount = Number(window.Notifications?.unreadCount || 0);
+            const notificationsApi = (typeof Notifications !== 'undefined')
+                ? Notifications
+                : (window.Notifications || null);
+            const unreadCount = Number(notificationsApi?.unreadCount || 0);
             const headerBadge = document.getElementById('headerNotificationBadge');
             const badgeVisible = !!(headerBadge && !headerBadge.classList.contains('hidden') && headerBadge.textContent && headerBadge.textContent !== '0');
             const hasUnread = unreadCount > 0 || badgeVisible;
 
-            if (hasUnread && typeof window.Notifications?.openLastUnreadTarget === 'function') {
-                window.Notifications.openLastUnreadTarget();
+            if (hasUnread && typeof notificationsApi?.openLastUnreadTarget === 'function') {
+                notificationsApi.openLastUnreadTarget();
                 return;
             }
 

@@ -29,6 +29,14 @@ const Notifications = {
     toast: true,
     vibrate: true
   },
+
+  /**
+   * Storage key for per-user last read timestamp
+   */
+  getLastReadStorageKey() {
+    const uid = window.currentUser?.uid;
+    return uid ? `lastRead_${uid}` : null;
+  },
   
   /**
    * Initialize notifications
@@ -42,9 +50,13 @@ const Notifications = {
     }
     
     // Load last read timestamp from localStorage
-    this.lastReadTimestamp = localStorage.getItem(`lastRead_${window.currentUser.uid}`) 
-      ? new Date(localStorage.getItem(`lastRead_${window.currentUser.uid}`))
-      : new Date();
+    const lastReadKey = this.getLastReadStorageKey();
+    const storedLastRead = lastReadKey ? localStorage.getItem(lastReadKey) : null;
+    const parsedLastRead = this.toDateOrNull(storedLastRead);
+    this.lastReadTimestamp = parsedLastRead || new Date();
+    if (lastReadKey && !parsedLastRead) {
+      localStorage.setItem(lastReadKey, this.lastReadTimestamp.toISOString());
+    }
     
     // Load settings
     this.loadSettings();
@@ -308,8 +320,7 @@ const Notifications = {
    */
   openLastUnreadTarget() {
     const target = this.lastUnreadTarget;
-    this.lastUnreadTarget = null;
-    this.persistUnreadTarget();
+    this.markAsRead();
 
     if (!target) {
       if (typeof ChatApp !== 'undefined' && typeof ChatApp.open === 'function') {
@@ -360,8 +371,9 @@ const Notifications = {
     const isMention = !!(currentUid && mentionIds.includes(currentUid));
     
     // Don't notify for old messages (before last read)
-    const msgTime = message.createdAt?.toDate?.() || new Date(message.createdAt);
-    if (msgTime <= this.lastReadTimestamp) return;
+    const msgTime = this.toDateOrNull(message.createdAt);
+    if (!msgTime) return;
+    if (this.lastReadTimestamp && msgTime.getTime() <= this.lastReadTimestamp.getTime()) return;
     
     // Don't notify for active group thread unless user was directly mentioned.
     if (GroupChat?.isOpen && groupId && GroupChat.currentGroupId === groupId && !isMention) {
@@ -643,8 +655,16 @@ const Notifications = {
     this.lastUnreadTarget = null;
     this.persistUnreadTarget();
     this.lastReadTimestamp = new Date();
-    localStorage.setItem(`lastRead_${window.currentUser?.uid}`, this.lastReadTimestamp.toISOString());
+    const lastReadKey = this.getLastReadStorageKey();
+    if (lastReadKey) {
+      localStorage.setItem(lastReadKey, this.lastReadTimestamp.toISOString());
+    }
     this.updateBadge();
+    if (typeof PushNotifications !== 'undefined' && typeof PushNotifications.clearBadge === 'function') {
+      Promise.resolve(PushNotifications.clearBadge()).catch((error) => {
+        console.warn('[Notifications] Could not clear push badge state:', error);
+      });
+    }
   },
   
   /**
@@ -733,6 +753,21 @@ const Notifications = {
   truncate(str, length) {
     if (!str) return '';
     return str.length > length ? str.substring(0, length) + '...' : str;
+  },
+
+  toDateOrNull(value) {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    if (typeof value === 'number') {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
   },
   
   escapeHtml(text) {

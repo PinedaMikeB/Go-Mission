@@ -77,6 +77,7 @@ const GroupChat = {
   forwardSourceMessageId: null,
   forwardGroupTargets: {},
   forwardDmTargets: {},
+  activeChatHeartbeatTimer: null,
   
   /**
    * Initialize chat module
@@ -145,6 +146,7 @@ const GroupChat = {
     // FIRST: Set active chat in Firestore (prevents notifications while chat is open)
     // Wait for this to complete before proceeding
     await this.setActiveChat(groupId);
+    this.startActiveChatHeartbeat(groupId);
     
     // THEN: Show chat modal
     const modal = document.getElementById('chatModal');
@@ -223,6 +225,7 @@ const GroupChat = {
     }
     
     // Clear active chat in Firestore (re-enable notifications)
+    this.stopActiveChatHeartbeat();
     this.clearActiveChat();
     
     // Unsubscribe from updates
@@ -247,7 +250,10 @@ const GroupChat = {
     try {
       await window.setDoc(
         window.doc(window.db, 'goMission_members', window.currentUser.uid),
-        { activeChat: groupId },
+        {
+          activeChat: groupId,
+          activeChatUpdatedAt: window.serverTimestamp()
+        },
         { merge: true }
       );
       console.log('[GroupChat] Active chat set:', groupId);
@@ -265,12 +271,40 @@ const GroupChat = {
     try {
       await window.setDoc(
         window.doc(window.db, 'goMission_members', window.currentUser.uid),
-        { activeChat: null },
+        {
+          activeChat: null,
+          activeChatUpdatedAt: window.serverTimestamp()
+        },
         { merge: true }
       );
       console.log('[GroupChat] Active chat cleared');
     } catch (error) {
       console.error('[GroupChat] Error clearing active chat:', error);
+    }
+  },
+
+  /**
+   * Keep active chat freshness updated to avoid stale suppression in push routing.
+   */
+  startActiveChatHeartbeat(groupId) {
+    this.stopActiveChatHeartbeat();
+    if (!groupId) return;
+    this.activeChatHeartbeatTimer = setInterval(() => {
+      if (!this.isOpen || this.currentGroupId !== groupId) {
+        this.stopActiveChatHeartbeat();
+        return;
+      }
+      this.setActiveChat(groupId);
+    }, 60000);
+  },
+
+  /**
+   * Stop active chat heartbeat.
+   */
+  stopActiveChatHeartbeat() {
+    if (this.activeChatHeartbeatTimer) {
+      clearInterval(this.activeChatHeartbeatTimer);
+      this.activeChatHeartbeatTimer = null;
     }
   },
   

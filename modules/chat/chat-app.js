@@ -27,6 +27,7 @@ const ChatApp = {
   dmPollTimer: null,
   dmNotificationUnsubscribe: null,
   dmLastSeenAt: null,
+  activeDmHeartbeatTimer: null,
 
   /**
    * Initialize module
@@ -589,6 +590,7 @@ const ChatApp = {
     if (modal) modal.classList.remove('hidden');
 
     await this.setActiveDmThread(this.activeDmThreadId);
+    this.startActiveDmHeartbeat(this.activeDmThreadId);
     this.markDmSeenNow();
     await this.loadDirectMessages(true);
     this.startDmPolling();
@@ -605,6 +607,7 @@ const ChatApp = {
     this.activeDmPeerId = null;
     this.dmMessages = [];
     this.stopDmPolling();
+    this.stopActiveDmHeartbeat();
     if (previousThreadId) {
       this.setActiveDmThread(null);
     }
@@ -875,12 +878,38 @@ const ChatApp = {
       await window.setDoc(
         window.doc(window.db, 'goMission_members', uid),
         {
-          activeDmThread: threadId || null
+          activeDmThread: threadId || null,
+          activeDmThreadUpdatedAt: window.serverTimestamp()
         },
         { merge: true }
       );
     } catch (error) {
       console.warn('[ChatApp] Failed setting active DM thread:', error);
+    }
+  },
+
+  /**
+   * Keep DM active state fresh to avoid stale notification suppression.
+   */
+  startActiveDmHeartbeat(threadId) {
+    this.stopActiveDmHeartbeat();
+    if (!threadId) return;
+    this.activeDmHeartbeatTimer = setInterval(() => {
+      if (!this.activeDmThreadId || this.activeDmThreadId !== threadId) {
+        this.stopActiveDmHeartbeat();
+        return;
+      }
+      this.setActiveDmThread(threadId);
+    }, 60000);
+  },
+
+  /**
+   * Stop DM active state heartbeat.
+   */
+  stopActiveDmHeartbeat() {
+    if (this.activeDmHeartbeatTimer) {
+      clearInterval(this.activeDmHeartbeatTimer);
+      this.activeDmHeartbeatTimer = null;
     }
   },
 

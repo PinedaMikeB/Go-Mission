@@ -94,6 +94,7 @@ async function incrementUnreadCount(userId) {
 }
 
 const APP_BASE_URL = 'https://gomission.netlify.app';
+const ACTIVE_CONTEXT_TTL_MS = 10 * 60 * 1000;
 
 function normalizeNotificationData(data = {}, title = '', body = '') {
   const normalized = {};
@@ -326,10 +327,14 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-async function filterRecipientsByActiveContext(userIds = [], contextField, contextValue) {
+async function filterRecipientsByActiveContext(userIds = [], contextField, contextValue, options = {}) {
   const uniqueIds = uniqueUserIds(userIds);
   if (!uniqueIds.length) return [];
   if (!contextField) return uniqueIds;
+  const timestampField = typeof options.timestampField === 'string' ? options.timestampField : '';
+  const ttlMs = Number.isFinite(options.ttlMs) && options.ttlMs > 0
+    ? Number(options.ttlMs)
+    : ACTIVE_CONTEXT_TTL_MS;
 
   const recipients = [];
   for (const userId of uniqueIds) {
@@ -337,10 +342,22 @@ async function filterRecipientsByActiveContext(userIds = [], contextField, conte
       const userDoc = await db.collection('goMission_members').doc(userId).get();
       if (!userDoc.exists) continue;
       const data = userDoc.data() || {};
-      if (data[contextField] === contextValue) {
+      if (data[contextField] !== contextValue) {
+        recipients.push(userId);
         continue;
       }
-      recipients.push(userId);
+
+      // If context is stale, treat as inactive and deliver notification.
+      if (timestampField) {
+        const activeAt = toDateOrNull(data[timestampField]);
+        const isFresh = activeAt && ((Date.now() - activeAt.getTime()) <= ttlMs);
+        if (!isFresh) {
+          recipients.push(userId);
+          continue;
+        }
+      } else {
+        continue;
+      }
     } catch (error) {
       console.warn(`[Notifications] Could not evaluate active context for ${userId}:`, error);
       recipients.push(userId);
@@ -424,7 +441,10 @@ exports.onNewChatMessage = onDocumentCreated({
   const mentionedIds = collectMentionedUserIds(message)
     .filter((id) => id !== senderId && participantIds.includes(id));
 
-  const mentionRecipients = await filterRecipientsByActiveContext(mentionedIds, 'activeChat', groupId);
+  const mentionRecipients = await filterRecipientsByActiveContext(mentionedIds, 'activeChat', groupId, {
+    timestampField: 'activeChatUpdatedAt',
+    ttlMs: ACTIVE_CONTEXT_TTL_MS
+  });
   if (mentionRecipients.length) {
     const mentionNotification = {
       title: `📣 Mention in ${groupName}`,
@@ -455,7 +475,10 @@ exports.onNewChatMessage = onDocumentCreated({
   }
 
   const regularRecipients = participantIds.filter((id) => !mentionedIds.includes(id));
-  const regularRecipientsFiltered = await filterRecipientsByActiveContext(regularRecipients, 'activeChat', groupId);
+  const regularRecipientsFiltered = await filterRecipientsByActiveContext(regularRecipients, 'activeChat', groupId, {
+    timestampField: 'activeChatUpdatedAt',
+    ttlMs: ACTIVE_CONTEXT_TTL_MS
+  });
   if (regularRecipientsFiltered.length) {
     const notification = {
       title: `💬 ${groupName}`,
@@ -488,7 +511,10 @@ exports.onNewDirectMessage = onDocumentCreated({
   const recipientIds = participants.filter((id) => id !== senderId);
   if (!recipientIds.length) return null;
 
-  const recipients = await filterRecipientsByActiveContext(recipientIds, 'activeDmThread', threadId);
+  const recipients = await filterRecipientsByActiveContext(recipientIds, 'activeDmThread', threadId, {
+    timestampField: 'activeDmThreadUpdatedAt',
+    ttlMs: ACTIVE_CONTEXT_TTL_MS
+  });
   if (!recipients.length) return null;
 
   const body = truncateText(message.text || 'Sent you a message.', 110);
