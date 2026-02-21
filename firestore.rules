@@ -33,23 +33,41 @@ service cloud.firestore {
     }
 
     function matchesCallerUserId(userId) {
-      return (request.auth == null && userId == 'guest') ||
-        (request.auth != null && userId == request.auth.uid);
+      return isSignedIn() && userId == request.auth.uid;
     }
 
-    // Watch module (public read, admin write)
+    // Watch module (signed-in read, admin write)
     match /video_series/{docId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     match /video_episodes/{docId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     match /video_events/{docId} {
-      allow create: if true;
+      allow create: if
+        isSignedIn() &&
+        request.resource.data.keys().hasOnly([
+          'userId',
+          'episodeId',
+          'eventType',
+          'ts',
+          'sessionId'
+        ]) &&
+        request.resource.data.userId is string &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.episodeId is string &&
+        request.resource.data.episodeId.size() > 0 &&
+        request.resource.data.episodeId.size() <= 200 &&
+        request.resource.data.eventType is string &&
+        request.resource.data.eventType in ['onPlay', 'watched_30s', 'watched_90pct', 'onEnd'] &&
+        request.resource.data.ts == request.time &&
+        request.resource.data.sessionId is string &&
+        request.resource.data.sessionId.size() > 0 &&
+        request.resource.data.sessionId.size() <= 120;
       allow read, update, delete: if isAdmin();
     }
 

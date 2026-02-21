@@ -3,6 +3,7 @@ import {
   fetchSeriesById,
   fetchEpisodesBySeries,
   getQueryParam,
+  requireWatchAuth,
   setStateMessage
 } from './watch-shared.js';
 
@@ -64,6 +65,10 @@ async function initSeriesPage() {
   const list = document.getElementById('episodeList');
 
   if (!status || !list) {
+    return;
+  }
+
+  if (!(await requireWatchAuth(status))) {
     return;
   }
 

@@ -22,7 +22,6 @@ const THEME_STORAGE_KEY = 'goMission_theme';
 const WATCH_SESSION_KEY = 'goMission_watch_session_id';
 const EVENT_TYPES = new Set(['onPlay', 'watched_30s', 'watched_90pct', 'onEnd']);
 const WATCH_MESSAGE_TYPES = new Set(['comment', 'prayer_request', 'chat_with_us']);
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 let authReadyResolved = false;
 let currentUserId = 'guest';
@@ -184,6 +183,44 @@ export function getSessionId() {
   return next;
 }
 
+async function resolveMemberContact(uid, user) {
+  const fallbackName = normalizeText(user?.displayName || '', 120);
+  const fallbackEmail = normalizeText(user?.email || '', 160).toLowerCase();
+
+  try {
+    const memberSnap = await getDoc(doc(db, 'goMission_members', uid));
+    if (!memberSnap.exists()) {
+      return { name: fallbackName || null, email: fallbackEmail || null };
+    }
+
+    const data = memberSnap.data() || {};
+    const name = normalizeText(data.displayName || data.name || fallbackName, 120);
+    const email = normalizeText(data.email || fallbackEmail, 160).toLowerCase();
+    return { name: name || null, email: email || null };
+  } catch (error) {
+    console.warn('[Watch] Could not load member profile for inbox:', error?.message || error);
+    return { name: fallbackName || null, email: fallbackEmail || null };
+  }
+}
+
+export async function requireWatchAuth(statusElement = null) {
+  await authReady;
+
+  const user = auth?.currentUser || null;
+  if (user?.uid) {
+    currentUserId = user.uid;
+    return user;
+  }
+
+  if (statusElement) {
+    setStateMessage(statusElement, 'Sign in required. Redirecting...', true);
+  }
+
+  const intended = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.replace(`/?redirect=${encodeURIComponent(intended)}`);
+  return null;
+}
+
 export async function fetchVideoSeries() {
   let snapshot;
 
@@ -308,10 +345,14 @@ export async function logVideoEvent({ episodeId, eventType, sessionId }) {
   }
 
   await authReady;
+  const userId = auth?.currentUser?.uid || currentUserId || '';
+  if (!userId || userId === 'guest') {
+    return false;
+  }
 
   try {
     await addDoc(collection(db, 'video_events'), {
-      userId: currentUserId || 'guest',
+      userId,
       episodeId,
       eventType,
       ts: serverTimestamp(),
@@ -335,8 +376,6 @@ export async function submitWatchInboxMessage({
   seriesId = '',
   messageType = 'comment',
   message = '',
-  contactName = '',
-  contactEmail = '',
   sessionId = '',
   pagePath = ''
 }) {
@@ -344,8 +383,6 @@ export async function submitWatchInboxMessage({
   const normalizedSeriesId = normalizeText(seriesId, 200);
   const normalizedType = normalizeText(messageType, 40).toLowerCase();
   const normalizedMessage = normalizeText(message, 1200);
-  const normalizedName = normalizeText(contactName, 120);
-  const normalizedEmail = normalizeText(contactEmail, 160).toLowerCase();
   const normalizedSession = normalizeText(sessionId, 120) || getSessionId();
   const normalizedPath = normalizeText(pagePath, 400)
     || normalizeText(`${window.location.pathname}${window.location.search}`, 400);
@@ -362,14 +399,15 @@ export async function submitWatchInboxMessage({
     return { ok: false, error: 'Please write at least 2 characters.' };
   }
 
-  if (normalizedEmail && !EMAIL_PATTERN.test(normalizedEmail)) {
-    return { ok: false, error: 'Please enter a valid email address or leave it blank.' };
+  await authReady;
+  const user = auth?.currentUser || null;
+  const userId = user?.uid || currentUserId || '';
+  if (!userId || userId === 'guest') {
+    return { ok: false, error: 'Sign in is required.' };
   }
 
-  await authReady;
-
   try {
-    const userId = auth?.currentUser?.uid || currentUserId || 'guest';
+    const contact = await resolveMemberContact(userId, user);
     const userAgent = normalizeText(navigator?.userAgent || '', 512);
     const docRef = await addDoc(collection(db, 'video_inbox'), {
       userId,
@@ -377,8 +415,8 @@ export async function submitWatchInboxMessage({
       seriesId: normalizedSeriesId || null,
       messageType: normalizedType,
       message: normalizedMessage,
-      contactName: normalizedName || null,
-      contactEmail: normalizedEmail || null,
+      contactName: contact.name,
+      contactEmail: contact.email,
       status: 'new',
       source: 'watch_player',
       ts: serverTimestamp(),

@@ -2722,6 +2722,20 @@
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
         let authBootResolved = false;
+        const postLoginRedirect = (() => {
+            const raw = new URLSearchParams(window.location.search).get('redirect');
+            if (!raw) return null;
+            let decoded = null;
+            try {
+                decoded = decodeURIComponent(raw);
+            } catch (error) {
+                decoded = raw;
+            }
+            if (!decoded || !decoded.startsWith('/') || decoded.startsWith('//')) {
+                return null;
+            }
+            return decoded;
+        })();
 
         // Safety net: prevent infinite "Loading" if auth/bootstrap stalls on mobile PWA.
         const authBootWatchdog = setTimeout(() => {
@@ -2985,6 +2999,12 @@
                 applyCurrentUserIdentity(user);
                 
                 await ensureUserExists(user);
+
+                if (postLoginRedirect) {
+                    window.location.replace(postLoginRedirect);
+                    return;
+                }
+
                 loginScreen.classList.add('hidden');
                 
                 // Check if should show welcome modal BEFORE showing mainApp

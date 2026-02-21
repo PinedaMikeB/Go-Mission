@@ -1,6 +1,7 @@
 import {
   applyStoredThemePreference,
   fetchVideoSeries,
+  requireWatchAuth,
   setStateMessage
 } from './watch-shared.js';
 
@@ -41,6 +42,10 @@ async function initWatchPage() {
   const status = document.getElementById('watchState');
 
   if (!grid || !status) {
+    return;
+  }
+
+  if (!(await requireWatchAuth(status))) {
     return;
   }
 

@@ -5,6 +5,7 @@ import {
   getQueryParam,
   getSessionId,
   logVideoEvent,
+  requireWatchAuth,
   submitWatchInboxMessage,
   setStateMessage
 } from './watch-shared.js';
@@ -165,13 +166,11 @@ function setEngageStatus(statusEl, text, { error = false, success = false } = {}
 
 function initEngageComposer(episode) {
   const messageInput = document.getElementById('engageMessageInput');
-  const nameInput = document.getElementById('engageNameInput');
-  const emailInput = document.getElementById('engageEmailInput');
   const sendBtn = document.getElementById('engageSendBtn');
   const statusEl = document.getElementById('engageStatusText');
   const typeButtons = Array.from(document.querySelectorAll('.engage-type-btn'));
 
-  if (!messageInput || !nameInput || !emailInput || !sendBtn || !statusEl || typeButtons.length === 0) {
+  if (!messageInput || !sendBtn || !statusEl || typeButtons.length === 0) {
     return;
   }
 
@@ -221,8 +220,6 @@ function initEngageComposer(episode) {
       seriesId: episode?.seriesId || '',
       messageType: activeType,
       message,
-      contactName: nameInput.value,
-      contactEmail: emailInput.value,
       sessionId,
       pagePath: `${window.location.pathname}${window.location.search}`.slice(0, 400)
     });
@@ -252,6 +249,10 @@ async function initPlayerPage() {
   const backLink = document.getElementById('backToSeriesLink');
 
   if (!status || !title || !subtitle || !backLink) {
+    return;
+  }
+
+  if (!(await requireWatchAuth(status))) {
     return;
   }
 
