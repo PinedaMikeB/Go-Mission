@@ -640,13 +640,6 @@ const BibleReader = {
 
     html += `
       <div class="mt-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
-        ${primaryQuestion ? `
-          <div class="mb-3">
-            <span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.reflectionQuestion}</span>
-            <p class="text-[var(--text-color)] italic" style="font-size:${headingFontPx}px; line-height:1.5;">"${this.escapeHTML(primaryQuestion)}"</p>
-          </div>
-        ` : ''}
-
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
@@ -654,6 +647,13 @@ const BibleReader = {
                   class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
+
+        ${primaryQuestion ? `
+          <div class="mb-3">
+            <span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.reflectionQuestion}</span>
+            <p class="text-[var(--text-color)] italic" style="font-size:${headingFontPx}px; line-height:1.5;">"${this.escapeHTML(primaryQuestion)}"</p>
+          </div>
+        ` : ''}
 
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
         <textarea id="inlineInsightCommitmentInput"
