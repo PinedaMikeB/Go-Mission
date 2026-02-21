@@ -1998,6 +1998,19 @@ match /goMission/watch-series-covers/{allPaths=**} {
         .slice(0, 120);
     }
 
+    function toFriendlyStorageError(error) {
+      const message = String(error?.message || '').toLowerCase();
+      const isCorsLike = message.includes('cors') ||
+        message.includes('preflight') ||
+        message.includes('firebasestorage.googleapis.com');
+
+      if (isCorsLike) {
+        return 'Cover upload failed because Firebase Storage is not initialized for this project. Open Firebase Console > shaped-by-grace > Storage > Get Started, then retry.';
+      }
+
+      return error?.message || 'Storage upload failed.';
+    }
+
     async function saveSundayVideo() {
       const btn = document.getElementById('publishSundayVideoBtn');
       const date = document.getElementById('sundayDate').value;
@@ -2212,7 +2225,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         setInlineStatus('watchSeriesStatusText', `Watch series saved: ${id}`, 'success');
         await loadWatchSeries();
       } catch (error) {
-        setInlineStatus('watchSeriesStatusText', `Failed to save watch series: ${error.message}`, 'error');
+        setInlineStatus('watchSeriesStatusText', `Failed to save watch series: ${toFriendlyStorageError(error)}`, 'error');
       } finally {
         btn.disabled = false;
       }
