@@ -135,6 +135,9 @@
   - Added DOCX converter script: `/scripts/convert-docx-to-meeting-slides.js`
   - Generated sample deck from facilitator guide:
     - `/modules/groups/meeting-slides/decks/idol-of-comfort.tl.json`
+  - Improved slide panel readability with explicit inline styling (fixes red/unreadable H1/H2 in meeting overlay)
+  - Improved converter reliability for labeled paragraphs (`Ice Breaker Question:`, `Sagot:`, `Tanong:`) so they are preserved as slides instead of being dropped
+  - Regenerated sample deck with improved parsing: `idol-of-comfort.tl.json` now expands to `33` slides and includes the previously skipped Ice Breaker / facilitator-answer content
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`

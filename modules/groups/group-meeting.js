@@ -730,6 +730,15 @@ const GroupMeeting = {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
       toggleBtn.classList.toggle('text-amber-200', !!state.panelOpen);
     }
+    if (titleEl) {
+      titleEl.style.color = '#f7f3ea';
+      titleEl.style.fontWeight = '700';
+      titleEl.style.letterSpacing = '0.01em';
+    }
+    if (counterEl) {
+      counterEl.style.color = 'rgba(255,255,255,0.82)';
+      counterEl.style.fontWeight = '600';
+    }
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]?.title || 'Meeting Slides';
@@ -768,18 +777,28 @@ const GroupMeeting = {
       const isBullet = /^\s*[•*-]\s+/.test(p);
       const cleaned = p.replace(/^\s*[•*-]\s+/, '');
       return isBullet
-        ? `<li class="text-white/90 text-sm leading-relaxed">${this.escapeHtml(cleaned)}</li>`
-        : `<p class="text-white/90 text-sm leading-relaxed mb-2">${this.escapeHtml(p)}</p>`;
+        ? `<li style="color:rgba(255,255,255,0.90); font-size:15px; line-height:1.5;">${this.escapeHtml(cleaned)}</li>`
+        : `<p style="color:rgba(255,255,255,0.90); font-size:15px; line-height:1.55; margin:0 0 10px 0;">${this.escapeHtml(p)}</p>`;
     });
 
     const hasBullets = (slide.paragraphs || []).some((p) => /^\s*[•*-]\s+/.test(p));
+    const kickerHtml = slide.kicker
+      ? `<div style="font-size:11px; line-height:1.35; letter-spacing:0.16em; text-transform:uppercase; color:#f7d34a; font-weight:700; margin-bottom:10px;">${this.escapeHtml(slide.kicker)}</div>`
+      : '';
+    const titleHtml = `<div style="color:#f6f4ef; font-size:clamp(18px,4.2vw,29px); line-height:1.08; font-weight:800; letter-spacing:0.01em; margin-bottom:${slide.subtitle ? '8px' : '14px'}; text-wrap:balance;">${this.escapeHtml(slide.title || 'Slide')}</div>`;
+    const subtitleHtml = slide.subtitle
+      ? `<div style="color:rgba(255,255,255,0.65); font-size:12px; line-height:1.35; margin-bottom:12px;">${this.escapeHtml(slide.subtitle)}</div>`
+      : '';
     const bodyHtml = `
-      <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        ${slide.kicker ? `<div class="text-[10px] uppercase tracking-[0.18em] text-amber-300/80 font-bold mb-2">${this.escapeHtml(slide.kicker)}</div>` : ''}
-        <h4 class="text-white text-lg font-bold leading-tight mb-2">${this.escapeHtml(slide.title || 'Slide')}</h4>
-        ${slide.subtitle ? `<p class="text-white/60 text-xs mb-3">${this.escapeHtml(slide.subtitle)}</p>` : ''}
+      <div style="border-radius:16px; border:1px solid rgba(255,255,255,0.08); background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
+        radial-gradient(circle at top right, rgba(244,173,64,0.08), transparent 55%);
+        padding:16px;">
+        ${kickerHtml}
+        ${titleHtml}
+        ${subtitleHtml}
         ${hasBullets
-          ? `<ul class="space-y-2 list-disc list-inside">${paragraphsHtml.join('')}</ul>`
+          ? `<ul style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px;">${paragraphsHtml.join('')}</ul>`
           : `<div>${paragraphsHtml.join('')}</div>`}
       </div>
     `;
@@ -790,6 +809,10 @@ const GroupMeeting = {
     if (nextBtn) nextBtn.disabled = slideIndex >= slides.length - 1;
     if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
+    if (body) {
+      body.style.background = 'linear-gradient(180deg, rgba(17,17,20,0.65), rgba(9,9,10,0.35))';
+      body.style.borderRadius = '14px';
+    }
   },
   
   /**

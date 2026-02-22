@@ -137,6 +137,15 @@ function splitLongParagraph(text, maxChars = 700) {
   return out.length ? out : [text];
 }
 
+function splitLabelAndContent(text) {
+  const m = String(text || '').match(/^([^:]{2,80}):\s*(.+)$/);
+  if (!m) return null;
+  return {
+    label: m[1].trim() + ':',
+    content: m[2].trim()
+  };
+}
+
 function createDeck(paragraphs) {
   const slides = [];
 
@@ -229,7 +238,14 @@ function createDeck(paragraphs) {
 
     if (isSubHeading(p, style)) {
       flushCurrent();
-      currentSlideTitle = p;
+      const labeled = splitLabelAndContent(p);
+      if (labeled && labeled.content) {
+        // Preserve inline-content headings (e.g., Ice Breaker Question / Sagot).
+        currentSlideTitle = labeled.label;
+        currentSlideParagraphs.push(labeled.content);
+      } else {
+        currentSlideTitle = p;
+      }
       continue;
     }
 
