@@ -24,6 +24,18 @@ const GroupMeeting = {
   currentRoomUrl: null,
   initPromise: null,
   lastJoinArgs: null,
+  presentationState: null,
+  presentationDeckCache: {},
+
+  // Local-first, hybrid-ready slide deck library (host sync can plug into this later).
+  MEETING_SLIDES_LIBRARY: {
+    'idol-of-comfort': {
+      title: 'Idol of Comfort',
+      variants: {
+        tl: 'modules/groups/meeting-slides/decks/idol-of-comfort.tl.json'
+      }
+    }
+  },
   
   // Jitsi configuration - self-hosted is faster
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
@@ -464,6 +476,23 @@ const GroupMeeting = {
       countEl.textContent = `${count} participant${count !== 1 ? 's' : ''}`;
     }
   },
+
+  /**
+   * Initialize local presentation state (hybrid-ready shape for future host sync).
+   */
+  initPresentationState() {
+    this.presentationState = {
+      mode: 'local',        // future: 'host_synced'
+      focusMode: false,     // future moderator setting
+      panelOpen: false,
+      selectedDeckId: 'idol-of-comfort',
+      selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
+      currentSlideIndex: 0,
+      loading: false,
+      error: null,
+      deck: null
+    };
+  },
   
   /**
    * Show full-screen meeting modal
@@ -473,6 +502,8 @@ const GroupMeeting = {
     const existing = document.getElementById('meeting-modal');
     if (existing) existing.remove();
     
+    this.initPresentationState();
+
     const modal = document.createElement('div');
     modal.id = 'meeting-modal';
     modal.className = 'fixed inset-0 z-[200] bg-black flex flex-col';
@@ -497,6 +528,11 @@ const GroupMeeting = {
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <button onclick="window.GroupMeeting.toggleSlidesPanel()"
+                  id="meeting-slides-toggle-btn"
+                  class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-sm font-bold transition-colors">
+            🗂 Slides
+          </button>
           <button onclick="window.GroupMeeting.retryLastJoin()"
                   class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-sm font-bold transition-colors">
             ↻ Retry
@@ -510,6 +546,45 @@ const GroupMeeting = {
 
       <!-- Status -->
       <div id="meeting-status" class="px-4 py-2 text-xs text-white/70 bg-black/70 border-b border-white/10"></div>
+
+      <!-- Local Slides Panel (hybrid-ready: future host sync reads/writes same state shape) -->
+      <div id="meeting-slides-panel"
+           class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[380px] md:top-[74px] md:right-4 rounded-2xl border border-white/15 bg-[#0f0f10]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
+            <p id="meeting-slides-deck-title" class="text-white font-bold text-sm">Loading…</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="meeting-slides-lang"
+                    onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
+                    class="bg-white/5 border border-white/10 text-white text-xs rounded-lg px-2 py-1">
+              <option value="tl">TL</option>
+              <option value="en">EN</option>
+            </select>
+            <button onclick="window.GroupMeeting.toggleSlidesPanel(false)"
+                    class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm">✕</button>
+          </div>
+        </div>
+
+        <div id="meeting-slides-panel-body" class="px-4 py-4 min-h-[220px] max-h-[50vh] overflow-y-auto">
+          <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
+        </div>
+
+        <div class="px-4 py-3 border-t border-white/10 bg-black/20 flex items-center justify-between gap-2">
+          <button onclick="window.GroupMeeting.prevSlide()"
+                  id="meeting-slide-prev-btn"
+                  class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
+            ← Prev
+          </button>
+          <div id="meeting-slide-counter" class="text-xs text-white/70">0 / 0</div>
+          <button onclick="window.GroupMeeting.nextSlide()"
+                  id="meeting-slide-next-btn"
+                  class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
+            Next →
+          </button>
+        </div>
+      </div>
       
       <!-- Jitsi Container -->
       <div id="jitsi-container" class="flex-1 w-full"></div>
@@ -519,6 +594,9 @@ const GroupMeeting = {
     
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
+
+    // Keep selector in sync with current state on first render.
+    this.renderSlidesPanel();
   },
 
   /**
@@ -530,6 +608,189 @@ const GroupMeeting = {
     el.textContent = text || '';
     el.style.display = text ? 'block' : 'none';
   },
+
+  /**
+   * Toggle local slides panel. Future host sync can reuse this UI.
+   */
+  async toggleSlidesPanel(forceOpen) {
+    const panel = document.getElementById('meeting-slides-panel');
+    if (!panel || !this.presentationState) return;
+
+    const nextOpen = typeof forceOpen === 'boolean'
+      ? forceOpen
+      : !this.presentationState.panelOpen;
+
+    this.presentationState.panelOpen = nextOpen;
+    panel.classList.toggle('hidden', !nextOpen);
+
+    if (nextOpen && !this.presentationState.deck && !this.presentationState.loading) {
+      await this.loadSlidesDeck();
+    }
+
+    this.renderSlidesPanel();
+  },
+
+  async loadSlidesDeck() {
+    if (!this.presentationState) return;
+    const state = this.presentationState;
+    const deckEntry = this.MEETING_SLIDES_LIBRARY[state.selectedDeckId];
+    const lang = state.selectedLang;
+    const path = deckEntry?.variants?.[lang] || deckEntry?.variants?.tl;
+
+    if (!path) {
+      state.error = `No slide deck available for language: ${lang}`;
+      state.deck = null;
+      this.renderSlidesPanel();
+      return;
+    }
+
+    if (this.presentationDeckCache[path]) {
+      state.deck = this.presentationDeckCache[path];
+      state.error = null;
+      state.currentSlideIndex = 0;
+      this.renderSlidesPanel();
+      return;
+    }
+
+    state.loading = true;
+    state.error = null;
+    this.renderSlidesPanel();
+
+    try {
+      const res = await fetch(path, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const deck = await res.json();
+      this.presentationDeckCache[path] = deck;
+      state.deck = deck;
+      state.currentSlideIndex = 0;
+      state.error = null;
+    } catch (error) {
+      console.error('[GroupMeeting] Failed to load slides deck:', error);
+      state.deck = null;
+      state.error = error?.message || String(error);
+    } finally {
+      state.loading = false;
+      this.renderSlidesPanel();
+    }
+  },
+
+  setSlidesLanguage(lang) {
+    if (!this.presentationState) return;
+    const safeLang = lang === 'en' ? 'en' : 'tl';
+    if (this.presentationState.selectedLang === safeLang) return;
+    this.presentationState.selectedLang = safeLang;
+    this.presentationState.deck = null;
+    this.presentationState.currentSlideIndex = 0;
+    this.loadSlidesDeck();
+    this.renderSlidesPanel();
+  },
+
+  nextSlide() {
+    const s = this.presentationState;
+    if (!s?.deck?.slides?.length) return;
+    if (s.currentSlideIndex < s.deck.slides.length - 1) {
+      s.currentSlideIndex += 1;
+      this.renderSlidesPanel();
+    }
+  },
+
+  prevSlide() {
+    const s = this.presentationState;
+    if (!s?.deck?.slides?.length) return;
+    if (s.currentSlideIndex > 0) {
+      s.currentSlideIndex -= 1;
+      this.renderSlidesPanel();
+    }
+  },
+
+  escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  renderSlidesPanel() {
+    const state = this.presentationState;
+    const panel = document.getElementById('meeting-slides-panel');
+    if (!panel || !state) return;
+
+    const body = document.getElementById('meeting-slides-panel-body');
+    const titleEl = document.getElementById('meeting-slides-deck-title');
+    const counterEl = document.getElementById('meeting-slide-counter');
+    const prevBtn = document.getElementById('meeting-slide-prev-btn');
+    const nextBtn = document.getElementById('meeting-slide-next-btn');
+    const langSelect = document.getElementById('meeting-slides-lang');
+    const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
+
+    if (langSelect) langSelect.value = state.selectedLang || 'tl';
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
+      toggleBtn.classList.toggle('text-amber-200', !!state.panelOpen);
+    }
+
+    if (titleEl) {
+      titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]?.title || 'Meeting Slides';
+    }
+
+    if (state.loading) {
+      if (body) body.innerHTML = `<p class="text-white/70 text-sm">Loading slides…</p>`;
+      if (counterEl) counterEl.textContent = '0 / 0';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    if (state.error) {
+      if (body) body.innerHTML = `<p class="text-red-300 text-sm">Could not load slides: ${this.escapeHtml(state.error)}</p>`;
+      if (counterEl) counterEl.textContent = '0 / 0';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    const slides = state.deck?.slides || [];
+    if (!slides.length) {
+      if (body) body.innerHTML = `<p class="text-white/70 text-sm">No slides available yet.</p>`;
+      if (counterEl) counterEl.textContent = '0 / 0';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    const slideIndex = Math.min(Math.max(state.currentSlideIndex || 0, 0), slides.length - 1);
+    state.currentSlideIndex = slideIndex;
+    const slide = slides[slideIndex];
+
+    const paragraphsHtml = (slide.paragraphs || []).map((p) => {
+      const isBullet = /^\s*[•*-]\s+/.test(p);
+      const cleaned = p.replace(/^\s*[•*-]\s+/, '');
+      return isBullet
+        ? `<li class="text-white/90 text-sm leading-relaxed">${this.escapeHtml(cleaned)}</li>`
+        : `<p class="text-white/90 text-sm leading-relaxed mb-2">${this.escapeHtml(p)}</p>`;
+    });
+
+    const hasBullets = (slide.paragraphs || []).some((p) => /^\s*[•*-]\s+/.test(p));
+    const bodyHtml = `
+      <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        ${slide.kicker ? `<div class="text-[10px] uppercase tracking-[0.18em] text-amber-300/80 font-bold mb-2">${this.escapeHtml(slide.kicker)}</div>` : ''}
+        <h4 class="text-white text-lg font-bold leading-tight mb-2">${this.escapeHtml(slide.title || 'Slide')}</h4>
+        ${slide.subtitle ? `<p class="text-white/60 text-xs mb-3">${this.escapeHtml(slide.subtitle)}</p>` : ''}
+        ${hasBullets
+          ? `<ul class="space-y-2 list-disc list-inside">${paragraphsHtml.join('')}</ul>`
+          : `<div>${paragraphsHtml.join('')}</div>`}
+      </div>
+    `;
+
+    if (body) body.innerHTML = bodyHtml;
+    if (counterEl) counterEl.textContent = `${slideIndex + 1} / ${slides.length}`;
+    if (prevBtn) prevBtn.disabled = slideIndex <= 0;
+    if (nextBtn) nextBtn.disabled = slideIndex >= slides.length - 1;
+    if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
+    if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
+  },
   
   /**
    * Hide meeting modal
@@ -537,6 +798,7 @@ const GroupMeeting = {
   hideMeetingModal() {
     const modal = document.getElementById('meeting-modal');
     if (modal) modal.remove();
+    this.presentationState = null;
     
     // Restore body scroll
     document.body.style.overflow = '';

@@ -127,6 +127,14 @@
   - Active module: `/modules/bible/bible-reader.js`
   - Issue: `Aking Journal` button intermittently not responding while `Insights` is clickable
   - Fix: aligned Journal button with robust click wiring (`type="button"`, explicit `window.BibleReader...` call) and added fallback direct modal open when `window.openJournal` is unavailable
+- **Status**: 🔄 Meeting slides MVP (local-only, hybrid-ready) in progress
+  - Active module: `/modules/groups/group-meeting.js`
+  - Added `Slides` button in shared meeting header (outside Jitsi) opening a local slide panel with `Prev/Next`
+  - Added hybrid-ready presentation state shape (`mode`, `focusMode`, `selectedDeckId`, `selectedLang`, `currentSlideIndex`)
+  - Added deck fetch/cache layer with TL/EN variant support (EN falls back to TL for now)
+  - Added DOCX converter script: `/scripts/convert-docx-to-meeting-slides.js`
+  - Generated sample deck from facilitator guide:
+    - `/modules/groups/meeting-slides/decks/idol-of-comfort.tl.json`
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
