@@ -166,6 +166,11 @@ function createDeck(paragraphs) {
     paragraphs: meta.filter((p) => !/^Title:/i.test(p.text)).map((p) => p.text)
   });
 
+  const titleLine = (meta.find((p) => /^Title:/i.test(p.text)) || {}).text || '';
+  const derivedDeckTitle = titleLine
+    ? titleLine.replace(/^Title:\s*/i, '').trim()
+    : (title || 'Meeting Guide');
+
   let currentSection = null;
   let currentSlideParagraphs = [];
   let currentSlideTitle = null;
@@ -263,7 +268,7 @@ function createDeck(paragraphs) {
   return {
     version: 1,
     id: deckId,
-    title: 'Idol of Comfort',
+    title: derivedDeckTitle,
     language: lang,
     source: {
       type: 'docx',

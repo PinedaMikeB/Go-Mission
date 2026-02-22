@@ -138,6 +138,8 @@
   - Improved slide panel readability with explicit inline styling (fixes red/unreadable H1/H2 in meeting overlay)
   - Improved converter reliability for labeled paragraphs (`Ice Breaker Question:`, `Sagot:`, `Tanong:`) so they are preserved as slides instead of being dropped
   - Regenerated sample deck with improved parsing: `idol-of-comfort.tl.json` now expands to `33` slides and includes the previously skipped Ice Breaker / facilitator-answer content
+  - Temporary meeting swap applied: active slide deck file (`idol-of-comfort.tl.json`) regenerated from `/Users/mike/Downloads/LAMG FG THE IDOL OF ACHIEVEMENT.docx` for current live session use (`32` slides)
+  - Converter now derives deck title from DOCX `Title:` line (no longer hardcoded to `Idol of Comfort`)
 - **Next steps**:
   - Verify bottom nav `Training` opens full-screen Training view
   - Verify `Wednesday Equipping` card appears at the top with schedule `Wednesday • 8:00 PM`
