@@ -636,6 +636,10 @@ const GroupMeeting = {
     const deckEntry = this.MEETING_SLIDES_LIBRARY[state.selectedDeckId];
     const lang = state.selectedLang;
     const path = deckEntry?.variants?.[lang] || deckEntry?.variants?.tl;
+    const configDocId = this.getMeetingSlidesConfigDocId(state.selectedDeckId, lang);
+    const fallbackConfigDocId = lang === 'tl'
+      ? null
+      : this.getMeetingSlidesConfigDocId(state.selectedDeckId, 'tl');
 
     if (!path) {
       state.error = `No slide deck available for language: ${lang}`;
@@ -644,8 +648,28 @@ const GroupMeeting = {
       return;
     }
 
-    if (this.presentationDeckCache[path]) {
-      state.deck = this.presentationDeckCache[path];
+    const cacheKeys = [
+      configDocId ? `firestore:${configDocId}` : null,
+      fallbackConfigDocId ? `firestore:${fallbackConfigDocId}` : null,
+      path ? `static:${path}` : null
+    ].filter(Boolean);
+
+    for (const key of cacheKeys) {
+      if (this.presentationDeckCache[key]) {
+        state.deck = this.presentationDeckCache[key];
+        state.error = null;
+        state.currentSlideIndex = 0;
+        this.renderSlidesPanel();
+        return;
+      }
+    }
+
+    const firestoreDeck = await this.loadSlidesDeckFromConfig(configDocId, fallbackConfigDocId);
+    if (firestoreDeck) {
+      const cacheKey = `firestore:${firestoreDeck._configDocId || configDocId}`;
+      const deckPayload = firestoreDeck.deck || firestoreDeck;
+      this.presentationDeckCache[cacheKey] = deckPayload;
+      state.deck = deckPayload;
       state.error = null;
       state.currentSlideIndex = 0;
       this.renderSlidesPanel();
@@ -660,7 +684,7 @@ const GroupMeeting = {
       const res = await fetch(path, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const deck = await res.json();
-      this.presentationDeckCache[path] = deck;
+      this.presentationDeckCache[`static:${path}`] = deck;
       state.deck = deck;
       state.currentSlideIndex = 0;
       state.error = null;
@@ -672,6 +696,29 @@ const GroupMeeting = {
       state.loading = false;
       this.renderSlidesPanel();
     }
+  },
+
+  getMeetingSlidesConfigDocId(deckId, lang) {
+    return `meetingSlidesDeck_${String(deckId || 'default').replace(/[^a-zA-Z0-9_-]/g, '_')}_${lang === 'en' ? 'en' : 'tl'}`;
+  },
+
+  async loadSlidesDeckFromConfig(primaryDocId, fallbackDocId = null) {
+    if (!window.db || !window.doc || !window.getDoc) return null;
+
+    const idsToTry = [primaryDocId, fallbackDocId].filter(Boolean);
+    for (const docId of idsToTry) {
+      try {
+        const snap = await window.getDoc(window.doc(window.db, 'goMission_config', docId));
+        if (!snap.exists()) continue;
+        const data = snap.data() || {};
+        if (data && data.deck && Array.isArray(data.deck.slides)) {
+          return { ...data, _configDocId: docId };
+        }
+      } catch (error) {
+        console.warn('[GroupMeeting] Config deck load failed:', docId, error?.message || error);
+      }
+    }
+    return null;
   },
 
   setSlidesLanguage(lang) {

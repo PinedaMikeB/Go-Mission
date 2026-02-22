@@ -2,6 +2,30 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 
+## Current Task Status (2026-02-22) — Meeting Slides Admin DOCX Upload
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/group-meeting.js`
+- **Goal**: Allow admin to upload a facilitator-guide `.docx`, auto-parse into a simple slide deck, publish to Firestore config, and have the in-meeting Slides panel load it automatically.
+- **Status**: ✅ Implemented (admin upload + parser + publish + meeting-side Firestore deck loading fallback)
+  - Admin panel section added: `Meeting Slides (DOCX Upload)`
+  - Browser-side DOCX parser uses `JSZip` to read `word/document.xml`
+  - Deck is published to `goMission_config/meetingSlidesDeck_<slot>_<lang>`
+  - Meeting slides loader now checks Firestore published deck first, then falls back to static JSON deck
+  - Admin page wiring added for:
+    - `Parse + Publish to Meeting Slides`
+    - `Reload Published Deck`
+    - slot/language change reload
+    - file selection status
+
+### Next Steps
+
+- Add more deck slots in admin (e.g. weekly-equipping, mission-group-devotion) instead of single active slot
+- Add optional EN/TL paired publishing workflow (publish both variants for same slot)
+- Add lightweight validation warnings (empty deck, too few slides, oversized paragraphs)
+- Phase 2: host-synced slides mode for mobile-led meetings (no Jitsi screen share required)
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app

@@ -920,6 +920,38 @@
         </div>
 
         <div class="col-6 panel">
+          <h2>Meeting Slides (DOCX Upload)</h2>
+          <p class="sub">Upload a facilitator guide <code>.docx</code>, parse it into a simple slide deck, and publish it to the meeting slides panel automatically.</p>
+          <div class="row">
+            <div>
+              <label for="meetingSlidesSlot">Deck slot</label>
+              <select id="meetingSlidesSlot">
+                <option value="idol-of-comfort">Active meeting deck (current app slot)</option>
+              </select>
+              <div class="small">This publishes to the slot currently used by the in-meeting Slides panel.</div>
+            </div>
+            <div>
+              <label for="meetingSlidesLanguage">Language</label>
+              <select id="meetingSlidesLanguage">
+                <option value="tl">Tagalog (TL)</option>
+                <option value="en">English (EN)</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="meetingSlidesDocxFile">DOCX file</label>
+            <input id="meetingSlidesDocxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          </div>
+          <div class="actions">
+            <button id="publishMeetingSlidesBtn">Parse + Publish to Meeting Slides</button>
+            <button id="reloadMeetingSlidesBtn" class="secondary">Reload Published Deck</button>
+          </div>
+          <div id="meetingSlidesStatus" class="small"></div>
+          <div id="meetingSlidesCurrent" class="small" style="margin-top:8px;"></div>
+          <div id="meetingSlidesPreview" class="list" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="col-6 panel">
           <h2>User Roles</h2>
           <p class="sub">Lookup a user by email/UID and update role flags.</p>
           <div class="row">
@@ -1100,6 +1132,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
@@ -2493,6 +2526,329 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }
     }
 
+    function meetingSlidesConfigDocId(slot, lang) {
+      const safeSlot = String(slot || 'default').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeLang = String(lang || 'tl').toLowerCase() === 'en' ? 'en' : 'tl';
+      return `meetingSlidesDeck_${safeSlot}_${safeLang}`;
+    }
+
+    function decodeSlidesXmlEntities(text) {
+      return String(text || '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x2019;/gi, '’')
+        .replace(/&#x201C;/gi, '“')
+        .replace(/&#x201D;/gi, '”')
+        .replace(/&#xA;/gi, ' ');
+    }
+
+    function getXmlAttr(node, localName) {
+      if (!node || !node.attributes) return '';
+      const attrs = Array.from(node.attributes);
+      const found = attrs.find((attr) => attr.localName === localName || attr.name === localName || attr.name.endsWith(`:${localName}`));
+      return found ? found.value : '';
+    }
+
+    async function extractStructuredDocxParagraphsFromFile(file) {
+      if (!window.JSZip) {
+        throw new Error('JSZip failed to load. Refresh admin page and retry.');
+      }
+
+      const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+      const entry = zip.file('word/document.xml');
+      if (!entry) throw new Error('DOCX missing word/document.xml');
+      const xmlText = await entry.async('string');
+      const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) throw new Error('Could not parse DOCX XML');
+
+      const paragraphs = [];
+      const pNodes = Array.from(xml.getElementsByTagNameNS('*', 'p'));
+
+      pNodes.forEach((pNode) => {
+        const styleNode = Array.from(pNode.getElementsByTagNameNS('*', 'pStyle'))[0];
+        const style = getXmlAttr(styleNode, 'val') || '';
+        const textNodes = Array.from(pNode.getElementsByTagNameNS('*', 't'));
+        const text = textNodes.map((n) => decodeSlidesXmlEntities(n.textContent || '')).join('');
+        const normalized = text.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+        if (normalized) paragraphs.push({ style, text: normalized });
+      });
+
+      return paragraphs;
+    }
+
+    function isMeetingSlidesMainHeading(text, style = '') {
+      return (
+        /^Heading1$/i.test(style) ||
+        /^Title$/i.test(style) ||
+        /^[IVXLCDM]+\.\s+/.test(text) ||
+        /^\d+\.\s+/.test(text) ||
+        /^Summary:/i.test(text) ||
+        /^I Will Commitments/i.test(text) ||
+        /^"I Will"/i.test(text)
+      );
+    }
+
+    function isMeetingSlidesSubHeading(text, style = '') {
+      return (
+        /^Heading2$/i.test(style) ||
+        /^Tanong\s*\d+/i.test(text) ||
+        /^Sagot/i.test(text) ||
+        /^Important Note:/i.test(text) ||
+        /^Segue to the Topic:?/i.test(text) ||
+        /^Ice Breaker Question:/i.test(text)
+      );
+    }
+
+    function splitMeetingSlidesLongParagraph(text, maxChars = 700) {
+      if (String(text || '').length <= maxChars) return [String(text || '')];
+      const sentences = String(text || '').split(/(?<=[.!?])\s+/);
+      const out = [];
+      let chunk = '';
+      sentences.forEach((s) => {
+        if (!s) return;
+        if (!chunk) {
+          chunk = s;
+          return;
+        }
+        if ((chunk + ' ' + s).length <= maxChars) {
+          chunk += ' ' + s;
+        } else {
+          out.push(chunk.trim());
+          chunk = s;
+        }
+      });
+      if (chunk.trim()) out.push(chunk.trim());
+      return out.length ? out : [String(text || '')];
+    }
+
+    function splitMeetingSlidesLabelAndContent(text) {
+      const m = String(text || '').match(/^([^:]{2,80}):\s*(.+)$/);
+      if (!m) return null;
+      return { label: `${m[1].trim()}:`, content: m[2].trim() };
+    }
+
+    function buildMeetingSlidesDeck(paragraphs, { deckId, language, filename } = {}) {
+      const slides = [];
+      const title = paragraphs[0]?.text || 'Meeting Guide';
+      const meta = [];
+      let idx = 1;
+
+      while (idx < paragraphs.length && !isMeetingSlidesMainHeading(paragraphs[idx].text, paragraphs[idx].style)) {
+        meta.push(paragraphs[idx]);
+        idx += 1;
+      }
+
+      const titleLine = (meta.find((p) => /^Title:/i.test(p.text)) || {}).text || '';
+      const derivedDeckTitle = titleLine ? titleLine.replace(/^Title:\s*/i, '').trim() : title;
+
+      slides.push({
+        id: 'slide-1',
+        type: 'title',
+        kicker: 'Facilitator Guide',
+        title,
+        subtitle: titleLine || '',
+        paragraphs: meta.filter((p) => !/^Title:/i.test(p.text)).map((p) => p.text)
+      });
+
+      let currentSection = null;
+      let currentSlideParagraphs = [];
+      let currentSlideTitle = null;
+      let slideCount = 1;
+      const MAX_PARAS = 4;
+      const MAX_CHARS = 1200;
+
+      function normalizeHeadingParts(rawTitle, rawKicker) {
+        let slideTitle = rawTitle || '';
+        let kicker = rawKicker || '';
+
+        if (/^Tanong/i.test(slideTitle)) {
+          kicker = kicker || (currentSection || '');
+          if (slideTitle.length > 90) slideTitle = 'Tanong';
+        }
+        if (/^Sagot/i.test(slideTitle)) {
+          kicker = kicker || (currentSection || '');
+          slideTitle = 'Facilitator Guide';
+        }
+        if (slideTitle.length > 120 && !/^Summary:/i.test(slideTitle)) {
+          kicker = kicker || (currentSection || '');
+          slideTitle = currentSection || 'Guide';
+        }
+        return { title: slideTitle, kicker };
+      }
+
+      function pushSlide({ kicker = '', title: slideTitle = '', paragraphs: paras = [] } = {}) {
+        const cleaned = paras.filter(Boolean);
+        if (!slideTitle && !cleaned.length) return;
+        const parts = normalizeHeadingParts(slideTitle, kicker);
+        slideCount += 1;
+        slides.push({
+          id: `slide-${slideCount}`,
+          type: 'content',
+          kicker: parts.kicker,
+          title: parts.title || currentSection || 'Guide',
+          subtitle: '',
+          paragraphs: cleaned
+        });
+      }
+
+      function flushCurrent() {
+        if (!currentSlideParagraphs.length) return;
+        pushSlide({
+          kicker: currentSection && currentSlideTitle && currentSlideTitle !== currentSection ? currentSection : '',
+          title: currentSlideTitle || currentSection || 'Guide',
+          paragraphs: currentSlideParagraphs
+        });
+        currentSlideParagraphs = [];
+        currentSlideTitle = null;
+      }
+
+      for (; idx < paragraphs.length; idx += 1) {
+        const para = paragraphs[idx];
+        const text = para?.text || '';
+        const style = para?.style || '';
+        if (!text) continue;
+
+        if (isMeetingSlidesMainHeading(text, style)) {
+          flushCurrent();
+          currentSection = text;
+          currentSlideTitle = text;
+          continue;
+        }
+
+        if (isMeetingSlidesSubHeading(text, style)) {
+          flushCurrent();
+          const labeled = splitMeetingSlidesLabelAndContent(text);
+          if (labeled && labeled.content) {
+            currentSlideTitle = labeled.label;
+            currentSlideParagraphs.push(labeled.content);
+          } else {
+            currentSlideTitle = text;
+          }
+          continue;
+        }
+
+        splitMeetingSlidesLongParagraph(text).forEach((part) => {
+          const projectedChars = currentSlideParagraphs.join(' ').length + part.length;
+          if (currentSlideParagraphs.length >= MAX_PARAS || projectedChars > MAX_CHARS) {
+            flushCurrent();
+          }
+          currentSlideParagraphs.push(part);
+        });
+      }
+      flushCurrent();
+
+      return {
+        version: 1,
+        id: deckId,
+        title: derivedDeckTitle,
+        language,
+        source: {
+          type: 'docx',
+          filename: filename || 'uploaded.docx'
+        },
+        generatedAt: new Date().toISOString(),
+        slides
+      };
+    }
+
+    function renderMeetingSlidesPreview(deck) {
+      const list = document.getElementById('meetingSlidesPreview');
+      if (!list) return;
+      if (!deck || !Array.isArray(deck.slides)) {
+        list.innerHTML = '<div class="list-item">No parsed deck preview yet.</div>';
+        return;
+      }
+      const previewSlides = deck.slides.slice(0, 8);
+      list.innerHTML = previewSlides.map((slide) => `
+        <div class="list-item">
+          <b>${slide.id} - ${slide.title || 'Untitled'}</b>
+          <div class="meta">${slide.kicker ? `Kicker: ${slide.kicker} | ` : ''}${(slide.paragraphs || []).length} paragraph(s)</div>
+        </div>
+      `).join('') + (deck.slides.length > previewSlides.length ? `<div class="list-item">...and ${deck.slides.length - previewSlides.length} more slides</div>` : '');
+    }
+
+    async function loadPublishedMeetingSlidesDeck() {
+      const slot = document.getElementById('meetingSlidesSlot').value;
+      const language = document.getElementById('meetingSlidesLanguage').value;
+      const docId = meetingSlidesConfigDocId(slot, language);
+      const currentEl = document.getElementById('meetingSlidesCurrent');
+
+      try {
+        const snap = await getDoc(doc(db, 'goMission_config', docId));
+        if (!snap.exists()) {
+          currentEl.textContent = `No published deck yet for slot "${slot}" (${language.toUpperCase()}).`;
+          renderMeetingSlidesPreview(null);
+          setInlineStatus('meetingSlidesStatus', 'No published deck found for selected slot/language.', 'info');
+          return;
+        }
+        const data = snap.data() || {};
+        const deck = data.deck || null;
+        const slideCount = Array.isArray(deck?.slides) ? deck.slides.length : 0;
+        currentEl.textContent = `Published: ${deck?.title || 'Untitled'} | ${slideCount} slides | Source: ${data.sourceFilename || deck?.source?.filename || 'n/a'} | Updated ${formatDateTime(data.updatedAt)}`;
+        renderMeetingSlidesPreview(deck);
+        setInlineStatus('meetingSlidesStatus', 'Published deck loaded.', 'success');
+      } catch (error) {
+        currentEl.textContent = '';
+        renderMeetingSlidesPreview(null);
+        setInlineStatus('meetingSlidesStatus', `Failed to load published deck: ${error.message}`, 'error');
+      }
+    }
+
+    async function publishMeetingSlidesFromDocx() {
+      const btn = document.getElementById('publishMeetingSlidesBtn');
+      const fileInput = document.getElementById('meetingSlidesDocxFile');
+      const file = fileInput?.files?.[0];
+      const slot = document.getElementById('meetingSlidesSlot').value;
+      const language = document.getElementById('meetingSlidesLanguage').value;
+
+      if (!file) {
+        setInlineStatus('meetingSlidesStatus', 'Choose a .docx file first.', 'warn');
+        return;
+      }
+      if (!/\.docx$/i.test(file.name)) {
+        setInlineStatus('meetingSlidesStatus', 'Only .docx is supported for meeting slides upload.', 'warn');
+        return;
+      }
+
+      btn.disabled = true;
+      setInlineStatus('meetingSlidesStatus', 'Parsing DOCX and building meeting slides...', 'info');
+
+      try {
+        const paragraphs = await extractStructuredDocxParagraphsFromFile(file);
+        const deck = buildMeetingSlidesDeck(paragraphs, {
+          deckId: slot,
+          language,
+          filename: file.name
+        });
+
+        renderMeetingSlidesPreview(deck);
+
+        const docId = meetingSlidesConfigDocId(slot, language);
+        await setDoc(doc(db, 'goMission_config', docId), {
+          type: 'meetingSlidesDeck',
+          deckId: slot,
+          language,
+          deck,
+          sourceFilename: file.name,
+          sourceSize: file.size || 0,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+        }, { merge: true });
+
+        setInlineStatus('meetingSlidesStatus', `Published "${deck.title}" (${deck.slides.length} slides) to slot "${slot}" [${language.toUpperCase()}].`, 'success');
+        await loadPublishedMeetingSlidesDeck();
+      } catch (error) {
+        console.error('[MeetingSlidesAdmin] Publish failed:', error);
+        setInlineStatus('meetingSlidesStatus', `Failed to parse/publish DOCX: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     async function lookupRoleUser() {
       const queryValue = document.getElementById('roleLookup').value.trim();
       if (!queryValue) {
@@ -2685,7 +3041,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
         loadSundayVideos(),
         loadWatchSeries(),
         loadWatchEpisodes(),
-        loadRecentTraining()
+        loadRecentTraining(),
+        loadPublishedMeetingSlidesDeck()
       ]);
     }
 
@@ -2716,6 +3073,15 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
       document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
       document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);
+      document.getElementById('publishMeetingSlidesBtn').addEventListener('click', publishMeetingSlidesFromDocx);
+      document.getElementById('reloadMeetingSlidesBtn').addEventListener('click', loadPublishedMeetingSlidesDeck);
+      document.getElementById('meetingSlidesSlot').addEventListener('change', loadPublishedMeetingSlidesDeck);
+      document.getElementById('meetingSlidesLanguage').addEventListener('change', loadPublishedMeetingSlidesDeck);
+      document.getElementById('meetingSlidesDocxFile').addEventListener('change', () => {
+        const file = document.getElementById('meetingSlidesDocxFile')?.files?.[0];
+        if (!file) return;
+        setInlineStatus('meetingSlidesStatus', `Selected file: ${file.name}`, 'info');
+      });
 
       document.getElementById('lookupRoleBtn').addEventListener('click', lookupRoleUser);
       document.getElementById('saveRolesBtn').addEventListener('click', saveRoles);
