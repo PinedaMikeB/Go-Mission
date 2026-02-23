@@ -2588,6 +2588,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       idInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const titleInput = document.getElementById('watchEpisodeTitle');
       if (titleInput) titleInput.focus();
+      renderWatchEpisodesList();
     }
 
     function handleWatchEpisodeListClick(event) {
@@ -2595,6 +2596,58 @@ match /goMission/watch-series-covers/{allPaths=**} {
       if (!button) return;
       event.preventDefault();
       editWatchEpisodeById(button.getAttribute('data-watch-episode-edit'));
+    }
+
+    function getWatchSeriesTitleById(seriesId) {
+      const targetId = String(seriesId || '').trim();
+      if (!targetId) return '';
+      const item = cachedWatchSeries.find((series) => String(series?.id || '') === targetId);
+      return String(item?.title || '').trim();
+    }
+
+    function renderWatchEpisodesList() {
+      const list = document.getElementById('watchEpisodeList');
+      if (!list) return;
+
+      const filterInput = document.getElementById('watchEpisodeSeriesId');
+      const filterValueRaw = String(filterInput?.value || '').trim();
+      const filterValue = filterValueRaw.toLowerCase();
+
+      const filtered = !filterValue
+        ? [...cachedWatchEpisodes]
+        : cachedWatchEpisodes.filter((item) => {
+          const seriesId = String(item?.seriesId || '').toLowerCase();
+          return seriesId.includes(filterValue);
+        });
+
+      if (!cachedWatchEpisodes.length) {
+        list.innerHTML = '<div class="list-item">No watch episodes yet.</div>';
+        return;
+      }
+
+      if (!filtered.length) {
+        list.innerHTML = `<div class="list-item">No watch episodes found for series filter: <b>${escapeHtml(filterValueRaw)}</b></div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map((item) => {
+        const state = statusBadge(item.status);
+        const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
+        const updatedInfo = pickDate(item.updatedAt, item.createdAt) ? ` | updated: ${formatDateTime(item.updatedAt || item.createdAt)}` : '';
+        const seriesTitle = getWatchSeriesTitleById(item.seriesId);
+        const seriesLabel = seriesTitle ? `${seriesTitle} (${item.seriesId || 'n/a'})` : (item.seriesId || 'n/a');
+        return `
+          <div class="list-item">
+            <b>W${item.weekNumber || '?'} - ${item.title || 'Untitled Episode'}</b>
+            <div class="meta">Series: ${escapeHtml(seriesLabel)} | ID: ${item.id} | order: ${item.order ?? 100}${publishInfo}</div>
+            <div class="meta">weekNumber field: ${item.weekNumber ?? 'not set'} | publishAt raw: ${item.publishAt ? escapeHtml(String(item.publishAt)) : 'not set'}${updatedInfo}</div>
+            <div class="meta">YouTube: ${item.youtubeVideoId || 'missing'} | Destination: /watch/player.html?episodeId=${item.id}</div>
+            <div class="meta" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="secondary" data-watch-episode-edit="${escapeHtml(item.id)}" style="width:auto;padding:6px 10px;font-size:11px">Edit</button>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     async function saveWatchSeries() {
@@ -2708,6 +2761,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         );
 
         populateWatchSeriesOptions();
+        renderWatchEpisodesList();
 
         if (!cachedWatchSeries.length) {
           list.innerHTML = '<div class="list-item">No watch series yet.</div>';
@@ -2805,6 +2859,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('watchEpisodeYoutubeInput').value = '';
       document.getElementById('watchEpisodePublishAt').value = '';
       setInlineStatus('watchEpisodeStatusText', 'Watch episode form cleared.', 'info');
+      renderWatchEpisodesList();
     }
 
     async function loadWatchEpisodes() {
@@ -2823,28 +2878,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
         );
         cachedWatchEpisodes = items;
-
-        if (!items.length) {
-          list.innerHTML = '<div class="list-item">No watch episodes yet.</div>';
-          return;
-        }
-
-        list.innerHTML = items.map((item) => {
-          const state = statusBadge(item.status);
-          const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
-          const updatedInfo = pickDate(item.updatedAt, item.createdAt) ? ` | updated: ${formatDateTime(item.updatedAt || item.createdAt)}` : '';
-          return `
-            <div class="list-item">
-              <b>W${item.weekNumber || '?'} - ${item.title || 'Untitled Episode'}</b>
-              <div class="meta">ID: ${item.id} | series: ${item.seriesId || 'n/a'} | order: ${item.order ?? 100}${publishInfo}</div>
-              <div class="meta">weekNumber field: ${item.weekNumber ?? 'not set'} | publishAt raw: ${item.publishAt ? escapeHtml(String(item.publishAt)) : 'not set'}${updatedInfo}</div>
-              <div class="meta">YouTube: ${item.youtubeVideoId || 'missing'} | Destination: /watch/player.html?episodeId=${item.id}</div>
-              <div class="meta" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-                <button type="button" class="secondary" data-watch-episode-edit="${escapeHtml(item.id)}" style="width:auto;padding:6px 10px;font-size:11px">Edit</button>
-              </div>
-            </div>
-          `;
-        }).join('');
+        renderWatchEpisodesList();
       } catch (error) {
         list.innerHTML = `<div class="list-item">Failed to load watch episodes: ${error.message}</div>`;
       }
@@ -3491,6 +3525,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('clearWatchEpisodeBtn').addEventListener('click', clearWatchEpisodeForm);
       document.getElementById('reloadWatchEpisodeBtn').addEventListener('click', loadWatchEpisodes);
       document.getElementById('watchEpisodeList').addEventListener('click', handleWatchEpisodeListClick);
+      document.getElementById('watchEpisodeSeriesId').addEventListener('input', renderWatchEpisodesList);
+      document.getElementById('watchEpisodeSeriesId').addEventListener('change', renderWatchEpisodesList);
 
       document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
       document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);
