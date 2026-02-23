@@ -1326,6 +1326,17 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return parsed.toISOString();
     }
 
+    function toDateTimeLocalInputValue(value) {
+      const d = toDate(value);
+      if (!d) return '';
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    }
+
     function statusBadge(status = 'published') {
       const normalized = String(status || 'published').toLowerCase();
       if (normalized === 'draft') return 'draft';
@@ -2467,6 +2478,68 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }).join('');
     }
 
+    function sortWatchSeriesForAdminList(items) {
+      return [...items].sort((a, b) => {
+        const aPublish = pickDate(a.publishAt);
+        const bPublish = pickDate(b.publishAt);
+        const aPublishMs = aPublish ? aPublish.getTime() : null;
+        const bPublishMs = bPublish ? bPublish.getTime() : null;
+
+        if (aPublishMs !== bPublishMs) {
+          if (aPublishMs == null) return 1;
+          if (bPublishMs == null) return -1;
+          return bPublishMs - aPublishMs;
+        }
+
+        const aUpdatedMs = pickDate(a.updatedAt, a.createdAt)?.getTime() || 0;
+        const bUpdatedMs = pickDate(b.updatedAt, b.createdAt)?.getTime() || 0;
+        if (aUpdatedMs !== bUpdatedMs) return bUpdatedMs - aUpdatedMs;
+
+        const orderDiff = Number(a.order || 100) - Number(b.order || 100);
+        if (orderDiff !== 0) return orderDiff;
+
+        return String(a.title || '').localeCompare(String(b.title || ''));
+      });
+    }
+
+    function editWatchSeriesById(seriesId) {
+      const targetId = String(seriesId || '').trim();
+      if (!targetId) return;
+
+      const item = cachedWatchSeries.find((series) => String(series?.id || '') === targetId);
+      if (!item) {
+        setInlineStatus('watchSeriesStatusText', `Series not found in list: ${targetId}`, 'warn');
+        return;
+      }
+
+      document.getElementById('watchSeriesDocId').value = item.id || '';
+      document.getElementById('watchSeriesTitle').value = item.title || '';
+      document.getElementById('watchSeriesDescription').value = item.description || '';
+      document.getElementById('watchSeriesCoverImageUrl').value = item.coverImageUrl || '';
+      document.getElementById('watchSeriesCoverImageFile').value = '';
+      document.getElementById('watchSeriesOrder').value = Number.isFinite(Number(item.order)) ? String(Number(item.order)) : '100';
+      document.getElementById('watchSeriesStatus').value = item.status || 'published';
+      document.getElementById('watchSeriesPublishAt').value = toDateTimeLocalInputValue(item.publishAt);
+
+      setInlineStatus(
+        'watchSeriesStatusText',
+        `Editing watch series: ${item.title || item.id}${item.publishAt ? ` | publishAt: ${formatDateTime(item.publishAt)}` : ' | publishAt: not set'}`,
+        'info'
+      );
+
+      const idInput = document.getElementById('watchSeriesDocId');
+      idInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const titleInput = document.getElementById('watchSeriesTitle');
+      if (titleInput) titleInput.focus();
+    }
+
+    function handleWatchSeriesListClick(event) {
+      const button = event.target?.closest?.('[data-watch-series-edit]');
+      if (!button) return;
+      event.preventDefault();
+      editWatchSeriesById(button.getAttribute('data-watch-series-edit'));
+    }
+
     async function saveWatchSeries() {
       const btn = document.getElementById('saveWatchSeriesBtn');
       const manualId = document.getElementById('watchSeriesDocId').value.trim();
@@ -2572,9 +2645,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
           snap = await getDocs(collection(db, 'video_series'));
         }
 
-        cachedWatchSeries = snap.docs
+        cachedWatchSeries = sortWatchSeriesForAdminList(
+          snap.docs
           .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
-          .sort((a, b) => Number(a.order || 100) - Number(b.order || 100));
+        );
 
         populateWatchSeriesOptions();
 
@@ -2586,12 +2660,17 @@ match /goMission/watch-series-covers/{allPaths=**} {
         list.innerHTML = cachedWatchSeries.map((item) => {
           const state = statusBadge(item.status);
           const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
+          const updatedInfo = pickDate(item.updatedAt, item.createdAt) ? ` | updated: ${formatDateTime(item.updatedAt || item.createdAt)}` : '';
           return `
             <div class="list-item">
               <b>${item.title || 'Untitled Series'}</b>
               <div class="meta">ID: ${item.id} | order: ${item.order ?? 100}${publishInfo}</div>
+              <div class="meta">publishAt raw: ${item.publishAt ? escapeHtml(String(item.publishAt)) : 'not set'}${updatedInfo}</div>
               <div class="meta">${item.coverImageUrl ? `<a href="${item.coverImageUrl}" target="_blank" rel="noreferrer" style="color:var(--gold-strong)">Open cover image</a>` : 'No cover image set'}</div>
               <div class="meta">Destination: /watch.html</div>
+              <div class="meta" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="secondary" data-watch-series-edit="${escapeHtml(item.id)}" style="width:auto;padding:6px 10px;font-size:11px">Edit</button>
+              </div>
             </div>
           `;
         }).join('');
@@ -3347,6 +3426,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('saveWatchSeriesBtn').addEventListener('click', saveWatchSeries);
       document.getElementById('clearWatchSeriesBtn').addEventListener('click', clearWatchSeriesForm);
       document.getElementById('reloadWatchSeriesBtn').addEventListener('click', loadWatchSeries);
+      document.getElementById('watchSeriesList').addEventListener('click', handleWatchSeriesListClick);
 
       document.getElementById('saveWatchEpisodeBtn').addEventListener('click', saveWatchEpisode);
       document.getElementById('clearWatchEpisodeBtn').addEventListener('click', clearWatchEpisodeForm);
