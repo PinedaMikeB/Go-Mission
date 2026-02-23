@@ -86,6 +86,14 @@ function mapDocToObject(docSnap) {
 
 function sortSeriesItems(series) {
   return [...series].sort((a, b) => {
+    const aPublish = toEpoch(a.publishAt);
+    const bPublish = toEpoch(b.publishAt);
+    if (aPublish !== bPublish) {
+      if (aPublish == null) return 1;
+      if (bPublish == null) return -1;
+      return bPublish - aPublish;
+    }
+
     const orderDiff = toNumeric(a.order) - toNumeric(b.order);
     if (orderDiff !== 0) {
       return orderDiff;
