@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Go Mission | Start Here from YouTube</title>
+  <title>Go Mission | Start Here</title>
   <meta name="theme-color" content="#f59e0b">
-  <meta name="description" content="Install Go Mission from YouTube to continue the conversation, receive support, and grow in your journey.">
+  <meta name="description" content="Install Go Mission to continue the conversation, receive support, and grow in your journey.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -543,6 +543,24 @@
       line-height: 1.35;
     }
 
+    .bottom-cta-wrap {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(251, 191, 36, 0.18);
+      background: rgba(0, 0, 0, 0.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .bottom-cta-text {
+      margin: 0 0 10px;
+      text-align: center;
+      color: #ffe7be;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
     @keyframes rise {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -581,7 +599,7 @@
         <div class="brand-mark">🔥</div>
         <div>
           <div class="brand-name">GO MISSION</div>
-          <div class="brand-sub" data-i18n="brandSub">Continue your journey beyond YouTube</div>
+          <div class="brand-sub" data-i18n="brandSub">Continue your journey and grow in faith</div>
         </div>
       </div>
       <div class="lang-switch" role="tablist" aria-label="Language">
@@ -593,10 +611,10 @@
     <section class="hero">
       <div class="hero-grid">
         <div class="hero-left">
-          <div class="chip" id="entryChip">▶ From YouTube Comment</div>
+          <div class="chip" id="entryChip">▶ Start Here</div>
           <h1 class="hero-title" data-i18n="heroTitle">Install the app so we can continue the conversation.</h1>
           <p class="hero-lead" data-i18n="heroLead">
-            YouTube comments are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.
+            Comment sections are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.
           </p>
 
           <ul class="hero-points">
@@ -636,7 +654,7 @@
               <div class="stage-num">1</div>
               <div>
                 <strong data-i18n="stage1Title">Open in Chrome or Safari</strong>
-                <span data-i18n="stage1Body">YouTube's built-in browser may block installation. Move this page to your main browser first.</span>
+                <span data-i18n="stage1Body">Some in-app browsers may block installation. Move this page to your main browser first.</span>
               </div>
             </div>
             <div class="stage-row">
@@ -689,7 +707,7 @@
     <section class="flow-section" aria-labelledby="welcomeFlowTitle">
       <div class="flow-head">
         <h2 class="flow-title" id="welcomeFlowTitle" data-i18n="flowTitle">What happens after install?</h2>
-        <div class="flow-tag" id="trackingSummaryTag">src=youtube</div>
+        <div class="flow-tag" id="trackingSummaryTag">Source tag active</div>
       </div>
       <div class="flow-grid">
         <article class="flow-card">
@@ -714,12 +732,22 @@
         </article>
       </div>
       <div class="tracking-note" data-i18n="trackingNote">
-        This YouTube page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.
+        This page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.
       </div>
     </section>
 
+    <section class="bottom-cta-wrap" aria-labelledby="bottomCtaTitle">
+      <p class="bottom-cta-text" id="bottomCtaTitle" data-i18n="bottomCtaText">
+        Ready to continue? Open in your browser and install the app.
+      </p>
+      <button class="btn btn-primary" type="button" onclick="openInBrowser()" id="bottomOpenBtn">
+        <span>📱</span>
+        <span data-i18n="ctaPrimary">Open in Browser & Install</span>
+      </button>
+    </section>
+
     <p class="fine" data-i18n="finePrint">
-      We use this page for YouTube visitors only. Your regular invite link and existing install page stay separate.
+      This page is for comment-reply invites. Your regular invite link and existing install page stay separate.
     </p>
   </div>
 
@@ -729,9 +757,9 @@
 
     const i18n = {
       en: {
-        brandSub: 'Continue your journey beyond YouTube',
+        brandSub: 'Continue your journey and grow in faith',
         heroTitle: 'Install the app so we can continue the conversation.',
-        heroLead: 'YouTube comments are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.',
+        heroLead: 'Comment sections are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.',
         point1: 'Chat with our team privately instead of losing messages in comment threads.',
         point2: 'Get guided next steps for prayer, discipleship, and joining a group.',
         point3: 'Receive notifications when we reply, even when you are offline.',
@@ -742,14 +770,14 @@
         benefit3Title: 'Human Support',
         benefit3Body: 'Welcome team volunteers can respond when available, even if schedules differ.',
         statusKicker: 'Current Browser',
-        statusInAppTitle: 'You may be inside YouTube or another in-app browser.',
+        statusInAppTitle: 'You may be inside an in-app browser.',
         statusInAppHelp: 'This browser may block app installation. Use the button below, or open manually in Chrome/Safari.',
         statusRealBrowserTitle: 'You are in a browser that can continue to install.',
         statusRealBrowserHelp: 'Tap the install button to continue to Go Mission.',
         statusUnknownTitle: 'We will help you open this in Chrome or Safari.',
         statusUnknownHelp: 'If the auto-open does not work, use the manual steps below.',
         stage1Title: 'Open in Chrome or Safari',
-        stage1Body: "YouTube's built-in browser may block installation. Move this page to your main browser first.",
+        stage1Body: "Some in-app browsers may block installation. Move this page to your main browser first.",
         stage2Title: 'Install Go Mission',
         stage2Body: 'Once in your browser, you can install the app and receive updates from us.',
         stage3Title: 'Start Messaging',
@@ -767,13 +795,14 @@
         flow3Body: 'If needed, you may be invited to a simple video call for prayer or orientation.',
         flow4Title: 'Next steps and group connection',
         flow4Body: 'We help you with your journey and connect you to the right group or cohort.',
-        trackingNote: 'This YouTube page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.',
+        trackingNote: 'This page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.',
+        bottomCtaText: 'Ready to continue? Open in your browser and install the app.',
         manualTitle: "Open this page in your phone's browser",
         urlLabel: 'If needed, copy and paste this link into Chrome/Safari:',
-        finePrint: 'We use this page for YouTube visitors only. Your regular invite link and existing install page stay separate.',
+        finePrint: 'This page is for comment-reply invites. Your regular invite link and existing install page stay separate.',
         copied: 'Copied',
         copyFail: 'Please copy this link manually:',
-        entryChip: '▶ From YouTube Comment',
+        entryChip: '▶ Start Here',
         iosSteps: [
           'Tap the <strong>share</strong> or <strong>menu</strong> button in the top/bottom area of the screen.',
           'Choose <strong>"Open in Safari"</strong> (or <strong>"Open in Browser"</strong>).',
@@ -791,9 +820,9 @@
         ]
       },
       tl: {
-        brandSub: 'Ituloy ang iyong journey lampas sa YouTube',
+        brandSub: 'Ituloy ang iyong journey at lumago sa faith',
         heroTitle: 'I-install ang app para maituloy natin ang usapan.',
-        heroLead: 'Mahirap mag-usap nang maayos sa YouTube comments. Sa Go Mission, makaka-message ka nang maayos, may follow-up, at may gabay sa iyong next steps.',
+        heroLead: 'Mahirap mag-usap nang maayos sa comments. Sa Go Mission, makaka-message ka nang maayos, may follow-up, at may gabay sa iyong next steps.',
         point1: 'Makipag-chat nang pribado sa team namin imbes na mawala sa comment threads.',
         point2: 'Makakuha ng gabay para sa prayer, discipleship, at pagsali sa group.',
         point3: 'Makakatanggap ng notifications kapag may reply kami, kahit offline ka.',
@@ -804,14 +833,14 @@
         benefit3Title: 'Tao ang Kausap',
         benefit3Body: 'May welcome team volunteers na sasagot kapag available sila kahit iba-iba ang schedule.',
         statusKicker: 'Kasalukuyang Browser',
-        statusInAppTitle: 'Mukhang nasa YouTube o ibang in-app browser ka.',
+        statusInAppTitle: 'Mukhang nasa isang in-app browser ka.',
         statusInAppHelp: 'Maaaring hindi gumana ang install dito. Buksan muna sa Chrome/Safari gamit ang button o manual steps.',
         statusRealBrowserTitle: 'Nasa tamang browser ka na puwedeng mag-install.',
         statusRealBrowserHelp: 'Pindutin ang install button para magpatuloy sa Go Mission.',
         statusUnknownTitle: 'Tutulungan ka naming buksan ito sa Chrome o Safari.',
         statusUnknownHelp: 'Kung hindi gumana ang auto-open, sundin ang manual steps sa ibaba.',
         stage1Title: 'Buksan sa Chrome o Safari',
-        stage1Body: 'Puwedeng harangan ng YouTube built-in browser ang installation. Ilipat muna sa main browser mo.',
+        stage1Body: 'Puwedeng harangan ng ilang in-app browsers ang installation. Ilipat muna sa main browser mo.',
         stage2Title: 'I-install ang Go Mission',
         stage2Body: 'Kapag nasa browser ka na, puwede mo nang i-install ang app at makatanggap ng updates.',
         stage3Title: 'Simulan ang Pag-message',
@@ -830,12 +859,13 @@
         flow4Title: 'Next steps at group connection',
         flow4Body: 'Tutulungan ka namin sa journey mo at i-connect sa tamang group o cohort.',
         trackingNote: 'Maaaring dalhin ng page na ito ang source info (hal. video ID) para makita namin kung saan nanggagaling ang seekers at mapahusay ang follow-up.',
+        bottomCtaText: 'Handa ka na bang magpatuloy? Buksan sa browser at i-install ang app.',
         manualTitle: 'Buksan ang page na ito sa browser ng phone mo',
         urlLabel: 'Kung kailangan, kopyahin at i-paste ang link na ito sa Chrome/Safari:',
-        finePrint: 'Para ito sa YouTube visitors lang. Hiwalay pa rin ang regular invite link at existing install page mo.',
+        finePrint: 'Para ito sa comment-reply invites. Hiwalay pa rin ang regular invite link at existing install page mo.',
         copied: 'Nakopya na',
         copyFail: 'Paki-copy nang manual ang link:',
-        entryChip: '▶ Galing sa YouTube Comment',
+        entryChip: '▶ Magsimula Dito',
         iosSteps: [
           'Pindutin ang <strong>share</strong> o <strong>menu</strong> button sa taas o baba ng screen.',
           'Piliin ang <strong>"Open in Safari"</strong> (o <strong>"Open in Browser"</strong>).',
@@ -901,9 +931,8 @@
     function updateTrackingSummaryTag() {
       const el = document.getElementById('trackingSummaryTag');
       if (!el) return;
-      const src = landingParams.get('src') || 'youtube-comment';
       const video = landingParams.get('video') || landingParams.get('video_id') || '';
-      el.textContent = video ? `src=${src} • video=${video}` : `src=${src}`;
+      el.textContent = video ? `Source tag active • video=${video}` : 'Source tag active';
     }
 
     function trackEvent(eventName, extra = {}) {
