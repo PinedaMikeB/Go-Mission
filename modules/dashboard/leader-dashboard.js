@@ -1153,6 +1153,11 @@ const LeaderDashboard = {
                   ? (group.role === 'guest' ? 'text-blue-400' : 'text-blue-500')
                   : 'text-green-500';
                 const scheduleText = this.escapeHtml(this.formatScheduleText(group));
+                const isDownlineCard = !isUplineTab;
+                const pendingDeleteRequest = isDownlineCard
+                  ? (window.MyGroups?.pendingGroupDeletionRequestsById?.[group.id] || null)
+                  : null;
+                const hasPendingDelete = !!pendingDeleteRequest;
                 return `
                 <div class="rounded-xl border border-[var(--card-border)] p-4">
                   <div class="flex items-start justify-between gap-3">
@@ -1160,10 +1165,19 @@ const LeaderDashboard = {
                       <p class="text-[24px] leading-tight font-bold text-[var(--text-color)]">${groupName}</p>
                       <p class="text-xs uppercase tracking-[0.16em] mt-1 ${roleColor}">${roleText}</p>
                     </div>
-                    <p class="text-sm text-[var(--text-muted)]">${members}/12 members</p>
+                    <div class="flex items-start gap-2">
+                      ${isDownlineCard ? `
+                      <button onclick="window.MyGroups && window.MyGroups.showGroupMenu ? window.MyGroups.showGroupMenu('${groupId}') : alert('Group options are unavailable right now. Please reopen My Mission Groups.')"
+                              class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:border-amber-500/40 hover:text-amber-500 transition-colors"
+                              title="Group options"
+                              aria-label="Group options">•••</button>
+                      ` : ''}
+                      <p class="text-sm text-[var(--text-muted)] whitespace-nowrap">${members}/12 members</p>
+                    </div>
                   </div>
                   <p class="text-sm text-[var(--text-muted)] mt-3">📅 ${scheduleText}</p>
                   <p class="text-sm text-[var(--text-muted)] mt-1">✅ No recorded meeting yet</p>
+                  ${hasPendingDelete ? `<p class="text-sm text-red-500 font-semibold mt-1">🗑️ Delete request pending admin approval</p>` : ''}
                   <div class="mt-4 grid ${isUplineTab ? 'grid-cols-3' : 'grid-cols-4'} gap-2">
                     ${isUplineTab ? '' : `
                     <button onclick="window.LeaderDashboard.showInviteCode('${groupId}')"
