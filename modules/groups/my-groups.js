@@ -13,6 +13,7 @@ const MyGroups = {
     openedFromDashboard: false,
     pendingRequestsCount: 0,
     dashboardTab: 'downline', // 'downline' | 'upline'
+    pendingGroupDeletionRequestsById: {},
 
     /**
      * Resolve user id from a string or object payload across schemas
@@ -90,6 +91,40 @@ const MyGroups = {
         if (!groupData || !userId) return false;
         const memberEntries = this.normalizeCollectionEntries(groupData.members);
         return memberEntries.some((member) => this.getEntityUserId(member) === userId);
+    },
+
+    /**
+     * Load pending group-deletion requests keyed by downline group id
+     */
+    async loadPendingGroupDeletionRequests() {
+        if (!window.db || !window.currentUser?.uid) {
+            this.pendingGroupDeletionRequestsById = {};
+            return;
+        }
+
+        const groupIds = (this.downlineGroups || []).map((group) => group?.id).filter(Boolean);
+        if (groupIds.length === 0) {
+            this.pendingGroupDeletionRequestsById = {};
+            return;
+        }
+
+        const nextMap = {};
+        await Promise.all(groupIds.map(async (groupId) => {
+            try {
+                const snap = await window.getDoc(
+                    window.doc(window.db, 'goMission_groupDeletionRequests', groupId)
+                );
+                if (!snap.exists()) return;
+                const data = snap.data() || {};
+                if (String(data.status || '').toLowerCase() === 'pending') {
+                    nextMap[groupId] = { id: snap.id, ...data };
+                }
+            } catch (error) {
+                console.warn('[MyGroups] Failed loading group deletion request:', groupId, error);
+            }
+        }));
+
+        this.pendingGroupDeletionRequestsById = nextMap;
     },
 
     /**
@@ -339,6 +374,8 @@ const MyGroups = {
             }
 
             this.guestGroups = [...guestGroupMap.values()];
+
+            await this.loadPendingGroupDeletionRequests();
             
             console.log('[MyGroups] Loaded:', {
                 upline: this.uplineGroup?.name || 'None',
@@ -421,12 +458,14 @@ const MyGroups = {
             window.where('leaderId', '==', window.currentUser.uid)
         );
         
-        this.joinRequestsUnsubscribe = window.onSnapshot(groupsQuery, (snapshot) => {
+        this.joinRequestsUnsubscribe = window.onSnapshot(groupsQuery, async (snapshot) => {
             // Update downline groups with latest data
             this.downlineGroups = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+
+            await this.loadPendingGroupDeletionRequests();
             
             // Update badges
             this.updateBadges();
@@ -960,6 +999,10 @@ const MyGroups = {
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
+            const pendingDeleteRequest = (isLeaderOfGroup && group.role === 'downline')
+                ? this.pendingGroupDeletionRequestsById?.[group.id]
+                : null;
+            const hasPendingDelete = !!pendingDeleteRequest;
 
             const last = meetingData.perGroupLastMeeting[group.id];
             const lastLine = last
@@ -975,13 +1018,26 @@ const MyGroups = {
                             <p class="font-bold text-[var(--text-color)]">${this.escapeHtml(group.name || 'Mission Group')}</p>
                             <p class="text-xs ${roleColor} uppercase tracking-wider mt-1">${roleLabel}</p>
                         </div>
-                        <span class="text-xs text-[var(--text-muted)]">${memberCount}/12 members</span>
+                        <div class="flex items-start gap-2">
+                            ${isLeaderOfGroup && group.role === 'downline' ? `
+                                <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
+                                        class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:border-[var(--mission-gold)]/40 hover:text-[var(--mission-gold)] transition-colors"
+                                        title="Group options"
+                                        aria-label="Group options">
+                                    •••
+                                </button>
+                            ` : ''}
+                            <span class="text-xs text-[var(--text-muted)] whitespace-nowrap">${memberCount}/12 members</span>
+                        </div>
                     </div>
                     <div class="mt-3 text-xs text-[var(--text-muted)] space-y-1.5">
                         <p>📅 ${this.escapeHtml(schedule)}</p>
                         <p>✅ ${this.escapeHtml(lastLine)}</p>
                         ${isLeaderOfGroup && pendingRequestsCount > 0 ? `
                             <p class="text-[var(--mission-gold)] font-semibold">🔔 ${pendingRequestsCount} request${pendingRequestsCount === 1 ? '' : 's'} pending</p>
+                        ` : ''}
+                        ${hasPendingDelete ? `
+                            <p class="text-[var(--mission-red-bright)] font-semibold">🗑️ Delete request pending admin approval</p>
                         ` : ''}
                     </div>
                     ${isLeaderOfGroup ? `
@@ -2427,6 +2483,19 @@ const MyGroups = {
                 memberIds: memberIds.slice(0, 50),
                 guestIds: guestIds.slice(0, 50)
             }, { merge: true });
+
+            this.pendingGroupDeletionRequestsById = {
+                ...(this.pendingGroupDeletionRequestsById || {}),
+                [groupId]: {
+                    groupId,
+                    groupName: group.name || 'Unnamed Group',
+                    reason,
+                    status: 'pending'
+                }
+            };
+
+            if (this.isOpen) this.render();
+            if (this.isDashboardOpen) await this.renderDashboard();
 
             this.closeModal();
             alert('Delete request sent to admin for approval.');
