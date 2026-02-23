@@ -84,8 +84,16 @@ function mapDocToObject(docSnap) {
   };
 }
 
-function sortSeriesItems(series) {
+function sortSeriesItems(series, latestEpisodeEpochBySeriesId = new Map()) {
   return [...series].sort((a, b) => {
+    const aLatestEpisode = latestEpisodeEpochBySeriesId.get(String(a.id || '')) ?? null;
+    const bLatestEpisode = latestEpisodeEpochBySeriesId.get(String(b.id || '')) ?? null;
+    if (aLatestEpisode !== bLatestEpisode) {
+      if (aLatestEpisode == null) return 1;
+      if (bLatestEpisode == null) return -1;
+      return bLatestEpisode - aLatestEpisode;
+    }
+
     const aPublish = toEpoch(a.publishAt);
     const bPublish = toEpoch(b.publishAt);
     if (aPublish !== bPublish) {
@@ -230,23 +238,51 @@ export async function requireWatchAuth(statusElement = null) {
 }
 
 export async function fetchVideoSeries() {
-  let snapshot;
+  let seriesSnapshot;
 
   try {
     const orderedQuery = query(
       collection(db, 'video_series'),
       orderBy('order', 'asc')
     );
-    snapshot = await getDocs(orderedQuery);
+    seriesSnapshot = await getDocs(orderedQuery);
   } catch (error) {
     console.warn('[Watch] Falling back to unordered video_series read:', error?.message || error);
-    snapshot = await getDocs(collection(db, 'video_series'));
+    seriesSnapshot = await getDocs(collection(db, 'video_series'));
   }
 
-  const items = snapshot.docs
+  const seriesItems = seriesSnapshot.docs
     .map(mapDocToObject)
     .filter(isPublishable);
-  return sortSeriesItems(items);
+
+  const latestEpisodeEpochBySeriesId = new Map();
+  try {
+    const episodesSnap = await getDocs(collection(db, 'video_episodes'));
+    episodesSnap.docs
+      .map(mapDocToObject)
+      .filter(isPublishable)
+      .forEach((episode) => {
+        const seriesId = String(episode.seriesId || '').trim();
+        if (!seriesId) {
+          return;
+        }
+
+        // Prefer explicit publishAt; fall back to updatedAt/createdAt for older records.
+        const episodeEpoch = toEpoch(episode.publishAt) ?? toEpoch(episode.updatedAt) ?? toEpoch(episode.createdAt);
+        if (episodeEpoch == null) {
+          return;
+        }
+
+        const current = latestEpisodeEpochBySeriesId.get(seriesId);
+        if (current == null || episodeEpoch > current) {
+          latestEpisodeEpochBySeriesId.set(seriesId, episodeEpoch);
+        }
+      });
+  } catch (error) {
+    console.warn('[Watch] Could not load episodes for series recency sort:', error?.message || error);
+  }
+
+  return sortSeriesItems(seriesItems, latestEpisodeEpochBySeriesId);
 }
 
 export async function fetchSeriesById(seriesId) {
