@@ -34,6 +34,47 @@
 
 ---
 
+## Current Task Status (2026-02-23) — Thread 5 Group Deletion Request Approval Flow
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/admin.html`
+  - `/firestore.rules`
+- **Goal completed**: Duplicate/wrong mission groups can now be removed via admin approval (leader request -> admin review -> approved delete cleanup).
+
+### Group Deletion Request Workflow (Do Not Break)
+
+- Leaders do **not** delete groups directly from `My Mission Groups`.
+- Leader action creates/updates a request doc in `goMission_groupDeletionRequests/{groupId}` with:
+  - `groupId`, `groupName`
+  - leader identity fields
+  - `reason`
+  - `status = pending`
+- Admin reviews requests in `/admin.html` panel `Group Deletion Requests`.
+- On admin approval:
+  - delete `goMission_groups/{groupId}`
+  - remove linked invite codes (`goMission_groupInviteCodes` where `groupId == target`)
+  - clean member/guest pointers in `goMission_members`
+    - `uplineGroupId`
+    - `groupId`
+    - `groupRole`
+    - `guestGroups[]`
+    - `guestGroupMeta[groupId]`
+- On admin rejection:
+  - request status becomes `rejected` with optional `adminNote`
+- Keep request history docs (approved/rejected) for audit visibility in admin panel.
+
+### Regression Checklist (Run Before Push)
+
+- Leader sees `Request Admin Delete Group` in downline group menu.
+- Leader cannot create duplicate pending request for same group.
+- Admin panel lists pending deletion requests.
+- Admin `Approve & Delete Group` removes the group from leader/member `My Mission Groups` after refresh.
+- Admin `Reject Request` leaves the group intact.
+- Firestore rules deployed so leaders can submit requests and only admins can approve/reject.
+
+---
+
 ## Current Task Status (2026-02-21) — Thread 5 Invite Code Invalid Fix
 
 - **Active modules**

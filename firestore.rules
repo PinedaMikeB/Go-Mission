@@ -150,6 +150,18 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /goMission_groupDeletionRequests/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.leaderId == request.auth.uid &&
+        request.resource.data.groupId is string &&
+        get(/databases/$(database)/documents/goMission_groups/$(request.resource.data.groupId)).data.leaderId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
     match /goMission_chats/{docId} {
       allow read, write: if isSignedIn();
     }

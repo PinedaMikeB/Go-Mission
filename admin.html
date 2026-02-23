@@ -1027,6 +1027,17 @@
         </div>
 
         <div class="col-6 panel">
+          <h2>Group Deletion Requests</h2>
+          <p class="sub">Leaders can request duplicate/wrong group removal. Admin approval will delete the group and clean member/guest links.</p>
+          <div class="actions">
+            <button id="reloadGroupDeleteRequestsBtn" class="secondary">Reload Requests</button>
+          </div>
+          <div id="groupDeleteRequestsSummary" class="small"></div>
+          <div id="groupDeleteRequestsList" class="list"></div>
+          <div id="groupDeleteRequestsStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
           <h2>Push Notification Settings</h2>
           <p class="sub">Global defaults for push behavior and reminder enablement.</p>
           <div class="role-grid">
@@ -1148,6 +1159,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       getDocs,
       setDoc,
       addDoc,
+      deleteDoc,
       serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
     import { getFunctions, httpsCallable, httpsCallableFromURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
@@ -1220,6 +1232,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const authText = document.getElementById('authText');
     const workspace = document.getElementById('workspace');
     const globalStatus = document.getElementById('globalStatus');
+    const GROUP_DELETION_REQUESTS_COLLECTION = 'goMission_groupDeletionRequests';
 
     function showStatus(message, type = 'info', sticky = false) {
       globalStatus.className = `status-banner show ${type}`;
@@ -1390,6 +1403,273 @@ match /goMission/watch-series-covers/{allPaths=**} {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function getGroupDeletionRequestStatusChip(status) {
+      const normalized = String(status || 'pending').toLowerCase();
+      const color =
+        normalized === 'approved' ? 'rgba(115, 192, 151, 0.2)' :
+        normalized === 'rejected' ? 'rgba(217, 95, 74, 0.2)' :
+        'rgba(245, 189, 89, 0.18)';
+      const border =
+        normalized === 'approved' ? 'rgba(115, 192, 151, 0.4)' :
+        normalized === 'rejected' ? 'rgba(217, 95, 74, 0.4)' :
+        'rgba(245, 189, 89, 0.35)';
+      const text =
+        normalized === 'approved' ? '#d9f3e5' :
+        normalized === 'rejected' ? '#ffd4cd' :
+        '#ffecbf';
+      return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
+    }
+
+    function getGuestUid(entry) {
+      if (!entry) return null;
+      if (typeof entry === 'string') return entry;
+      return entry.odId || entry.uid || entry.id || null;
+    }
+
+    function getUniqueGroupLinkedUserIds(groupData = {}) {
+      const ids = new Set();
+      const members = Array.isArray(groupData.members) ? groupData.members : [];
+      const guests = Array.isArray(groupData.guests) ? groupData.guests : [];
+
+      for (const member of members) {
+        if (typeof member === 'string' && member) ids.add(member);
+        else if (member && typeof member === 'object') {
+          const uid = member.odId || member.uid || member.id;
+          if (uid) ids.add(uid);
+        }
+      }
+
+      for (const guest of guests) {
+        const uid = getGuestUid(guest);
+        if (uid) ids.add(uid);
+      }
+
+      return [...ids];
+    }
+
+    async function loadGroupDeletionRequests() {
+      const listEl = document.getElementById('groupDeleteRequestsList');
+      const summaryEl = document.getElementById('groupDeleteRequestsSummary');
+      if (!listEl || !summaryEl) return;
+
+      setInlineStatus('groupDeleteRequestsStatus', 'Loading deletion requests...', 'info');
+
+      try {
+        const snap = await getDocs(query(
+          collection(db, GROUP_DELETION_REQUESTS_COLLECTION),
+          orderBy('requestedAt', 'desc'),
+          limit(100)
+        ));
+
+        const requests = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const pending = requests.filter((r) => String(r.status || 'pending').toLowerCase() === 'pending');
+        const reviewed = requests.filter((r) => String(r.status || '').toLowerCase() !== 'pending').slice(0, 8);
+
+        summaryEl.textContent = `Pending: ${pending.length}${reviewed.length ? ` • Recent reviewed: ${reviewed.length}` : ''}`;
+
+        if (!requests.length) {
+          listEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No group deletion requests yet.</div>';
+          setInlineStatus('groupDeleteRequestsStatus', 'No requests found.', 'info');
+          return;
+        }
+
+        const renderCard = (req, isPending) => {
+          const requestedAt = formatDateTime(req.requestedAt || req.requestedAtIso);
+          const reviewedAt = req.reviewedAt ? formatDateTime(req.reviewedAt) : (req.reviewedAtIso ? formatDateTime(req.reviewedAtIso) : '');
+          const reason = escapeHtml(req.reason || 'No reason provided');
+          const adminNote = escapeHtml(req.adminNote || '');
+          const groupName = escapeHtml(req.groupName || req.groupId || 'Unknown group');
+          const leaderName = escapeHtml(req.leaderName || req.leaderEmail || req.leaderId || 'Unknown leader');
+          const leaderEmail = escapeHtml(req.leaderEmail || '');
+          const groupId = escapeHtml(req.groupId || '');
+          const counts = `members: ${Number(req.memberCount || 0)} • guests: ${Number(req.guestCount || 0)}`;
+
+          return `
+            <div style="border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(0,0,0,0.18);margin-top:10px;">
+              <div class="split" style="margin-top:0;align-items:flex-start;">
+                <div style="min-width:0;">
+                  <div style="font-weight:800;color:var(--gold-strong);">${groupName}</div>
+                  <div class="small">Group ID: <code>${groupId || 'n/a'}</code></div>
+                  <div class="small">Leader: ${leaderName}${leaderEmail ? ` • ${leaderEmail}` : ''}</div>
+                  <div class="small">Requested: ${requestedAt} • ${counts}</div>
+                  <div class="small" style="margin-top:6px;"><b style="color:var(--text-main);">Reason:</b> ${reason}</div>
+                  ${adminNote ? `<div class="small" style="margin-top:4px;"><b style="color:var(--text-main);">Admin note:</b> ${adminNote}</div>` : ''}
+                  ${reviewedAt ? `<div class="small" style="margin-top:4px;">Reviewed: ${reviewedAt}</div>` : ''}
+                </div>
+                <div>${getGroupDeletionRequestStatusChip(req.status)}</div>
+              </div>
+              ${isPending ? `
+                <div class="actions" style="margin-top:10px;">
+                  <button class="warning" data-action="approve-group-delete" data-request-id="${escapeHtml(req.id)}">Approve & Delete Group</button>
+                  <button class="secondary" data-action="reject-group-delete" data-request-id="${escapeHtml(req.id)}">Reject Request</button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        };
+
+        listEl.innerHTML = `
+          ${pending.length ? `<div class="small" style="margin-top:6px;color:var(--gold-strong);font-weight:700;">Pending Requests</div>${pending.map((req) => renderCard(req, true)).join('')}` : '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No pending delete requests.</div>'}
+          ${reviewed.length ? `<div class="small" style="margin-top:14px;color:var(--text-muted);font-weight:700;">Recent Reviewed</div>${reviewed.map((req) => renderCard(req, false)).join('')}` : ''}
+        `;
+
+        setInlineStatus('groupDeleteRequestsStatus', 'Deletion requests loaded.', 'info');
+      } catch (error) {
+        console.error('[Admin] loadGroupDeletionRequests error:', error);
+        document.getElementById('groupDeleteRequestsList').innerHTML = '';
+        setInlineStatus('groupDeleteRequestsStatus', `Failed to load requests: ${error.message}`, 'error');
+      }
+    }
+
+    async function cleanupGroupLinksFromMembers(groupId, groupData) {
+      const userIds = getUniqueGroupLinkedUserIds(groupData);
+      let updatedCount = 0;
+
+      for (const uid of userIds) {
+        try {
+          const memberRef = doc(db, 'goMission_members', uid);
+          const memberSnap = await getDoc(memberRef);
+          if (!memberSnap.exists()) continue;
+
+          const member = memberSnap.data() || {};
+          const updates = {};
+          let shouldWrite = false;
+
+          if (member.uplineGroupId === groupId) {
+            updates.uplineGroupId = null;
+            shouldWrite = true;
+          }
+          if (member.groupId === groupId) {
+            updates.groupId = null;
+            updates.groupRole = null;
+            shouldWrite = true;
+          }
+
+          if (Array.isArray(member.guestGroups) && member.guestGroups.includes(groupId)) {
+            updates.guestGroups = member.guestGroups.filter((id) => id !== groupId);
+            shouldWrite = true;
+          }
+
+          if (member.guestGroupMeta && typeof member.guestGroupMeta === 'object' && member.guestGroupMeta[groupId]) {
+            const nextMeta = { ...member.guestGroupMeta };
+            delete nextMeta[groupId];
+            updates.guestGroupMeta = nextMeta;
+            shouldWrite = true;
+          }
+
+          if (!shouldWrite) continue;
+
+          updates.updatedAt = serverTimestamp();
+          await setDoc(memberRef, updates, { merge: true });
+          updatedCount += 1;
+        } catch (error) {
+          console.warn('[Admin] Failed cleaning member links for group delete:', uid, error);
+        }
+      }
+
+      return updatedCount;
+    }
+
+    async function approveGroupDeleteRequest(requestId) {
+      if (!requestId) return;
+      const confirmDelete = window.confirm('Approve this request and delete the group? This removes the group from My Mission Groups and cleans member/guest links.');
+      if (!confirmDelete) return;
+
+      setInlineStatus('groupDeleteRequestsStatus', 'Approving and deleting group...', 'info');
+
+      try {
+        const requestRef = doc(db, GROUP_DELETION_REQUESTS_COLLECTION, requestId);
+        const requestSnap = await getDoc(requestRef);
+        if (!requestSnap.exists()) {
+          setInlineStatus('groupDeleteRequestsStatus', 'Request not found.', 'warn');
+          await loadGroupDeletionRequests();
+          return;
+        }
+
+        const requestData = requestSnap.data() || {};
+        if (String(requestData.status || 'pending').toLowerCase() !== 'pending') {
+          setInlineStatus('groupDeleteRequestsStatus', 'Request is no longer pending.', 'warn');
+          await loadGroupDeletionRequests();
+          return;
+        }
+
+        const groupId = requestData.groupId || requestId;
+        const groupRef = doc(db, 'goMission_groups', groupId);
+        const groupSnap = await getDoc(groupRef);
+
+        let cleanedMembers = 0;
+        let inviteCodesDeleted = 0;
+        let groupExists = groupSnap.exists();
+        let groupSnapshot = null;
+
+        if (groupExists) {
+          const groupData = groupSnap.data() || {};
+          groupSnapshot = {
+            name: groupData.name || '',
+            leaderId: groupData.leaderId || '',
+            leaderName: groupData.leaderName || '',
+            membersCount: Array.isArray(groupData.members) ? groupData.members.length : 0,
+            guestsCount: Array.isArray(groupData.guests) ? groupData.guests.length : 0
+          };
+
+          cleanedMembers = await cleanupGroupLinksFromMembers(groupId, groupData);
+
+          const inviteCodeSnap = await getDocs(query(
+            collection(db, 'goMission_groupInviteCodes'),
+            where('groupId', '==', groupId)
+          ));
+          for (const codeDoc of inviteCodeSnap.docs) {
+            await deleteDoc(codeDoc.ref);
+            inviteCodesDeleted += 1;
+          }
+
+          await deleteDoc(groupRef);
+        }
+
+        await setDoc(requestRef, {
+          status: 'approved',
+          adminNote: `Approved and deleted by admin. Cleaned ${cleanedMembers} member docs. Removed ${inviteCodesDeleted} invite code(s).${groupExists ? '' : ' Group doc was already missing.'}`,
+          reviewedAt: serverTimestamp(),
+          reviewedAtIso: new Date().toISOString(),
+          reviewedBy: auth.currentUser?.uid || null,
+          reviewedByEmail: auth.currentUser?.email || null,
+          deletedAt: serverTimestamp(),
+          deletedAtIso: new Date().toISOString(),
+          deletedGroupSnapshot: groupSnapshot
+        }, { merge: true });
+
+        setInlineStatus('groupDeleteRequestsStatus', 'Request approved and group deleted.', 'success');
+        showStatus('Group deletion approved and applied.', 'success');
+        await loadGroupDeletionRequests();
+      } catch (error) {
+        console.error('[Admin] approveGroupDeleteRequest error:', error);
+        setInlineStatus('groupDeleteRequestsStatus', `Failed to approve/delete group: ${error.message}`, 'error');
+      }
+    }
+
+    async function rejectGroupDeleteRequest(requestId) {
+      if (!requestId) return;
+      const adminNote = window.prompt('Reason for rejection (optional):', '') || '';
+      setInlineStatus('groupDeleteRequestsStatus', 'Rejecting request...', 'info');
+
+      try {
+        await setDoc(doc(db, GROUP_DELETION_REQUESTS_COLLECTION, requestId), {
+          status: 'rejected',
+          adminNote: adminNote.trim(),
+          reviewedAt: serverTimestamp(),
+          reviewedAtIso: new Date().toISOString(),
+          reviewedBy: auth.currentUser?.uid || null,
+          reviewedByEmail: auth.currentUser?.email || null
+        }, { merge: true });
+
+        setInlineStatus('groupDeleteRequestsStatus', 'Request rejected.', 'success');
+        await loadGroupDeletionRequests();
+      } catch (error) {
+        console.error('[Admin] rejectGroupDeleteRequest error:', error);
+        setInlineStatus('groupDeleteRequestsStatus', `Failed to reject request: ${error.message}`, 'error');
+      }
     }
 
     function getMemberDisplayName(member) {
@@ -3035,6 +3315,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('sundayDate').value = nextSundayDate();
       await Promise.all([
         loadMissionHealth(),
+        loadGroupDeletionRequests(),
         loadForceUpdateStatus(),
         loadEmailSequence(),
         loadPushSettings(),
@@ -3088,6 +3369,23 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
       document.getElementById('saveEmailSequenceBtn').addEventListener('click', saveEmailSequence);
       document.getElementById('reloadEmailSequenceBtn').addEventListener('click', loadEmailSequence);
+
+      document.getElementById('reloadGroupDeleteRequestsBtn').addEventListener('click', loadGroupDeletionRequests);
+      document.getElementById('groupDeleteRequestsList').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action][data-request-id]');
+        if (!btn) return;
+        const requestId = btn.getAttribute('data-request-id');
+        const action = btn.getAttribute('data-action');
+        if (!requestId || !action) return;
+
+        if (action === 'approve-group-delete') {
+          await approveGroupDeleteRequest(requestId);
+          return;
+        }
+        if (action === 'reject-group-delete') {
+          await rejectGroupDeleteRequest(requestId);
+        }
+      });
 
       document.getElementById('savePushSettingsBtn').addEventListener('click', savePushSettings);
       document.getElementById('reloadPushSettingsBtn').addEventListener('click', loadPushSettings);

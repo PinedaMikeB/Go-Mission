@@ -2250,9 +2250,193 @@ const MyGroups = {
     /**
      * Show group menu
      */
-    showGroupMenu(groupId) {
-        // TODO: Implement group settings menu
-        console.log('[MyGroups] Show menu for:', groupId);
+    async showGroupMenu(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        let pendingDeleteRequest = null;
+        try {
+            const requestDoc = await window.getDoc(
+                window.doc(window.db, 'goMission_groupDeletionRequests', groupId)
+            );
+            if (requestDoc.exists()) {
+                const data = requestDoc.data() || {};
+                if (String(data.status || '').toLowerCase() === 'pending') {
+                    pendingDeleteRequest = data;
+                }
+            }
+        } catch (error) {
+            console.warn('[MyGroups] Could not load group deletion request status:', error);
+        }
+
+        const memberCount = this.normalizeCollectionEntries(group.members).length;
+        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">Group Options</h3>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+                <p class="text-sm text-[var(--text-muted)] mb-1">${group.name}</p>
+                <p class="text-xs text-[var(--text-muted)] mb-4">${memberCount}/${group.capacity || 12} members${guestCount ? ` • ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}</p>
+
+                ${pendingDeleteRequest ? `
+                    <div class="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
+                        <p class="text-sm font-semibold text-[var(--mission-gold)]">Delete request pending admin review</p>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">Reason: ${String(pendingDeleteRequest.reason || 'No reason provided').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                    </div>
+                ` : ''}
+
+                <div class="space-y-3">
+                    <button onclick="window.MyGroups.showDeleteGroupRequestForm('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                            class="w-full bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 text-[var(--mission-red-bright)] font-bold py-3 rounded-lg">
+                        🗑️ Request Admin Delete Group
+                    </button>
+                    <button onclick="window.MyGroups.closeModal()"
+                            class="w-full border border-[var(--card-border)] text-[var(--text-muted)] py-3 rounded-lg">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+    },
+
+    /**
+     * Show delete-group request form (admin approval required)
+     */
+    showDeleteGroupRequestForm(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">Request Group Deletion</h3>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+
+                <div class="rounded-xl border border-[var(--card-border)] p-3 mb-4">
+                    <p class="font-semibold text-[var(--text-color)]">${group.name}</p>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">
+                        This will not delete the group immediately. An admin must review and approve your request.
+                    </p>
+                </div>
+
+                <label for="deleteGroupReason" class="block text-sm font-semibold text-[var(--text-color)] mb-2">Reason for deletion</label>
+                <textarea id="deleteGroupReason" rows="4" maxlength="300"
+                    placeholder="Example: Duplicate group created by mistake."
+                    class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] mb-3"></textarea>
+                <div id="deleteGroupRequestError" class="text-[var(--mission-red-bright)] text-sm mb-3 hidden"></div>
+
+                <div class="flex gap-3">
+                    <button onclick="window.MyGroups.showGroupMenu('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                            class="flex-1 border border-[var(--card-border)] text-[var(--text-muted)] py-3 rounded-lg">
+                        Back
+                    </button>
+                    <button onclick="window.MyGroups.submitDeleteGroupRequest('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                            class="flex-1 bg-[var(--mission-red-bright)] text-white font-bold py-3 rounded-lg">
+                        Send Request
+                    </button>
+                </div>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+        document.getElementById('deleteGroupReason')?.focus();
+    },
+
+    /**
+     * Submit delete-group request for admin approval
+     */
+    async submitDeleteGroupRequest(groupId) {
+        const group = this.downlineGroups.find(g => g.id === groupId);
+        const errorEl = document.getElementById('deleteGroupRequestError');
+        if (!group) {
+            if (errorEl) {
+                errorEl.textContent = 'Group not found.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (group.leaderId !== window.currentUser?.uid) {
+            if (errorEl) {
+                errorEl.textContent = 'Only the group leader can request deletion.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const reason = String(document.getElementById('deleteGroupReason')?.value || '').trim();
+        if (reason.length < 5) {
+            if (errorEl) {
+                errorEl.textContent = 'Please enter a short reason (at least 5 characters).';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        try {
+            const requestRef = window.doc(window.db, 'goMission_groupDeletionRequests', groupId);
+            const existingDoc = await window.getDoc(requestRef);
+            if (existingDoc.exists()) {
+                const existing = existingDoc.data() || {};
+                if (String(existing.status || '').toLowerCase() === 'pending') {
+                    if (errorEl) {
+                        errorEl.textContent = 'A deletion request is already pending for this group.';
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
+            const memberIds = this.normalizeCollectionEntries(group.members)
+                .map((entry) => (typeof entry === 'string' ? entry : (entry?.odId || entry?.uid || entry?.id || null)))
+                .filter(Boolean);
+            const guestIds = this.normalizeCollectionEntries(group.guests)
+                .map((entry) => this.getGuestUserId(entry))
+                .filter(Boolean);
+
+            await window.setDoc(requestRef, {
+                groupId: group.id,
+                groupName: group.name || 'Unnamed Group',
+                leaderId: window.currentUser.uid,
+                leaderName: window.currentUser.displayName || group.leaderName || 'Unknown',
+                leaderEmail: window.currentUser.email || '',
+                reason: reason,
+                status: 'pending',
+                requestedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                requestedAtIso: new Date().toISOString(),
+                reviewedAt: null,
+                reviewedBy: null,
+                reviewedByEmail: null,
+                adminNote: '',
+                memberCount: memberIds.length,
+                guestCount: guestIds.length,
+                memberIds: memberIds.slice(0, 50),
+                guestIds: guestIds.slice(0, 50)
+            }, { merge: true });
+
+            this.closeModal();
+            alert('Delete request sent to admin for approval.');
+        } catch (error) {
+            console.error('[MyGroups] Delete request error:', error);
+            if (errorEl) {
+                errorEl.textContent = 'Failed to send delete request. Please try again.';
+                errorEl.classList.remove('hidden');
+            }
+        }
     },
     
     /**

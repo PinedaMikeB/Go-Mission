@@ -10,6 +10,43 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.6] - 2026-02-23 🗑️ Group Deletion Request Approval Flow
+
+### ✅ Summary
+Added an admin-approved mission group deletion workflow for duplicate/mistaken group creation. Leaders now request deletion; admins review and approve/reject from the admin workspace.
+
+### Included Changes
+1. **Leader-side request action (no direct delete)**
+   - Added a Group Options modal in `My Mission Groups` downline cards.
+   - Added `Request Admin Delete Group` with required reason.
+   - Stores requests in `goMission_groupDeletionRequests`.
+2. **Admin approval queue**
+   - Added `Group Deletion Requests` panel in `/admin.html`.
+   - Admin can reload, approve+delete, or reject requests.
+3. **Approved delete cleanup**
+   - Admin approval deletes the group document.
+   - Cleans member/guest links in `goMission_members` (`uplineGroupId`, `groupId`, `groupRole`, `guestGroups`, `guestGroupMeta`).
+   - Removes related invite codes in `goMission_groupInviteCodes`.
+4. **Firestore rules**
+   - Added rules for `goMission_groupDeletionRequests`:
+     - leaders can create/update pending requests for their own group
+     - only admins can approve/reject/delete
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/admin.html`
+- `/firestore.rules`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.6>
+```
+
+---
+
 ## [v2.2.5] - 2026-02-21 🔐 Invite Code Join Reliability
 
 ### ✅ Summary
