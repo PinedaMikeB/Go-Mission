@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go Mission | Start Here from YouTube</title>
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="description" content="Install Go Mission from YouTube to continue the conversation, receive support, and grow in your journey.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #140404;
+      --bg-soft: #230707;
+      --card: rgba(255, 255, 255, 0.06);
+      --card-strong: rgba(255, 255, 255, 0.08);
+      --line: rgba(251, 191, 36, 0.22);
+      --text: #fff8ef;
+      --muted: #d8c8b5;
+      --gold: #f59e0b;
+      --gold-strong: #fbbf24;
+      --red: #8f120f;
+      --shadow: 0 20px 55px rgba(0, 0, 0, 0.45);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Source Sans 3", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(251, 191, 36, 0.12), transparent 38%),
+        radial-gradient(circle at 88% 15%, rgba(245, 92, 24, 0.14), transparent 34%),
+        radial-gradient(circle at 50% 100%, rgba(245, 158, 11, 0.11), transparent 42%),
+        linear-gradient(160deg, #120303 0%, #1e0606 48%, #2a0909 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+      background-size: 22px 22px;
+      mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
+    }
+
+    .wrap {
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 18px 16px 34px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(160deg, #fbbf24, #ea580c);
+      color: #2a0505;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.35);
+    }
+
+    .brand-name {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: 0.08em;
+      color: var(--gold-strong);
+    }
+
+    .brand-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      gap: 4px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .lang-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .lang-btn.active {
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.22), rgba(245, 158, 11, 0.12));
+      color: #ffe8b0;
+      box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.24);
+    }
+
+    .hero {
+      position: relative;
+      border-radius: 28px;
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        linear-gradient(120deg, rgba(245, 158, 11, 0.06), transparent 55%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 18px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -40px;
+      top: -60px;
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(251,191,36,0.16), transparent 68%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .hero-left, .hero-right {
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0, 0, 0, 0.18);
+      padding: 16px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(251, 191, 36, 0.24);
+      background: rgba(251, 191, 36, 0.07);
+      color: #ffe8b0;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+
+    .hero-title {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(34px, 6vw, 56px);
+      line-height: 0.95;
+      letter-spacing: 0.05em;
+      margin: 0 0 8px;
+      color: #fff1ce;
+    }
+
+    .hero-lead {
+      font-size: 16px;
+      line-height: 1.45;
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+
+    .hero-points {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hero-points li {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      align-items: start;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .hero-points .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.24);
+      color: var(--gold-strong);
+      font-size: 12px;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+
+    .stage {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stage-row {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stage-num {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, rgba(251,191,36,0.25), rgba(245,158,11,0.08));
+      border: 1px solid rgba(251,191,36,0.2);
+      color: #ffe7ab;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .stage-row strong {
+      display: block;
+      color: #fff2d4;
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .stage-row span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .status-card {
+      border-radius: 16px;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      background: linear-gradient(180deg, rgba(245,158,11,0.08), rgba(255,255,255,0.02));
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .status-kicker {
+      color: #fcd48d;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .status-text {
+      color: #fff2d4;
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .status-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 6px;
+    }
+
+    .cta-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 14px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 160ms ease, opacity 160ms ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.995); }
+
+    .btn-primary {
+      color: #2a0505;
+      background: linear-gradient(180deg, #fbbf24, #f59e0b);
+      box-shadow: 0 12px 30px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-secondary {
+      color: #ffe8b0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(251,191,36,0.18);
+    }
+
+    .btn-ghost {
+      color: var(--muted);
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.12);
+    }
+
+    .manual-panel {
+      display: none;
+      margin-top: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(251,191,36,0.16);
+      background: rgba(0,0,0,0.18);
+      padding: 12px;
+      animation: rise 220ms ease;
+    }
+
+    .manual-panel.show { display: block; }
+
+    .manual-title {
+      font-weight: 800;
+      color: #fff2d4;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .manual-steps {
+      display: grid;
+      gap: 8px;
+    }
+
+    .manual-step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .manual-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(251,191,36,0.14);
+      color: var(--gold-strong);
+      border: 1px solid rgba(251,191,36,0.22);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .manual-step p {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .manual-step p strong { color: #ffe1a1; }
+
+    .url-box {
+      margin-top: 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 10px;
+    }
+
+    .url-label {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .url-value {
+      display: block;
+      color: #ffe1a1;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(251,191,36,0.15);
+      border-radius: 10px;
+      padding: 10px;
+      font-weight: 700;
+      word-break: break-all;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .benefits {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .benefit {
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 12px;
+    }
+
+    .benefit .emoji { font-size: 20px; margin-bottom: 6px; display: block; }
+    .benefit h3 {
+      margin: 0 0 4px;
+      font-size: 13px;
+      color: #fff2d4;
+      line-height: 1.15;
+    }
+    .benefit p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .fine {
+      margin-top: 12px;
+      color: rgba(255, 235, 205, 0.75);
+      font-size: 11px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .flow-section {
+      margin-top: 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(251, 191, 36, 0.18);
+      background: rgba(0, 0, 0, 0.18);
+      padding: 14px;
+    }
+
+    .flow-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .flow-title {
+      margin: 0;
+      font-size: 15px;
+      color: #fff0c7;
+      font-weight: 800;
+    }
+
+    .flow-tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .flow-card {
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.025);
+      padding: 11px;
+    }
+
+    .flow-card .flow-emoji {
+      font-size: 18px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .flow-card h4 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      line-height: 1.15;
+      color: #ffeab7;
+      font-weight: 800;
+    }
+
+    .flow-card p {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+
+    .tracking-note {
+      margin-top: 10px;
+      border-radius: 12px;
+      background: rgba(251,191,36,0.05);
+      border: 1px dashed rgba(251,191,36,0.16);
+      padding: 9px 10px;
+      color: #efd7aa;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 840px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .benefits {
+        grid-template-columns: 1fr;
+      }
+      .flow-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .hero-title {
+        font-size: clamp(30px, 10vw, 44px);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .flow-grid {
+        grid-template-columns: 1fr;
+      }
+      .flow-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">🔥</div>
+        <div>
+          <div class="brand-name">GO MISSION</div>
+          <div class="brand-sub" data-i18n="brandSub">Continue your journey beyond YouTube</div>
+        </div>
+      </div>
+      <div class="lang-switch" role="tablist" aria-label="Language">
+        <button class="lang-btn active" id="langEnBtn" type="button" onclick="setLang('en')" role="tab" aria-selected="true">English</button>
+        <button class="lang-btn" id="langTlBtn" type="button" onclick="setLang('tl')" role="tab" aria-selected="false">Tagalog</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-left">
+          <div class="chip" id="entryChip">▶ From YouTube Comment</div>
+          <h1 class="hero-title" data-i18n="heroTitle">Install the app so we can continue the conversation.</h1>
+          <p class="hero-lead" data-i18n="heroLead">
+            YouTube comments are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.
+          </p>
+
+          <ul class="hero-points">
+            <li><span class="dot">1</span><span data-i18n="point1">Chat with our team privately instead of losing messages in comment threads.</span></li>
+            <li><span class="dot">2</span><span data-i18n="point2">Get guided next steps for prayer, discipleship, and joining a group.</span></li>
+            <li><span class="dot">3</span><span data-i18n="point3">Receive notifications when we reply, even when you are offline.</span></li>
+          </ul>
+
+          <div class="benefits">
+            <div class="benefit">
+              <span class="emoji">💬</span>
+              <h3 data-i18n="benefit1Title">Real Chat</h3>
+              <p data-i18n="benefit1Body">Private messages, group chats, and follow-up without losing context.</p>
+            </div>
+            <div class="benefit">
+              <span class="emoji">🙏</span>
+              <h3 data-i18n="benefit2Title">Guided Journey</h3>
+              <p data-i18n="benefit2Body">Encouragement and next steps to help you grow in faith consistently.</p>
+            </div>
+            <div class="benefit">
+              <span class="emoji">🤝</span>
+              <h3 data-i18n="benefit3Title">Human Support</h3>
+              <p data-i18n="benefit3Body">Welcome team volunteers can respond when available, even if schedules differ.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="status-card">
+            <div class="status-kicker" data-i18n="statusKicker">Current Browser</div>
+            <div class="status-text" id="browserStatusText">Checking your browser...</div>
+            <div class="status-help" id="browserStatusHelp">We will guide you to open this page in Chrome or Safari if needed.</div>
+          </div>
+
+          <div class="stage">
+            <div class="stage-row">
+              <div class="stage-num">1</div>
+              <div>
+                <strong data-i18n="stage1Title">Open in Chrome or Safari</strong>
+                <span data-i18n="stage1Body">YouTube's built-in browser may block installation. Move this page to your main browser first.</span>
+              </div>
+            </div>
+            <div class="stage-row">
+              <div class="stage-num">2</div>
+              <div>
+                <strong data-i18n="stage2Title">Install Go Mission</strong>
+                <span data-i18n="stage2Body">Once in your browser, you can install the app and receive updates from us.</span>
+              </div>
+            </div>
+            <div class="stage-row">
+              <div class="stage-num">3</div>
+              <div>
+                <strong data-i18n="stage3Title">Start Messaging</strong>
+                <span data-i18n="stage3Body">After install, you can message our welcome team and we can guide you further.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cta-stack">
+            <button class="btn btn-primary" type="button" onclick="openInBrowser()" id="openBtn">
+              <span>📱</span>
+              <span data-i18n="ctaPrimary">Open in Browser & Install</span>
+            </button>
+            <button class="btn btn-secondary" type="button" onclick="openWebVersion()" id="webBtn">
+              <span>🌐</span>
+              <span data-i18n="ctaWeb">Can’t install now? Open Web Version</span>
+            </button>
+            <button class="btn btn-secondary" type="button" onclick="showManualGuide()" id="manualBtn">
+              <span>🧭</span>
+              <span data-i18n="ctaManual">Show Manual Steps</span>
+            </button>
+            <button class="btn btn-ghost" type="button" onclick="copyUrl()" id="copyBtn">
+              <span>📋</span>
+              <span data-i18n="ctaCopy">Copy Link</span>
+            </button>
+          </div>
+
+          <div class="manual-panel" id="manualPanel">
+            <div class="manual-title" data-i18n="manualTitle">Open this page in your phone's browser</div>
+            <div class="manual-steps" id="manualStepsList"></div>
+            <div class="url-box">
+              <div class="url-label" data-i18n="urlLabel">If needed, copy and paste this link into Chrome/Safari:</div>
+              <code class="url-value" id="displayUrl">https://gomission.netlify.app/yt-landing-install/</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="flow-section" aria-labelledby="welcomeFlowTitle">
+      <div class="flow-head">
+        <h2 class="flow-title" id="welcomeFlowTitle" data-i18n="flowTitle">What happens after install?</h2>
+        <div class="flow-tag" id="trackingSummaryTag">src=youtube</div>
+      </div>
+      <div class="flow-grid">
+        <article class="flow-card">
+          <span class="flow-emoji">👋</span>
+          <h4 data-i18n="flow1Title">Welcome Team receives your request</h4>
+          <p data-i18n="flow1Body">Your message enters our Welcome Queue so no one is missed, even if volunteers are offline.</p>
+        </article>
+        <article class="flow-card">
+          <span class="flow-emoji">💬</span>
+          <h4 data-i18n="flow2Title">Private chat starts</h4>
+          <p data-i18n="flow2Body">A volunteer can reply by message first, then continue when both of you are available.</p>
+        </article>
+        <article class="flow-card">
+          <span class="flow-emoji">📹</span>
+          <h4 data-i18n="flow3Title">Optional video call</h4>
+          <p data-i18n="flow3Body">If needed, you may be invited to a simple video call for prayer or orientation.</p>
+        </article>
+        <article class="flow-card">
+          <span class="flow-emoji">🧭</span>
+          <h4 data-i18n="flow4Title">Next steps and group connection</h4>
+          <p data-i18n="flow4Body">We help you with your journey and connect you to the right group or cohort.</p>
+        </article>
+      </div>
+      <div class="tracking-note" data-i18n="trackingNote">
+        This YouTube page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.
+      </div>
+    </section>
+
+    <p class="fine" data-i18n="finePrint">
+      We use this page for YouTube visitors only. Your regular invite link and existing install page stay separate.
+    </p>
+  </div>
+
+  <script>
+    const baseAppUrl = 'https://gomission.netlify.app/';
+    const ytLandingUrl = 'https://gomission.netlify.app/yt-landing-install/';
+
+    const i18n = {
+      en: {
+        brandSub: 'Continue your journey beyond YouTube',
+        heroTitle: 'Install the app so we can continue the conversation.',
+        heroLead: 'YouTube comments are hard to manage for real conversations. Go Mission helps us message you properly, follow up, and help you grow step by step.',
+        point1: 'Chat with our team privately instead of losing messages in comment threads.',
+        point2: 'Get guided next steps for prayer, discipleship, and joining a group.',
+        point3: 'Receive notifications when we reply, even when you are offline.',
+        benefit1Title: 'Real Chat',
+        benefit1Body: 'Private messages, group chats, and follow-up without losing context.',
+        benefit2Title: 'Guided Journey',
+        benefit2Body: 'Encouragement and next steps to help you grow in faith consistently.',
+        benefit3Title: 'Human Support',
+        benefit3Body: 'Welcome team volunteers can respond when available, even if schedules differ.',
+        statusKicker: 'Current Browser',
+        statusInAppTitle: 'You may be inside YouTube or another in-app browser.',
+        statusInAppHelp: 'This browser may block app installation. Use the button below, or open manually in Chrome/Safari.',
+        statusRealBrowserTitle: 'You are in a browser that can continue to install.',
+        statusRealBrowserHelp: 'Tap the install button to continue to Go Mission.',
+        statusUnknownTitle: 'We will help you open this in Chrome or Safari.',
+        statusUnknownHelp: 'If the auto-open does not work, use the manual steps below.',
+        stage1Title: 'Open in Chrome or Safari',
+        stage1Body: "YouTube's built-in browser may block installation. Move this page to your main browser first.",
+        stage2Title: 'Install Go Mission',
+        stage2Body: 'Once in your browser, you can install the app and receive updates from us.',
+        stage3Title: 'Start Messaging',
+        stage3Body: 'After install, you can message our welcome team and we can guide you further.',
+        ctaPrimary: 'Open in Browser & Install',
+        ctaWeb: "Can’t install now? Open Web Version",
+        ctaManual: 'Show Manual Steps',
+        ctaCopy: 'Copy Link',
+        flowTitle: 'What happens after install?',
+        flow1Title: 'Welcome Team receives your request',
+        flow1Body: 'Your message enters our Welcome Queue so no one is missed, even if volunteers are offline.',
+        flow2Title: 'Private chat starts',
+        flow2Body: 'A volunteer can reply by message first, then continue when both of you are available.',
+        flow3Title: 'Optional video call',
+        flow3Body: 'If needed, you may be invited to a simple video call for prayer or orientation.',
+        flow4Title: 'Next steps and group connection',
+        flow4Body: 'We help you with your journey and connect you to the right group or cohort.',
+        trackingNote: 'This YouTube page can carry source info (example: video ID) so we can see where seekers are coming from and improve follow-up.',
+        manualTitle: "Open this page in your phone's browser",
+        urlLabel: 'If needed, copy and paste this link into Chrome/Safari:',
+        finePrint: 'We use this page for YouTube visitors only. Your regular invite link and existing install page stay separate.',
+        copied: 'Copied',
+        copyFail: 'Please copy this link manually:',
+        entryChip: '▶ From YouTube Comment',
+        iosSteps: [
+          'Tap the <strong>share</strong> or <strong>menu</strong> button in the top/bottom area of the screen.',
+          'Choose <strong>"Open in Safari"</strong> (or <strong>"Open in Browser"</strong>).',
+          'When Safari opens, tap the install option if shown, then continue to Go Mission.'
+        ],
+        androidSteps: [
+          'Tap the <strong>⋮ menu</strong> in the top-right corner.',
+          'Choose <strong>"Open in Chrome"</strong> or <strong>"Open in Browser"</strong>.',
+          'Once Chrome opens, continue and install Go Mission.'
+        ],
+        genericSteps: [
+          'Open the page menu and look for <strong>"Open in Browser"</strong>.',
+          'Choose <strong>Chrome</strong> or <strong>Safari</strong> if asked.',
+          'If the button does not work, copy the link below and paste it manually.'
+        ]
+      },
+      tl: {
+        brandSub: 'Ituloy ang iyong journey lampas sa YouTube',
+        heroTitle: 'I-install ang app para maituloy natin ang usapan.',
+        heroLead: 'Mahirap mag-usap nang maayos sa YouTube comments. Sa Go Mission, makaka-message ka nang maayos, may follow-up, at may gabay sa iyong next steps.',
+        point1: 'Makipag-chat nang pribado sa team namin imbes na mawala sa comment threads.',
+        point2: 'Makakuha ng gabay para sa prayer, discipleship, at pagsali sa group.',
+        point3: 'Makakatanggap ng notifications kapag may reply kami, kahit offline ka.',
+        benefit1Title: 'Maayos na Chat',
+        benefit1Body: 'Private messages, group chats, at follow-up na hindi nawawala ang context.',
+        benefit2Title: 'Guided Journey',
+        benefit2Body: 'Encouragement at next steps para tuloy-tuloy ang paglago mo sa faith.',
+        benefit3Title: 'Tao ang Kausap',
+        benefit3Body: 'May welcome team volunteers na sasagot kapag available sila kahit iba-iba ang schedule.',
+        statusKicker: 'Kasalukuyang Browser',
+        statusInAppTitle: 'Mukhang nasa YouTube o ibang in-app browser ka.',
+        statusInAppHelp: 'Maaaring hindi gumana ang install dito. Buksan muna sa Chrome/Safari gamit ang button o manual steps.',
+        statusRealBrowserTitle: 'Nasa tamang browser ka na puwedeng mag-install.',
+        statusRealBrowserHelp: 'Pindutin ang install button para magpatuloy sa Go Mission.',
+        statusUnknownTitle: 'Tutulungan ka naming buksan ito sa Chrome o Safari.',
+        statusUnknownHelp: 'Kung hindi gumana ang auto-open, sundin ang manual steps sa ibaba.',
+        stage1Title: 'Buksan sa Chrome o Safari',
+        stage1Body: 'Puwedeng harangan ng YouTube built-in browser ang installation. Ilipat muna sa main browser mo.',
+        stage2Title: 'I-install ang Go Mission',
+        stage2Body: 'Kapag nasa browser ka na, puwede mo nang i-install ang app at makatanggap ng updates.',
+        stage3Title: 'Simulan ang Pag-message',
+        stage3Body: 'Pagkatapos ma-install, puwede ka nang mag-message sa welcome team at magpatuloy sa next steps.',
+        ctaPrimary: 'Buksan sa Browser at I-install',
+        ctaWeb: 'Hindi makapag-install ngayon? Buksan ang Web Version',
+        ctaManual: 'Ipakita ang Manual Steps',
+        ctaCopy: 'Kopyahin ang Link',
+        flowTitle: 'Ano ang mangyayari pagkatapos ng install?',
+        flow1Title: 'Matatanggap ng Welcome Team ang request mo',
+        flow1Body: 'Mapupunta ang mensahe mo sa Welcome Queue para walang ma-miss kahit offline ang volunteers.',
+        flow2Title: 'Magsisimula ang private chat',
+        flow2Body: 'Puwedeng mag-reply muna ang volunteer sa message at ituloy kapag available na kayo pareho.',
+        flow3Title: 'Optional video call',
+        flow3Body: 'Kung kailangan, maaari kang imbitahan sa simpleng video call para sa prayer o orientation.',
+        flow4Title: 'Next steps at group connection',
+        flow4Body: 'Tutulungan ka namin sa journey mo at i-connect sa tamang group o cohort.',
+        trackingNote: 'Maaaring dalhin ng page na ito ang source info (hal. video ID) para makita namin kung saan nanggagaling ang seekers at mapahusay ang follow-up.',
+        manualTitle: 'Buksan ang page na ito sa browser ng phone mo',
+        urlLabel: 'Kung kailangan, kopyahin at i-paste ang link na ito sa Chrome/Safari:',
+        finePrint: 'Para ito sa YouTube visitors lang. Hiwalay pa rin ang regular invite link at existing install page mo.',
+        copied: 'Nakopya na',
+        copyFail: 'Paki-copy nang manual ang link:',
+        entryChip: '▶ Galing sa YouTube Comment',
+        iosSteps: [
+          'Pindutin ang <strong>share</strong> o <strong>menu</strong> button sa taas o baba ng screen.',
+          'Piliin ang <strong>"Open in Safari"</strong> (o <strong>"Open in Browser"</strong>).',
+          'Kapag nasa Safari na, ituloy ang install at buksan ang Go Mission.'
+        ],
+        androidSteps: [
+          'Pindutin ang <strong>⋮ menu</strong> sa kanang itaas.',
+          'Piliin ang <strong>"Open in Chrome"</strong> o <strong>"Open in Browser"</strong>.',
+          'Kapag nasa Chrome na, ituloy ang install ng Go Mission.'
+        ],
+        genericSteps: [
+          'Buksan ang page menu at hanapin ang <strong>"Open in Browser"</strong>.',
+          'Piliin ang <strong>Chrome</strong> o <strong>Safari</strong> kung may pagpipilian.',
+          'Kung hindi gumana ang button, kopyahin ang link sa ibaba at i-paste nang manual.'
+        ]
+      }
+    };
+
+    let currentLang = 'en';
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isYoutubeApp = /YouTube|com\.google\.android\.youtube/i.test(ua);
+    const isKnownInApp = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line|Twitter|MicroMessenger|WeChat|Snapchat|TikTok/i.test(ua);
+    const isWebView = /\bwv\b|Version\/[\d.]+.*Chrome\/[\d.]+ Mobile/i.test(ua);
+    const isInAppBrowser = isYoutubeApp || isKnownInApp || isWebView;
+    const landingParams = new URLSearchParams(window.location.search);
+
+    function getTrackingParams() {
+      const params = new URLSearchParams();
+
+      // Standard UTM defaults for YouTube comment replies
+      params.set('utm_source', landingParams.get('utm_source') || 'youtube');
+      params.set('utm_medium', landingParams.get('utm_medium') || 'comment');
+      params.set('utm_campaign', landingParams.get('utm_campaign') || 'yt-install');
+
+      // Custom source fields used by your app / future analytics
+      params.set('src', landingParams.get('src') || 'youtube-comment');
+
+      const passthroughKeys = [
+        'video', 'video_id', 'comment', 'comment_id', 'channel', 'campaign', 'lang'
+      ];
+      passthroughKeys.forEach((key) => {
+        const value = landingParams.get(key);
+        if (value) params.set(key, value);
+      });
+
+      return params;
+    }
+
+    function buildInstallUrl() {
+      const params = getTrackingParams();
+      params.set('install', 'true');
+      return `${baseAppUrl}?${params.toString()}`;
+    }
+
+    function buildWebUrl() {
+      const params = getTrackingParams();
+      params.set('src_page', 'yt-landing-install');
+      return `${baseAppUrl}?${params.toString()}`;
+    }
+
+    function updateTrackingSummaryTag() {
+      const el = document.getElementById('trackingSummaryTag');
+      if (!el) return;
+      const src = landingParams.get('src') || 'youtube-comment';
+      const video = landingParams.get('video') || landingParams.get('video_id') || '';
+      el.textContent = video ? `src=${src} • video=${video}` : `src=${src}`;
+    }
+
+    function trackEvent(eventName, extra = {}) {
+      const payload = {
+        event: eventName,
+        ts: new Date().toISOString(),
+        path: window.location.pathname,
+        lang: currentLang,
+        inAppBrowser: isInAppBrowser,
+        ua: navigator.userAgent,
+        params: Object.fromEntries(getTrackingParams().entries()),
+        ...extra
+      };
+
+      try {
+        localStorage.setItem('ytLandingLastEvent', JSON.stringify(payload));
+      } catch (_) {}
+
+      // Optional hook if analytics library is added later
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', eventName, payload.params);
+      }
+      console.log('[YT Landing]', payload);
+    }
+
+    function setLang(lang) {
+      currentLang = (lang === 'tl') ? 'tl' : 'en';
+      document.documentElement.lang = currentLang === 'tl' ? 'tl' : 'en';
+
+      document.getElementById('langEnBtn').classList.toggle('active', currentLang === 'en');
+      document.getElementById('langTlBtn').classList.toggle('active', currentLang === 'tl');
+      document.getElementById('langEnBtn').setAttribute('aria-selected', String(currentLang === 'en'));
+      document.getElementById('langTlBtn').setAttribute('aria-selected', String(currentLang === 'tl'));
+
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[currentLang][key]) {
+          el.innerHTML = i18n[currentLang][key];
+        }
+      });
+
+      document.getElementById('entryChip').textContent = i18n[currentLang].entryChip;
+      renderManualSteps();
+      updateBrowserStatus();
+      updateTrackingSummaryTag();
+    }
+
+    function updateBrowserStatus() {
+      const t = i18n[currentLang];
+      const titleEl = document.getElementById('browserStatusText');
+      const helpEl = document.getElementById('browserStatusHelp');
+
+      if (isInAppBrowser) {
+        titleEl.textContent = t.statusInAppTitle;
+        helpEl.textContent = t.statusInAppHelp;
+      } else if (/Safari|Chrome|CriOS|EdgiOS|Firefox/i.test(ua)) {
+        titleEl.textContent = t.statusRealBrowserTitle;
+        helpEl.textContent = t.statusRealBrowserHelp;
+      } else {
+        titleEl.textContent = t.statusUnknownTitle;
+        helpEl.textContent = t.statusUnknownHelp;
+      }
+    }
+
+    function getManualStepsForDevice() {
+      const t = i18n[currentLang];
+      if (isIOS) return t.iosSteps;
+      if (isAndroid) return t.androidSteps;
+      return t.genericSteps;
+    }
+
+    function renderManualSteps() {
+      const list = document.getElementById('manualStepsList');
+      if (!list) return;
+      const steps = getManualStepsForDevice();
+      list.innerHTML = steps.map((step, idx) => `
+        <div class="manual-step">
+          <div class="manual-badge">${idx + 1}</div>
+          <p>${step}</p>
+        </div>
+      `).join('');
+      document.getElementById('displayUrl').textContent = ytLandingUrl;
+    }
+
+    function showManualGuide() {
+      document.getElementById('manualPanel').classList.add('show');
+    }
+
+    function tryAutoOpenInBrowser() {
+      const targetAppUrl = buildInstallUrl();
+      trackEvent('yt_install_click', { action: 'install', target: targetAppUrl });
+
+      if (!isInAppBrowser) {
+        window.location.href = targetAppUrl;
+        return;
+      }
+
+      showManualGuide();
+
+      if (isIOS) {
+        // These schemes are best-effort only; manual steps remain primary.
+        try {
+          window.location.href = 'googlechrome://navigate?url=' + encodeURIComponent(targetAppUrl);
+        } catch (_) {}
+        setTimeout(() => {
+          try {
+            window.location.href = 'x-safari-' + targetAppUrl;
+          } catch (_) {}
+        }, 250);
+        return;
+      }
+
+      if (isAndroid) {
+        const intentUrl = 'intent://gomission.netlify.app/?' + new URL(targetAppUrl).searchParams.toString() + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(targetAppUrl) + ';end';
+        try {
+          window.location.href = intentUrl;
+          return;
+        } catch (_) {}
+      }
+
+      setTimeout(() => {
+        window.location.href = targetAppUrl;
+      }, 300);
+    }
+
+    function openInBrowser() {
+      tryAutoOpenInBrowser();
+    }
+
+    function openWebVersion() {
+      const target = buildWebUrl();
+      trackEvent('yt_open_web_click', { action: 'web', target });
+      window.location.href = target;
+    }
+
+    function showCopySuccess() {
+      const btn = document.getElementById('copyBtn');
+      const textSpan = btn.querySelector('span:last-child');
+      const prev = textSpan.textContent;
+      textSpan.textContent = i18n[currentLang].copied;
+      btn.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+      btn.style.color = '#bbf7d0';
+      setTimeout(() => {
+        textSpan.textContent = prev;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }, 1700);
+    }
+
+    function copyUrl() {
+      const text = ytLandingUrl;
+      trackEvent('yt_copy_link_click', { action: 'copy-link' });
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(showCopySuccess).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const input = document.createElement('textarea');
+      input.value = text;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      try {
+        document.execCommand('copy');
+        showCopySuccess();
+      } catch (e) {
+        alert(i18n[currentLang].copyFail + ' ' + text);
+      }
+      document.body.removeChild(input);
+    }
+
+    // Expose for inline handlers
+    window.setLang = setLang;
+    window.openInBrowser = openInBrowser;
+    window.openWebVersion = openWebVersion;
+    window.copyUrl = copyUrl;
+    window.showManualGuide = showManualGuide;
+
+    // Initialize
+    const prefersTagalog = /\btl\b/i.test((navigator.language || '')) || /\bfil\b/i.test((navigator.language || ''));
+    setLang(prefersTagalog ? 'tl' : 'en');
+    trackEvent('yt_landing_view', { referrer: document.referrer || '' });
+  </script>
+</body>
+</html>

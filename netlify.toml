@@ -8,6 +8,16 @@
 [build.environment]
   NODE_VERSION = "18"
 
+[[redirects]]
+  from = "/yt-landing-install"
+  to = "/yt-landing-install/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/yt-landing-install/"
+  to = "/yt-landing-install/index.html"
+  status = 200
+
 # Headers for PWA and caching
 [[headers]]
   for = "/firebase-messaging-sw.js"
