@@ -1189,6 +1189,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
     let cachedGroups = [];
     let cachedWatchSeries = [];
+    let cachedWatchEpisodes = [];
     let currentRoleUser = null;
     let latestMissionHealth = null;
     let activeMetricKey = null;
@@ -2540,6 +2541,62 @@ match /goMission/watch-series-covers/{allPaths=**} {
       editWatchSeriesById(button.getAttribute('data-watch-series-edit'));
     }
 
+    function sortWatchEpisodesForAdminList(items) {
+      return [...items].sort((a, b) => {
+        const aPublishMs = pickDate(a.publishAt)?.getTime() || 0;
+        const bPublishMs = pickDate(b.publishAt)?.getTime() || 0;
+        if (aPublishMs !== bPublishMs) return bPublishMs - aPublishMs;
+
+        const aUpdatedMs = pickDate(a.updatedAt, a.createdAt)?.getTime() || 0;
+        const bUpdatedMs = pickDate(b.updatedAt, b.createdAt)?.getTime() || 0;
+        if (aUpdatedMs !== bUpdatedMs) return bUpdatedMs - aUpdatedMs;
+
+        const aWeek = Number(a.weekNumber || 0);
+        const bWeek = Number(b.weekNumber || 0);
+        if (aWeek !== bWeek) return bWeek - aWeek;
+
+        return String(a.title || '').localeCompare(String(b.title || ''));
+      });
+    }
+
+    function editWatchEpisodeById(episodeId) {
+      const targetId = String(episodeId || '').trim();
+      if (!targetId) return;
+
+      const item = cachedWatchEpisodes.find((episode) => String(episode?.id || '') === targetId);
+      if (!item) {
+        setInlineStatus('watchEpisodeStatusText', `Episode not found in list: ${targetId}`, 'warn');
+        return;
+      }
+
+      document.getElementById('watchEpisodeDocId').value = item.id || '';
+      document.getElementById('watchEpisodeSeriesId').value = item.seriesId || '';
+      document.getElementById('watchEpisodeTitle').value = item.title || '';
+      document.getElementById('watchEpisodeStatus').value = item.status || 'published';
+      document.getElementById('watchEpisodeWeekNumber').value = Number.isFinite(Number(item.weekNumber)) ? String(Number(item.weekNumber)) : '1';
+      document.getElementById('watchEpisodeOrder').value = Number.isFinite(Number(item.order)) ? String(Number(item.order)) : '100';
+      document.getElementById('watchEpisodeYoutubeInput').value = item.youtubeVideoId || '';
+      document.getElementById('watchEpisodePublishAt').value = toDateTimeLocalInputValue(item.publishAt);
+
+      setInlineStatus(
+        'watchEpisodeStatusText',
+        `Editing episode: ${item.title || item.id} | weekNumber: ${item.weekNumber ?? 'n/a'}${item.publishAt ? ` | publishAt: ${formatDateTime(item.publishAt)}` : ' | publishAt: not set'}`,
+        'info'
+      );
+
+      const idInput = document.getElementById('watchEpisodeDocId');
+      idInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const titleInput = document.getElementById('watchEpisodeTitle');
+      if (titleInput) titleInput.focus();
+    }
+
+    function handleWatchEpisodeListClick(event) {
+      const button = event.target?.closest?.('[data-watch-episode-edit]');
+      if (!button) return;
+      event.preventDefault();
+      editWatchEpisodeById(button.getAttribute('data-watch-episode-edit'));
+    }
+
     async function saveWatchSeries() {
       const btn = document.getElementById('saveWatchSeriesBtn');
       const manualId = document.getElementById('watchSeriesDocId').value.trim();
@@ -2762,13 +2819,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
           snap = await getDocs(collection(db, 'video_episodes'));
         }
 
-        const items = snap.docs
-          .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
-          .sort((a, b) => {
-            const aDate = pickDate(a.updatedAt, a.createdAt)?.getTime() || 0;
-            const bDate = pickDate(b.updatedAt, b.createdAt)?.getTime() || 0;
-            return bDate - aDate;
-          });
+        const items = sortWatchEpisodesForAdminList(
+          snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+        );
+        cachedWatchEpisodes = items;
 
         if (!items.length) {
           list.innerHTML = '<div class="list-item">No watch episodes yet.</div>';
@@ -2778,11 +2832,16 @@ match /goMission/watch-series-covers/{allPaths=**} {
         list.innerHTML = items.map((item) => {
           const state = statusBadge(item.status);
           const publishInfo = item.publishAt ? ` | ${state} @ ${formatDateTime(item.publishAt)}` : ` | ${state}`;
+          const updatedInfo = pickDate(item.updatedAt, item.createdAt) ? ` | updated: ${formatDateTime(item.updatedAt || item.createdAt)}` : '';
           return `
             <div class="list-item">
               <b>W${item.weekNumber || '?'} - ${item.title || 'Untitled Episode'}</b>
               <div class="meta">ID: ${item.id} | series: ${item.seriesId || 'n/a'} | order: ${item.order ?? 100}${publishInfo}</div>
+              <div class="meta">weekNumber field: ${item.weekNumber ?? 'not set'} | publishAt raw: ${item.publishAt ? escapeHtml(String(item.publishAt)) : 'not set'}${updatedInfo}</div>
               <div class="meta">YouTube: ${item.youtubeVideoId || 'missing'} | Destination: /watch/player.html?episodeId=${item.id}</div>
+              <div class="meta" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="secondary" data-watch-episode-edit="${escapeHtml(item.id)}" style="width:auto;padding:6px 10px;font-size:11px">Edit</button>
+              </div>
             </div>
           `;
         }).join('');
@@ -3431,6 +3490,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('saveWatchEpisodeBtn').addEventListener('click', saveWatchEpisode);
       document.getElementById('clearWatchEpisodeBtn').addEventListener('click', clearWatchEpisodeForm);
       document.getElementById('reloadWatchEpisodeBtn').addEventListener('click', loadWatchEpisodes);
+      document.getElementById('watchEpisodeList').addEventListener('click', handleWatchEpisodeListClick);
 
       document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
       document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);
