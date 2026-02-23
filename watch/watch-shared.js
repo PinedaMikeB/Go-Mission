@@ -267,8 +267,8 @@ export async function fetchVideoSeries() {
           return;
         }
 
-        // Prefer explicit publishAt; fall back to updatedAt/createdAt for older records.
-        const episodeEpoch = toEpoch(episode.publishAt) ?? toEpoch(episode.updatedAt) ?? toEpoch(episode.createdAt);
+        // User-facing series order should follow actual publish timing, not admin edit time.
+        const episodeEpoch = toEpoch(episode.publishAt);
         if (episodeEpoch == null) {
           return;
         }
