@@ -553,6 +553,7 @@ const BibleReader = {
         previewGroups: 'Share to',
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
+        openPreview: 'Preview what to share',
         previewCancel: 'Back to edit',
         previewConfirm: 'Confirm and save',
         fullscreenEditorDone: 'Done',
@@ -592,6 +593,7 @@ const BibleReader = {
         previewGroups: 'Ise-share sa',
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
+        openPreview: 'I-preview ang ise-share',
         previewCancel: 'Balik sa edit',
         previewConfirm: 'I-confirm at i-save',
         fullscreenEditorDone: 'Tapos',
@@ -807,6 +809,13 @@ const BibleReader = {
           `}
         </div>
 
+        <button type="button"
+                onclick="BibleReader.previewInlineReflectionShare()"
+                class="w-full mb-3 py-3 rounded-lg border border-[var(--mission-gold)]/35 bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] font-semibold transition-colors"
+                style="font-size:${labelFontPx}px;">
+          👁 ${L.openPreview}
+        </button>
+
         <div class="flex items-start gap-3 mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/40">
           <div class="toggle-switch ${shareActive ? 'active' : ''}" id="inlineInsightShareToggle" onclick="BibleReader.toggleInlineShare()"></div>
           <div class="flex-1">
@@ -861,6 +870,7 @@ const BibleReader = {
         previewGroups: 'Share to',
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
+        openPreview: 'Preview what to share',
         previewCancel: 'Back to edit',
         previewConfirm: 'Confirm and save',
         noPrayerRequests: 'No prayer requests added yet.'
@@ -878,6 +888,7 @@ const BibleReader = {
         previewGroups: 'Ise-share sa',
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
+        openPreview: 'I-preview ang ise-share',
         previewCancel: 'Balik sa edit',
         previewConfirm: 'I-confirm at i-save',
         noPrayerRequests: 'Wala pang nailalagay na prayer request.'
@@ -1112,6 +1123,18 @@ const BibleReader = {
       if (event.target === overlay) this.closeInlineSharePreview();
     });
     document.body.appendChild(overlay);
+  },
+
+  previewInlineReflectionShare() {
+    const payload = {
+      understanding: (this.inlineReflectionDraft.reflection || '').trim(),
+      action: (this.inlineReflectionDraft.commitment || '').trim(),
+      prayerRequests: this.getInlinePrayerRequestsForSave(),
+      question: this.getPrimaryReflectionQuestion(),
+      shareWithGroup: !!this.inlineReflectionDraft.shareWithGroup,
+      shareGroupIds: this.inlineReflectionDraft.shareWithGroup ? this.getSelectedInlineShareGroupIds() : []
+    };
+    this.openInlineSharePreview(payload);
   },
 
   closeInlineSharePreview() {
