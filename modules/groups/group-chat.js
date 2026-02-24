@@ -74,6 +74,8 @@ const GroupChat = {
   composerReplyToMessageId: null,
   pendingAttachment: null,
   isSendingAttachment: false,
+  isFullscreenComposerOpen: false,
+  suppressNextComposerFocusOverlay: false,
   forwardSourceMessageId: null,
   forwardGroupTargets: {},
   forwardDmTargets: {},
@@ -166,6 +168,7 @@ const GroupChat = {
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
     this.closeForwardModal(true);
+    this.closeFullscreenComposer(true, true);
     this.renderEmojiPicker();
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
@@ -211,6 +214,7 @@ const GroupChat = {
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
     this.closeForwardModal(true);
+    this.closeFullscreenComposer(true, true);
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
     this.renderComposerPreview('');
@@ -930,6 +934,7 @@ const GroupChat = {
     if (input) {
       this.closeComposeEmojiPicker();
       this.closeMentionPicker();
+      this.syncFullscreenComposerToMainInput();
       this.sendMessage(input.value);
     }
   },
@@ -942,6 +947,13 @@ const GroupChat = {
       event.preventDefault();
       this.handleSend();
     }
+  },
+
+  /**
+   * Open unified attachment picker (shows library/camera/file options on supported devices).
+   */
+  openAttachmentPicker() {
+    this.captureAttachmentFromCamera();
   },
 
   /**
@@ -991,6 +1003,7 @@ const GroupChat = {
       previewUrl: URL.createObjectURL(file)
     };
     this.renderAttachmentDraft();
+    this.syncMainInputToFullscreenComposer();
     this.resetAttachmentInputs();
   },
 
@@ -1011,6 +1024,7 @@ const GroupChat = {
     this.releasePendingAttachmentPreview();
     this.pendingAttachment = null;
     this.renderAttachmentDraft();
+    this.syncMainInputToFullscreenComposer();
     this.resetAttachmentInputs();
   },
 
@@ -1103,6 +1117,7 @@ const GroupChat = {
     this.composerReplyToMessageId = messageId;
     this.composerReplyTo = this.normalizeReplyPayload(message);
     this.renderReplyDraft();
+    this.syncMainInputToFullscreenComposer();
     const input = document.getElementById('chatInput');
     if (input) input.focus();
   },
@@ -1114,6 +1129,111 @@ const GroupChat = {
     this.composerReplyTo = null;
     this.composerReplyToMessageId = null;
     this.renderReplyDraft();
+    this.syncMainInputToFullscreenComposer();
+  },
+
+  /**
+   * Use fullscreen composer on small screens to avoid cramped typing.
+   */
+  shouldUseFullscreenComposer() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  },
+
+  /**
+   * Intercept focus on the compact composer and open fullscreen editor on mobile.
+   */
+  handleComposerInputFocus(event) {
+    if (!this.shouldUseFullscreenComposer()) return;
+    if (this.suppressNextComposerFocusOverlay) {
+      this.suppressNextComposerFocusOverlay = false;
+      return;
+    }
+    event?.preventDefault?.();
+    event?.target?.blur?.();
+    this.openFullscreenComposer();
+  },
+
+  /**
+   * Open fullscreen composer overlay and sync current text value.
+   */
+  openFullscreenComposer() {
+    const overlay = document.getElementById('chatFullscreenComposer');
+    const fullscreenInput = document.getElementById('chatFullscreenInput');
+    const input = document.getElementById('chatInput');
+    if (!overlay || !fullscreenInput || !input) return;
+
+    fullscreenInput.value = input.value || '';
+    overlay.classList.remove('hidden');
+    this.isFullscreenComposerOpen = true;
+    requestAnimationFrame(() => fullscreenInput.focus());
+  },
+
+  /**
+   * Close fullscreen composer overlay.
+   * preserveFocus=true skips refocusing the compact input (used during chat open/close cleanup).
+   */
+  closeFullscreenComposer(syncBack = true, preserveFocus = false) {
+    const overlay = document.getElementById('chatFullscreenComposer');
+    const fullscreenInput = document.getElementById('chatFullscreenInput');
+    const input = document.getElementById('chatInput');
+    if (!overlay) return;
+
+    if (syncBack && fullscreenInput && input) {
+      input.value = fullscreenInput.value || '';
+      this.handleInputChange({ target: input });
+      this.syncComposerPreviewScroll({ target: input });
+    }
+
+    overlay.classList.add('hidden');
+    this.isFullscreenComposerOpen = false;
+
+    if (!preserveFocus && input && this.shouldUseFullscreenComposer()) {
+      this.suppressNextComposerFocusOverlay = true;
+      setTimeout(() => input.focus(), 0);
+    }
+  },
+
+  /**
+   * Keep the hidden compact composer input in sync while typing fullscreen.
+   */
+  handleFullscreenComposerInput(event) {
+    const fullscreenInput = event?.target || document.getElementById('chatFullscreenInput');
+    const input = document.getElementById('chatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.handleInputChange({ target: input });
+  },
+
+  /**
+   * Copy fullscreen value into main input if overlay is open.
+   */
+  syncFullscreenComposerToMainInput() {
+    if (!this.isFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('chatFullscreenInput');
+    const input = document.getElementById('chatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.handleInputChange({ target: input });
+  },
+
+  /**
+   * Mirror compact input into fullscreen textarea when overlay is open.
+   */
+  syncMainInputToFullscreenComposer() {
+    if (!this.isFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('chatFullscreenInput');
+    const input = document.getElementById('chatInput');
+    if (!fullscreenInput || !input) return;
+    fullscreenInput.value = input.value || '';
+  },
+
+  /**
+   * Send message directly from fullscreen composer.
+   */
+  sendFromFullscreenComposer() {
+    this.syncFullscreenComposerToMainInput();
+    this.closeFullscreenComposer(true, true);
+    this.handleSend();
   },
 
   /**
@@ -1171,6 +1291,7 @@ const GroupChat = {
     this.renderComposerPreview(input.value || '');
     this.syncComposerPreviewScroll({ target: input });
     await this.renderMentionSuggestions(input.value || '', input.selectionStart ?? input.value.length);
+    this.syncMainInputToFullscreenComposer();
   },
 
   /**
@@ -1333,6 +1454,7 @@ const GroupChat = {
     this.closeMentionPicker();
     this.renderComposerPreview(nextValue);
     this.syncComposerPreviewScroll({ target: input });
+    this.syncMainInputToFullscreenComposer();
   },
 
   /**
@@ -1419,6 +1541,7 @@ const GroupChat = {
     this.renderComposerPreview(input.value);
     this.syncComposerPreviewScroll({ target: input });
     this.renderMentionSuggestions(input.value, nextPos);
+    this.syncMainInputToFullscreenComposer();
   },
 
   /**
