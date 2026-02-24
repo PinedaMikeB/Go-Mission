@@ -787,7 +787,7 @@ const GroupChat = {
                 ${this.renderForwardedFlag(msg.forwardedFrom)}
                 ${this.renderReplyBlock(msg)}
                 ${this.renderDevotionSections(msg.devotion || {}, msg.id)}
-                <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}</p>
+                <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}${this.renderEditedMeta(msg)}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
             </div>
@@ -806,7 +806,7 @@ const GroupChat = {
                 ${this.renderReplyBlock(msg)}
                 ${this.renderImageContent(msg)}
                 ${this.renderMessageText(msg)}
-                <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}${this.renderEditedMeta(msg)}</p>
                 ${this.renderReactionControls(msg, isMe)}
               </div>
             </div>
@@ -902,6 +902,14 @@ const GroupChat = {
 
     if (!rawText) return '';
     return `<p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(rawText))}</p>`;
+  },
+
+  /**
+   * Render "edited" metadata next to time when applicable.
+   */
+  renderEditedMeta(message) {
+    if (!message?.editedAt) return '';
+    return ' <span class="text-[10px] text-amber-500/90">(edited)</span>';
   },
   
   /**
@@ -1445,6 +1453,11 @@ const GroupChat = {
           <button onclick="GroupChat.replyToMessage('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40 transition-colors md:opacity-0 md:group-hover:opacity-100">
             ↩ Reply
           </button>
+          ${isMe && this.canEditMessage(message) ? `
+          <button onclick="GroupChat.editMessage('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40 transition-colors md:opacity-0 md:group-hover:opacity-100">
+            ✎ Edit
+          </button>
+          ` : ''}
           <button onclick="GroupChat.openForwardModal('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40 transition-colors md:opacity-0 md:group-hover:opacity-100">
             ↪ Forward
           </button>
@@ -1461,6 +1474,101 @@ const GroupChat = {
     if (!messageId) return;
     this.activeReactionPickerMessageId = this.activeReactionPickerMessageId === messageId ? null : messageId;
     this.renderMessages();
+  },
+
+  /**
+   * Only allow editing for own text/image messages (including captions).
+   */
+  canEditMessage(message) {
+    if (!message || typeof message !== 'object') return false;
+    if (message.senderId !== window.currentUser?.uid) return false;
+    return message.type === 'text' || message.type === 'image';
+  },
+
+  /**
+   * Get editable text value for a message.
+   */
+  getEditableMessageText(message) {
+    if (!message) return '';
+    if (message.type === 'image') {
+      return String(message.imageCaption || '').trim();
+    }
+    return String(message.text || '').trim();
+  },
+
+  /**
+   * Edit a sent message (text/image caption) using a simple prompt dialog.
+   */
+  async editMessage(messageId) {
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) return;
+    if (!this.canEditMessage(message)) {
+      alert('Only your text messages or photo captions can be edited.');
+      return;
+    }
+    if (!window.db || !window.currentUser) return;
+
+    const isImage = message.type === 'image';
+    const currentValue = this.getEditableMessageText(message);
+    const promptLabel = isImage ? 'Edit photo caption:' : 'Edit message:';
+    const nextValueRaw = window.prompt(promptLabel, currentValue);
+    if (nextValueRaw === null) return;
+
+    const nextValue = String(nextValueRaw);
+    const trimmedValue = nextValue.trim();
+
+    if (!isImage && !trimmedValue) {
+      alert('Message cannot be empty.');
+      return;
+    }
+
+    try {
+      const mentions = trimmedValue ? await this.extractMentionsFromText(trimmedValue) : [];
+      const payload = {
+        mentions,
+        mentionedUserIds: mentions.map((mention) => mention.uid),
+        editedAt: window.serverTimestamp(),
+        updatedAt: window.serverTimestamp()
+      };
+
+      if (isImage) {
+        payload.imageCaption = trimmedValue;
+        payload.text = trimmedValue || '📷 Photo';
+      } else {
+        payload.text = trimmedValue;
+      }
+
+      await window.setDoc(
+        window.doc(window.db, 'goMission_chats', messageId),
+        payload,
+        { merge: true }
+      );
+
+      message.mentions = payload.mentions;
+      message.mentionedUserIds = payload.mentionedUserIds;
+      message.editedAt = new Date();
+      if (isImage) {
+        message.imageCaption = trimmedValue;
+        message.text = trimmedValue || '📷 Photo';
+      } else {
+        message.text = trimmedValue;
+      }
+
+      this.renderMessages();
+
+      // Keep inbox preview accurate if the user edited the latest message in this thread.
+      const lastMessage = this.messages[this.messages.length - 1];
+      if (lastMessage?.id === messageId) {
+        await this.updateGroupThreadPreview({
+          type: message.type === 'image' ? 'image' : 'text',
+          text: trimmedValue || (isImage ? '📷 Photo' : ''),
+          senderName: message.senderName || 'Unknown'
+        });
+      }
+    } catch (error) {
+      console.error('[GroupChat] Error editing message:', error);
+      alert('Could not edit message. Please try again.');
+    }
   },
 
   /**
