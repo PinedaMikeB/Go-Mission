@@ -30,6 +30,8 @@ const BibleReader = {
   },
   inlineShareTargets: [],
   inlineShareTargetsLoading: false,
+  inlineEditorSession: null,
+  pendingInlineSavePayload: null,
   commentaryRequestId: 0,
   insightsLoading: false,
   insightsLastError: null,
@@ -90,6 +92,16 @@ const BibleReader = {
     
     // Listen for ESC key to exit fullscreen
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('inlineFieldEditorOverlay')) {
+          this.closeInlineFieldEditor();
+          return;
+        }
+        if (document.getElementById('inlineSharePreviewOverlay')) {
+          this.closeInlineSharePreview();
+          return;
+        }
+      }
       if (e.key === 'Escape' && this.preferences.isFullscreen) {
         this.exitFullscreen();
       }
@@ -535,6 +547,16 @@ const BibleReader = {
         noPrayerRequests: 'No prayer requests added yet.',
         addedLabel: 'Added',
         removePrayerRequest: 'Remove',
+        tapToExpand: 'Tap to write full screen',
+        openEditor: 'Open editor',
+        journalPreview: 'Share Preview',
+        previewGroups: 'Share to',
+        previewQuestion: 'Reflection Question',
+        previewPrayerRequests: 'Prayer Requests',
+        previewCancel: 'Back to edit',
+        previewConfirm: 'Confirm and save',
+        fullscreenEditorDone: 'Done',
+        fullscreenEditorExit: 'Exit',
         shareWithGroup: 'Share with my groups',
         shareWithGroupHelp: 'Help your leader walk with you',
         selectGroups: 'Choose group(s) to share with',
@@ -564,6 +586,16 @@ const BibleReader = {
         noPrayerRequests: 'Wala pang nailalagay na prayer request.',
         addedLabel: 'Nagdagdag',
         removePrayerRequest: 'Tanggalin',
+        tapToExpand: 'I-tap para magsulat sa full screen',
+        openEditor: 'Buksan ang editor',
+        journalPreview: 'Preview ng ise-share',
+        previewGroups: 'Ise-share sa',
+        previewQuestion: 'Tanong sa Pagninilay',
+        previewPrayerRequests: 'Mga prayer request',
+        previewCancel: 'Balik sa edit',
+        previewConfirm: 'I-confirm at i-save',
+        fullscreenEditorDone: 'Tapos',
+        fullscreenEditorExit: 'Lumabas',
         shareWithGroup: 'I-share sa aking mga group',
         shareWithGroupHelp: 'Para masamahan ka ng leader mo',
         selectGroups: 'Piliin ang mga group na pagse-share-an',
@@ -689,8 +721,17 @@ const BibleReader = {
     html += `
       <div class="mt-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
+        <button type="button"
+                onclick="BibleReader.openInlineFieldEditor('reflection')"
+                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)] hover:opacity-85"
+                style="font-size:${smallFontPx}px;">
+          <span>⤢</span>
+          <span>${L.tapToExpand}</span>
+        </button>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
+                  onclick="BibleReader.openInlineFieldEditor('reflection')"
+                  readonly
                   rows="6"
                   class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
@@ -704,8 +745,17 @@ const BibleReader = {
         ` : ''}
 
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
+        <button type="button"
+                onclick="BibleReader.openInlineFieldEditor('commitment')"
+                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)] hover:opacity-85"
+                style="font-size:${smallFontPx}px;">
+          <span>⤢</span>
+          <span>${L.tapToExpand}</span>
+        </button>
         <textarea id="inlineInsightCommitmentInput"
                   oninput="BibleReader.setInlineCommitment(this.value)"
+                  onclick="BibleReader.openInlineFieldEditor('commitment')"
+                  readonly
                   rows="6"
                   class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
@@ -717,7 +767,8 @@ const BibleReader = {
             <input id="inlineInsightPrayerDraftInput"
                    type="text"
                    oninput="BibleReader.setInlinePrayerDraft(this.value)"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault();BibleReader.addInlinePrayerRequest();}"
+                   onclick="BibleReader.openInlineFieldEditor('prayerDraft')"
+                   readonly
                    class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50"
                    style="font-size:${baseFontPx}px; line-height:1.45;"
                    placeholder="${L.prayerRequestsPlaceholder}"
@@ -783,6 +834,358 @@ const BibleReader = {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  },
+
+  escapeJS(value) {
+    return String(value || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'");
+  },
+
+  getInlineUiLang() {
+    return this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
+  },
+
+  getInlineUiLabels(lang = this.getInlineUiLang()) {
+    const labels = {
+      en: {
+        yourAnswer: 'What is my understanding',
+        yourAnswerPlaceholder: 'Write what you learned and understood here...',
+        iWill: 'What will I do',
+        iWillPlaceholder: 'Write your commitment to apply this today...',
+        prayerRequests: 'Prayer requests',
+        prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
+        fullscreenEditorDone: 'Done',
+        fullscreenEditorExit: 'Exit',
+        journalPreview: 'Share Preview',
+        previewGroups: 'Share to',
+        previewQuestion: 'Reflection Question',
+        previewPrayerRequests: 'Prayer Requests',
+        previewCancel: 'Back to edit',
+        previewConfirm: 'Confirm and save',
+        noPrayerRequests: 'No prayer requests added yet.'
+      },
+      tl: {
+        yourAnswer: 'Ano ang aking pagkaunawa',
+        yourAnswerPlaceholder: 'Isulat ang iyong natutunan at pagkaunawa dito...',
+        iWill: 'Ano ang aking gagawin',
+        iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
+        prayerRequests: 'Mga prayer request',
+        prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
+        fullscreenEditorDone: 'Tapos',
+        fullscreenEditorExit: 'Lumabas',
+        journalPreview: 'Preview ng ise-share',
+        previewGroups: 'Ise-share sa',
+        previewQuestion: 'Tanong sa Pagninilay',
+        previewPrayerRequests: 'Mga prayer request',
+        previewCancel: 'Balik sa edit',
+        previewConfirm: 'I-confirm at i-save',
+        noPrayerRequests: 'Wala pang nailalagay na prayer request.'
+      }
+    };
+    return labels[lang] || labels.en;
+  },
+
+  formatInlineMultilineHtml(value) {
+    return this.escapeHTML(value).replace(/\n/g, '<br>');
+  },
+
+  getInlineFieldEditorConfig(fieldKey) {
+    const lang = this.getInlineUiLang();
+    const L = this.getInlineUiLabels(lang);
+    const baseFontPx = Math.max(14, Number(this.preferences.fontSize) || 16);
+    const map = {
+      reflection: {
+        title: L.yourAnswer,
+        placeholder: L.yourAnswerPlaceholder,
+        value: this.inlineReflectionDraft.reflection || '',
+        rows: 14,
+        fontPx: baseFontPx
+      },
+      commitment: {
+        title: L.iWill,
+        placeholder: L.iWillPlaceholder,
+        value: this.inlineReflectionDraft.commitment || '',
+        rows: 14,
+        fontPx: baseFontPx
+      },
+      prayerDraft: {
+        title: L.prayerRequests,
+        placeholder: L.prayerRequestsPlaceholder,
+        value: this.inlineReflectionDraft.prayerDraft || '',
+        rows: 10,
+        fontPx: baseFontPx
+      }
+    };
+    return map[fieldKey] || null;
+  },
+
+  openInlineFieldEditor(fieldKey) {
+    const config = this.getInlineFieldEditorConfig(fieldKey);
+    if (!config) return;
+
+    this.closeInlineFieldEditor();
+    this.inlineEditorSession = { fieldKey };
+
+    const lang = this.getInlineUiLang();
+    const L = this.getInlineUiLabels(lang);
+    const overlay = document.createElement('div');
+    overlay.id = 'inlineFieldEditorOverlay';
+    overlay.className = 'fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-3';
+    overlay.innerHTML = `
+      <div class="w-full max-w-3xl h-[90vh] rounded-2xl border border-[var(--card-border)] bg-[var(--bg-color)] shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between gap-3 p-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)] rounded-t-2xl">
+          <div class="min-w-0">
+            <p class="text-[var(--mission-gold)] font-bold truncate" style="font-size:${Math.max(15, config.fontPx)}px;">${this.escapeHTML(config.title)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="BibleReader.closeInlineFieldEditor()" class="px-3 py-2 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40">
+              ${this.escapeHTML(L.fullscreenEditorExit)}
+            </button>
+            <button type="button" onclick="BibleReader.applyInlineFieldEditor()" class="px-3 py-2 rounded-lg bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold hover:opacity-90">
+              ${this.escapeHTML(L.fullscreenEditorDone)}
+            </button>
+          </div>
+        </div>
+        <div class="flex-1 p-3">
+          <textarea id="inlineFieldEditorTextarea"
+                    class="w-full h-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl p-4 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none"
+                    style="font-size:${config.fontPx}px; line-height:1.6;"
+                    placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(config.value)}</textarea>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) this.closeInlineFieldEditor();
+    });
+    document.body.appendChild(overlay);
+
+    const textarea = document.getElementById('inlineFieldEditorTextarea');
+    if (textarea) {
+      textarea.focus();
+      const end = textarea.value.length;
+      textarea.setSelectionRange(end, end);
+    }
+  },
+
+  applyInlineFieldEditor() {
+    const session = this.inlineEditorSession;
+    const textarea = document.getElementById('inlineFieldEditorTextarea');
+    if (!session || !textarea) {
+      this.closeInlineFieldEditor();
+      return;
+    }
+    const value = textarea.value || '';
+    if (session.fieldKey === 'reflection') this.inlineReflectionDraft.reflection = value;
+    if (session.fieldKey === 'commitment') this.inlineReflectionDraft.commitment = value;
+    if (session.fieldKey === 'prayerDraft') this.inlineReflectionDraft.prayerDraft = value;
+
+    this.closeInlineFieldEditor();
+    this.refreshFullscreenInsightsPanel();
+  },
+
+  closeInlineFieldEditor() {
+    const overlay = document.getElementById('inlineFieldEditorOverlay');
+    if (overlay) overlay.remove();
+    this.inlineEditorSession = null;
+  },
+
+  buildInlineSharePreviewPayload() {
+    const lang = this.getInlineUiLang();
+    const L = this.getInlineUiLabels(lang);
+    const understanding = (this.inlineReflectionDraft.reflection || '').trim();
+    const action = (this.inlineReflectionDraft.commitment || '').trim();
+    const prayerRequests = this.getInlinePrayerRequestsForSave();
+    const question = this.getPrimaryReflectionQuestion();
+    const shareWithGroup = !!this.inlineReflectionDraft.shareWithGroup;
+    const shareGroupIds = shareWithGroup ? this.getSelectedInlineShareGroupIds() : [];
+    const bookName = (typeof BibleLoader !== 'undefined')
+      ? BibleLoader.getBookName(this.currentBook, this.bibleTranslation || lang)
+      : this.currentBook;
+    const verseNumbers = (this.highlightedVerses || [])
+      .map(v => (typeof v === 'object' ? Number(v.verse) : Number(v)))
+      .filter(v => Number.isFinite(v))
+      .sort((a, b) => a - b);
+    const referenceBase = `${bookName || this.currentBook} ${this.currentChapter}`.trim();
+    const reference = verseNumbers.length ? `${referenceBase}:${verseNumbers.join(',')}` : referenceBase;
+    const verseLines = verseNumbers.map((verseNum) => {
+      const verseText = this.chapterData?.verses?.[String(verseNum)] || this.chapterData?.verses?.[verseNum] || '';
+      return verseText ? `${verseNum}. ${verseText}` : '';
+    }).filter(Boolean);
+    const groups = (this.inlineShareTargets || [])
+      .filter(group => shareGroupIds.includes(String(group.id)))
+      .map(group => ({
+        id: String(group.id),
+        name: group.name || 'Mission Group',
+        type: group.type || 'group'
+      }));
+
+    return {
+      lang,
+      labels: L,
+      understanding,
+      action,
+      prayerRequests,
+      question,
+      shareWithGroup,
+      shareGroupIds,
+      selectedGroups: groups,
+      scriptureReference: reference,
+      scriptureText: verseLines.join('\n')
+    };
+  },
+
+  openInlineSharePreview(payload) {
+    this.closeInlineSharePreview();
+    this.pendingInlineSavePayload = payload;
+    const preview = this.buildInlineSharePreviewPayload();
+    const lang = preview.lang;
+    const L = preview.labels;
+    const selectedGroups = preview.selectedGroups.length
+      ? preview.selectedGroups.map(group => `${group.name} (${group.id})`)
+      : preview.shareGroupIds;
+    const prayerItemsHtml = preview.prayerRequests.length
+      ? preview.prayerRequests.map(item => `<li class="mb-1">${this.formatInlineMultilineHtml(item.text)}</li>`).join('')
+      : `<p class="text-[var(--text-muted)] text-sm">${this.escapeHTML(L.noPrayerRequests)}</p>`;
+
+    const sectionTitles = lang === 'tl'
+      ? {
+          scripture: 'Ano ang sinabi ng Diyos',
+          understanding: 'Ano ang aking pagkaunawa',
+          action: 'Ano ang aking gagawin'
+        }
+      : {
+          scripture: 'What did God say',
+          understanding: 'What is my understanding',
+          action: 'What will I do'
+        };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'inlineSharePreviewOverlay';
+    overlay.className = 'fixed inset-0 z-[85] bg-black/65 flex items-center justify-center p-3';
+    overlay.innerHTML = `
+      <div class="w-full max-w-3xl h-[92vh] rounded-2xl border border-[var(--card-border)] bg-[var(--bg-color)] shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between gap-3 p-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)] rounded-t-2xl">
+          <h3 class="text-[var(--mission-gold)] font-bold" style="font-size:${Math.max(15, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(L.journalPreview)}</h3>
+          <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--mission-gold)]">✕</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
+            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewGroups)}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(selectedGroups.join('\n') || '-')}</p>
+          </div>
+          <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.scripture)}</p>
+            <p class="text-xs text-[var(--text-muted)] mb-1">${this.escapeHTML(preview.scriptureReference || '')}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.scriptureText || '')}</p>
+          </div>
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
+            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.understanding)}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.understanding)}</p>
+          </div>
+          ${preview.question ? `
+            <div class="rounded-xl border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-3">
+              <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewQuestion)}</p>
+              <p class="text-sm text-[var(--text-color)] italic leading-relaxed">"${this.escapeHTML(preview.question)}"</p>
+            </div>
+          ` : ''}
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
+            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.action)}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.action)}</p>
+          </div>
+          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
+            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewPrayerRequests)}</p>
+            ${preview.prayerRequests.length ? `<ul class="text-sm text-[var(--text-color)] pl-5 list-disc leading-relaxed">${prayerItemsHtml}</ul>` : prayerItemsHtml}
+          </div>
+        </div>
+        <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)] flex flex-col sm:flex-row gap-2 rounded-b-2xl">
+          <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="flex-1 py-3 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] font-medium hover:border-[var(--mission-gold)]/40">
+            ${this.escapeHTML(L.previewCancel)}
+          </button>
+          <button type="button" id="inlineSharePreviewConfirmBtn" onclick="BibleReader.confirmInlineSharePreview()" class="flex-1 py-3 rounded-lg bg-[var(--mission-red-bright)] text-white font-bold hover:bg-[#8B0000]">
+            ${this.escapeHTML(L.previewConfirm)}
+          </button>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) this.closeInlineSharePreview();
+    });
+    document.body.appendChild(overlay);
+  },
+
+  closeInlineSharePreview() {
+    const overlay = document.getElementById('inlineSharePreviewOverlay');
+    if (overlay) overlay.remove();
+    this.pendingInlineSavePayload = null;
+  },
+
+  async confirmInlineSharePreview() {
+    const payload = this.pendingInlineSavePayload;
+    const confirmBtn = document.getElementById('inlineSharePreviewConfirmBtn');
+    const originalLabel = confirmBtn?.textContent || '';
+    if (!payload) return;
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Saving...';
+    }
+    try {
+      await this.persistInlineReflectionPayload(payload);
+      const overlay = document.getElementById('inlineSharePreviewOverlay');
+      if (overlay) overlay.remove();
+      this.pendingInlineSavePayload = null;
+    } catch (error) {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalLabel;
+      }
+    }
+  },
+
+  async persistInlineReflectionPayload(payload) {
+    const saveBtn = document.getElementById('inlineInsightSaveBtn');
+    const originalLabel = saveBtn?.innerHTML || '💾 Save Reflection';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = 'Saving...';
+    }
+
+    try {
+      if (typeof window.saveReflectionFromInsights !== 'function') {
+        alert('Save function is unavailable. Please refresh and try again.');
+        return;
+      }
+
+      const result = await window.saveReflectionFromInsights({
+        understanding: payload.understanding,
+        action: payload.action,
+        prayerRequests: payload.prayerRequests,
+        question: payload.question,
+        shareWithGroup: payload.shareWithGroup,
+        shareGroupIds: payload.shareGroupIds
+      });
+
+      if (result?.missingGroup) {
+        alert('No mission group found. Your reflection was saved to Journal but not shared to group.');
+      }
+
+      if (result?.saved) {
+        this.inlineReflectionDraft.reflection = '';
+        this.inlineReflectionDraft.commitment = '';
+        this.inlineReflectionDraft.prayerRequests = [];
+        this.inlineReflectionDraft.prayerDraft = '';
+        this.refreshFullscreenInsightsPanel();
+      }
+    } catch (error) {
+      console.error('[BibleReader] Could not save inline reflection:', error);
+      alert('Error saving reflection. Please try again.');
+      throw error;
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalLabel;
+      }
+    }
   },
 
   setInlineReflection(value) {
@@ -1004,49 +1407,21 @@ const BibleReader = {
       alert(isTagalog ? 'Pakipili muna ng kahit isang group na pagse-share-an.' : 'Please choose at least one group to share with.');
       return;
     }
+    const payload = {
+      understanding,
+      action,
+      prayerRequests,
+      question,
+      shareWithGroup,
+      shareGroupIds
+    };
 
-    const saveBtn = document.getElementById('inlineInsightSaveBtn');
-    const originalLabel = saveBtn?.innerHTML || '💾 Save Reflection';
-    if (saveBtn) {
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = 'Saving...';
+    if (shareWithGroup) {
+      this.openInlineSharePreview(payload);
+      return;
     }
 
-    try {
-      if (typeof window.saveReflectionFromInsights !== 'function') {
-        alert('Save function is unavailable. Please refresh and try again.');
-        return;
-      }
-
-      const result = await window.saveReflectionFromInsights({
-        understanding,
-        action,
-        prayerRequests,
-        question,
-        shareWithGroup,
-        shareGroupIds
-      });
-
-      if (result?.missingGroup) {
-        alert('No mission group found. Your reflection was saved to Journal but not shared to group.');
-      }
-
-      if (result?.saved) {
-        this.inlineReflectionDraft.reflection = '';
-        this.inlineReflectionDraft.commitment = '';
-        this.inlineReflectionDraft.prayerRequests = [];
-        this.inlineReflectionDraft.prayerDraft = '';
-        this.refreshFullscreenInsightsPanel();
-      }
-    } catch (error) {
-      console.error('[BibleReader] Could not save inline reflection:', error);
-      alert('Error saving reflection. Please try again.');
-    } finally {
-      if (saveBtn) {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalLabel;
-      }
-    }
+    await this.persistInlineReflectionPayload(payload);
   },
 
   /**
@@ -1054,6 +1429,8 @@ const BibleReader = {
    */
   exitFullscreen() {
     this.preferences.isFullscreen = false;
+    this.closeInlineFieldEditor();
+    this.closeInlineSharePreview();
     
     const overlay = document.getElementById('bibleFullscreenOverlay');
     if (overlay) {
@@ -1766,6 +2143,8 @@ const BibleReader = {
     
     this.quickInsightsData = null;
     this.tyndaleData = null;
+    this.closeInlineFieldEditor();
+    this.closeInlineSharePreview();
     this.inlineReflectionDraft.reflection = '';
     this.inlineReflectionDraft.commitment = '';
     this.inlineReflectionDraft.prayerRequests = [];
