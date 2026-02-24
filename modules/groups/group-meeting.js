@@ -481,12 +481,22 @@ const GroupMeeting = {
    * Initialize local presentation state (hybrid-ready shape for future host sync).
    */
   initPresentationState() {
+    let savedOpacity = 72;
+    try {
+      const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
+      }
+    } catch (_) {}
+
     this.presentationState = {
       mode: 'local',        // future: 'host_synced'
       focusMode: false,     // future moderator setting
       panelOpen: false,
       selectedDeckId: 'idol-of-comfort',
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
+      overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       currentSlideIndex: 0,
       loading: false,
       error: null,
@@ -565,6 +575,20 @@ const GroupMeeting = {
             <button onclick="window.GroupMeeting.toggleSlidesPanel(false)"
                     class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm">✕</button>
           </div>
+        </div>
+
+        <div class="px-4 py-2 border-b border-white/10 bg-black/20 flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
+          <input id="meeting-slides-opacity"
+                 type="range"
+                 min="20"
+                 max="95"
+                 step="1"
+                 value="72"
+                 oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
+                 class="flex-1 accent-amber-400">
+          <span id="meeting-slides-opacity-value"
+                class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
         </div>
 
         <div id="meeting-slides-panel-body" class="px-4 py-4 min-h-[220px] max-h-[50vh] overflow-y-auto">
@@ -732,6 +756,16 @@ const GroupMeeting = {
     this.renderSlidesPanel();
   },
 
+  setSlidesOpacity(value) {
+    if (!this.presentationState) return;
+    const next = Math.min(95, Math.max(20, Math.round(Number(value) || 72)));
+    this.presentationState.overlayOpacity = next;
+    try {
+      window.localStorage?.setItem('goMission_meetingSlidesOpacity', String(next));
+    } catch (_) {}
+    this.renderSlidesPanel();
+  },
+
   nextSlide() {
     const s = this.presentationState;
     if (!s?.deck?.slides?.length) return;
@@ -771,6 +805,18 @@ const GroupMeeting = {
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const langSelect = document.getElementById('meeting-slides-lang');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
+    const opacitySlider = document.getElementById('meeting-slides-opacity');
+    const opacityValueEl = document.getElementById('meeting-slides-opacity-value');
+
+    const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
+    const panelAlpha = Math.max(0.16, opacityPct / 100);
+    const chromeAlpha = Math.max(0.12, panelAlpha * 0.55);
+    const bodyAlpha = Math.max(0.10, panelAlpha * 0.32);
+    const cardAlpha = Math.max(0.12, panelAlpha * 0.78);
+    const borderAlpha = Math.max(0.08, panelAlpha * 0.28);
+
+    if (opacitySlider) opacitySlider.value = String(opacityPct);
+    if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
 
     if (langSelect) langSelect.value = state.selectedLang || 'tl';
     if (toggleBtn) {
@@ -786,6 +832,10 @@ const GroupMeeting = {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
       counterEl.style.fontWeight = '600';
     }
+    panel.style.background = `rgba(10,10,12,${panelAlpha.toFixed(2)})`;
+    panel.style.backdropFilter = `blur(${panelAlpha > 0.45 ? 18 : 12}px)`;
+    panel.style.webkitBackdropFilter = `blur(${panelAlpha > 0.45 ? 18 : 12}px)`;
+    panel.style.borderColor = `rgba(255,255,255,${Math.min(0.2, borderAlpha).toFixed(2)})`;
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]?.title || 'Meeting Slides';
@@ -837,9 +887,10 @@ const GroupMeeting = {
       ? `<div style="color:rgba(255,255,255,0.65); font-size:12px; line-height:1.35; margin-bottom:12px;">${this.escapeHtml(slide.subtitle)}</div>`
       : '';
     const bodyHtml = `
-      <div style="border-radius:16px; border:1px solid rgba(255,255,255,0.08); background:
-        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
-        radial-gradient(circle at top right, rgba(244,173,64,0.08), transparent 55%);
+      <div style="border-radius:16px; border:1px solid rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)}); background:
+        linear-gradient(180deg, rgba(255,255,255,${(cardAlpha * 0.07).toFixed(3)}), rgba(255,255,255,${(cardAlpha * 0.03).toFixed(3)})),
+        radial-gradient(circle at top right, rgba(244,173,64,${(cardAlpha * 0.14).toFixed(3)}), transparent 58%),
+        rgba(8,8,10,${cardAlpha.toFixed(2)});
         padding:16px;">
         ${kickerHtml}
         ${titleHtml}
@@ -857,9 +908,16 @@ const GroupMeeting = {
     if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
     if (body) {
-      body.style.background = 'linear-gradient(180deg, rgba(17,17,20,0.65), rgba(9,9,10,0.35))';
+      body.style.background = `linear-gradient(180deg, rgba(17,17,20,${Math.max(0.06, bodyAlpha).toFixed(2)}), rgba(9,9,10,${Math.max(0.03, bodyAlpha * 0.55).toFixed(2)}))`;
       body.style.borderRadius = '14px';
     }
+
+    const header = panel.querySelector(':scope > div:nth-child(1)');
+    const opacityRow = panel.querySelector(':scope > div:nth-child(2)');
+    const footer = panel.querySelector(':scope > div:last-child');
+    if (header) header.style.background = `rgba(0,0,0,${chromeAlpha.toFixed(2)})`;
+    if (opacityRow) opacityRow.style.background = `rgba(0,0,0,${Math.max(0.06, chromeAlpha * 0.85).toFixed(2)})`;
+    if (footer) footer.style.background = `rgba(0,0,0,${Math.max(0.06, chromeAlpha * 0.8).toFixed(2)})`;
   },
   
   /**

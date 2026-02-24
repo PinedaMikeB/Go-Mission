@@ -13,6 +13,7 @@
   - Browser-side DOCX parser uses `JSZip` to read `word/document.xml`
   - Deck is published to `goMission_config/meetingSlidesDeck_<slot>_<lang>`
   - Meeting slides loader now checks Firestore published deck first, then falls back to static JSON deck
+  - Meeting slides overlay now supports adjustable transparency (opacity slider) so participants/video remain visible behind slides
   - Admin page wiring added for:
     - `Parse + Publish to Meeting Slides`
     - `Reload Published Deck`
