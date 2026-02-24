@@ -14,6 +14,7 @@
   - Deck is published to `goMission_config/meetingSlidesDeck_<slot>_<lang>`
   - Meeting slides loader now checks Firestore published deck first, then falls back to static JSON deck
   - Meeting slides overlay now supports adjustable transparency (opacity slider) so participants/video remain visible behind slides
+  - Meeting slides overlay updated to teleprompter-style text rendering (removed inner slide card, text directly over video with stronger shadow/stroke)
   - Admin page wiring added for:
     - `Parse + Publish to Meeting Slides`
     - `Reload Published Deck`
@@ -25,6 +26,7 @@
 - Add more deck slots in admin (e.g. weekly-equipping, mission-group-devotion) instead of single active slot
 - Add optional EN/TL paired publishing workflow (publish both variants for same slot)
 - Add lightweight validation warnings (empty deck, too few slides, oversized paragraphs)
+- Add meeting slides display mode toggle (`Panel` vs `Teleprompter`) if leaders want to switch between readability-first and camera-visible layouts
 - Phase 2: host-synced slides mode for mobile-led meetings (no Jitsi screen share required)
 
 ## Quick Context

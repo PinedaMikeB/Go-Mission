@@ -559,22 +559,13 @@ const GroupMeeting = {
 
       <!-- Local Slides Panel (hybrid-ready: future host sync reads/writes same state shape) -->
       <div id="meeting-slides-panel"
-           class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[380px] md:top-[74px] md:right-4 rounded-2xl border border-white/15 bg-[#0f0f10]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+           class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl overflow-hidden">
         <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
           <div>
             <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
             <p id="meeting-slides-deck-title" class="text-white font-bold text-sm">Loading…</p>
           </div>
-          <div class="flex items-center gap-2">
-            <select id="meeting-slides-lang"
-                    onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
-                    class="bg-white/5 border border-white/10 text-white text-xs rounded-lg px-2 py-1">
-              <option value="tl">TL</option>
-              <option value="en">EN</option>
-            </select>
-            <button onclick="window.GroupMeeting.toggleSlidesPanel(false)"
-                    class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm">✕</button>
-          </div>
+          <div id="meeting-slide-counter" class="text-xs text-white/70">0 / 0</div>
         </div>
 
         <div class="px-4 py-2 border-b border-white/10 bg-black/20 flex items-center gap-3">
@@ -591,7 +582,7 @@ const GroupMeeting = {
                 class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
         </div>
 
-        <div id="meeting-slides-panel-body" class="px-4 py-4 min-h-[220px] max-h-[50vh] overflow-y-auto">
+        <div id="meeting-slides-panel-body" class="px-4 py-4 min-h-[240px] max-h-[55vh] overflow-y-auto">
           <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
         </div>
 
@@ -601,7 +592,7 @@ const GroupMeeting = {
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
             ← Prev
           </button>
-          <div id="meeting-slide-counter" class="text-xs text-white/70">0 / 0</div>
+          <div class="text-[11px] text-white/65 uppercase tracking-[0.14em]">Slides</div>
           <button onclick="window.GroupMeeting.nextSlide()"
                   id="meeting-slide-next-btn"
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
@@ -803,22 +794,19 @@ const GroupMeeting = {
     const counterEl = document.getElementById('meeting-slide-counter');
     const prevBtn = document.getElementById('meeting-slide-prev-btn');
     const nextBtn = document.getElementById('meeting-slide-next-btn');
-    const langSelect = document.getElementById('meeting-slides-lang');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
     const opacitySlider = document.getElementById('meeting-slides-opacity');
     const opacityValueEl = document.getElementById('meeting-slides-opacity-value');
 
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
-    const panelAlpha = Math.max(0.16, opacityPct / 100);
-    const chromeAlpha = Math.max(0.12, panelAlpha * 0.55);
-    const bodyAlpha = Math.max(0.10, panelAlpha * 0.32);
-    const cardAlpha = Math.max(0.12, panelAlpha * 0.78);
-    const borderAlpha = Math.max(0.08, panelAlpha * 0.28);
+    const panelAlpha = Math.max(0.08, opacityPct / 100);
+    const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
+    const bodyAlpha = Math.max(0.02, panelAlpha * 0.12);
+    const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
     if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
 
-    if (langSelect) langSelect.value = state.selectedLang || 'tl';
     if (toggleBtn) {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
       toggleBtn.classList.toggle('text-amber-200', !!state.panelOpen);
@@ -832,9 +820,9 @@ const GroupMeeting = {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
       counterEl.style.fontWeight = '600';
     }
-    panel.style.background = `rgba(10,10,12,${panelAlpha.toFixed(2)})`;
-    panel.style.backdropFilter = `blur(${panelAlpha > 0.45 ? 18 : 12}px)`;
-    panel.style.webkitBackdropFilter = `blur(${panelAlpha > 0.45 ? 18 : 12}px)`;
+    panel.style.background = `linear-gradient(180deg, rgba(6,6,8,${(panelAlpha * 0.36).toFixed(2)}), rgba(6,6,8,${(panelAlpha * 0.22).toFixed(2)}))`;
+    panel.style.backdropFilter = `blur(${panelAlpha > 0.45 ? 14 : 8}px)`;
+    panel.style.webkitBackdropFilter = `blur(${panelAlpha > 0.45 ? 14 : 8}px)`;
     panel.style.borderColor = `rgba(255,255,255,${Math.min(0.2, borderAlpha).toFixed(2)})`;
 
     if (titleEl) {
@@ -874,29 +862,25 @@ const GroupMeeting = {
       const isBullet = /^\s*[•*-]\s+/.test(p);
       const cleaned = p.replace(/^\s*[•*-]\s+/, '');
       return isBullet
-        ? `<li style="color:rgba(255,255,255,0.90); font-size:15px; line-height:1.5;">${this.escapeHtml(cleaned)}</li>`
-        : `<p style="color:rgba(255,255,255,0.90); font-size:15px; line-height:1.55; margin:0 0 10px 0;">${this.escapeHtml(p)}</p>`;
+        ? `<li style="color:rgba(255,255,255,0.97); font-size:18px; line-height:1.42; text-shadow:0 2px 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.18px rgba(0,0,0,0.55);">${this.escapeHtml(cleaned)}</li>`
+        : `<p style="color:rgba(255,255,255,0.98); font-size:18px; line-height:1.46; margin:0 0 12px 0; text-shadow:0 2px 9px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.18px rgba(0,0,0,0.55);">${this.escapeHtml(p)}</p>`;
     });
 
     const hasBullets = (slide.paragraphs || []).some((p) => /^\s*[•*-]\s+/.test(p));
     const kickerHtml = slide.kicker
-      ? `<div style="font-size:11px; line-height:1.35; letter-spacing:0.16em; text-transform:uppercase; color:#f7d34a; font-weight:700; margin-bottom:10px;">${this.escapeHtml(slide.kicker)}</div>`
+      ? `<div style="font-size:12px; line-height:1.35; letter-spacing:0.18em; text-transform:uppercase; color:#f7d34a; font-weight:800; margin-bottom:10px; text-shadow:0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.2px rgba(0,0,0,0.6);">${this.escapeHtml(slide.kicker)}</div>`
       : '';
-    const titleHtml = `<div style="color:#f6f4ef; font-size:clamp(18px,4.2vw,29px); line-height:1.08; font-weight:800; letter-spacing:0.01em; margin-bottom:${slide.subtitle ? '8px' : '14px'}; text-wrap:balance;">${this.escapeHtml(slide.title || 'Slide')}</div>`;
+    const titleHtml = `<div style="color:#fbf8ef; font-size:clamp(26px,6vw,42px); line-height:0.98; font-weight:900; letter-spacing:0.01em; margin-bottom:${slide.subtitle ? '10px' : '16px'}; text-wrap:balance; text-shadow:0 3px 14px rgba(0,0,0,0.98), 0 1px 2px rgba(0,0,0,0.95); -webkit-text-stroke:0.45px rgba(0,0,0,0.72);">${this.escapeHtml(slide.title || 'Slide')}</div>`;
     const subtitleHtml = slide.subtitle
-      ? `<div style="color:rgba(255,255,255,0.65); font-size:12px; line-height:1.35; margin-bottom:12px;">${this.escapeHtml(slide.subtitle)}</div>`
+      ? `<div style="color:rgba(255,255,255,0.88); font-size:14px; line-height:1.35; margin-bottom:14px; text-shadow:0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.2px rgba(0,0,0,0.6);">${this.escapeHtml(slide.subtitle)}</div>`
       : '';
     const bodyHtml = `
-      <div style="border-radius:16px; border:1px solid rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)}); background:
-        linear-gradient(180deg, rgba(255,255,255,${(cardAlpha * 0.07).toFixed(3)}), rgba(255,255,255,${(cardAlpha * 0.03).toFixed(3)})),
-        radial-gradient(circle at top right, rgba(244,173,64,${(cardAlpha * 0.14).toFixed(3)}), transparent 58%),
-        rgba(8,8,10,${cardAlpha.toFixed(2)});
-        padding:16px;">
+      <div style="padding:8px 4px 10px 4px;">
         ${kickerHtml}
         ${titleHtml}
         ${subtitleHtml}
         ${hasBullets
-          ? `<ul style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px;">${paragraphsHtml.join('')}</ul>`
+          ? `<ul style="margin:0; padding-left:22px; display:flex; flex-direction:column; gap:10px;">${paragraphsHtml.join('')}</ul>`
           : `<div>${paragraphsHtml.join('')}</div>`}
       </div>
     `;
@@ -908,8 +892,8 @@ const GroupMeeting = {
     if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
     if (body) {
-      body.style.background = `linear-gradient(180deg, rgba(17,17,20,${Math.max(0.06, bodyAlpha).toFixed(2)}), rgba(9,9,10,${Math.max(0.03, bodyAlpha * 0.55).toFixed(2)}))`;
-      body.style.borderRadius = '14px';
+      body.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.03, bodyAlpha * 0.35).toFixed(2)}), rgba(0,0,0,${Math.max(0.01, bodyAlpha * 0.18).toFixed(2)}))`;
+      body.style.borderRadius = '0';
     }
 
     const header = panel.querySelector(':scope > div:nth-child(1)');
