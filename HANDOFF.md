@@ -15,6 +15,7 @@
   - Meeting slides loader now checks Firestore published deck first, then falls back to static JSON deck
   - Meeting slides overlay now supports adjustable transparency (opacity slider) so participants/video remain visible behind slides
   - Meeting slides overlay updated to teleprompter-style text rendering (removed inner slide card, text directly over video with stronger shadow/stroke)
+  - Meeting slides chrome refined into floating mini-bars (top: title+opacity+counter, bottom: prev/next) with no large boxed shell around the text area
   - Admin page wiring added for:
     - `Parse + Publish to Meeting Slides`
     - `Reload Published Deck`

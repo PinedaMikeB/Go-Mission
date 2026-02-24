@@ -559,34 +559,35 @@ const GroupMeeting = {
 
       <!-- Local Slides Panel (hybrid-ready: future host sync reads/writes same state shape) -->
       <div id="meeting-slides-panel"
-           class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4 rounded-2xl border border-white/15 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
-          <div>
-            <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
-            <p id="meeting-slides-deck-title" class="text-white font-bold text-sm">Loading…</p>
+           class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4">
+        <div id="meeting-slides-topbar" class="rounded-2xl border border-white/10 shadow-xl overflow-hidden">
+          <div class="px-4 py-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
+              <p id="meeting-slides-deck-title" class="text-white font-bold text-sm truncate">Loading…</p>
+            </div>
+            <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
           </div>
-          <div id="meeting-slide-counter" class="text-xs text-white/70">0 / 0</div>
+          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
+            <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
+            <input id="meeting-slides-opacity"
+                   type="range"
+                   min="20"
+                   max="95"
+                   step="1"
+                   value="72"
+                   oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
+                   class="flex-1 accent-amber-400">
+            <span id="meeting-slides-opacity-value"
+                  class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
+          </div>
         </div>
 
-        <div class="px-4 py-2 border-b border-white/10 bg-black/20 flex items-center gap-3">
-          <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
-          <input id="meeting-slides-opacity"
-                 type="range"
-                 min="20"
-                 max="95"
-                 step="1"
-                 value="72"
-                 oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
-                 class="flex-1 accent-amber-400">
-          <span id="meeting-slides-opacity-value"
-                class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
-        </div>
-
-        <div id="meeting-slides-panel-body" class="px-4 py-4 min-h-[240px] max-h-[55vh] overflow-y-auto">
+        <div id="meeting-slides-panel-body" class="mt-2 px-4 py-4 min-h-[240px] max-h-[55vh] overflow-y-auto">
           <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
         </div>
 
-        <div class="px-4 py-3 border-t border-white/10 bg-black/20 flex items-center justify-between gap-2">
+        <div id="meeting-slides-bottombar" class="mt-2 rounded-2xl border border-white/10 shadow-xl px-4 py-3 flex items-center justify-between gap-2">
           <button onclick="window.GroupMeeting.prevSlide()"
                   id="meeting-slide-prev-btn"
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
@@ -801,7 +802,7 @@ const GroupMeeting = {
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
-    const bodyAlpha = Math.max(0.02, panelAlpha * 0.12);
+    const bodyAlpha = Math.max(0.01, panelAlpha * 0.08);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
@@ -820,10 +821,10 @@ const GroupMeeting = {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
       counterEl.style.fontWeight = '600';
     }
-    panel.style.background = `linear-gradient(180deg, rgba(6,6,8,${(panelAlpha * 0.36).toFixed(2)}), rgba(6,6,8,${(panelAlpha * 0.22).toFixed(2)}))`;
-    panel.style.backdropFilter = `blur(${panelAlpha > 0.45 ? 14 : 8}px)`;
-    panel.style.webkitBackdropFilter = `blur(${panelAlpha > 0.45 ? 14 : 8}px)`;
-    panel.style.borderColor = `rgba(255,255,255,${Math.min(0.2, borderAlpha).toFixed(2)})`;
+    panel.style.background = 'transparent';
+    panel.style.border = 'none';
+    panel.style.backdropFilter = 'none';
+    panel.style.webkitBackdropFilter = 'none';
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]?.title || 'Meeting Slides';
@@ -896,12 +897,20 @@ const GroupMeeting = {
       body.style.borderRadius = '0';
     }
 
-    const header = panel.querySelector(':scope > div:nth-child(1)');
-    const opacityRow = panel.querySelector(':scope > div:nth-child(2)');
-    const footer = panel.querySelector(':scope > div:last-child');
-    if (header) header.style.background = `rgba(0,0,0,${chromeAlpha.toFixed(2)})`;
-    if (opacityRow) opacityRow.style.background = `rgba(0,0,0,${Math.max(0.06, chromeAlpha * 0.85).toFixed(2)})`;
-    if (footer) footer.style.background = `rgba(0,0,0,${Math.max(0.06, chromeAlpha * 0.8).toFixed(2)})`;
+    const topbar = document.getElementById('meeting-slides-topbar');
+    const bottombar = document.getElementById('meeting-slides-bottombar');
+    if (topbar) {
+      topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
+      topbar.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)})`;
+      topbar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      topbar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+    }
+    if (bottombar) {
+      bottombar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.07, chromeAlpha * 0.9).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.75).toFixed(2)}))`;
+      bottombar.style.borderColor = `rgba(255,255,255,${Math.min(0.14, borderAlpha).toFixed(2)})`;
+      bottombar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      bottombar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+    }
   },
   
   /**
