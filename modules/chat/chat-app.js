@@ -28,6 +28,9 @@ const ChatApp = {
   dmNotificationUnsubscribe: null,
   dmLastSeenAt: null,
   activeDmHeartbeatTimer: null,
+  dmIsSending: false,
+  dmEmojiPickerOpen: false,
+  dmEmojiOptions: ['🙏','😊','❤️','👍','🔥','🙌','🥹','😢','😮','😂','🎉','💯','✨','🤝','👏','🤍','💛','💙','📖','✝️','🕊️','🙂','😇','💪'],
 
   /**
    * Initialize module
@@ -585,6 +588,10 @@ const ChatApp = {
     if (photo) photo.src = this.getMemberPhoto(peer);
     if (name) name.textContent = this.getMemberDisplayName(peer) || 'Direct Message';
     if (input) input.value = '';
+    this.closeDmEmojiPicker();
+    this.dmIsSending = false;
+    this.setDmComposerSendingState(false);
+    this.renderDmEmojiPicker();
 
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.remove('hidden');
@@ -606,6 +613,9 @@ const ChatApp = {
     this.activeDmThreadId = null;
     this.activeDmPeerId = null;
     this.dmMessages = [];
+    this.closeDmEmojiPicker();
+    this.dmIsSending = false;
+    this.setDmComposerSendingState(false);
     this.stopDmPolling();
     this.stopActiveDmHeartbeat();
     if (previousThreadId) {
@@ -706,11 +716,15 @@ const ChatApp = {
     const text = (input.value || '').trim();
     if (!text) return;
     if (!this.activeDmThreadId || !this.activeDmPeerId) return;
+    if (this.dmIsSending) return;
 
     const uid = window.currentUser?.uid;
     if (!uid || !window.db) return;
 
     try {
+      this.dmIsSending = true;
+      this.setDmComposerSendingState(true);
+      this.closeDmEmojiPicker();
       const senderName = window.currentUser.displayName || window.currentUser.email || 'User';
       const senderPhoto = window.currentUser.photoURL || '';
       const participants = [uid, this.activeDmPeerId].sort();
@@ -747,6 +761,9 @@ const ChatApp = {
     } catch (error) {
       console.error('[ChatApp] Failed sending direct message:', error);
       alert('Could not send message. Please try again.');
+    } finally {
+      this.dmIsSending = false;
+      this.setDmComposerSendingState(false);
     }
   },
 
@@ -757,6 +774,97 @@ const ChatApp = {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.sendDirectMessage();
+    }
+  },
+
+  /**
+   * Toggle the direct-message emoji picker.
+   */
+  toggleDmEmojiPicker() {
+    this.dmEmojiPickerOpen = !this.dmEmojiPickerOpen;
+    if (this.dmEmojiPickerOpen) {
+      this.renderDmEmojiPicker();
+    }
+    const picker = document.getElementById('dmEmojiPicker');
+    const toggleBtn = document.getElementById('dmEmojiToggleBtn');
+    if (picker) picker.classList.toggle('hidden', !this.dmEmojiPickerOpen);
+    if (toggleBtn) toggleBtn.classList.toggle('bg-amber-500/20', this.dmEmojiPickerOpen);
+  },
+
+  /**
+   * Close the DM emoji picker.
+   */
+  closeDmEmojiPicker() {
+    this.dmEmojiPickerOpen = false;
+    const picker = document.getElementById('dmEmojiPicker');
+    const toggleBtn = document.getElementById('dmEmojiToggleBtn');
+    if (picker) picker.classList.add('hidden');
+    if (toggleBtn) toggleBtn.classList.remove('bg-amber-500/20');
+  },
+
+  /**
+   * Render lightweight emoji choices for DM composer.
+   */
+  renderDmEmojiPicker() {
+    const grid = document.getElementById('dmEmojiGrid');
+    if (!grid) return;
+    const emojis = Array.isArray(this.dmEmojiOptions) ? this.dmEmojiOptions : [];
+    grid.innerHTML = emojis.map((emoji) => `
+      <button type="button"
+              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}')"
+              class="h-9 w-9 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center justify-center text-lg"
+              title="${this.escapeHtml(emoji)}">
+        <span aria-hidden="true">${emoji}</span>
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Insert selected emoji into DM input at the cursor position.
+   */
+  insertDmEmoji(emoji) {
+    const input = document.getElementById('dmChatInput');
+    if (!input || !emoji) return;
+
+    const value = input.value || '';
+    const start = Number.isFinite(input.selectionStart) ? input.selectionStart : value.length;
+    const end = Number.isFinite(input.selectionEnd) ? input.selectionEnd : value.length;
+    input.value = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+
+    const nextPos = start + String(emoji).length;
+    if (typeof input.setSelectionRange === 'function') {
+      input.setSelectionRange(nextPos, nextPos);
+    }
+    input.focus();
+  },
+
+  /**
+   * Disable DM composer controls while a message is being sent.
+   */
+  setDmComposerSendingState(isSending) {
+    const input = document.getElementById('dmChatInput');
+    const sendBtn = document.getElementById('dmChatSendBtn');
+    const emojiBtn = document.getElementById('dmEmojiToggleBtn');
+
+    [input, sendBtn, emojiBtn].filter(Boolean).forEach((el) => {
+      if (isSending) {
+        el.setAttribute('disabled', 'disabled');
+        el.classList.add('opacity-60', 'cursor-not-allowed');
+      } else {
+        el.removeAttribute('disabled');
+        el.classList.remove('opacity-60', 'cursor-not-allowed');
+      }
+    });
+
+    if (sendBtn) {
+      sendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      sendBtn.title = isSending ? 'Sending...' : 'Send message';
+    }
+    const iconWrap = document.getElementById('dmChatSendIconWrap');
+    if (iconWrap) {
+      iconWrap.innerHTML = isSending
+        ? '<span class="text-xs font-bold">...</span>'
+        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
     }
   },
 
