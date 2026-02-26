@@ -88,6 +88,7 @@ const GroupChat = {
   hasMoreHistory: true,
   isLoadingHistory: false,
   historyScrollHandler: null,
+  orderedMessageQuerySupported: null,
   
   /**
    * Initialize chat module
@@ -158,6 +159,8 @@ const GroupChat = {
       modal.classList.remove('hidden');
     }
     this.resetMessagePaginationState();
+    this.messages = [];
+    this.renderMessages();
     this.bindHistoryScroll();
 
     // Keep mention directory fresh, but don't block chat open on this.
@@ -249,6 +252,7 @@ const GroupChat = {
     this.clearActiveChat();
     this.unbindHistoryScroll();
     this.resetMessagePaginationState();
+    this.messages = [];
     
     // Unsubscribe from updates
     if (this.unsubscribe) {
@@ -343,6 +347,51 @@ const GroupChat = {
   },
 
   /**
+   * Return true when Firestore complains about a missing composite index.
+   */
+  isMissingIndexError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('requires an index');
+  },
+
+  /**
+   * Keep only messages that belong to the active group.
+   * This is a privacy guard against any stale/mixed UI state.
+   */
+  filterMessagesForGroup(messages, groupId = this.currentGroupId || Groups?.currentGroup?.id) {
+    if (!Array.isArray(messages)) return [];
+    const targetGroupId = String(groupId || '').trim();
+    if (!targetGroupId) return [];
+    return messages.filter((message) => String(message?.groupId || '').trim() === targetGroupId);
+  },
+
+  /**
+   * Legacy no-index query fallback (group filter only, client-side sort).
+   */
+  async fetchMessagesFallbackNoIndex(groupId, fetchLimit = 60) {
+    const q = window.query(
+      window.collection(window.db, 'goMission_chats'),
+      window.where('groupId', '==', groupId),
+      window.limit(fetchLimit)
+    );
+    const snapshot = await window.getDocs(q);
+    let messages = Array.from(snapshot.docs || []).map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    messages = this.filterMessagesForGroup(messages, groupId);
+    messages = this.sortMessagesAsc(messages);
+    if (messages.length > this.messagePageSize) {
+      messages = messages.slice(-this.messagePageSize);
+    }
+    return {
+      snapshot,
+      docs: Array.from(snapshot.docs || []),
+      messages,
+      oldestDoc: null,
+      hasMoreHistory: false,
+      usedFallback: true
+    };
+  },
+
+  /**
    * Attach scroll listener that loads older history only when user scrolls up.
    */
   bindHistoryScroll() {
@@ -416,9 +465,11 @@ const GroupChat = {
    */
   mergeMessages(batch) {
     if (!Array.isArray(batch) || batch.length === 0) return false;
+    const safeBatch = this.filterMessagesForGroup(batch);
+    if (safeBatch.length === 0) return false;
     const byId = new Map(this.messages.map((message) => [message.id, message]));
     let changed = false;
-    batch.forEach((message) => {
+    safeBatch.forEach((message) => {
       if (!message?.id) return;
       const prev = byId.get(message.id);
       if (!prev) {
@@ -442,17 +493,29 @@ const GroupChat = {
    * Read latest batch (descending in Firestore, reversed for UI).
    */
   async fetchLatestMessagesPage(groupId) {
-    const q = this.buildOrderedMessageQuery(groupId, [window.limit(this.messagePageSize)]);
-    const snapshot = await window.getDocs(q);
-    const docs = Array.from(snapshot.docs || []);
-    const messages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
-    return {
-      snapshot,
-      docs,
-      messages,
-      oldestDoc: docs.length ? docs[docs.length - 1] : null,
-      hasMoreHistory: docs.length === this.messagePageSize
-    };
+    try {
+      const q = this.buildOrderedMessageQuery(groupId, [window.limit(this.messagePageSize)]);
+      const snapshot = await window.getDocs(q);
+      const docs = Array.from(snapshot.docs || []);
+      const messages = this.filterMessagesForGroup(
+        docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse(),
+        groupId
+      );
+      this.orderedMessageQuerySupported = true;
+      return {
+        snapshot,
+        docs,
+        messages,
+        oldestDoc: docs.length ? docs[docs.length - 1] : null,
+        hasMoreHistory: docs.length === this.messagePageSize,
+        usedFallback: false
+      };
+    } catch (error) {
+      if (!this.isMissingIndexError(error)) throw error;
+      console.warn('[GroupChat] Missing index for ordered query, using fallback fetch:', error?.message || error);
+      this.orderedMessageQuerySupported = false;
+      return this.fetchMessagesFallbackNoIndex(groupId, 80);
+    }
   },
   
   /**
@@ -476,13 +539,14 @@ const GroupChat = {
       if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
         return;
       }
-      this.messages = messages;
+      this.messages = this.filterMessagesForGroup(messages, groupId);
       this.historyCursorDoc = oldestDoc;
       this.hasMoreHistory = hasMoreHistory;
       this.renderMessages();
       this.updateMemberCount();
     } catch (error) {
       console.error('[GroupChat] Error loading messages:', error);
+      this.messages = [];
       // Show error in chat area
       const container = document.getElementById('chatMessages');
       if (container) {
@@ -508,6 +572,7 @@ const GroupChat = {
     if (!this.isOpen || !this.currentGroupId || !window.db) return;
     if (!this.hasMoreHistory || this.isLoadingHistory || !this.historyCursorDoc) return;
     if (typeof window.startAfter !== 'function') return;
+    if (this.orderedMessageQuerySupported === false) return;
 
     const groupId = this.currentGroupId;
     const requestSeq = ++this.loadMessagesRequestSeq;
@@ -529,7 +594,10 @@ const GroupChat = {
         return;
       }
 
-      const olderMessages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
+      const olderMessages = this.filterMessagesForGroup(
+        docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse(),
+        groupId
+      );
       if (olderMessages.length > 0) {
         const merged = [...olderMessages, ...this.messages];
         const seen = new Set();
@@ -580,7 +648,7 @@ const GroupChat = {
       if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
         return;
       }
-      const changed = this.mergeMessages(messages);
+      const changed = this.mergeMessages(this.filterMessagesForGroup(messages, groupId));
       if (!this.historyCursorDoc && oldestDoc) {
         this.historyCursorDoc = oldestDoc;
       }
@@ -645,7 +713,10 @@ const GroupChat = {
         this.unsubscribe = window.onSnapshot(q, (snapshot) => {
           if (!this.isOpen || this.currentGroupId !== groupId) return;
           const docs = Array.from(snapshot.docs || []);
-          const latestMessages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
+          const latestMessages = this.filterMessagesForGroup(
+            docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse(),
+            groupId
+          );
           const oldestDoc = docs.length ? docs[docs.length - 1] : null;
           const hasMoreHistory = docs.length === this.messagePageSize;
 
@@ -713,7 +784,13 @@ const GroupChat = {
    */
   async sendMessage(text) {
     if (!Groups.currentGroup || !window.currentUser || !window.db) return;
-    const groupId = Groups.currentGroup.id;
+    const groupId = this.currentGroupId || Groups.currentGroup.id;
+    if (!groupId) return;
+    if (this.currentGroupId && Groups.currentGroup?.id && this.currentGroupId !== Groups.currentGroup.id) {
+      console.error('[GroupChat] Group mismatch while sending. currentGroupId:', this.currentGroupId, 'Groups.currentGroup.id:', Groups.currentGroup.id);
+      alert('Chat state changed. Please close and reopen the group chat before sending.');
+      return;
+    }
     const trimmedText = String(text || '').trim();
     const attachment = this.pendingAttachment;
     if (!trimmedText && !attachment?.file) return;
@@ -808,11 +885,13 @@ const GroupChat = {
    * Share a devotion to the group chat
    */
   async shareDevotionToChat(devotionData) {
-    if (!Groups.currentGroup || !window.currentUser || !window.db) return;
+    if ((!Groups.currentGroup && !this.currentGroupId) || !window.currentUser || !window.db) return;
+    const groupId = this.currentGroupId || Groups.currentGroup?.id;
+    if (!groupId) return;
     
     try {
       const message = {
-        groupId: Groups.currentGroup.id,
+        groupId,
         senderId: window.currentUser.uid,
         senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
@@ -841,7 +920,7 @@ const GroupChat = {
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
-        groupId: Groups.currentGroup.id,
+        groupId,
         type: 'devotion',
         text: 'Shared a devotion',
         senderName: message.senderName
@@ -1068,6 +1147,19 @@ const GroupChat = {
   renderMessages() {
     const container = document.getElementById('chatMessages');
     if (!container) return;
+
+    const targetGroupId = this.currentGroupId || Groups.currentGroup?.id || '';
+    if (targetGroupId) {
+      const filtered = this.filterMessagesForGroup(this.messages, targetGroupId);
+      if (filtered.length !== this.messages.length) {
+        console.warn('[GroupChat] Removed cross-group messages from render buffer', {
+          targetGroupId,
+          before: this.messages.length,
+          after: filtered.length
+        });
+        this.messages = this.sortMessagesAsc(filtered);
+      }
+    }
     
     if (this.messages.length === 0) {
       container.innerHTML = `
