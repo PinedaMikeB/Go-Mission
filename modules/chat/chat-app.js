@@ -58,9 +58,9 @@ const ChatApp = {
     const screen = document.getElementById('messagesInboxScreen');
     if (!screen) return;
 
-    await this.refresh();
     screen.classList.remove('hidden');
     this.isOpen = true;
+    await this.refresh();
   },
 
   /**

@@ -80,6 +80,8 @@ const GroupChat = {
   forwardGroupTargets: {},
   forwardDmTargets: {},
   activeChatHeartbeatTimer: null,
+  loadMessagesRequestSeq: 0,
+  isLoadingMessages: false,
   
   /**
    * Initialize chat module
@@ -143,18 +145,24 @@ const GroupChat = {
     this.isOpen = true;
     this.currentGroupId = groupId; // Store for reference
     this.updateGroupHeader();
-    await this.loadGroupMemberDirectory(true);
-    
-    // FIRST: Set active chat in Firestore (prevents notifications while chat is open)
-    // Wait for this to complete before proceeding
-    await this.setActiveChat(groupId);
-    this.startActiveChatHeartbeat(groupId);
-    
-    // THEN: Show chat modal
+
+    // Show modal immediately for faster perceived open time.
     const modal = document.getElementById('chatModal');
     if (modal) {
       modal.classList.remove('hidden');
     }
+
+    // Keep mention directory fresh, but don't block chat open on this.
+    Promise.resolve(this.loadGroupMemberDirectory(true)).catch((error) => {
+      console.warn('[GroupChat] Could not preload member directory:', error);
+    });
+
+    // Set active chat in Firestore (prevents notifications while chat is open).
+    // Do not block the UI open on this network call.
+    Promise.resolve(this.setActiveChat(groupId)).catch((error) => {
+      console.warn('[GroupChat] Active chat set failed (non-blocking):', error);
+    });
+    this.startActiveChatHeartbeat(groupId);
     this.composeEmojiPickerOpen = false;
     this.activeReactionPickerMessageId = null;
     this.mentionPickerOpen = false;
@@ -320,35 +328,42 @@ const GroupChat = {
       console.log('[GroupChat] No group or db available');
       return;
     }
+    if (this.isLoadingMessages) return;
     
-    console.log('[GroupChat] Loading messages for group:', Groups.currentGroup.id);
-    
+    const groupId = Groups.currentGroup.id;
+    const requestSeq = ++this.loadMessagesRequestSeq;
+    this.isLoadingMessages = true;
+
     try {
       const chatRef = window.collection(window.db, 'goMission_chats');
       
       // Simple query first - just filter by groupId
       const q = window.query(
         chatRef,
-        window.where('groupId', '==', Groups.currentGroup.id),
+        window.where('groupId', '==', groupId),
         window.limit(50)
       );
       
       const snapshot = await window.getDocs(q);
-      
-      console.log('[GroupChat] Found messages:', snapshot.size);
-      
-      this.messages = [];
+
+      // Ignore stale responses if user already switched groups.
+      if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
+        return;
+      }
+
+      const nextMessages = [];
       snapshot.forEach(doc => {
-        this.messages.push({ id: doc.id, ...doc.data() });
+        nextMessages.push({ id: doc.id, ...doc.data() });
       });
       
       // Sort by createdAt client-side to avoid index requirement
-      this.messages.sort((a, b) => {
+      nextMessages.sort((a, b) => {
         const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
         const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
         return aTime - bTime;
       });
-      
+
+      this.messages = nextMessages;
       this.renderMessages();
       this.updateMemberCount();
       
@@ -363,6 +378,11 @@ const GroupChat = {
             <p class="text-slate-600 text-xs mt-1">${error.message}</p>
           </div>
         `;
+      }
+    } finally {
+      // Only release loading flag for the latest request.
+      if (this.loadMessagesRequestSeq === requestSeq) {
+        this.isLoadingMessages = false;
       }
     }
   },
@@ -383,17 +403,64 @@ const GroupChat = {
    */
   subscribeToMessages() {
     if (!Groups.currentGroup || !window.db) return;
-    
-    // Note: This requires Firestore real-time listeners
-    // For now, we'll use polling as a simpler approach
-    // In production, use onSnapshot for real-time updates
-    
-    // Poll every 5 seconds
+    const groupId = Groups.currentGroup.id;
+
+    if (this.unsubscribe) {
+      try { this.unsubscribe(); } catch (_) {}
+      this.unsubscribe = null;
+    }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+
+    // Prefer realtime updates to avoid full-thread polling reloads every 5s.
+    if (typeof window.onSnapshot === 'function') {
+      try {
+        const q = window.query(
+          window.collection(window.db, 'goMission_chats'),
+          window.where('groupId', '==', groupId),
+          window.limit(80)
+        );
+
+        this.unsubscribe = window.onSnapshot(q, (snapshot) => {
+          if (!this.isOpen || this.currentGroupId !== groupId) return;
+
+          const nextMessages = [];
+          snapshot.forEach((docSnap) => {
+            nextMessages.push({ id: docSnap.id, ...docSnap.data() });
+          });
+
+          nextMessages.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
+            const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
+            return aTime - bTime;
+          });
+
+          this.messages = nextMessages;
+          this.renderMessages();
+          this.updateMemberCount();
+        }, (error) => {
+          console.warn('[GroupChat] Realtime subscribe failed, falling back to polling:', error);
+          if (!this.pollInterval) {
+            this.pollInterval = setInterval(() => {
+              if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages) {
+                this.loadMessages();
+              }
+            }, 6000);
+          }
+        });
+        return;
+      } catch (error) {
+        console.warn('[GroupChat] Could not start realtime listener, using polling:', error);
+      }
+    }
+
     this.pollInterval = setInterval(() => {
-      if (this.isOpen) {
+      if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages) {
         this.loadMessages();
       }
-    }, 5000);
+    }, 6000);
   },
   
   /**
@@ -401,6 +468,7 @@ const GroupChat = {
    */
   async sendMessage(text) {
     if (!Groups.currentGroup || !window.currentUser || !window.db) return;
+    const groupId = Groups.currentGroup.id;
     const trimmedText = String(text || '').trim();
     const attachment = this.pendingAttachment;
     if (!trimmedText && !attachment?.file) return;
@@ -423,7 +491,9 @@ const GroupChat = {
         imagePayload = await this.uploadImageAttachment(attachment.file);
       }
 
-      const mentions = trimmedText ? await this.extractMentionsFromText(trimmedText) : [];
+      const mentions = (trimmedText && /@[a-zA-Z0-9._-]{2,32}/.test(trimmedText))
+        ? await this.extractMentionsFromText(trimmedText)
+        : [];
       const replySource = this.composerReplyToMessageId
         ? (this.messages.find((item) => item.id === this.composerReplyToMessageId) || this.composerReplyTo)
         : this.composerReplyTo;
@@ -431,7 +501,7 @@ const GroupChat = {
       const hasImage = !!imagePayload?.url;
       const messageText = trimmedText || (hasImage ? '📷 Photo' : '');
       const message = {
-        groupId: Groups.currentGroup.id,
+        groupId,
         senderId: window.currentUser.uid,
         senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
@@ -454,6 +524,7 @@ const GroupChat = {
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
+        groupId,
         type: hasImage ? 'image' : 'text',
         text: trimmedText || (hasImage ? '📷 Photo' : ''),
         senderName: message.senderName
@@ -474,8 +545,10 @@ const GroupChat = {
       this.renderReplyDraft();
       this.renderAttachmentDraft();
       
-      // Reload messages
-      await this.loadMessages();
+      // Realtime listener will render the new message. Only force reload in polling mode.
+      if (!this.unsubscribe) {
+        await this.loadMessages();
+      }
       this.scrollToBottom();
       
     } catch (error) {
@@ -523,6 +596,7 @@ const GroupChat = {
       
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
+        groupId: Groups.currentGroup.id,
         type: 'devotion',
         text: 'Shared a devotion',
         senderName: message.senderName
@@ -1646,7 +1720,9 @@ const GroupChat = {
     }
 
     try {
-      const mentions = trimmedValue ? await this.extractMentionsFromText(trimmedValue) : [];
+      const mentions = (trimmedValue && /@[a-zA-Z0-9._-]{2,32}/.test(trimmedValue))
+        ? await this.extractMentionsFromText(trimmedValue)
+        : [];
       const payload = {
         mentions,
         mentionedUserIds: mentions.map((mention) => mention.uid),
@@ -1683,6 +1759,7 @@ const GroupChat = {
       const lastMessage = this.messages[this.messages.length - 1];
       if (lastMessage?.id === messageId) {
         await this.updateGroupThreadPreview({
+          groupId: this.currentGroupId || Groups.currentGroup?.id || null,
           type: message.type === 'image' ? 'image' : 'text',
           text: trimmedValue || (isImage ? '📷 Photo' : ''),
           senderName: message.senderName || 'Unknown'
