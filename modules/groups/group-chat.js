@@ -74,6 +74,7 @@ const GroupChat = {
   composerReplyToMessageId: null,
   pendingAttachment: null,
   isSendingAttachment: false,
+  isSendingMessage: false,
   isFullscreenComposerOpen: false,
   suppressNextComposerFocusOverlay: false,
   forwardSourceMessageId: null,
@@ -794,7 +795,7 @@ const GroupChat = {
     const trimmedText = String(text || '').trim();
     const attachment = this.pendingAttachment;
     if (!trimmedText && !attachment?.file) return;
-    if (this.isSendingAttachment) return;
+    if (this.isSendingMessage || this.isSendingAttachment) return;
     
     // Verify user is still a member or guest of the group
     const isMember = Groups.currentGroup.members?.includes(window.currentUser.uid);
@@ -806,6 +807,9 @@ const GroupChat = {
       return;
     }
     
+    this.isSendingMessage = true;
+    this.setComposerSendingState(true);
+
     try {
       let imagePayload = null;
       if (attachment?.file) {
@@ -878,6 +882,8 @@ const GroupChat = {
       alert('Error sending message. Please try again.');
     } finally {
       this.isSendingAttachment = false;
+      this.isSendingMessage = false;
+      this.setComposerSendingState(false);
     }
   },
   
@@ -1341,12 +1347,47 @@ const GroupChat = {
    * Handle send button click
    */
   handleSend() {
+    if (this.isSendingMessage) return;
     const input = document.getElementById('chatInput');
     if (input) {
       this.closeComposeEmojiPicker();
       this.closeMentionPicker();
       this.syncFullscreenComposerToMainInput();
       this.sendMessage(input.value);
+    }
+  },
+
+  /**
+   * Reflect send-in-progress state in compact/fullscreen composer controls.
+   */
+  setComposerSendingState(isSending) {
+    const sendBtn = document.getElementById('chatSendBtn');
+    const attachBtn = document.getElementById('chatAttachBtn');
+    const input = document.getElementById('chatInput');
+    const fullscreenSendBtn = document.getElementById('chatFullscreenSendBtn');
+    const fullscreenAttachBtn = document.getElementById('chatFullscreenAttachBtn');
+    const fullscreenInput = document.getElementById('chatFullscreenInput');
+
+    [sendBtn, attachBtn, input, fullscreenSendBtn, fullscreenAttachBtn, fullscreenInput]
+      .filter(Boolean)
+      .forEach((el) => {
+        if (isSending) {
+          el.setAttribute('disabled', 'disabled');
+          el.classList.add('opacity-60', 'cursor-not-allowed');
+        } else {
+          el.removeAttribute('disabled');
+          el.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+      });
+
+    if (sendBtn) {
+      sendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      sendBtn.title = isSending ? 'Sending...' : 'Send message';
+    }
+    if (fullscreenSendBtn) {
+      fullscreenSendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      const label = fullscreenSendBtn.querySelector('[data-chat-send-label]');
+      if (label) label.textContent = isSending ? 'Sending...' : 'Send';
     }
   },
   
@@ -1576,6 +1617,7 @@ const GroupChat = {
     fullscreenInput.value = input.value || '';
     overlay.classList.remove('hidden');
     this.isFullscreenComposerOpen = true;
+    this.setComposerSendingState(!!this.isSendingMessage);
     requestAnimationFrame(() => fullscreenInput.focus());
   },
 
