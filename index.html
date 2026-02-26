@@ -2681,7 +2681,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, startAfter, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
@@ -2726,6 +2726,7 @@
         window.getDocs = getDocs;
         window.orderBy = orderBy;
         window.limit = limit;
+        window.startAfter = startAfter;
         window.onSnapshot = onSnapshot;
         window.serverTimestamp = serverTimestamp;
         window.arrayUnion = arrayUnion;

@@ -82,6 +82,12 @@ const GroupChat = {
   activeChatHeartbeatTimer: null,
   loadMessagesRequestSeq: 0,
   isLoadingMessages: false,
+  isSyncingLatestMessages: false,
+  messagePageSize: 10,
+  historyCursorDoc: null,
+  hasMoreHistory: true,
+  isLoadingHistory: false,
+  historyScrollHandler: null,
   
   /**
    * Initialize chat module
@@ -151,6 +157,8 @@ const GroupChat = {
     if (modal) {
       modal.classList.remove('hidden');
     }
+    this.resetMessagePaginationState();
+    this.bindHistoryScroll();
 
     // Keep mention directory fresh, but don't block chat open on this.
     Promise.resolve(this.loadGroupMemberDirectory(true)).catch((error) => {
@@ -239,6 +247,8 @@ const GroupChat = {
     // Clear active chat in Firestore (re-enable notifications)
     this.stopActiveChatHeartbeat();
     this.clearActiveChat();
+    this.unbindHistoryScroll();
+    this.resetMessagePaginationState();
     
     // Unsubscribe from updates
     if (this.unsubscribe) {
@@ -319,6 +329,131 @@ const GroupChat = {
       this.activeChatHeartbeatTimer = null;
     }
   },
+
+  /**
+   * Reset pagination state for a new/opening chat thread.
+   */
+  resetMessagePaginationState() {
+    this.historyCursorDoc = null;
+    this.hasMoreHistory = true;
+    this.isLoadingHistory = false;
+    this.isLoadingMessages = false;
+    this.isSyncingLatestMessages = false;
+    this.loadMessagesRequestSeq += 1;
+  },
+
+  /**
+   * Attach scroll listener that loads older history only when user scrolls up.
+   */
+  bindHistoryScroll() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    if (this.historyScrollHandler) {
+      container.removeEventListener('scroll', this.historyScrollHandler);
+    }
+    this.historyScrollHandler = () => {
+      if (!this.isOpen) return;
+      if (container.scrollTop > 80) return;
+      if (!this.hasMoreHistory || this.isLoadingHistory || this.isLoadingMessages) return;
+      this.loadOlderMessages();
+    };
+    container.addEventListener('scroll', this.historyScrollHandler, { passive: true });
+  },
+
+  /**
+   * Remove scroll listener when chat closes.
+   */
+  unbindHistoryScroll() {
+    const container = document.getElementById('chatMessages');
+    if (container && this.historyScrollHandler) {
+      container.removeEventListener('scroll', this.historyScrollHandler);
+    }
+    this.historyScrollHandler = null;
+  },
+
+  /**
+   * Build ordered query for chat history/latest messages.
+   */
+  buildOrderedMessageQuery(groupId, extraConstraints = []) {
+    return window.query(
+      window.collection(window.db, 'goMission_chats'),
+      window.where('groupId', '==', groupId),
+      window.orderBy('createdAt', 'desc'),
+      ...extraConstraints
+    );
+  },
+
+  /**
+   * Convert message createdAt to comparable timestamp.
+   */
+  getMessageTimestampMs(message) {
+    const raw = message?.createdAt;
+    if (raw?.toDate) {
+      const dt = raw.toDate();
+      const time = dt?.getTime?.();
+      return Number.isFinite(time) ? time : 0;
+    }
+    if (raw instanceof Date) {
+      const time = raw.getTime();
+      return Number.isFinite(time) ? time : 0;
+    }
+    if (typeof raw === 'string' || typeof raw === 'number') {
+      const parsed = new Date(raw).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+  },
+
+  /**
+   * Sort messages oldest -> newest for chat rendering.
+   */
+  sortMessagesAsc(messages) {
+    return [...messages].sort((a, b) => this.getMessageTimestampMs(a) - this.getMessageTimestampMs(b));
+  },
+
+  /**
+   * Merge a batch of messages into current thread state by id.
+   */
+  mergeMessages(batch) {
+    if (!Array.isArray(batch) || batch.length === 0) return false;
+    const byId = new Map(this.messages.map((message) => [message.id, message]));
+    let changed = false;
+    batch.forEach((message) => {
+      if (!message?.id) return;
+      const prev = byId.get(message.id);
+      if (!prev) {
+        byId.set(message.id, message);
+        changed = true;
+        return;
+      }
+      const prevJson = JSON.stringify(prev);
+      const nextJson = JSON.stringify(message);
+      if (prevJson !== nextJson) {
+        byId.set(message.id, { ...prev, ...message });
+        changed = true;
+      }
+    });
+    if (!changed) return false;
+    this.messages = this.sortMessagesAsc(Array.from(byId.values()));
+    return true;
+  },
+
+  /**
+   * Read latest batch (descending in Firestore, reversed for UI).
+   */
+  async fetchLatestMessagesPage(groupId) {
+    const q = this.buildOrderedMessageQuery(groupId, [window.limit(this.messagePageSize)]);
+    const snapshot = await window.getDocs(q);
+    const docs = Array.from(snapshot.docs || []);
+    const messages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
+    return {
+      snapshot,
+      docs,
+      messages,
+      oldestDoc: docs.length ? docs[docs.length - 1] : null,
+      hasMoreHistory: docs.length === this.messagePageSize
+    };
+  },
   
   /**
    * Load recent messages
@@ -335,38 +470,17 @@ const GroupChat = {
     this.isLoadingMessages = true;
 
     try {
-      const chatRef = window.collection(window.db, 'goMission_chats');
-      
-      // Simple query first - just filter by groupId
-      const q = window.query(
-        chatRef,
-        window.where('groupId', '==', groupId),
-        window.limit(50)
-      );
-      
-      const snapshot = await window.getDocs(q);
+      const { messages, oldestDoc, hasMoreHistory } = await this.fetchLatestMessagesPage(groupId);
 
       // Ignore stale responses if user already switched groups.
       if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
         return;
       }
-
-      const nextMessages = [];
-      snapshot.forEach(doc => {
-        nextMessages.push({ id: doc.id, ...doc.data() });
-      });
-      
-      // Sort by createdAt client-side to avoid index requirement
-      nextMessages.sort((a, b) => {
-        const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
-        const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
-        return aTime - bTime;
-      });
-
-      this.messages = nextMessages;
+      this.messages = messages;
+      this.historyCursorDoc = oldestDoc;
+      this.hasMoreHistory = hasMoreHistory;
       this.renderMessages();
       this.updateMemberCount();
-      
     } catch (error) {
       console.error('[GroupChat] Error loading messages:', error);
       // Show error in chat area
@@ -383,6 +497,115 @@ const GroupChat = {
       // Only release loading flag for the latest request.
       if (this.loadMessagesRequestSeq === requestSeq) {
         this.isLoadingMessages = false;
+      }
+    }
+  },
+
+  /**
+   * Fetch and prepend older message history when user scrolls upward.
+   */
+  async loadOlderMessages() {
+    if (!this.isOpen || !this.currentGroupId || !window.db) return;
+    if (!this.hasMoreHistory || this.isLoadingHistory || !this.historyCursorDoc) return;
+    if (typeof window.startAfter !== 'function') return;
+
+    const groupId = this.currentGroupId;
+    const requestSeq = ++this.loadMessagesRequestSeq;
+    this.isLoadingHistory = true;
+
+    const container = document.getElementById('chatMessages');
+    const prevScrollTop = container ? container.scrollTop : 0;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+
+    try {
+      const q = this.buildOrderedMessageQuery(groupId, [
+        window.startAfter(this.historyCursorDoc),
+        window.limit(this.messagePageSize)
+      ]);
+      const snapshot = await window.getDocs(q);
+      const docs = Array.from(snapshot.docs || []);
+
+      if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
+        return;
+      }
+
+      const olderMessages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
+      if (olderMessages.length > 0) {
+        const merged = [...olderMessages, ...this.messages];
+        const seen = new Set();
+        this.messages = merged.filter((message) => {
+          if (!message?.id || seen.has(message.id)) return false;
+          seen.add(message.id);
+          return true;
+        });
+        this.messages = this.sortMessagesAsc(this.messages);
+        this.renderMessages();
+        if (container) {
+          const nextHeight = container.scrollHeight;
+          container.scrollTop = Math.max(0, prevScrollTop + (nextHeight - prevScrollHeight));
+        }
+      }
+
+      this.historyCursorDoc = docs.length ? docs[docs.length - 1] : this.historyCursorDoc;
+      this.hasMoreHistory = docs.length === this.messagePageSize;
+    } catch (error) {
+      console.warn('[GroupChat] Error loading older messages:', error);
+    } finally {
+      if (this.loadMessagesRequestSeq === requestSeq) {
+        this.isLoadingHistory = false;
+      } else {
+        this.isLoadingHistory = false;
+      }
+    }
+  },
+
+  /**
+   * Refresh only the latest message page and merge into current thread.
+   */
+  async refreshLatestMessages() {
+    if (!this.isOpen || !this.currentGroupId || !window.db) return;
+    if (this.isSyncingLatestMessages) return;
+
+    const groupId = this.currentGroupId;
+    const requestSeq = ++this.loadMessagesRequestSeq;
+    this.isSyncingLatestMessages = true;
+
+    const container = document.getElementById('chatMessages');
+    const wasNearBottom = !!container && (container.scrollHeight - container.scrollTop - container.clientHeight) < 120;
+    const prevScrollTop = container ? container.scrollTop : 0;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+
+    try {
+      const { messages, oldestDoc, hasMoreHistory } = await this.fetchLatestMessagesPage(groupId);
+      if (!this.isOpen || this.currentGroupId !== groupId || this.loadMessagesRequestSeq !== requestSeq) {
+        return;
+      }
+      const changed = this.mergeMessages(messages);
+      if (!this.historyCursorDoc && oldestDoc) {
+        this.historyCursorDoc = oldestDoc;
+      }
+      if (this.messages.length <= this.messagePageSize) {
+        this.hasMoreHistory = hasMoreHistory;
+        this.historyCursorDoc = oldestDoc || this.historyCursorDoc;
+      }
+      if (!changed) return;
+      this.renderMessages();
+      if (container) {
+        if (wasNearBottom) {
+          this.scrollToBottom();
+        } else {
+          const nextHeight = container.scrollHeight;
+          container.scrollTop = Math.max(0, prevScrollTop + (nextHeight - prevScrollHeight));
+        }
+      }
+      this.updateMemberCount();
+    } catch (error) {
+      console.warn('[GroupChat] Error refreshing latest messages:', error);
+    } finally {
+      if (this.loadMessagesRequestSeq === requestSeq) {
+        this.isSyncingLatestMessages = false;
+      } else {
+        this.isSyncingLatestMessages = false;
       }
     }
   },
@@ -417,35 +640,57 @@ const GroupChat = {
     // Prefer realtime updates to avoid full-thread polling reloads every 5s.
     if (typeof window.onSnapshot === 'function') {
       try {
-        const q = window.query(
-          window.collection(window.db, 'goMission_chats'),
-          window.where('groupId', '==', groupId),
-          window.limit(80)
-        );
+        const q = this.buildOrderedMessageQuery(groupId, [window.limit(this.messagePageSize)]);
 
         this.unsubscribe = window.onSnapshot(q, (snapshot) => {
           if (!this.isOpen || this.currentGroupId !== groupId) return;
+          const docs = Array.from(snapshot.docs || []);
+          const latestMessages = docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).reverse();
+          const oldestDoc = docs.length ? docs[docs.length - 1] : null;
+          const hasMoreHistory = docs.length === this.messagePageSize;
 
-          const nextMessages = [];
-          snapshot.forEach((docSnap) => {
-            nextMessages.push({ id: docSnap.id, ...docSnap.data() });
-          });
+          const container = document.getElementById('chatMessages');
+          const wasNearBottom = !!container && (container.scrollHeight - container.scrollTop - container.clientHeight) < 120;
+          const prevScrollTop = container ? container.scrollTop : 0;
+          const prevScrollHeight = container ? container.scrollHeight : 0;
 
-          nextMessages.sort((a, b) => {
-            const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date(0);
-            const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date(0);
-            return aTime - bTime;
-          });
+          let changed = false;
+          if (this.messages.length === 0) {
+            this.messages = latestMessages;
+            changed = true;
+          } else {
+            changed = this.mergeMessages(latestMessages);
+          }
 
-          this.messages = nextMessages;
+          if (!this.historyCursorDoc && oldestDoc) {
+            this.historyCursorDoc = oldestDoc;
+          }
+          if (this.messages.length <= this.messagePageSize) {
+            this.hasMoreHistory = hasMoreHistory;
+            this.historyCursorDoc = oldestDoc || this.historyCursorDoc;
+          }
+
+          if (!changed) {
+            this.updateMemberCount();
+            return;
+          }
+
           this.renderMessages();
+          if (container) {
+            if (wasNearBottom) {
+              this.scrollToBottom();
+            } else {
+              const nextHeight = container.scrollHeight;
+              container.scrollTop = Math.max(0, prevScrollTop + (nextHeight - prevScrollHeight));
+            }
+          }
           this.updateMemberCount();
         }, (error) => {
           console.warn('[GroupChat] Realtime subscribe failed, falling back to polling:', error);
           if (!this.pollInterval) {
             this.pollInterval = setInterval(() => {
-              if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages) {
-                this.loadMessages();
+              if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages && !this.isSyncingLatestMessages) {
+                this.refreshLatestMessages();
               }
             }, 6000);
           }
@@ -457,8 +702,8 @@ const GroupChat = {
     }
 
     this.pollInterval = setInterval(() => {
-      if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages) {
-        this.loadMessages();
+      if (this.isOpen && this.currentGroupId === groupId && !this.isLoadingMessages && !this.isSyncingLatestMessages) {
+        this.refreshLatestMessages();
       }
     }, 6000);
   },
@@ -547,7 +792,7 @@ const GroupChat = {
       
       // Realtime listener will render the new message. Only force reload in polling mode.
       if (!this.unsubscribe) {
-        await this.loadMessages();
+        await this.refreshLatestMessages();
       }
       this.scrollToBottom();
       
