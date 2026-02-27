@@ -2155,6 +2155,41 @@
                             </svg>
                         </button>
                     </div>
+
+                    <!-- Journal Filters -->
+                    <div class="p-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input id="journalSearchInput"
+                                   type="text"
+                                   oninput="applyJournalFilters()"
+                                   placeholder="Search keyword..."
+                                   class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                            <input id="journalDateFilter"
+                                   type="date"
+                                   onchange="applyJournalFilters()"
+                                   class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                            <select id="journalTypeFilter"
+                                    onchange="applyJournalFilters()"
+                                    class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                                <option value="all">All entries</option>
+                                <option value="prayers">With prayer requests</option>
+                                <option value="answered">With answered prayers</option>
+                                <option value="shared">Shared to groups</option>
+                            </select>
+                            <div class="flex items-center gap-2">
+                                <select id="journalSortFilter"
+                                        onchange="applyJournalFilters()"
+                                        class="flex-1 p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                                    <option value="newest">Newest first</option>
+                                    <option value="oldest">Oldest first</option>
+                                </select>
+                                <button onclick="clearJournalFilters()"
+                                        class="px-3 py-2.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/60 transition-colors">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Journal Entries -->
                     <div class="flex-1 p-4 overflow-y-auto" id="journalEntriesList">
@@ -4602,7 +4637,7 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
-                                <button onclick="openJournal(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                <button onclick="openJournal();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
                                 </button>
@@ -4756,6 +4791,129 @@
             return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
 
+        const journalState = {
+            entries: [],
+            filteredEntries: [],
+            editingEntryId: null,
+            filters: {
+                keyword: '',
+                date: '',
+                type: 'all',
+                sort: 'newest'
+            }
+        };
+
+        function resolveFirestoreDate(value) {
+            if (!value) return null;
+            try {
+                if (typeof value.toDate === 'function') {
+                    const dt = value.toDate();
+                    return Number.isNaN(dt?.getTime?.()) ? null : dt;
+                }
+                if (typeof value?.seconds === 'number') {
+                    const dt = new Date(value.seconds * 1000);
+                    return Number.isNaN(dt.getTime()) ? null : dt;
+                }
+                if (typeof value === 'string') {
+                    const ymdMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (ymdMatch) {
+                        const dt = new Date(
+                            Number(ymdMatch[1]),
+                            Number(ymdMatch[2]) - 1,
+                            Number(ymdMatch[3]),
+                            12, 0, 0, 0
+                        );
+                        return Number.isNaN(dt.getTime()) ? null : dt;
+                    }
+                }
+                const dt = new Date(value);
+                return Number.isNaN(dt.getTime()) ? null : dt;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function resolveJournalEntryDate(entryData) {
+            return (
+                resolveFirestoreDate(entryData?.savedAt) ||
+                resolveFirestoreDate(entryData?.updatedAt) ||
+                resolveFirestoreDate(entryData?.createdAt) ||
+                resolveFirestoreDate(entryData?.date)
+            );
+        }
+
+        function toDateInputValue(value) {
+            const dt = resolveFirestoreDate(value);
+            if (!dt) return '';
+            const yyyy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getJournalEntrySearchBlob(entryData) {
+            const prayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
+            const prayerBlob = prayerRequests.map(item => `${item.text || ''} ${item.remarks || ''}`).join(' ');
+            return [
+                entryData?.godSaidReference || '',
+                entryData?.godSaidText || '',
+                entryData?.understandingText || entryData?.reflectionText || entryData?.reflection || '',
+                entryData?.actionText || entryData?.commitment || '',
+                entryData?.question || '',
+                prayerBlob
+            ].join(' ').toLowerCase();
+        }
+
+        function getJournalDomSafeId(prefix, value) {
+            const safe = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            return `${prefix}_${safe}`;
+        }
+
+        function getJournalFiltersFromInputs() {
+            const keyword = String(document.getElementById('journalSearchInput')?.value || '').trim().toLowerCase();
+            const date = String(document.getElementById('journalDateFilter')?.value || '').trim();
+            const type = String(document.getElementById('journalTypeFilter')?.value || 'all');
+            const sort = String(document.getElementById('journalSortFilter')?.value || 'newest');
+            return { keyword, date, type, sort };
+        }
+
+        function matchJournalTypeFilter(entryData, type) {
+            if (!type || type === 'all') return true;
+            const prayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
+            if (type === 'prayers') return prayerRequests.length > 0;
+            if (type === 'answered') return prayerRequests.some(item => item.answered || item.answeredAt);
+            if (type === 'shared') {
+                const entryShared = !!entryData?.sharedWithGroup || (Array.isArray(entryData?.sharedGroupIds) && entryData.sharedGroupIds.length > 0);
+                const prayerShared = prayerRequests.some(item => Array.isArray(item.sharedGroupIds) && item.sharedGroupIds.length > 0);
+                return entryShared || prayerShared;
+            }
+            return true;
+        }
+
+        function filterAndSortJournalEntries(entries, filters) {
+            const filtered = entries.filter((entry) => {
+                const entryData = entry?.data || {};
+                if (filters.date) {
+                    const entryDate = toDateInputValue(entry._resolvedDate || resolveJournalEntryDate(entryData));
+                    if (entryDate !== filters.date) return false;
+                }
+                if (filters.keyword) {
+                    const blob = getJournalEntrySearchBlob(entryData);
+                    if (!blob.includes(filters.keyword)) return false;
+                }
+                if (!matchJournalTypeFilter(entryData, filters.type)) return false;
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                const aTime = (a._resolvedDate || resolveJournalEntryDate(a.data) || new Date(0)).getTime();
+                const bTime = (b._resolvedDate || resolveJournalEntryDate(b.data) || new Date(0)).getTime();
+                return filters.sort === 'oldest' ? (aTime - bTime) : (bTime - aTime);
+            });
+
+            return filtered;
+        }
+
         function renderJournalPrayerStatus(entryId, entryData, lang) {
             const prayerLabels = getPrayerUiLabels(lang);
             const sectionLabels = getDevotionSectionLabels(lang);
@@ -4790,6 +4948,13 @@
                                    ${answered ? 'checked' : ''}>
                             <span>${answered ? prayerLabels.markPending : prayerLabels.markAnswered}</span>
                         </label>
+                        <div class="mt-2">
+                            <label class="text-[11px] text-[var(--text-muted)] block mb-1">${escapeDevotionHtml(prayerLabels.answeredDate)}</label>
+                            <input type="date"
+                                   value="${escapeDevotionHtml(toDateInputValue(item.answeredAt))}"
+                                   onchange="setJournalPrayerAnsweredDate('${entryIdForJs}', '${prayerIdForJs}', this.value)"
+                                   class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-xs text-[var(--text-color)]">
+                        </div>
                         <textarea class="w-full mt-2 p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs resize-none"
                                   rows="2"
                                   placeholder="${escapeDevotionHtml(prayerLabels.remarksPlaceholder)}"
@@ -4815,6 +4980,175 @@
             `;
         }
 
+        function buildJournalEntryCardHtml(entry) {
+            const data = entry.data || {};
+            const dateObj = entry._resolvedDate || resolveJournalEntryDate(data);
+            const lang = data.language === 'en' ? 'en' : 'tl';
+            const sectionLabels = getDevotionSectionLabels(lang);
+            const scriptureTitle = data.godSaidTitle || sectionLabels.godSaidTitle;
+            const scriptureReference = data.godSaidReference || buildLegacyDevotionReference(data, lang);
+            const scriptureText = data.godSaidText || '';
+            const understandingTitle = data.understandingTitle || data.reflectionTitle || sectionLabels.understandingTitle;
+            const understandingText = data.understandingText || data.reflectionText || data.reflection || '';
+            const actionTitle = data.actionTitle || sectionLabels.actionTitle;
+            const actionText = data.actionText || data.commitment || '';
+            const entryIdForJs = escapeJsString(entry.id);
+            const isEditing = journalState.editingEntryId === entry.id;
+            const understandingInputId = getJournalDomSafeId('journal_understanding', entry.id);
+            const actionInputId = getJournalDomSafeId('journal_action', entry.id);
+            const formattedDate = dateObj
+                ? dateObj.toLocaleString(lang === 'tl' ? 'fil-PH' : 'en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                })
+                : (data.date || '-');
+
+            return `
+                <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <span class="text-amber-500 font-bold text-sm">${escapeDevotionHtml(formattedDate)}</span>
+                        ${isEditing ? `
+                            <div class="flex items-center gap-2">
+                                <button onclick="saveJournalEntryEdits('${entryIdForJs}')"
+                                        class="px-2.5 py-1 rounded-lg text-xs bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/30 transition-colors">
+                                    Save
+                                </button>
+                                <button onclick="cancelJournalEntryEdit()"
+                                        class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
+                        ` : `
+                            <button onclick="editJournalEntry('${entryIdForJs}')"
+                                    class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                Edit
+                            </button>
+                        `}
+                    </div>
+
+                    <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                        <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(scriptureTitle)}</p>
+                        ${scriptureReference ? `<p class="text-xs text-[var(--text-muted)] mb-1">${escapeDevotionHtml(scriptureReference)}</p>` : ''}
+                        ${scriptureText ? `<p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(scriptureText)}</p>` : '<p class="text-sm text-[var(--text-muted)] italic">-</p>'}
+                    </div>
+
+                    <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                        <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(understandingTitle)}</p>
+                        ${isEditing ? `
+                            <textarea id="${understandingInputId}"
+                                      rows="4"
+                                      class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm resize-y"
+                                      placeholder="${lang === 'tl' ? 'Isulat ang iyong pagkaunawa...' : 'Write your understanding...'}">${escapeDevotionHtml(understandingText)}</textarea>
+                        ` : `
+                            <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(understandingText || '-')}</p>
+                        `}
+                    </div>
+
+                    <div class="p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+                        <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(actionTitle)}</p>
+                        ${isEditing ? `
+                            <textarea id="${actionInputId}"
+                                      rows="4"
+                                      class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm resize-y"
+                                      placeholder="${lang === 'tl' ? 'Isulat ang iyong gagawin...' : 'Write what you will do...'}">${escapeDevotionHtml(actionText)}</textarea>
+                        ` : `
+                            <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(actionText || '-')}</p>
+                        `}
+                    </div>
+
+                    ${renderJournalPrayerStatus(entry.id, data, lang)}
+                    ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
+                </div>
+            `;
+        }
+
+        function renderJournalEntriesFromState() {
+            const list = document.getElementById('journalEntriesList');
+            if (!list) return;
+
+            if (!journalState.filteredEntries.length) {
+                const hasFilters = !!(journalState.filters.keyword || journalState.filters.date || journalState.filters.type !== 'all');
+                list.innerHTML = hasFilters
+                    ? '<p class="text-[var(--text-muted)] text-center py-8">No matching journal entries.</p>'
+                    : '<p class="text-[var(--text-muted)] text-center py-8">No journal entries yet. Start your first devotion!</p>';
+                return;
+            }
+
+            list.innerHTML = journalState.filteredEntries.map(buildJournalEntryCardHtml).join('');
+        }
+
+        window.applyJournalFilters = function() {
+            journalState.filters = getJournalFiltersFromInputs();
+            journalState.filteredEntries = filterAndSortJournalEntries(journalState.entries, journalState.filters);
+            renderJournalEntriesFromState();
+        };
+
+        window.clearJournalFilters = function() {
+            const searchInput = document.getElementById('journalSearchInput');
+            const dateInput = document.getElementById('journalDateFilter');
+            const typeInput = document.getElementById('journalTypeFilter');
+            const sortInput = document.getElementById('journalSortFilter');
+            if (searchInput) searchInput.value = '';
+            if (dateInput) dateInput.value = '';
+            if (typeInput) typeInput.value = 'all';
+            if (sortInput) sortInput.value = 'newest';
+            journalState.filters = { keyword: '', date: '', type: 'all', sort: 'newest' };
+            journalState.filteredEntries = filterAndSortJournalEntries(journalState.entries, journalState.filters);
+            renderJournalEntriesFromState();
+        };
+
+        window.editJournalEntry = function(entryId) {
+            journalState.editingEntryId = String(entryId || '');
+            renderJournalEntriesFromState();
+        };
+
+        window.cancelJournalEntryEdit = function() {
+            journalState.editingEntryId = null;
+            renderJournalEntriesFromState();
+        };
+
+        window.saveJournalEntryEdits = async function(entryId) {
+            try {
+                const normalizedId = String(entryId || '');
+                if (!normalizedId || !window.currentUser || !window.db) return;
+                const understandingInputId = getJournalDomSafeId('journal_understanding', normalizedId);
+                const actionInputId = getJournalDomSafeId('journal_action', normalizedId);
+                const understandingValue = String(document.getElementById(understandingInputId)?.value || '').trim();
+                const actionValue = String(document.getElementById(actionInputId)?.value || '').trim();
+
+                if (!understandingValue) {
+                    alert('Please add your understanding before saving.');
+                    return;
+                }
+
+                const entryRef = window.doc(window.db, 'goMission_devotions', normalizedId);
+                const entryDoc = await window.getDoc(entryRef);
+                if (!entryDoc.exists()) return;
+                const entryData = entryDoc.data() || {};
+                if (entryData.uid !== window.currentUser.uid) return;
+
+                await window.setDoc(entryRef, {
+                    understandingText: understandingValue,
+                    reflectionText: understandingValue,
+                    reflection: understandingValue,
+                    actionText: actionValue,
+                    commitment: actionValue,
+                    savedAt: window.serverTimestamp()
+                }, { merge: true });
+
+                journalState.editingEntryId = null;
+                await renderJournalEntriesList();
+                alert('Journal entry updated.');
+            } catch (error) {
+                console.error('[Journal] Could not save journal entry edits:', error);
+                alert('Could not save journal edits right now.');
+            }
+        };
+
         async function renderJournalEntriesList() {
             const list = document.getElementById('journalEntriesList');
             if (!list) return;
@@ -4831,60 +5165,20 @@
                 const q = window.query(
                     devotionsRef,
                     window.where('uid', '==', window.currentUser.uid),
-                    window.orderBy('savedAt', 'desc'),
-                    window.limit(30)
+                    window.limit(250)
                 );
 
                 const snapshot = await window.getDocs(q);
-                if (snapshot.empty) {
-                    list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">No journal entries yet. Start your first devotion!</p>';
-                    return;
-                }
-
-                let html = '';
-                snapshot.forEach(doc => {
-                    const data = doc.data() || {};
-                    const date = new Date(data.date);
-                    const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    const lang = data.language === 'en' ? 'en' : 'tl';
-                    const sectionLabels = getDevotionSectionLabels(lang);
-                    const scriptureTitle = data.godSaidTitle || sectionLabels.godSaidTitle;
-                    const scriptureReference = data.godSaidReference || buildLegacyDevotionReference(data, lang);
-                    const scriptureText = data.godSaidText || '';
-                    const understandingTitle = data.understandingTitle || data.reflectionTitle || sectionLabels.understandingTitle;
-                    const understandingText = data.understandingText || data.reflectionText || data.reflection || '';
-                    const actionTitle = data.actionTitle || sectionLabels.actionTitle;
-                    const actionText = data.actionText || data.commitment || '';
-
-                    html += `
-                        <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
-                            <div class="flex items-center mb-2">
-                                <span class="text-amber-500 font-bold">${formattedDate}</span>
-                            </div>
-
-                            <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(scriptureTitle)}</p>
-                                ${scriptureReference ? `<p class="text-xs text-[var(--text-muted)] mb-1">${escapeDevotionHtml(scriptureReference)}</p>` : ''}
-                                ${scriptureText ? `<p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(scriptureText)}</p>` : ''}
-                            </div>
-
-                            <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(understandingTitle)}</p>
-                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(understandingText)}</p>
-                            </div>
-
-                            <div class="p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(actionTitle)}</p>
-                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(actionText)}</p>
-                            </div>
-
-                            ${renderJournalPrayerStatus(doc.id, data, lang)}
-                            ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
-                        </div>
-                    `;
+                journalState.entries = snapshot.docs.map(docSnap => {
+                    const data = docSnap.data() || {};
+                    return {
+                        id: docSnap.id,
+                        data,
+                        _resolvedDate: resolveJournalEntryDate(data)
+                    };
                 });
-
-                list.innerHTML = html;
+                journalState.editingEntryId = null;
+                window.applyJournalFilters();
             } catch (error) {
                 console.error('Error loading journal:', error);
                 list.innerHTML = '<p class="text-red-400 text-center py-8">Error loading journal. Please try again.</p>';
@@ -5023,6 +5317,22 @@
             } catch (error) {
                 console.error('[Journal] Could not update prayer status:', error);
                 alert('Could not update prayer status. Please try again.');
+            }
+        };
+
+        window.setJournalPrayerAnsweredDate = async function(entryId, prayerId, dateValue) {
+            try {
+                const normalizedDate = String(dateValue || '').trim();
+                const answeredAtIso = normalizedDate ? `${normalizedDate}T12:00:00.000Z` : null;
+                await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                    ...item,
+                    answered: !!answeredAtIso,
+                    answeredAt: answeredAtIso
+                }));
+                await renderJournalEntriesList();
+            } catch (error) {
+                console.error('[Journal] Could not set answered date:', error);
+                alert('Could not update answered date. Please try again.');
             }
         };
 
