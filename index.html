@@ -4602,6 +4602,10 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
+                                <button onclick="openJournal(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">📖</span>
+                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
+                                </button>
                                 <button onclick="if(window.triggerProfilePhotoPicker){window.triggerProfilePhotoPicker();} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🖼️</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Palitan ang Profile Photo' : 'Change Profile Photo'}</span>
@@ -5057,6 +5061,10 @@
 
         // Open journal
         window.openJournal = async function() {
+            const mainMenu = document.getElementById('mainMenuModal');
+            if (mainMenu) {
+                mainMenu.remove();
+            }
             const devotionMenu = document.getElementById('devotionMenuModal');
             if (devotionMenu && !devotionMenu.classList.contains('hidden')) {
                 devotionMenu.classList.add('hidden');

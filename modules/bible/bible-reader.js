@@ -335,7 +335,6 @@ const BibleReader = {
     const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
     const hasHighlights = this.highlightedVerses.length > 0;
     const isMobile = window.innerWidth < 768;
-    const journalLabel = lang === 'tl' ? 'Aking Journal' : 'My Journal';
     
     overlay.innerHTML = `
       <!-- Fullscreen Header -->
@@ -391,13 +390,6 @@ const BibleReader = {
         
         <!-- Insights Button -->
         <div class="flex items-center gap-2">
-          <button type="button"
-                  onclick="window.BibleReader && window.BibleReader.openJournalFromFullscreen && window.BibleReader.openJournalFromFullscreen()"
-                  id="fullscreenJournalBtn"
-                  class="relative z-10 pointer-events-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-[var(--input-bg)] text-[var(--text-color)] hover:bg-[var(--mission-gold)]/15 hover:text-[var(--mission-gold)]">
-            <span>📖</span>
-            <span>${journalLabel}</span>
-          </button>
           <button type="button"
                   onclick="BibleReader.toggleFullscreenCommentary()" 
                   id="fullscreenCommentaryBtn"
