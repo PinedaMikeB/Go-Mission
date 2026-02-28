@@ -38,6 +38,48 @@
 
 ---
 
+## Current Task Status (2026-02-28) — Thread 5 Group Integrity Security Hardening
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+  - `/firestore.rules`
+  - `/admin.html`
+- **Goal completed**: Enforce strict hierarchy integrity (single primary upline per member, controlled group creation eligibility, and anti-mix-up safeguards).
+
+### Integrity Rules (Do Not Break)
+
+1. One member cannot be `member` under multiple upline leaders at the same time.
+  - They may still join other groups as `guest`.
+2. Group creation is blocked unless user is:
+  - admin, or
+  - explicitly authorized (`canCreateGroup` / endorsement flags / role grant), or
+  - an active member of a valid upline group.
+3. Self profile writes cannot grant protected leadership/membership privileges.
+4. Group write access is no longer broad for all signed-in users.
+  - Non-leaders can only append their own join request.
+5. Strict anti-crossover checks are available in admin integrity audit.
+
+### Admin Integrity Audit (New)
+
+- `/admin.html` now includes **Group Integrity Audit** panel.
+- Button: `Run Integrity Audit`
+- Current checks:
+  - member appears in multiple member groups
+  - primary pointer mismatch (`uplineGroupId`/`groupId` vs actual group members)
+  - leader missing required upline/authorization/admin status
+  - direct leader crossover cycle (`A under B` and `B under A`)
+
+### Regression Checklist (Run Before Push)
+
+- Approve-as-member should fail if requester already has different primary group.
+- Join request modal should show `🚫 Member Locked` for existing-primary-group requesters.
+- Invite-code join should block second primary member assignment.
+- Unauthorized new users should not be able to create groups without valid upline or explicit authorization.
+- Firestore rules deploy cleanly and remain restrictive for protected member fields.
+
+---
+
 ## Current Task Status (2026-02-23) — Thread 5 Group Deletion Request Approval Flow
 
 - **Active modules**

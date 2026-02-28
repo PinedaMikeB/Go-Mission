@@ -599,6 +599,17 @@
         </div>
 
         <div class="col-12 panel">
+          <h2>Group Integrity Audit</h2>
+          <p class="sub">Strict hierarchy check: one upline per member, controlled group creation, and no cross-over/member mix-up.</p>
+          <div class="actions">
+            <button id="runGroupIntegrityAuditBtn" class="warning">Run Integrity Audit</button>
+          </div>
+          <div id="groupIntegritySummary" class="small"></div>
+          <div id="groupIntegrityViolations" class="list"></div>
+          <div id="groupIntegrityStatus" class="small"></div>
+        </div>
+
+        <div class="col-12 panel">
           <h2>Publishing Destinations</h2>
           <p class="sub">Use the correct block below so admins can clearly see what each post is for and where it appears.</p>
           <div class="publish-map">
@@ -1752,6 +1763,175 @@ match /goMission/watch-series-covers/{allPaths=**} {
       });
 
       return entries.sort((a, b) => getMemberDisplayName(a.member).localeCompare(getMemberDisplayName(b.member)));
+    }
+
+    function getNormalizedGroupMemberUids(group = {}) {
+      const entries = Array.isArray(group?.members) ? group.members : [];
+      return [...new Set(entries.map((entry) => {
+        if (typeof entry === 'string') return entry;
+        if (!entry || typeof entry !== 'object') return null;
+        return entry.odId || entry.uid || entry.id || null;
+      }).filter(Boolean))];
+    }
+
+    function isMemberExplicitlyAuthorizedForCreatingGroup(member = {}) {
+      const roles = member?.roles || {};
+      return Boolean(
+        member?.canCreateGroup === true ||
+        member?.endorsementApproved === true ||
+        member?.leaderEndorsed === true ||
+        member?.endorsedToLead === true ||
+        roles?.canCreateGroup === true
+      );
+    }
+
+    async function runGroupIntegrityAudit() {
+      const summaryEl = document.getElementById('groupIntegritySummary');
+      const listEl = document.getElementById('groupIntegrityViolations');
+      if (!summaryEl || !listEl) return;
+
+      setInlineStatus('groupIntegrityStatus', 'Running integrity audit...', 'info');
+      summaryEl.textContent = '';
+      listEl.innerHTML = '';
+
+      try {
+        const [membersSnap, groupsSnap] = await Promise.all([
+          getDocs(collection(db, 'goMission_members')),
+          getDocs(collection(db, 'goMission_groups'))
+        ]);
+
+        const members = membersSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const membersById = new Map(members.map((member) => [member.id, member]));
+        const groupsById = new Map(groups.map((group) => [group.id, group]));
+
+        const membershipByUser = new Map();
+        groups.forEach((group) => {
+          const memberUids = getNormalizedGroupMemberUids(group);
+          memberUids.forEach((uid) => {
+            if (!membershipByUser.has(uid)) membershipByUser.set(uid, []);
+            membershipByUser.get(uid).push(group.id);
+          });
+        });
+
+        const violations = [];
+
+        // Rule 1: No member should belong to 2+ upline groups as MEMBER.
+        membershipByUser.forEach((groupIds, uid) => {
+          const uniqueGroupIds = [...new Set(groupIds)];
+          if (uniqueGroupIds.length <= 1) return;
+          const member = membersById.get(uid) || {};
+          violations.push({
+            severity: 'high',
+            title: 'Member linked to multiple upline groups',
+            detail: `${getMemberDisplayName(member)} (${uid}) appears as member in ${uniqueGroupIds.length} groups: ${uniqueGroupIds.join(', ')}`
+          });
+        });
+
+        members.forEach((member) => {
+          const primaryGroupId = member?.uplineGroupId || member?.groupId || null;
+          const memberGroupLinks = membershipByUser.get(member.id) || [];
+
+          if (primaryGroupId && !memberGroupLinks.includes(primaryGroupId)) {
+            violations.push({
+              severity: 'medium',
+              title: 'Member pointer mismatch',
+              detail: `${getMemberDisplayName(member)} (${member.id}) has primary group pointer ${primaryGroupId} but is not listed in that group's members array.`
+            });
+          }
+
+          if (primaryGroupId) {
+            const otherMemberGroups = [...new Set(memberGroupLinks.filter((gid) => gid !== primaryGroupId))];
+            if (otherMemberGroups.length > 0) {
+              violations.push({
+                severity: 'high',
+                title: 'Primary member also linked to other member groups',
+                detail: `${getMemberDisplayName(member)} (${member.id}) primary=${primaryGroupId} but also member in: ${otherMemberGroups.join(', ')}`
+              });
+            }
+          }
+        });
+
+        // Rule 2: Group creation eligibility - leaders must have upline unless admin/explicitly authorized.
+        const seenLeaders = new Set();
+        groups.forEach((group) => {
+          const leaderId = group?.leaderId || null;
+          if (!leaderId || seenLeaders.has(leaderId)) return;
+          seenLeaders.add(leaderId);
+
+          const leader = membersById.get(leaderId) || {};
+          const leaderEmail = String(leader?.email || '').toLowerCase();
+          const isAdmin = ADMIN_UIDS.includes(leaderId) || ADMIN_EMAILS.includes(leaderEmail) || leader?.roles?.isAdmin === true;
+          const authorized = isMemberExplicitlyAuthorizedForCreatingGroup(leader);
+          const hasUpline = Boolean(leader?.uplineGroupId);
+
+          if (!isAdmin && !authorized && !hasUpline) {
+            violations.push({
+              severity: 'high',
+              title: 'Leader without required upline/authorization',
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) leads group(s) but has no uplineGroupId and no explicit create-group authorization flag.`
+            });
+          }
+        });
+
+        // Rule 4: Detect direct crossover loops (A under B and B under A).
+        const leaderToUplineLeader = new Map();
+        seenLeaders.forEach((leaderId) => {
+          const leader = membersById.get(leaderId);
+          const uplineGroupId = leader?.uplineGroupId || null;
+          if (!uplineGroupId) return;
+          const uplineGroup = groupsById.get(uplineGroupId);
+          if (!uplineGroup?.leaderId) return;
+          leaderToUplineLeader.set(leaderId, uplineGroup.leaderId);
+        });
+
+        const cycleSeen = new Set();
+        leaderToUplineLeader.forEach((uplineLeaderId, leaderId) => {
+          const reverse = leaderToUplineLeader.get(uplineLeaderId);
+          if (reverse !== leaderId) return;
+          const key = [leaderId, uplineLeaderId].sort().join('|');
+          if (cycleSeen.has(key)) return;
+          cycleSeen.add(key);
+          violations.push({
+            severity: 'high',
+            title: 'Leader crossover cycle detected',
+            detail: `Leader ${leaderId} is under ${uplineLeaderId}, while ${uplineLeaderId} is also under ${leaderId}.`
+          });
+        });
+
+        const highCount = violations.filter((v) => v.severity === 'high').length;
+        const mediumCount = violations.filter((v) => v.severity === 'medium').length;
+        const totalViolations = violations.length;
+
+        summaryEl.textContent = `Members: ${members.length} | Groups: ${groups.length} | Violations: ${totalViolations} (high: ${highCount}, medium: ${mediumCount})`;
+
+        if (!violations.length) {
+          listEl.innerHTML = `
+            <div class="small" style="padding:10px;border:1px solid rgba(115,192,151,0.4);border-radius:10px;background:rgba(115,192,151,0.12);">
+              No integrity violations detected using current strict rules.
+            </div>
+          `;
+          setInlineStatus('groupIntegrityStatus', 'Integrity audit completed. No violations found.', 'success');
+          return;
+        }
+
+        listEl.innerHTML = violations.map((violation) => {
+          const border = violation.severity === 'high' ? 'rgba(217,95,74,0.45)' : 'rgba(245,189,89,0.4)';
+          const bg = violation.severity === 'high' ? 'rgba(217,95,74,0.12)' : 'rgba(245,189,89,0.1)';
+          const badge = violation.severity === 'high' ? 'HIGH' : 'MEDIUM';
+          return `
+            <div style="margin-top:10px;padding:10px;border:1px solid ${border};border-radius:10px;background:${bg};">
+              <div class="small" style="font-weight:800;color:var(--text-main);">${escapeHtml(violation.title)} <span style="font-size:10px;opacity:.8;">[${badge}]</span></div>
+              <div class="small" style="margin-top:4px;">${escapeHtml(violation.detail)}</div>
+            </div>
+          `;
+        }).join('');
+
+        setInlineStatus('groupIntegrityStatus', 'Integrity audit completed with violations.', 'warn');
+      } catch (error) {
+        console.error('[Admin] runGroupIntegrityAudit error:', error);
+        setInlineStatus('groupIntegrityStatus', `Integrity audit failed: ${error.message}`, 'error');
+      }
     }
 
     function sortRows(rows = []) {
@@ -3502,6 +3682,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     function wireEvents() {
       document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
       document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
+      document.getElementById('runGroupIntegrityAuditBtn').addEventListener('click', runGroupIntegrityAudit);
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {
         const groupWrap = document.getElementById('groupAudienceWrap');

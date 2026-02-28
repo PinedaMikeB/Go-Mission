@@ -60,15 +60,61 @@ const Groups = {
   
   // Check if user can create a group
   async canCreateGroup() {
+    if (!window.currentUser || !window.db) {
+      return { allowed: false, reason: 'not_signed_in' };
+    }
+
     // Admin can always create
     if (this.isAdmin()) return { allowed: true, reason: 'admin' };
-    
-    // Check if user has been a disciple
-    const wasDisciple = await this.hasBeenDisciple();
-    if (wasDisciple) return { allowed: true, reason: 'disciple' };
-    
-    // Otherwise, need endorsement code
-    return { allowed: false, reason: 'not_disciple' };
+
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      const userData = userDoc.exists() ? (userDoc.data() || {}) : {};
+      const roles = userData.roles || {};
+
+      const explicitlyAuthorized = !!(
+        userData.canCreateGroup === true ||
+        userData.endorsementApproved === true ||
+        userData.leaderEndorsed === true ||
+        userData.endorsedToLead === true ||
+        roles.canCreateGroup === true ||
+        roles.isGroupLeader === true
+      );
+      if (explicitlyAuthorized) {
+        return { allowed: true, reason: 'authorized' };
+      }
+
+      // STRICT RULE: non-admin users need an active upline group to create downline.
+      const uplineGroupId = userData.uplineGroupId || null;
+      if (!uplineGroupId) {
+        return { allowed: false, reason: 'requires_upline_or_authorization' };
+      }
+
+      const uplineRef = window.doc(window.db, 'goMission_groups', uplineGroupId);
+      const uplineDoc = await window.getDoc(uplineRef);
+      if (!uplineDoc.exists()) {
+        return { allowed: false, reason: 'upline_missing' };
+      }
+
+      const uplineData = uplineDoc.data() || {};
+      if (uplineData.leaderId === window.currentUser.uid) {
+        return { allowed: false, reason: 'upline_self_invalid' };
+      }
+
+      const rawMembers = Array.isArray(uplineData.members) ? uplineData.members : [];
+      const memberIds = rawMembers.map((entry) => (
+        typeof entry === 'string' ? entry : (entry?.odId || entry?.uid || entry?.id || null)
+      )).filter(Boolean);
+      if (!memberIds.includes(window.currentUser.uid)) {
+        return { allowed: false, reason: 'not_member_of_upline' };
+      }
+
+      return { allowed: true, reason: 'active_upline_member' };
+    } catch (error) {
+      console.error('[Groups] Error checking create-group eligibility:', error);
+      return { allowed: false, reason: 'error' };
+    }
   },
   
   // Validate endorsement code
@@ -208,6 +254,15 @@ const Groups = {
     try {
       const groupRef = window.doc(window.db, 'goMission_groups', validation.groupId);
       const groupData = validation.groupData;
+
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      const userData = userDoc.exists() ? (userDoc.data() || {}) : {};
+      const existingPrimaryGroupId = userData.uplineGroupId || userData.groupId || null;
+      if (existingPrimaryGroupId && existingPrimaryGroupId !== validation.groupId) {
+        alert('You already have an upline group as a member. Ask the leader to approve you as a guest or process a transfer first.');
+        return false;
+      }
       
       // Add user to members
       const members = groupData.members || [];
@@ -222,8 +277,8 @@ const Groups = {
       }, { merge: true });
       
       // Update user's profile
-      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
       await window.setDoc(userRef, {
+        uplineGroupId: validation.groupId,
         groupId: validation.groupId,
         groupRole: 'member',
         joinedGroupAt: new Date().toISOString(),
@@ -591,6 +646,15 @@ const Groups = {
       const request = pendingRequests.find(r => r.uid === requestUid);
       if (!request) {
         alert('Request not found');
+        return false;
+      }
+
+      const requesterRef = window.doc(window.db, 'goMission_members', requestUid);
+      const requesterDoc = await window.getDoc(requesterRef);
+      const requesterData = requesterDoc.exists() ? (requesterDoc.data() || {}) : {};
+      const existingPrimaryGroupId = requesterData.uplineGroupId || requesterData.groupId || null;
+      if (existingPrimaryGroupId && existingPrimaryGroupId !== this.currentGroup.id) {
+        alert(`${request.name || 'This user'} already has an upline group. Approve as guest instead to keep integrity.`);
         return false;
       }
       

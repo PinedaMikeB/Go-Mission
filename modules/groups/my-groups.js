@@ -741,6 +741,33 @@ const MyGroups = {
     },
 
     /**
+     * Strict eligibility: must have an upline OR be explicitly authorized/admin.
+     */
+    hasStrictGroupCreationEligibility(profile) {
+        const roles = profile?.roles || {};
+        const isAdmin = roles.isAdmin === true || roles.isSuperAdmin === true;
+        const explicitlyAuthorized = !!(
+            profile?.canCreateGroup === true
+            || profile?.endorsementApproved === true
+            || profile?.leaderEndorsed === true
+            || profile?.endorsedToLead === true
+            || roles.canCreateGroup === true
+            || roles.isGroupLeader === true
+        );
+        const hasActiveUpline = !!(
+            this.uplineGroup
+            && this.uplineGroup.id
+            && this.uplineGroup.leaderId !== window.currentUser?.uid
+        );
+        return {
+            allowed: isAdmin || explicitlyAuthorized || hasActiveUpline,
+            isAdmin,
+            explicitlyAuthorized,
+            hasActiveUpline
+        };
+    },
+
+    /**
      * Evaluate whether "Create a Group" action should be shown in dashboard
      */
     async canShowCreateGroupAction() {
@@ -760,16 +787,14 @@ const MyGroups = {
             }
         }
 
-        const trainingCompleted = this.hasCompletedLeadershipTraining(profile);
-        const endorsed = this.hasLeadershipEndorsement(profile);
-        const allowedByTrainingAndEndorsement = trainingCompleted && endorsed;
-        const isCurrentLeader = (this.downlineGroups?.length || 0) > 0;
+        const strict = this.hasStrictGroupCreationEligibility(profile);
 
         return {
-            allowed: !!(groupsEligibility.allowed || allowedByTrainingAndEndorsement || isCurrentLeader),
-            reason: groupsEligibility.reason || 'unknown',
-            trainingCompleted,
-            endorsed
+            allowed: !!(groupsEligibility.allowed || strict.allowed),
+            reason: groupsEligibility.reason || (strict.allowed ? 'strict_ok' : 'requires_upline_or_authorization'),
+            hasActiveUpline: strict.hasActiveUpline,
+            explicitlyAuthorized: strict.explicitlyAuthorized,
+            isAdmin: strict.isAdmin
         };
     },
 
@@ -2554,15 +2579,23 @@ const MyGroups = {
                     </div>
                     
                     <div class="mt-4 flex gap-2">
-                        <!-- Always show both options: Member or Guest -->
-                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                class="flex-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold py-2 rounded-lg">
-                            ✅ Member
-                        </button>
-                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
-                                class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold py-2 rounded-lg">
-                            🎫 Guest
-                        </button>
+	                        ${req.hasExistingGroup ? `
+	                            <button type="button"
+	                                    class="flex-1 bg-[var(--mission-gold)]/40 text-[var(--mission-red-deep)]/70 text-sm font-bold py-2 rounded-lg cursor-not-allowed"
+	                                    title="Already under another upline leader. Approve as guest only."
+	                                    disabled>
+	                                🚫 Member Locked
+	                            </button>
+	                        ` : `
+	                            <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+	                                    class="flex-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold py-2 rounded-lg">
+	                                ✅ Member
+	                            </button>
+	                        `}
+	                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
+	                                class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold py-2 rounded-lg">
+	                            🎫 Guest
+	                        </button>
                         <button onclick="window.MyGroups.declineRequest('${groupId}', '${req.odId}')" 
                                 class="flex-1 bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-sm font-bold py-2 rounded-lg border border-[var(--mission-red-bright)]/30">
                             ❌
@@ -2603,6 +2636,17 @@ const MyGroups = {
             const updatedRequests = this.getRequestsAfterRemoval(group, odId);
             
             if (type === 'member') {
+                // STRICT RULE: one member cannot belong to multiple upline leaders as MEMBER.
+                const memberDoc = await window.getDoc(
+                    window.doc(window.db, 'goMission_members', odId)
+                );
+                const memberData = memberDoc.exists() ? (memberDoc.data() || {}) : {};
+                const existingPrimaryGroupId = memberData.uplineGroupId || memberData.groupId || null;
+                if (existingPrimaryGroupId && existingPrimaryGroupId !== groupId) {
+                    alert(`${request.name} already has an upline group. Approve as Guest only or process a transfer first.`);
+                    return;
+                }
+
                 // Add as full member
                 await window.setDoc(
                     window.doc(window.db, 'goMission_groups', groupId),

@@ -27,6 +27,100 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function memberData(uid) {
+      return get(/databases/$(database)/documents/goMission_members/$(uid)).data;
+    }
+
+    function hasExplicitGroupCreationAuthorization(uid) {
+      let m = memberData(uid);
+      return m != null && (
+        m.canCreateGroup == true ||
+        m.endorsementApproved == true ||
+        m.leaderEndorsed == true ||
+        m.endorsedToLead == true ||
+        (m.roles != null && (
+          m.roles.isAdmin == true ||
+          m.roles.canCreateGroup == true ||
+          m.roles.isGroupLeader == true
+        ))
+      );
+    }
+
+    function hasValidUplineForLeadership(uid) {
+      let m = memberData(uid);
+      let g = m != null && m.uplineGroupId is string && m.uplineGroupId.size() > 0
+        ? get(/databases/$(database)/documents/goMission_groups/$(m.uplineGroupId)).data
+        : {};
+      return m != null &&
+        m.uplineGroupId is string &&
+        m.uplineGroupId.size() > 0 &&
+        g.leaderId is string &&
+        g.leaderId != uid;
+    }
+
+    function touchesProtectedMemberFields() {
+      return (
+        request.resource.data.groupId != resource.data.groupId ||
+        request.resource.data.uplineGroupId != resource.data.uplineGroupId ||
+        request.resource.data.groupRole != resource.data.groupRole ||
+        request.resource.data.roles != resource.data.roles ||
+        request.resource.data.canCreateGroup != resource.data.canCreateGroup ||
+        request.resource.data.endorsementApproved != resource.data.endorsementApproved ||
+        request.resource.data.leaderEndorsed != resource.data.leaderEndorsed ||
+        request.resource.data.endorsedToLead != resource.data.endorsedToLead
+      );
+    }
+
+    function hasProtectedMemberPrivileges(data) {
+      let roles = data.roles != null ? data.roles : {};
+      return (
+        data.groupId != null ||
+        data.uplineGroupId != null ||
+        data.groupRole != null ||
+        data.canCreateGroup == true ||
+        data.endorsementApproved == true ||
+        data.leaderEndorsed == true ||
+        data.endorsedToLead == true ||
+        roles.isAdmin == true ||
+        roles.canCreateGroup == true ||
+        roles.isGroupLeader == true
+      );
+    }
+
+    function canSelfAppendOwnJoinRequest() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let existing = resource.data.joinRequests is list ? resource.data.joinRequests : [];
+      let incoming = request.resource.data.joinRequests is list ? request.resource.data.joinRequests : [];
+      let newIndex = existing.size();
+      let newEntry = incoming[newIndex];
+      return isSignedIn() &&
+        changed.hasOnly(['joinRequests']) &&
+        incoming.size() == newIndex + 1 &&
+        incoming.hasAll(existing) &&
+        newEntry is map &&
+        (
+          newEntry.odId == request.auth.uid ||
+          newEntry.uid == request.auth.uid
+        );
+    }
+
+    function canSelfAppendOwnPendingRequest() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let existing = resource.data.pendingRequests is list ? resource.data.pendingRequests : [];
+      let incoming = request.resource.data.pendingRequests is list ? request.resource.data.pendingRequests : [];
+      let newIndex = existing.size();
+      let newEntry = incoming[newIndex];
+      return isSignedIn() &&
+        changed.hasOnly(['pendingRequests']) &&
+        incoming.size() == newIndex + 1 &&
+        incoming.hasAll(existing) &&
+        newEntry is map &&
+        (
+          newEntry.uid == request.auth.uid ||
+          newEntry.odId == request.auth.uid
+        );
+    }
+
     function isOptionalString(value, maxLength) {
       return value == null || (value is string && value.size() <= maxLength);
     }
@@ -141,13 +235,26 @@ service cloud.firestore {
     // Member profiles
     match /goMission_members/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSelf(uid) || isAdmin();
-      allow update, delete: if isSelf(uid) || isAdmin();
+      allow create: if isAdmin() || (isSelf(uid) && !hasProtectedMemberPrivileges(request.resource.data));
+      allow update: if isAdmin() || (isSelf(uid) && !touchesProtectedMemberFields());
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
-    // Core app data (signed-in users)
+    // Core app data
     match /goMission_groups/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.leaderId == request.auth.uid && (
+          isAdmin() ||
+          hasExplicitGroupCreationAuthorization(request.auth.uid) ||
+          hasValidUplineForLeadership(request.auth.uid)
+        );
+      allow update: if
+        isAdmin() ||
+        (isSignedIn() && resource.data.leaderId == request.auth.uid) ||
+        canSelfAppendOwnJoinRequest() ||
+        canSelfAppendOwnPendingRequest();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.leaderId == request.auth.uid);
     }
 
     match /goMission_groupDeletionRequests/{docId} {

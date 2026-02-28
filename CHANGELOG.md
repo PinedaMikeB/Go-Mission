@@ -10,6 +10,49 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.7] - 2026-02-28 🔒 Mission Group Integrity Hardening
+
+### ✅ Summary
+Enforced strict hierarchy integrity for Mission Groups: one primary upline membership per member, controlled group creation eligibility, and admin-visible integrity audit checks.
+
+### Included Changes
+1. **Strict member integrity enforcement**
+   - Approve-as-member now blocks users who already have a different primary upline group.
+   - Join-request UI shows `Member Locked` when requester already has an existing primary group.
+   - Invite-code member join blocks users already assigned to another primary upline.
+2. **Controlled group creation gate**
+   - Group creation now requires one of:
+     - admin,
+     - explicit authorization flags (`canCreateGroup`/endorsement flags/role grant),
+     - valid active upline membership.
+3. **Firestore security hardening**
+   - Self profile updates can no longer modify protected integrity fields (`groupId`, `uplineGroupId`, `groupRole`, role/authorization flags).
+   - Self profile creation cannot self-grant protected privileges.
+   - Group updates are restricted to leader/admin, or self join-request append only (no broad write access).
+4. **Admin integrity audit tooling**
+   - Added `Group Integrity Audit` section in `/admin.html`.
+   - Audit checks:
+     - members linked to multiple member groups,
+     - member pointer mismatches,
+     - leaders without valid upline/authorization/admin eligibility,
+     - direct leader crossover cycles.
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/firestore.rules`
+- `/admin.html`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.7>
+```
+
+---
+
 ## [v2.2.6] - 2026-02-23 🗑️ Group Deletion Request Approval Flow
 
 ### ✅ Summary
