@@ -714,6 +714,51 @@ const MyGroups = {
     },
 
     /**
+     * Enrich pending join requests with live member-lock state.
+     * Hard rule: if requester already has a different primary upline group,
+     * member approval must be disabled (guest-only).
+     */
+    async enrichJoinRequestsWithMemberLock(requests = [], targetGroupId = null) {
+        const safeRequests = Array.isArray(requests) ? requests : [];
+        const groupCache = new Map();
+
+        return Promise.all(safeRequests.map(async (request) => {
+            const req = { ...request, memberLocked: request?.hasExistingGroup === true };
+            const uid = req?.odId || req?.uid || req?.id || null;
+            if (!uid || !targetGroupId || !window.db) return req;
+
+            try {
+                const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', uid));
+                const memberData = memberDoc.exists() ? (memberDoc.data() || {}) : {};
+                const primaryGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(memberData, uid);
+                const hasOtherPrimary = Boolean(primaryGroupId && primaryGroupId !== targetGroupId);
+
+                if (hasOtherPrimary) {
+                    req.memberLocked = true;
+                    req.hasExistingGroup = true;
+                    req.existingGroupId = primaryGroupId;
+
+                    if (!req.existingGroupName || !req.existingLeaderName) {
+                        if (!groupCache.has(primaryGroupId)) {
+                            const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', primaryGroupId));
+                            groupCache.set(primaryGroupId, groupDoc.exists() ? { id: groupDoc.id, ...(groupDoc.data() || {}) } : null);
+                        }
+                        const existingGroup = groupCache.get(primaryGroupId);
+                        if (existingGroup) {
+                            req.existingGroupName = req.existingGroupName || existingGroup.name || primaryGroupId;
+                            req.existingLeaderName = req.existingLeaderName || existingGroup.leaderName || existingGroup.leaderId || 'Unknown';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('[MyGroups] Failed to enrich request lock:', uid, error);
+            }
+
+            return req;
+        }));
+    },
+
+    /**
      * Find group from any dashboard-visible collection
      */
     getGroupById(groupId) {
@@ -2571,11 +2616,14 @@ const MyGroups = {
     /**
      * Show pending join requests for a group
      */
-    showJoinRequests(groupId) {
+    async showJoinRequests(groupId) {
         const group = this.downlineGroups.find(g => g.id === groupId);
         if (!group) return;
         
-        const requests = this.getUnifiedJoinRequests(group);
+        const requests = await this.enrichJoinRequestsWithMemberLock(
+            this.getUnifiedJoinRequests(group),
+            groupId
+        );
         const modal = document.getElementById('groupModal');
         const content = document.getElementById('groupModalContent');
         
@@ -2598,13 +2646,13 @@ const MyGroups = {
                         <div class="flex-1">
                             <p class="font-bold text-[var(--text-color)]">${req.name}</p>
                             <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
-                            ${req.hasExistingGroup ? `
+                            ${req.memberLocked ? `
                                 <div class="mt-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-2">
                                     <p class="text-xs text-[var(--text-color)]">
-                                        ℹ️ Already in: <strong>${req.existingGroupName}</strong>
+                                        ℹ️ Already in another upline group: <strong>${req.existingGroupName || req.existingGroupId || 'Assigned Group'}</strong>
                                     </p>
                                     <p class="text-xs text-[var(--text-muted)]">
-                                        Leader: ${req.existingLeaderName}
+                                        Leader: ${req.existingLeaderName || 'Unknown'}
                                     </p>
                                 </div>
                             ` : `
@@ -2614,10 +2662,10 @@ const MyGroups = {
                     </div>
                     
                     <div class="mt-4 flex gap-2">
-	                        ${req.hasExistingGroup ? `
-	                            <button type="button"
-	                                    class="flex-1 bg-[var(--mission-gold)]/40 text-[var(--mission-red-deep)]/70 text-sm font-bold py-2 rounded-lg cursor-not-allowed"
-	                                    title="Already under another upline leader. Approve as guest only."
+		                        ${req.memberLocked ? `
+		                            <button type="button"
+		                                    class="flex-1 bg-[var(--mission-gold)]/40 text-[var(--mission-red-deep)]/70 text-sm font-bold py-2 rounded-lg cursor-not-allowed"
+		                                    title="Already under another upline leader. Approve as guest only."
 	                                    disabled>
 	                                🚫 Member Locked
 	                            </button>
@@ -2906,7 +2954,10 @@ const MyGroups = {
             membersHtml += '</div>';
             
             // Build pending requests section (if any and user is leader)
-            const requests = this.getUnifiedJoinRequests(group);
+            const requests = await this.enrichJoinRequestsWithMemberLock(
+                this.getUnifiedJoinRequests(group),
+                groupId
+            );
             let pendingHtml = '';
             
             if (isLeader && requests.length > 0) {
@@ -2922,18 +2973,27 @@ const MyGroups = {
                                         <div class="flex-1">
                                             <p class="text-[var(--text-color)] font-medium">${req.name}</p>
                                             <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
-                                            ${req.hasExistingGroup ? `
-                                                <p class="text-xs text-[var(--text-muted)] mt-1">Already in: ${req.existingGroupName}</p>
+                                            ${req.memberLocked ? `
+                                                <p class="text-xs text-[var(--text-muted)] mt-1">Already in: ${req.existingGroupName || req.existingGroupId || 'Assigned Group'}</p>
                                             ` : `
                                                 <p class="text-xs text-[var(--text-muted)] mt-1">✨ New (no current group)</p>
                                             `}
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                                class="flex-1 bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 rounded-lg transition-opacity">
-                                            ✅ Member
-                                        </button>
+                                        ${req.memberLocked ? `
+                                            <button type="button"
+                                                    class="flex-1 bg-[var(--mission-gold)]/40 text-[var(--mission-red-deep)]/70 text-xs font-bold py-2 rounded-lg cursor-not-allowed"
+                                                    title="Already under another upline leader. Approve as guest only."
+                                                    disabled>
+                                                🚫 Member Locked
+                                            </button>
+                                        ` : `
+                                            <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
+                                                    class="flex-1 bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 rounded-lg transition-opacity">
+                                                ✅ Member
+                                            </button>
+                                        `}
                                         <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
                                                 class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs font-bold py-2 rounded-lg">
                                             🎫 Guest
