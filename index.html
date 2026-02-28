@@ -3124,6 +3124,10 @@
                         await MyGroups.init();
                     }
 
+                    if (typeof window.requestJourneyStageRefresh === 'function') {
+                        window.requestJourneyStageRefresh('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 120 });
+                    }
+
                     // Initialize Chat Inbox module
                     if (typeof ChatApp !== 'undefined') {
                         await ChatApp.init();
@@ -3313,12 +3317,537 @@
             }
         }
 
+        const JOURNEY_STAGE_ORDER = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
+        const JOURNEY_STAGE_ICONS = {
+            seeker: '🌱',
+            disciple: '📖',
+            'disciple-maker': '🤝',
+            builder: '🏗️',
+            multiplier: '🌍'
+        };
+        const JOURNEY_STAGE_LABELS = {
+            en: {
+                seeker: 'Seeker',
+                disciple: 'Disciple',
+                'disciple-maker': 'Disciple-Maker',
+                builder: 'Builder',
+                multiplier: 'Multiplier'
+            },
+            tl: {
+                seeker: 'Naghahanap',
+                disciple: 'Alagad',
+                'disciple-maker': 'Tagapaghubog',
+                builder: 'Tagapagtayo',
+                multiplier: 'Tagapagparami'
+            }
+        };
+        const JOURNEY_ADVANCEMENT_COPY = {
+            en: {
+                disciple: {
+                    title: 'Congratulations! You reached Disciple.',
+                    summary: 'You are now in a mission group. Keep growing in Jesus daily.',
+                    steps: [
+                        'Stay rooted in daily Bible and prayer.',
+                        'Show up consistently in your mission group.',
+                        'Prepare to disciple someone next.'
+                    ],
+                    cta: 'Continue Journey'
+                },
+                'disciple-maker': {
+                    title: 'Congratulations! You reached Disciple-Maker.',
+                    summary: 'You are now leading a mission group. God is multiplying through you.',
+                    steps: [
+                        'Care for your members one by one.',
+                        'Model obedience, not just teaching.',
+                        'Raise new leaders intentionally.'
+                    ],
+                    cta: 'Lead Forward'
+                },
+                builder: {
+                    title: 'Congratulations! You reached Builder.',
+                    summary: 'Your leadership now spans 5 generations. This is kingdom multiplication.',
+                    steps: [
+                        'Strengthen each generation, not only the first.',
+                        'Coach your leaders to reproduce healthy groups.',
+                        'Document and celebrate faithful multiplication.'
+                    ],
+                    cta: 'Build Generations'
+                },
+                multiplier: {
+                    title: 'Congratulations! You reached Multiplier.',
+                    summary: 'Your movement has reached 6+ generations. Keep stewarding with humility.',
+                    steps: [
+                        'Guard doctrine, culture, and character.',
+                        'Develop builders who can sustain multiplication.',
+                        'Keep sending leaders to new places.'
+                    ],
+                    cta: 'Multiply Further'
+                }
+            },
+            tl: {
+                disciple: {
+                    title: 'Binabati kita! Nasa Alagad stage ka na.',
+                    summary: 'Kasali ka na sa mission group. Magpatuloy ka sa paglakad kay Jesus araw-araw.',
+                    steps: [
+                        'Manatili sa araw-araw na Bible at panalangin.',
+                        'Maging tapat sa pagdalo sa mission group.',
+                        'Maghanda na maghubog ng susunod na tao.'
+                    ],
+                    cta: 'Magpatuloy'
+                },
+                'disciple-maker': {
+                    title: 'Binabati kita! Nasa Tagapaghubog stage ka na.',
+                    summary: 'Namumuno ka na ng mission group. Nagpaparami ang Diyos sa pamamagitan mo.',
+                    steps: [
+                        'Alagaan ang bawat miyembro nang personal.',
+                        'Maging halimbawa sa pagsunod.',
+                        'Sadyain ang pag-develop ng mga bagong lider.'
+                    ],
+                    cta: 'Mamuno Pa'
+                },
+                builder: {
+                    title: 'Binabati kita! Nasa Tagapagtayo stage ka na.',
+                    summary: 'Umabot na sa 5 henerasyon ang iyong leadership. Tunay itong multiplication.',
+                    steps: [
+                        'Palakasin ang bawat henerasyon, hindi lang una.',
+                        'I-coach ang mga lider para magparami ng healthy groups.',
+                        'I-document at ipagdiwang ang tapat na pagpaparami.'
+                    ],
+                    cta: 'Magtayo Pa'
+                },
+                multiplier: {
+                    title: 'Binabati kita! Nasa Tagapagparami stage ka na.',
+                    summary: 'Umabot na sa 6+ henerasyon ang movement. Ipagpatuloy ito nang may pagpapakumbaba.',
+                    steps: [
+                        'Bantayan ang doktrina, kultura, at karakter.',
+                        'Mag-develop ng mga builder na magpapatuloy ng movement.',
+                        'Magpadala pa ng mga lider sa bagong lugar.'
+                    ],
+                    cta: 'Magparami Pa'
+                }
+            }
+        };
+        const JOURNEY_ENCOURAGEMENT_SEQUENCE = {
+            en: {
+                seeker: [
+                    'Jesus welcomes your questions. Keep seeking Him daily.',
+                    'Small daily obedience builds a strong spiritual foundation.',
+                    'Your next faithful step matters more than perfect performance.'
+                ],
+                disciple: [
+                    'Consistency in your group will shape your character.',
+                    'Practice what you learn this week with one concrete action.',
+                    'Invite accountability and keep growing in community.'
+                ],
+                'disciple-maker': [
+                    'Lead by example first, then by instruction.',
+                    'Pray for each member by name and follow up intentionally.',
+                    'Reproduction starts with one faithfully developed leader.'
+                ],
+                builder: [
+                    'Build systems that help leaders reproduce leaders.',
+                    'Care for health, not just growth numbers.',
+                    'Strengthen your second and third generation leaders weekly.'
+                ],
+                multiplier: [
+                    'Protect mission DNA as the movement expands.',
+                    'Empower regional builders and stay coachable.',
+                    'Faithful stewardship now impacts nations and generations.'
+                ]
+            },
+            tl: {
+                seeker: [
+                    'Tinatanggap ni Jesus ang iyong mga tanong. Magpatuloy sa paghahanap sa Kanya.',
+                    'Ang maliliit na araw-araw na pagsunod ang pundasyon ng matatag na buhay espiritwal.',
+                    'Mas mahalaga ang susunod mong tapat na hakbang kaysa perpektong performance.'
+                ],
+                disciple: [
+                    'Ang consistency mo sa group ay huhubog sa iyong karakter.',
+                    'Isabuhay ngayong linggo ang isang konkretong natutunan mo.',
+                    'Yayain ang accountability at lumago kasama ang komunidad.'
+                ],
+                'disciple-maker': [
+                    'Mamuno muna sa halimbawa bago sa salita.',
+                    'Ipanalangin ang bawat miyembro at mag-follow up nang sinasadya.',
+                    'Nagsisimula ang reproduction sa isang lider na matapat mong nade-develop.'
+                ],
+                builder: [
+                    'Maglatag ng systems na nagpaparami ng leaders.',
+                    'Unahin ang health ng movement, hindi lang bilang.',
+                    'Palakasin linggo-linggo ang second at third generation leaders.'
+                ],
+                multiplier: [
+                    'Ingatan ang mission DNA habang lumalawak ang movement.',
+                    'Mag-empower ng regional builders at manatiling coachable.',
+                    'Ang tapat na stewardship mo ngayon ay aabot sa mga henerasyon.'
+                ]
+            }
+        };
+        const JourneyStageRuntime = {
+            graphCacheAt: 0,
+            graphCacheTtlMs: 120000,
+            graphCache: null,
+            evalTimer: null
+        };
+
+        function normalizeJourneyStage(stage) {
+            const normalized = String(stage || '').toLowerCase().trim();
+            return JOURNEY_STAGE_ORDER.includes(normalized) ? normalized : 'seeker';
+        }
+
+        function getJourneyStageRank(stage) {
+            return JOURNEY_STAGE_ORDER.indexOf(normalizeJourneyStage(stage));
+        }
+
+        function getHighestJourneyStage(a, b) {
+            return getJourneyStageRank(a) >= getJourneyStageRank(b) ? normalizeJourneyStage(a) : normalizeJourneyStage(b);
+        }
+
+        function getJourneyLanguage() {
+            return window.i18n?.getLang?.() === 'en' ? 'en' : 'tl';
+        }
+
+        function getStageLabel(stage, lang = getJourneyLanguage()) {
+            const normalized = normalizeJourneyStage(stage);
+            return JOURNEY_STAGE_LABELS[lang]?.[normalized] || JOURNEY_STAGE_LABELS.en[normalized] || normalized;
+        }
+
+        function escapeHtmlText(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getCollectionIds(raw) {
+            if (!raw) return [];
+            const extractEntryId = (entry) => {
+                if (!entry) return null;
+                if (typeof entry === 'string') return entry;
+                return entry.odId || entry.uid || entry.userId || entry.memberId || entry.id || entry._key || null;
+            };
+
+            if (Array.isArray(raw)) {
+                return [...new Set(raw.map(extractEntryId).filter(Boolean).map(String))];
+            }
+            if (typeof raw === 'object') {
+                return [...new Set(Object.entries(raw).map(([key, value]) => {
+                    if (value && typeof value === 'object') return extractEntryId({ ...value, _key: key });
+                    return key;
+                }).filter(Boolean).map(String))];
+            }
+            if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
+            return [];
+        }
+
+        function showJourneyToast(title, body, icon = '🌱', duration = 5200) {
+            if (typeof Notifications !== 'undefined' && typeof Notifications.showToast === 'function') {
+                Notifications.showToast({ title, body, icon, duration });
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 rounded-2xl border border-[var(--mission-gold)]/35 bg-[var(--card-bg-solid)] px-4 py-3 shadow-2xl z-[120] max-w-sm w-[92vw]';
+            toast.innerHTML = `
+                <p class="text-xs font-black tracking-wide uppercase text-[var(--mission-gold)] mb-1">${escapeHtmlText(icon)} ${escapeHtmlText(title)}</p>
+                <p class="text-sm text-[var(--text-color)] leading-relaxed">${escapeHtmlText(body)}</p>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), duration);
+        }
+
+        function maybeShowStageEncouragement(stage) {
+            const uid = window.currentUser?.uid;
+            if (!uid) return;
+
+            const lang = getJourneyLanguage();
+            const normalizedStage = normalizeJourneyStage(stage);
+            const messages = JOURNEY_ENCOURAGEMENT_SEQUENCE[lang]?.[normalizedStage] || JOURNEY_ENCOURAGEMENT_SEQUENCE.en?.[normalizedStage] || [];
+            if (!messages.length) return;
+
+            const storageKey = `goMission_stageEncourage_${uid}_${normalizedStage}`;
+            const now = Date.now();
+            let state = { index: 0, lastAt: 0 };
+            try {
+                const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                if (typeof parsed.index === 'number') state.index = parsed.index;
+                if (typeof parsed.lastAt === 'number') state.lastAt = parsed.lastAt;
+            } catch (error) {
+                console.debug('[Journey] Could not parse encouragement state:', error);
+            }
+
+            const cooldownMs = 12 * 60 * 60 * 1000;
+            if (state.lastAt && (now - state.lastAt) < cooldownMs) return;
+
+            const message = messages[state.index % messages.length];
+            const nextState = { index: state.index + 1, lastAt: now };
+            localStorage.setItem(storageKey, JSON.stringify(nextState));
+
+            const stageName = getStageLabel(normalizedStage, lang);
+            const title = lang === 'en' ? `${stageName} Journey` : `Paglalakbay: ${stageName}`;
+            showJourneyToast(title, message, JOURNEY_STAGE_ICONS[normalizedStage] || '🌱', 5600);
+        }
+
+        function showJourneyAdvancementCelebration(newStage, previousStage, metrics = {}) {
+            const uid = window.currentUser?.uid;
+            if (!uid) return;
+
+            const normalizedStage = normalizeJourneyStage(newStage);
+            const celebrationKey = `goMission_stageCelebrated_${uid}_${normalizedStage}`;
+            if (localStorage.getItem(celebrationKey) === '1') return;
+
+            const lang = getJourneyLanguage();
+            const copy = JOURNEY_ADVANCEMENT_COPY[lang]?.[normalizedStage] || JOURNEY_ADVANCEMENT_COPY.en?.[normalizedStage];
+            if (!copy) return;
+
+            localStorage.setItem(celebrationKey, '1');
+
+            const previousLabel = getStageLabel(previousStage, lang);
+            const currentLabel = getStageLabel(normalizedStage, lang);
+            const generationDepth = Number(metrics.generationDepth || 0);
+            const generationLine = generationDepth > 0
+                ? `<p class="text-xs text-[var(--text-muted)] mt-1">${lang === 'en' ? `Current generation depth: ${generationDepth}` : `Kasalukuyang generation depth: ${generationDepth}`}</p>`
+                : '';
+
+            const existing = document.getElementById('journeyAdvancementModal');
+            if (existing) existing.remove();
+
+            const wrapper = document.createElement('div');
+            wrapper.id = 'journeyAdvancementModal';
+            wrapper.className = 'fixed inset-0 z-[230] bg-black/65 p-4 flex items-end sm:items-center justify-center';
+
+            wrapper.innerHTML = `
+                <div class="w-full max-w-lg rounded-3xl border border-[var(--mission-gold)]/35 bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-[var(--mission-gold)]/20 flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-[var(--mission-gold)]">${escapeHtmlText(JOURNEY_STAGE_ICONS[normalizedStage] || '🌱')} ${lang === 'en' ? 'Stage Advanced' : 'Stage Advanced'}</p>
+                            <h3 class="text-lg font-bold text-[var(--text-color)] mt-1">${escapeHtmlText(copy.title)}</h3>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${escapeHtmlText(previousLabel)} → ${escapeHtmlText(currentLabel)}</p>
+                            ${generationLine}
+                        </div>
+                        <button type="button" class="px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-color)]" id="journeyAdvancementClose">✕</button>
+                    </div>
+                    <div class="px-5 py-4">
+                        <p class="text-sm text-[var(--text-color)] leading-relaxed">${escapeHtmlText(copy.summary)}</p>
+                        <ul class="mt-3 space-y-2">
+                            ${copy.steps.map(step => `<li class="text-sm text-[var(--text-muted)] leading-relaxed">• ${escapeHtmlText(step)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="px-5 py-4 border-t border-[var(--mission-gold)]/20">
+                        <button type="button" class="w-full py-3 rounded-xl bg-[var(--mission-red-bright)] text-white font-black text-sm uppercase tracking-wide" id="journeyAdvancementContinue">
+                            ${escapeHtmlText(copy.cta)}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const close = () => wrapper.remove();
+            wrapper.addEventListener('click', (event) => {
+                if (event.target === wrapper) close();
+            });
+            document.body.appendChild(wrapper);
+            document.getElementById('journeyAdvancementClose')?.addEventListener('click', close);
+            document.getElementById('journeyAdvancementContinue')?.addEventListener('click', close);
+        }
+
+        async function getAllGroupsForJourney(forceRefresh = false) {
+            const now = Date.now();
+            if (!forceRefresh && JourneyStageRuntime.graphCache && (now - JourneyStageRuntime.graphCacheAt) < JourneyStageRuntime.graphCacheTtlMs) {
+                return JourneyStageRuntime.graphCache;
+            }
+            if (!window.db || !window.collection || !window.getDocs) return [];
+
+            const snapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+            const groups = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+            JourneyStageRuntime.graphCache = groups;
+            JourneyStageRuntime.graphCacheAt = now;
+            return groups;
+        }
+
+        function computeGenerationDepth(rootUid, groups) {
+            const leaderToMembers = new Map();
+            const leaders = new Set();
+
+            groups.forEach((group) => {
+                const leaderId = String(group?.leaderId || '').trim();
+                if (!leaderId) return;
+                leaders.add(leaderId);
+                if (!leaderToMembers.has(leaderId)) {
+                    leaderToMembers.set(leaderId, new Set());
+                }
+                const memberIds = getCollectionIds(group?.members);
+                memberIds.forEach((memberId) => {
+                    if (!memberId || memberId === leaderId) return;
+                    leaderToMembers.get(leaderId).add(memberId);
+                });
+            });
+
+            let maxDepth = 0;
+            const walk = (leaderId, depth, path) => {
+                if (depth > maxDepth) maxDepth = depth;
+                const members = leaderToMembers.get(leaderId);
+                if (!members || members.size === 0) return;
+
+                members.forEach((memberId) => {
+                    if (!leaders.has(memberId)) return;
+                    if (path.has(memberId)) return;
+                    path.add(memberId);
+                    walk(memberId, depth + 1, path);
+                    path.delete(memberId);
+                });
+            };
+
+            walk(rootUid, 0, new Set([rootUid]));
+            return maxDepth;
+        }
+
+        async function resolveJourneyStatus(uid, options = {}) {
+            let profile = window.currentUserProfile || null;
+            if (!profile || profile.id !== uid) {
+                const userDoc = await window.getDoc(window.doc(window.db, 'goMission_members', uid));
+                profile = userDoc.exists() ? ({ id: uid, ...(userDoc.data() || {}) }) : { id: uid };
+                window.currentUserProfile = profile;
+            }
+
+            let hasMissionGroupMember = false;
+            const roleFromProfile = String(profile.groupRole || '').toLowerCase().trim();
+            const primaryGroupId = profile.uplineGroupId || (roleFromProfile === 'member' ? profile.groupId : null);
+
+            const uplineGroup = window.MyGroups?.uplineGroup || null;
+            if (!hasMissionGroupMember && uplineGroup?.id) {
+                const memberIds = getCollectionIds(uplineGroup.members);
+                hasMissionGroupMember = memberIds.includes(uid);
+            }
+
+            if (!hasMissionGroupMember && primaryGroupId) {
+                try {
+                    const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', String(primaryGroupId)));
+                    if (groupDoc.exists()) {
+                        const groupData = groupDoc.data() || {};
+                        const memberIds = getCollectionIds(groupData.members);
+                        hasMissionGroupMember = memberIds.includes(uid);
+                    }
+                } catch (error) {
+                    console.warn('[Journey] Could not verify member group pointer:', error);
+                }
+            }
+
+            let groupsLedCount = Array.isArray(window.MyGroups?.downlineGroups) ? window.MyGroups.downlineGroups.length : 0;
+            if (!groupsLedCount) {
+                try {
+                    const downlineQuery = window.query(
+                        window.collection(window.db, 'goMission_groups'),
+                        window.where('leaderId', '==', uid)
+                    );
+                    const downlineSnapshot = await window.getDocs(downlineQuery);
+                    groupsLedCount = downlineSnapshot.size || 0;
+                } catch (error) {
+                    console.warn('[Journey] Could not count led groups:', error);
+                }
+            }
+
+            const leadsMissionGroup = groupsLedCount > 0;
+            let generationDepth = 0;
+            if (leadsMissionGroup) {
+                try {
+                    const allGroups = await getAllGroupsForJourney(!!options.forceGraphRefresh);
+                    generationDepth = computeGenerationDepth(uid, allGroups);
+                } catch (error) {
+                    console.warn('[Journey] Could not compute generation depth:', error);
+                }
+            }
+
+            let detectedStage = 'seeker';
+            if (generationDepth >= 6) detectedStage = 'multiplier';
+            else if (generationDepth >= 5) detectedStage = 'builder';
+            else if (leadsMissionGroup) detectedStage = 'disciple-maker';
+            else if (hasMissionGroupMember) detectedStage = 'disciple';
+
+            return {
+                profile,
+                hasMissionGroupMember,
+                leadsMissionGroup,
+                groupsLedCount,
+                generationDepth,
+                detectedStage: normalizeJourneyStage(detectedStage)
+            };
+        }
+
+        window.evaluateAndApplyJourneyStage = async function(options = {}) {
+            if (!window.currentUser?.uid || !window.db) return null;
+
+            try {
+                const uid = window.currentUser.uid;
+                const status = await resolveJourneyStatus(uid, options);
+                const persistedStage = normalizeJourneyStage(status.profile?.stage || window.currentUserStage || 'seeker');
+                const detectedStage = normalizeJourneyStage(status.detectedStage);
+                const finalStage = getHighestJourneyStage(persistedStage, detectedStage);
+                const advanced = getJourneyStageRank(finalStage) > getJourneyStageRank(persistedStage);
+
+                if (finalStage !== persistedStage) {
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', uid),
+                        {
+                            stage: finalStage,
+                            stageUpdatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                            stageAutoStatus: {
+                                detectedStage,
+                                hasMissionGroupMember: !!status.hasMissionGroupMember,
+                                leadsMissionGroup: !!status.leadsMissionGroup,
+                                groupsLedCount: Number(status.groupsLedCount || 0),
+                                generationDepth: Number(status.generationDepth || 0),
+                                updatedAtIso: new Date().toISOString()
+                            }
+                        },
+                        { merge: true }
+                    );
+                }
+
+                window.currentUserProfile = { ...(status.profile || {}), stage: finalStage, id: uid };
+                window.currentUserStage = finalStage;
+                updateJourneyDisplay(finalStage);
+
+                if (advanced) {
+                    showJourneyAdvancementCelebration(finalStage, persistedStage, status);
+                } else if (!options.silentMotivation) {
+                    maybeShowStageEncouragement(finalStage);
+                }
+
+                return { ...status, persistedStage, finalStage, advanced };
+            } catch (error) {
+                console.error('[Journey] Stage evaluation failed:', error);
+                return null;
+            }
+        };
+
+        window.requestJourneyStageRefresh = function(source = 'manual', options = {}) {
+            if (!window.currentUser?.uid) return;
+            if (JourneyStageRuntime.evalTimer) clearTimeout(JourneyStageRuntime.evalTimer);
+
+            const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 240;
+            JourneyStageRuntime.evalTimer = setTimeout(() => {
+                JourneyStageRuntime.evalTimer = null;
+                window.evaluateAndApplyJourneyStage({
+                    source,
+                    forceGraphRefresh: !!options.forceGraphRefresh,
+                    silentMotivation: !!options.silentMotivation
+                });
+            }, delayMs);
+        };
+
+        document.addEventListener('myGroupsUpdated', function() {
+            window.requestJourneyStageRefresh('myGroupsUpdated', { forceGraphRefresh: true });
+        });
+
         async function loadUserData(uid) {
             try {
                 const userRef = doc(db, 'goMission_members', uid);
                 const userDoc = await getDoc(userRef);
                 if (userDoc.exists()) {
                     const data = userDoc.data();
+                    window.currentUserProfile = { id: uid, ...data };
                     window.currentUserStage = data.stage || 'seeker';
                     window.currentUserRoles = data.roles || {};
                     updateJourneyDisplay(window.currentUserStage);

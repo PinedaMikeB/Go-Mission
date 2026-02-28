@@ -62,6 +62,21 @@ const MyGroups = {
     },
 
     /**
+     * Broadcast group-state updates so Journey/Home can react in real time.
+     */
+    emitGroupsUpdated(reason = 'updated') {
+        if (typeof document === 'undefined' || typeof CustomEvent === 'undefined') return;
+        document.dispatchEvent(new CustomEvent('myGroupsUpdated', {
+            detail: {
+                reason,
+                uplineGroupId: this.uplineGroup?.id || null,
+                downlineCount: Number(this.downlineGroups?.length || 0),
+                guestCount: Number(this.guestGroups?.length || 0)
+            }
+        }));
+    },
+
+    /**
      * Resolve guest user id across schemas
      */
     getGuestUserId(guest) {
@@ -617,6 +632,7 @@ const MyGroups = {
                 downline: this.downlineGroups.length,
                 guest: this.guestGroups.length
             });
+            this.emitGroupsUpdated('loadGroups');
             
         } catch (error) {
             console.error('[MyGroups] Load error:', error);
@@ -714,6 +730,7 @@ const MyGroups = {
             }
             
             console.log('[MyGroups] Real-time update, groups:', this.downlineGroups.length);
+            this.emitGroupsUpdated('snapshot');
         }, (error) => {
             console.error('[MyGroups] Snapshot error:', error);
         });
