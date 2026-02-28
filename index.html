@@ -5141,6 +5141,20 @@
         };
         
         // Toggle main menu (header menu button)
+        window.openJournalFromMainMenu = async function(event) {
+            if (event?.preventDefault) event.preventDefault();
+            if (event?.stopPropagation) event.stopPropagation();
+            try {
+                if (typeof window.openJournal === 'function') {
+                    await window.openJournal();
+                    return;
+                }
+            } catch (error) {
+                console.error('[Journal] Failed to open from main menu:', error);
+            }
+            alert('Journal is not available right now. Please refresh and try again.');
+        };
+
         window.toggleMainMenu = function() {
             const modal = document.getElementById('mainMenuModal');
             if (modal) {
@@ -5166,7 +5180,7 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
-                                <button onclick="openJournal();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                <button id="mainMenuJournalBtn" type="button" onclick="openJournalFromMainMenu(event)" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
                                 </button>
@@ -5909,7 +5923,11 @@
                 devotionMenu.classList.add('hidden');
             }
             const modal = document.getElementById('journalModal');
-            if (!modal) return;
+            if (!modal) {
+                console.error('[Journal] journalModal element not found.');
+                alert('Journal is not available right now. Please refresh and try again.');
+                return;
+            }
             modal.classList.remove('hidden');
             await renderJournalEntriesList();
         };
