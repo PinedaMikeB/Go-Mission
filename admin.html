@@ -615,6 +615,18 @@
             </div>
           </div>
           <div id="groupIntegrityMemberResult" class="list" style="margin-top:8px;"></div>
+          <div id="groupIntegrityRoleResolver" class="hidden" style="margin-top:10px;padding:10px;border:1px solid rgba(245,189,89,0.28);border-radius:10px;background:rgba(245,189,89,0.08);">
+            <div class="split" style="margin-top:0;">
+              <h3 style="margin:0;">Group Role Resolver</h3>
+              <button id="closeGroupRoleResolverBtn" class="secondary" style="width:auto;padding:6px 10px;">Close</button>
+            </div>
+            <p class="small" id="groupRoleResolverSummary" style="margin-top:6px;"></p>
+            <div id="groupRoleResolverRows" class="list"></div>
+            <div class="actions" style="margin-top:10px;">
+              <button id="applyGroupRoleResolverBtn" class="warning">Apply Role Changes</button>
+            </div>
+            <div id="groupRoleResolverStatus" class="small"></div>
+          </div>
           <div id="groupIntegritySummary" class="small"></div>
           <div id="groupIntegrityViolations" class="list"></div>
           <div id="groupIntegrityStatus" class="small"></div>
@@ -1215,6 +1227,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let currentRoleUser = null;
     let latestMissionHealth = null;
     let activeMetricKey = null;
+    let activeGroupRoleResolver = null;
 
     const METRIC_DETAILS_CONFIG = {
       active_users: {
@@ -1778,14 +1791,19 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
     function normalizeGroupEntityEntries(value) {
       if (Array.isArray(value)) return value;
-      if (value && typeof value === 'object') return Object.values(value);
+      if (value && typeof value === 'object') {
+        return Object.entries(value).map(([key, entry]) => {
+          if (entry && typeof entry === 'object') return { ...entry, _key: key };
+          return { id: key, value: entry, _key: key };
+        });
+      }
       return [];
     }
 
     function getGroupMemberUid(entry) {
       if (typeof entry === 'string') return entry;
       if (!entry || typeof entry !== 'object') return null;
-      return entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || entry.profileId || null;
+      return entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || entry.profileId || entry._key || null;
     }
 
     function getNormalizedGroupMemberUids(group = {}) {
@@ -1940,6 +1958,156 @@ match /goMission/watch-series-covers/{allPaths=**} {
       };
     }
 
+    function collectRelatedGroupIdsForMember(member = {}, analysis = null) {
+      const out = new Set();
+      if (analysis) {
+        (analysis.allLinks || []).forEach((link) => { if (link?.groupId) out.add(link.groupId); });
+        (analysis.guestGroupIds || []).forEach((groupId) => { if (groupId) out.add(groupId); });
+      }
+      if (member?.uplineGroupId) out.add(member.uplineGroupId);
+      if (member?.groupId) out.add(member.groupId);
+      return [...out];
+    }
+
+    function normalizeResolverMemberRoles(rows = [], preferredMemberGroupId = null) {
+      const clone = rows.map((row) => ({ ...row }));
+      const editableRows = clone.filter((row) => !row.selfLed);
+      const initialMemberRows = editableRows.filter((row) => row.role === 'member');
+
+      let selectedMemberGroupId = null;
+      if (preferredMemberGroupId && editableRows.some((row) => row.groupId === preferredMemberGroupId)) {
+        selectedMemberGroupId = preferredMemberGroupId;
+      } else if (initialMemberRows.length > 0) {
+        selectedMemberGroupId = initialMemberRows[0].groupId;
+      }
+
+      if (selectedMemberGroupId) {
+        clone.forEach((row) => {
+          if (row.selfLed) return;
+          row.role = row.groupId === selectedMemberGroupId ? 'member' : 'guest';
+        });
+      }
+
+      return { rows: clone, selectedMemberGroupId };
+    }
+
+    function buildResolverRows(member = {}, snapshot, analysis) {
+      const groupIds = collectRelatedGroupIdsForMember(member, analysis);
+      const rows = groupIds.map((groupId) => {
+        const group = snapshot.groupsById.get(groupId) || { id: groupId, name: groupId };
+        const memberIds = getNormalizedGroupMemberUids(group);
+        const guestIds = getNormalizedGroupGuestUids(group);
+        const inMembers = memberIds.includes(member.id);
+        const inGuests = guestIds.includes(member.id);
+        const selfLed = group?.leaderId === member.id;
+        const isCurrentPrimary = analysis?.currentPrimaryGroupId === groupId;
+
+        let role = 'guest';
+        if (selfLed) role = 'leader';
+        else if (inMembers || isCurrentPrimary) role = 'member';
+        else if (inGuests) role = 'guest';
+
+        return {
+          groupId,
+          groupName: group?.name || groupId,
+          leaderId: group?.leaderId || null,
+          leaderName: getGroupLeaderName(group?.leaderId, snapshot.membersById),
+          selfLed,
+          inMembers,
+          inGuests,
+          role
+        };
+      });
+
+      const normalized = normalizeResolverMemberRoles(rows, analysis?.nextPrimaryGroupId || analysis?.currentPrimaryGroupId || null);
+      return normalized;
+    }
+
+    function closeGroupRoleResolver() {
+      activeGroupRoleResolver = null;
+      const panel = document.getElementById('groupIntegrityRoleResolver');
+      const rowsEl = document.getElementById('groupRoleResolverRows');
+      const summaryEl = document.getElementById('groupRoleResolverSummary');
+      if (panel) panel.classList.add('hidden');
+      if (rowsEl) rowsEl.innerHTML = '';
+      if (summaryEl) summaryEl.textContent = '';
+      setInlineStatus('groupRoleResolverStatus', '', 'info');
+    }
+
+    function renderGroupRoleResolver() {
+      const panel = document.getElementById('groupIntegrityRoleResolver');
+      const rowsEl = document.getElementById('groupRoleResolverRows');
+      const summaryEl = document.getElementById('groupRoleResolverSummary');
+      if (!panel || !rowsEl || !summaryEl) return;
+
+      if (!activeGroupRoleResolver) {
+        panel.classList.add('hidden');
+        rowsEl.innerHTML = '';
+        summaryEl.textContent = '';
+        return;
+      }
+
+      const { member, rows, selectedMemberGroupId } = activeGroupRoleResolver;
+      panel.classList.remove('hidden');
+      summaryEl.textContent = `${getMemberDisplayName(member)} (${member.id}) - Choose exactly one MEMBER group (or none), all other groups become GUEST.`;
+
+      rowsEl.innerHTML = rows.map((row) => {
+        const badge = row.selfLed ? '<span class="small" style="font-weight:800;">LEADER GROUP</span>' : `<span class="small">${row.inMembers ? 'in members[]' : 'not in members[]'} | ${row.inGuests ? 'in guests[]' : 'not in guests[]'}</span>`;
+        const roleControl = row.selfLed
+          ? `<div class="small" style="font-weight:700;">Role: Leader (locked)</div>`
+          : `
+            <label class="small" for="resolver-role-${escapeHtml(row.groupId)}">Role</label>
+            <select id="resolver-role-${escapeHtml(row.groupId)}" data-action="resolver-role-change" data-group-id="${escapeHtml(row.groupId)}" style="margin-top:4px;">
+              <option value="member" ${row.role === 'member' ? 'selected' : ''}>Member</option>
+              <option value="guest" ${row.role !== 'member' ? 'selected' : ''}>Guest</option>
+            </select>
+          `;
+        return `
+          <div style="margin-top:8px;padding:10px;border:1px solid rgba(245,189,89,0.22);border-radius:10px;background:rgba(0,0,0,0.08);">
+            <div class="small" style="font-weight:800;">${escapeHtml(row.groupName)}</div>
+            <div class="small">Group ID: ${escapeHtml(row.groupId)} | Leader: ${escapeHtml(row.leaderName || 'Unknown')}</div>
+            <div class="small" style="margin-top:4px;">${badge}</div>
+            <div style="margin-top:6px;">${roleControl}</div>
+          </div>
+        `;
+      }).join('');
+
+      setInlineStatus(
+        'groupRoleResolverStatus',
+        selectedMemberGroupId
+          ? `Primary member group: ${selectedMemberGroupId}.`
+          : 'No primary member group selected (all listed groups will be guest).',
+        selectedMemberGroupId ? 'info' : 'warn'
+      );
+    }
+
+    function updateResolverRoleSelection(groupId, nextRoleRaw) {
+      if (!activeGroupRoleResolver) return;
+      const nextRole = String(nextRoleRaw || '').toLowerCase() === 'member' ? 'member' : 'guest';
+      const rows = activeGroupRoleResolver.rows.map((row) => ({ ...row }));
+      const target = rows.find((row) => row.groupId === groupId);
+      if (!target || target.selfLed) return;
+
+      target.role = nextRole;
+      let selectedMemberGroupId = activeGroupRoleResolver.selectedMemberGroupId || null;
+
+      if (nextRole === 'member') {
+        selectedMemberGroupId = groupId;
+        rows.forEach((row) => {
+          if (!row.selfLed && row.groupId !== groupId) row.role = 'guest';
+        });
+      } else if (selectedMemberGroupId === groupId) {
+        selectedMemberGroupId = null;
+      }
+
+      activeGroupRoleResolver = {
+        ...activeGroupRoleResolver,
+        rows,
+        selectedMemberGroupId
+      };
+      renderGroupRoleResolver();
+    }
+
     function renderMemberIntegrityResult(result, snapshot) {
       const container = document.getElementById('groupIntegrityMemberResult');
       if (!container) return;
@@ -1986,6 +2154,11 @@ match /goMission/watch-series-covers/{allPaths=**} {
           <div class="small" style="margin-top:6px;"><b>Guest group links:</b><br>${guestText}</div>
           <div class="small" style="margin-top:6px;"><b>Groups to remove from member list:</b> ${escapeHtml(result.groupsToRemove.join(', ') || 'none')}</div>
           <div style="margin-top:8px;">${issuesHtml}</div>
+          <div class="actions" style="margin-top:10px;">
+            <button type="button" class="secondary" data-action="open-group-role-resolver" data-member-id="${escapeHtml(member.id || '')}" style="width:auto;">
+              Open Group Role Resolver
+            </button>
+          </div>
         </div>
       `;
     }
@@ -2011,6 +2184,169 @@ match /goMission/watch-series-covers/{allPaths=**} {
       if (fallbackByEmail.empty) return null;
       const docSnap = fallbackByEmail.docs[0];
       return { id: docSnap.id, ...docSnap.data() };
+    }
+
+    async function openGroupRoleResolverForMember(memberLookupRaw) {
+      setInlineStatus('groupRoleResolverStatus', 'Loading group role resolver...', 'info');
+      try {
+        const member = await resolveMemberByLookup(memberLookupRaw);
+        if (!member || !member.id) {
+          setInlineStatus('groupRoleResolverStatus', 'Member not found.', 'warn');
+          return;
+        }
+
+        const [membersSnap, groupsSnap] = await Promise.all([
+          getDocs(collection(db, 'goMission_members')),
+          getDocs(collection(db, 'goMission_groups'))
+        ]);
+        const members = membersSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const snapshot = buildGroupIntegritySnapshot(members, groups);
+        const memberFromSnapshot = snapshot.membersById.get(member.id) || member;
+        const analysis = analyzeMemberGroupIntegrity(memberFromSnapshot, snapshot);
+        const resolver = buildResolverRows(memberFromSnapshot, snapshot, analysis);
+
+        activeGroupRoleResolver = {
+          member: memberFromSnapshot,
+          snapshot,
+          rows: resolver.rows,
+          selectedMemberGroupId: resolver.selectedMemberGroupId
+        };
+        renderGroupRoleResolver();
+        setInlineStatus('groupRoleResolverStatus', 'Resolver ready. Choose one MEMBER group, others guest.', 'info');
+      } catch (error) {
+        console.error('[Admin] openGroupRoleResolverForMember error:', error);
+        setInlineStatus('groupRoleResolverStatus', `Could not load resolver: ${error.message}`, 'error');
+      }
+    }
+
+    async function applyGroupRoleResolverChanges() {
+      if (!activeGroupRoleResolver || !activeGroupRoleResolver.member?.id) {
+        setInlineStatus('groupRoleResolverStatus', 'Open the resolver for a member first.', 'warn');
+        return;
+      }
+
+      const memberId = activeGroupRoleResolver.member.id;
+      const editableRows = (activeGroupRoleResolver.rows || []).filter((row) => !row.selfLed);
+      const selectedMemberRow = editableRows.find((row) => row.role === 'member') || null;
+      const selectedMemberGroupId = selectedMemberRow?.groupId || null;
+
+      setInlineStatus('groupRoleResolverStatus', 'Applying group role changes...', 'info');
+      try {
+        const [membersSnap, groupsSnap, memberDoc] = await Promise.all([
+          getDocs(collection(db, 'goMission_members')),
+          getDocs(collection(db, 'goMission_groups')),
+          getDoc(doc(db, 'goMission_members', memberId))
+        ]);
+
+        const members = membersSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const snapshot = buildGroupIntegritySnapshot(members, groups);
+        const memberData = memberDoc.exists() ? (memberDoc.data() || {}) : {};
+        const memberProfile = snapshot.membersById.get(memberId) || { id: memberId, ...memberData };
+        const memberName = getMemberDisplayName(memberProfile);
+        const memberEmail = memberProfile?.email || '';
+        const memberPhoto = memberProfile?.photoURL || '';
+        const selectedMemberGroup = selectedMemberGroupId ? snapshot.groupsById.get(selectedMemberGroupId) : null;
+        const selectedMemberLeaderName = selectedMemberGroup
+          ? getGroupLeaderName(selectedMemberGroup.leaderId, snapshot.membersById)
+          : null;
+
+        const nowIso = new Date().toISOString();
+        const changes = [];
+
+        for (const row of editableRows) {
+          const group = snapshot.groupsById.get(row.groupId);
+          if (!group) continue;
+
+          let memberEntries = normalizeGroupEntityEntries(group.members);
+          let guestEntries = normalizeGroupEntityEntries(group.guests);
+
+          if (row.role === 'member') {
+            const existingIds = new Set(memberEntries.map((entry) => getGroupMemberUid(entry)).filter(Boolean));
+            existingIds.add(memberId);
+            memberEntries = [...existingIds];
+            guestEntries = guestEntries.filter((entry) => getGroupMemberUid(entry) !== memberId);
+          } else {
+            memberEntries = memberEntries.filter((entry) => getGroupMemberUid(entry) !== memberId);
+            const remainingGuests = guestEntries.filter((entry) => getGroupMemberUid(entry) !== memberId);
+            const existingGuest = guestEntries.find((entry) => getGroupMemberUid(entry) === memberId);
+            const guestBase = (existingGuest && typeof existingGuest === 'object') ? { ...existingGuest } : {};
+            remainingGuests.push({
+              ...guestBase,
+              odId: memberId,
+              name: guestBase.name || memberName,
+              email: guestBase.email || memberEmail,
+              photo: guestBase.photo || memberPhoto,
+              homeGroupId: selectedMemberGroupId || null,
+              homeGroupName: selectedMemberGroup?.name || null,
+              homeLeaderName: selectedMemberLeaderName || null,
+              joinedAsGuestAt: guestBase.joinedAsGuestAt || nowIso,
+              approvedBy: auth.currentUser?.uid || 'admin'
+            });
+            guestEntries = remainingGuests;
+          }
+
+          const memberIds = [...new Set(memberEntries.map((entry) => getGroupMemberUid(entry)).filter(Boolean))];
+          await setDoc(doc(db, 'goMission_groups', row.groupId), {
+            members: memberEntries,
+            guests: guestEntries,
+            currentCount: memberIds.length,
+            updatedAt: nowIso
+          }, { merge: true });
+          changes.push(`${row.groupId}:${row.role}`);
+        }
+
+        const existingGuestGroups = Array.isArray(memberData.guestGroups) ? memberData.guestGroups.filter(Boolean) : [];
+        const resolverGroupIds = editableRows.map((row) => row.groupId);
+        const selectedGuestGroupIds = editableRows.filter((row) => row.role === 'guest').map((row) => row.groupId);
+        const preservedGuestGroupIds = existingGuestGroups.filter((groupId) => !resolverGroupIds.includes(groupId) && groupId !== selectedMemberGroupId);
+        const finalGuestGroups = [...new Set([...preservedGuestGroupIds, ...selectedGuestGroupIds])];
+
+        const existingGuestMeta = (memberData.guestGroupMeta && typeof memberData.guestGroupMeta === 'object')
+          ? { ...memberData.guestGroupMeta }
+          : {};
+        const nextGuestMeta = {};
+        finalGuestGroups.forEach((groupId) => {
+          const group = snapshot.groupsById.get(groupId);
+          nextGuestMeta[groupId] = {
+            ...(existingGuestMeta[groupId] || {}),
+            groupId,
+            name: group?.name || existingGuestMeta[groupId]?.name || 'Mission Group',
+            leaderId: group?.leaderId || existingGuestMeta[groupId]?.leaderId || null,
+            approvedAt: existingGuestMeta[groupId]?.approvedAt || nowIso,
+            approvedBy: existingGuestMeta[groupId]?.approvedBy || auth.currentUser?.uid || 'admin'
+          };
+        });
+
+        const existingRoleRaw = memberData.groupRole;
+        const existingRole = String(existingRoleRaw || '').toLowerCase();
+        let nextRole = existingRoleRaw || null;
+        if (selectedMemberGroupId) {
+          nextRole = 'member';
+        } else if (existingRole === 'member') {
+          nextRole = finalGuestGroups.length > 0 ? 'guest' : null;
+        } else if (!nextRole && finalGuestGroups.length > 0) {
+          nextRole = 'guest';
+        }
+
+        await setDoc(doc(db, 'goMission_members', memberId), {
+          uplineGroupId: selectedMemberGroupId || null,
+          groupId: selectedMemberGroupId || null,
+          groupRole: nextRole,
+          guestGroups: finalGuestGroups,
+          guestGroupMeta: nextGuestMeta
+        }, { merge: true });
+
+        setInlineStatus('groupRoleResolverStatus', `Applied successfully: ${changes.join(', ') || 'no group updates'}.`, 'success');
+        await openGroupRoleResolverForMember(memberId);
+        const lookupEl = document.getElementById('groupIntegrityMemberLookup');
+        if (lookupEl) lookupEl.value = memberId;
+        await verifySpecificMemberIntegrity(false);
+      } catch (error) {
+        console.error('[Admin] applyGroupRoleResolverChanges error:', error);
+        setInlineStatus('groupRoleResolverStatus', `Failed to apply role changes: ${error.message}`, 'error');
+      }
     }
 
     async function verifySpecificMemberIntegrity(applySafeCorrection = false) {
@@ -2151,11 +2487,13 @@ match /goMission/watch-series-covers/{allPaths=**} {
           violations.push(uniqueLeaderIds.length > 1 ? {
             severity: 'high',
             title: 'This member is connected to multiple upline leaders',
-            detail: `${getMemberDisplayName(member)} (${uid}) is listed as member in ${uniqueGroupIds.length} groups under ${uniqueLeaderIds.length} leaders: ${labeledGroups}`
+            detail: `${getMemberDisplayName(member)} (${uid}) is listed as member in ${uniqueGroupIds.length} groups under ${uniqueLeaderIds.length} leaders: ${labeledGroups}`,
+            memberId: uid
           } : {
             severity: 'medium',
             title: 'This member is listed in multiple groups under one leader',
-            detail: `${getMemberDisplayName(member)} (${uid}) is listed in ${uniqueGroupIds.length} groups under one leader: ${labeledGroups}`
+            detail: `${getMemberDisplayName(member)} (${uid}) is listed in ${uniqueGroupIds.length} groups under one leader: ${labeledGroups}`,
+            memberId: uid
           });
         });
 
@@ -2168,7 +2506,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
             violations.push({
               severity: 'medium',
               title: 'This member profile points to a group they are not in',
-              detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is not listed in that group.`
+              detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is not listed in that group.`,
+              memberId: member.id
             });
           }
 
@@ -2181,7 +2520,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
               violations.push({
                 severity: 'high',
                 title: 'This member is still listed in another group',
-                detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is also listed in: ${labeled}`
+                detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is also listed in: ${labeled}`,
+                memberId: member.id
               });
             }
           }
@@ -2208,7 +2548,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
             violations.push({
               severity: 'high',
               title: 'This leader has members but no upline leader yet',
-              detail: `${getMemberDisplayName(leader)} (${leaderId}) is leading group(s) but has no upline leader on profile and no admin authorization to lead without one.`
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) is leading group(s) but has no upline leader on profile and no admin authorization to lead without one.`,
+              memberId: leaderId
             });
           }
         });
@@ -2259,10 +2600,14 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const border = violation.severity === 'high' ? 'rgba(217,95,74,0.45)' : 'rgba(245,189,89,0.4)';
           const bg = violation.severity === 'high' ? 'rgba(217,95,74,0.12)' : 'rgba(245,189,89,0.1)';
           const badge = violation.severity === 'high' ? 'HIGH' : 'MEDIUM';
+          const resolverBtn = violation.memberId
+            ? `<div style="margin-top:8px;"><button class="secondary" style="width:auto;padding:6px 10px;" data-action="open-group-role-resolver" data-member-id="${escapeHtml(violation.memberId)}">Resolve Group Roles</button></div>`
+            : '';
           return `
             <div style="margin-top:10px;padding:10px;border:1px solid ${border};border-radius:10px;background:${bg};">
               <div class="small" style="font-weight:800;color:var(--text-main);">${escapeHtml(violation.title)} <span style="font-size:10px;opacity:.8;">[${badge}]</span></div>
               <div class="small" style="margin-top:4px;">${escapeHtml(violation.detail)}</div>
+              ${resolverBtn}
             </div>
           `;
         }).join('');
@@ -4028,6 +4373,27 @@ match /goMission/watch-series-covers/{allPaths=**} {
         const confirmed = confirm('Apply safe correction for this member?\n\nThis will only remove non-self-led member links that conflict with strict integrity rules.');
         if (!confirmed) return;
         await verifySpecificMemberIntegrity(true);
+      });
+      document.getElementById('closeGroupRoleResolverBtn').addEventListener('click', closeGroupRoleResolver);
+      document.getElementById('applyGroupRoleResolverBtn').addEventListener('click', applyGroupRoleResolverChanges);
+      document.getElementById('groupRoleResolverRows').addEventListener('change', (event) => {
+        const select = event.target.closest('select[data-action="resolver-role-change"][data-group-id]');
+        if (!select) return;
+        updateResolverRoleSelection(select.getAttribute('data-group-id'), select.value);
+      });
+      document.getElementById('groupIntegrityMemberResult').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action="open-group-role-resolver"][data-member-id]');
+        if (!btn) return;
+        const memberId = btn.getAttribute('data-member-id');
+        if (!memberId) return;
+        await openGroupRoleResolverForMember(memberId);
+      });
+      document.getElementById('groupIntegrityViolations').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action="open-group-role-resolver"][data-member-id]');
+        if (!btn) return;
+        const memberId = btn.getAttribute('data-member-id');
+        if (!memberId) return;
+        await openGroupRoleResolverForMember(memberId);
       });
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {

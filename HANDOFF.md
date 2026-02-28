@@ -38,6 +38,34 @@
 
 ---
 
+## Current Task Status (2026-02-28) — Thread 5 Multi-Group Member Resolver
+
+- **Active modules**
+  - `/admin.html`
+- **Goal completed**: For historical mixed memberships, admin can now explicitly choose one primary member group and convert all other linked groups to guest in one apply flow.
+
+### Resolver Workflow (Do Not Break)
+
+1. Run `Group Integrity Audit`.
+2. On member-specific violations, click `Resolve Group Roles` (or use member verifier -> `Open Group Role Resolver`).
+3. In resolver:
+  - choose one group as `Member`
+  - all other editable groups automatically become `Guest`
+  - self-led groups are locked as `Leader`.
+4. Click `Apply Role Changes`.
+5. System writes:
+  - group membership arrays (`members[]`, `guests[]`, `currentCount`)
+  - member profile pointers (`uplineGroupId`, `groupId`, `groupRole`, `guestGroups`, `guestGroupMeta`)
+
+### Regression Checklist
+
+- Resolver opens from both violation card and member verify panel.
+- Choosing one `Member` forces all other non-self-led groups to `Guest`.
+- Apply updates both group docs and member profile docs.
+- Hard rule remains intact in app UI: users with existing upline cannot be approved as member in another group (guest-only).
+
+---
+
 ## Current Task Status (2026-02-28) — Thread 5 Integrity Audit Precision + Safe Member Correction
 
 - **Active modules**

@@ -10,6 +10,43 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.9] - 2026-02-28 🛠️ Integrity Audit Group Role Resolver
+
+### ✅ Summary
+Added admin resolver workflow for members historically linked to multiple groups. Admin can now choose one primary `member` group and automatically convert all other linked groups to `guest`.
+
+### Included Changes
+1. **New resolver in Group Integrity Audit**
+   - Added `Group Role Resolver` panel in `/admin.html`.
+   - Lists all related groups for the selected member.
+   - Per-group role selection (`Member` / `Guest`), with leader-owned groups locked.
+2. **Hard-rule enforcement in resolver**
+   - Selecting one group as `Member` auto-switches all other editable groups to `Guest`.
+   - Supports zero-member-selection path if admin intentionally wants all guest links.
+3. **One-click apply**
+   - Updates group docs:
+     - chosen member group keeps member in `members[]`
+     - other groups remove from `members[]` and add/update `guests[]`
+   - Updates member profile:
+     - `uplineGroupId`, `groupId`, `groupRole`
+     - `guestGroups`, `guestGroupMeta`
+4. **Audit action shortcuts**
+   - Violation cards now include `Resolve Group Roles` for member-specific violations.
+   - Verify-member result includes `Open Group Role Resolver` button.
+
+### Files Modified
+- `/admin.html`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.9>
+```
+
+---
+
 ## [v2.2.8] - 2026-02-28 🧭 Integrity Audit False-Positive Fix + Member Safe Correction
 
 ### ✅ Summary
