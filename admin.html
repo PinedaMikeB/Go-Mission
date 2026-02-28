@@ -1776,19 +1776,26 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return entries.sort((a, b) => getMemberDisplayName(a.member).localeCompare(getMemberDisplayName(b.member)));
     }
 
-    function getNormalizedGroupMemberUids(group = {}) {
-      const entries = Array.isArray(group?.members) ? group.members : [];
-      return [...new Set(entries.map((entry) => {
-        if (typeof entry === 'string') return entry;
-        if (!entry || typeof entry !== 'object') return null;
-        return entry.odId || entry.uid || entry.id || null;
-      }).filter(Boolean))];
+    function normalizeGroupEntityEntries(value) {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === 'object') return Object.values(value);
+      return [];
     }
 
     function getGroupMemberUid(entry) {
       if (typeof entry === 'string') return entry;
       if (!entry || typeof entry !== 'object') return null;
-      return entry.odId || entry.uid || entry.id || null;
+      return entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || entry.profileId || null;
+    }
+
+    function getNormalizedGroupMemberUids(group = {}) {
+      const entries = normalizeGroupEntityEntries(group?.members);
+      return [...new Set(entries.map((entry) => getGroupMemberUid(entry)).filter(Boolean))];
+    }
+
+    function getNormalizedGroupGuestUids(group = {}) {
+      const entries = normalizeGroupEntityEntries(group?.guests);
+      return [...new Set(entries.map((entry) => getGroupMemberUid(entry)).filter(Boolean))];
     }
 
     function removeMemberUidFromGroupMembers(rawMembers, uid) {
@@ -1837,6 +1844,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const membersById = new Map(members.map((member) => [member.id, member]));
       const groupsById = new Map(groups.map((group) => [group.id, group]));
       const membershipByUser = new Map();
+      const guestLinksByUser = new Map();
+      const declaredGuestGroupsByUser = new Map();
 
       groups.forEach((group) => {
         const memberUids = getNormalizedGroupMemberUids(group);
@@ -1849,9 +1858,26 @@ match /goMission/watch-series-covers/{allPaths=**} {
             selfLed: group.leaderId === uid
           });
         });
+
+        const guestUids = getNormalizedGroupGuestUids(group);
+        guestUids.forEach((uid) => {
+          if (!guestLinksByUser.has(uid)) guestLinksByUser.set(uid, []);
+          guestLinksByUser.get(uid).push({
+            groupId: group.id,
+            groupName: group.name || '',
+            leaderId: group.leaderId || null
+          });
+        });
       });
 
-      return { membersById, groupsById, membershipByUser };
+      members.forEach((member) => {
+        const guestGroups = Array.isArray(member?.guestGroups) ? member.guestGroups.filter(Boolean) : [];
+        if (guestGroups.length) {
+          declaredGuestGroupsByUser.set(member.id, [...new Set(guestGroups)]);
+        }
+      });
+
+      return { membersById, groupsById, membershipByUser, guestLinksByUser, declaredGuestGroupsByUser };
     }
 
     function analyzeMemberGroupIntegrity(member = {}, snapshot) {
@@ -1860,6 +1886,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const selfLedLinks = allLinks.filter((link) => link.selfLed);
       const nonSelfLedGroupIds = [...new Set(nonSelfLedLinks.map((link) => link.groupId).filter(Boolean))];
       const nonSelfLedLeaderIds = [...new Set(nonSelfLedLinks.map((link) => link.leaderId).filter(Boolean))];
+      const guestLinks = snapshot.guestLinksByUser.get(member.id) || [];
+      const guestGroupIdsFromGuestDocs = guestLinks.map((link) => link.groupId).filter(Boolean);
+      const guestGroupIdsFromProfile = snapshot.declaredGuestGroupsByUser.get(member.id) || [];
+      const guestGroupIds = [...new Set([...guestGroupIdsFromGuestDocs, ...guestGroupIdsFromProfile])];
 
       const currentPrimaryGroupId = resolvePrimaryMemberGroupId(member, snapshot.groupsById);
       let nextPrimaryGroupId = null;
@@ -1901,6 +1931,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
         nonSelfLedLinks,
         nonSelfLedGroupIds,
         nonSelfLedLeaderIds,
+        guestLinks,
+        guestGroupIds,
         currentPrimaryGroupId,
         nextPrimaryGroupId,
         groupsToRemove,
@@ -1928,6 +1960,15 @@ match /goMission/watch-series-covers/{allPaths=**} {
             .map((link) => escapeHtml(getGroupIntegrityLabel(snapshot.groupsById.get(link.groupId), snapshot.membersById)))
             .join('<br>')
         : 'None';
+      const guestText = result.guestGroupIds.length
+        ? result.guestGroupIds
+            .map((groupId) => {
+              const group = snapshot.groupsById.get(groupId);
+              if (!group) return escapeHtml(`${groupId} (guest group)`);
+              return escapeHtml(getGroupIntegrityLabel(group, snapshot.membersById));
+            })
+            .join('<br>')
+        : 'None';
       const issuesHtml = result.issues.length
         ? result.issues.map((issue) => {
             const level = issue.severity === 'high' ? 'HIGH' : 'MEDIUM';
@@ -1942,6 +1983,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           <div class="small"><b>Recommended upline group:</b> ${escapeHtml(result.nextPrimaryGroupId || 'none')}</div>
           <div class="small"><b>Self-led group links:</b><br>${selfLedText}</div>
           <div class="small" style="margin-top:6px;"><b>Non-self-led member links:</b><br>${nonSelfLedText}</div>
+          <div class="small" style="margin-top:6px;"><b>Guest group links:</b><br>${guestText}</div>
           <div class="small" style="margin-top:6px;"><b>Groups to remove from member list:</b> ${escapeHtml(result.groupsToRemove.join(', ') || 'none')}</div>
           <div style="margin-top:8px;">${issuesHtml}</div>
         </div>
