@@ -5141,7 +5141,10 @@
         };
         
         // Toggle main menu (header menu button)
+        window.__openingJournalFromMenu = false;
         window.openJournalFromMainMenu = async function(ev) {
+            if (window.__openingJournalFromMenu) return;
+            window.__openingJournalFromMenu = true;
             const eventObj = ev || window.event;
             if (eventObj?.preventDefault) eventObj.preventDefault();
             if (eventObj?.stopPropagation) eventObj.stopPropagation();
@@ -5168,6 +5171,8 @@
                 }
             } catch (error) {
                 console.error('[Journal] Failed to open from main menu:', error);
+            } finally {
+                setTimeout(() => { window.__openingJournalFromMenu = false; }, 50);
             }
             alert('Journal is not available right now. Please refresh and try again.');
         };
@@ -5197,7 +5202,7 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
-                                <button id="mainMenuJournalBtn" type="button" onclick="openJournalFromMainMenu()" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                <button id="mainMenuJournalBtn" type="button" onclick="openJournalFromMainMenu()" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
                                 </button>
@@ -5223,8 +5228,40 @@
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', menuHTML);
+                const menuEl = document.getElementById('mainMenuModal');
+                const journalBtn = document.getElementById('mainMenuJournalBtn');
+                const journalTapHandler = (event) => window.openJournalFromMainMenu(event);
+                if (journalBtn) {
+                    journalBtn.addEventListener('click', journalTapHandler);
+                    journalBtn.addEventListener('touchend', journalTapHandler, { passive: false });
+                    journalBtn.addEventListener('pointerup', journalTapHandler);
+                }
+                if (menuEl) {
+                    menuEl.addEventListener('click', (event) => {
+                        const target = event.target instanceof Element ? event.target.closest('#mainMenuJournalBtn') : null;
+                        if (target) {
+                            window.openJournalFromMainMenu(event);
+                        }
+                    }, true);
+                }
             }
         };
+
+        if (!window.__journalMenuCaptureBound) {
+            document.addEventListener('click', (event) => {
+                const menu = document.getElementById('mainMenuModal');
+                if (!menu) return;
+                const targetEl = event.target instanceof Element ? event.target : null;
+                if (!targetEl) return;
+                const btn = targetEl.closest('button');
+                if (!btn) return;
+                const label = (btn.textContent || '').toLowerCase();
+                if (label.includes('aking journal') || label.includes('my journal')) {
+                    window.openJournalFromMainMenu(event);
+                }
+            }, true);
+            window.__journalMenuCaptureBound = true;
+        }
         
         // Toggle popup share
         window.togglePopupShare = function() {
