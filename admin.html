@@ -1875,22 +1875,22 @@ match /goMission/watch-series-covers/{allPaths=**} {
       if (nonSelfLedLeaderIds.length > 1) {
         issues.push({
           severity: 'high',
-          title: 'Multiple upline leaders',
-          detail: `Linked as member to ${nonSelfLedLeaderIds.length} different leaders.`
+          title: 'This member is connected to multiple upline leaders',
+          detail: `Member is listed under ${nonSelfLedLeaderIds.length} different leaders.`
         });
       } else if (nonSelfLedGroupIds.length > 1) {
         issues.push({
           severity: 'medium',
-          title: 'Multiple member groups under same leader',
-          detail: `Linked as member to ${nonSelfLedGroupIds.length} groups under one leader.`
+          title: 'This member is listed in multiple groups under one leader',
+          detail: `Member is listed in ${nonSelfLedGroupIds.length} groups under the same leader.`
         });
       }
 
       if (currentPrimaryGroupId && !nonSelfLedGroupIds.includes(currentPrimaryGroupId)) {
         issues.push({
           severity: 'medium',
-          title: 'Primary pointer mismatch',
-          detail: `Primary pointer is ${currentPrimaryGroupId}, but member is not listed in that non-self-led group.`
+          title: 'This member profile points to a group they are not in',
+          detail: `Profile says ${currentPrimaryGroupId}, but member is not listed in that group.`
         });
       }
 
@@ -1938,8 +1938,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       container.innerHTML = `
         <div style="padding:10px;border:1px solid rgba(245,189,89,0.25);border-radius:10px;background:rgba(245,189,89,0.06);">
           <div class="small"><b>Member:</b> ${escapeHtml(getMemberDisplayName(member))} (${escapeHtml(member.id || 'n/a')})</div>
-          <div class="small"><b>Current primary:</b> ${escapeHtml(result.currentPrimaryGroupId || 'none')}</div>
-          <div class="small"><b>Recommended primary:</b> ${escapeHtml(result.nextPrimaryGroupId || 'none')}</div>
+          <div class="small"><b>Current upline group on profile:</b> ${escapeHtml(result.currentPrimaryGroupId || 'none')}</div>
+          <div class="small"><b>Recommended upline group:</b> ${escapeHtml(result.nextPrimaryGroupId || 'none')}</div>
           <div class="small"><b>Self-led group links:</b><br>${selfLedText}</div>
           <div class="small" style="margin-top:6px;"><b>Non-self-led member links:</b><br>${nonSelfLedText}</div>
           <div class="small" style="margin-top:6px;"><b>Groups to remove from member list:</b> ${escapeHtml(result.groupsToRemove.join(', ') || 'none')}</div>
@@ -2108,12 +2108,12 @@ match /goMission/watch-series-covers/{allPaths=**} {
             .join('; ');
           violations.push(uniqueLeaderIds.length > 1 ? {
             severity: 'high',
-            title: 'Member linked to multiple upline leaders',
-            detail: `${getMemberDisplayName(member)} (${uid}) is member in ${uniqueGroupIds.length} non-self-led groups across ${uniqueLeaderIds.length} leaders: ${labeledGroups}`
+            title: 'This member is connected to multiple upline leaders',
+            detail: `${getMemberDisplayName(member)} (${uid}) is listed as member in ${uniqueGroupIds.length} groups under ${uniqueLeaderIds.length} leaders: ${labeledGroups}`
           } : {
             severity: 'medium',
-            title: 'Member linked to multiple groups under same upline leader',
-            detail: `${getMemberDisplayName(member)} (${uid}) is member in ${uniqueGroupIds.length} non-self-led groups under one leader: ${labeledGroups}`
+            title: 'This member is listed in multiple groups under one leader',
+            detail: `${getMemberDisplayName(member)} (${uid}) is listed in ${uniqueGroupIds.length} groups under one leader: ${labeledGroups}`
           });
         });
 
@@ -2125,8 +2125,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (primaryGroupId && !nonSelfLedGroupIds.includes(primaryGroupId)) {
             violations.push({
               severity: 'medium',
-              title: 'Member pointer mismatch',
-              detail: `${getMemberDisplayName(member)} (${member.id}) has primary pointer ${primaryGroupId} but is not in that non-self-led group's members list.`
+              title: 'This member profile points to a group they are not in',
+              detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is not listed in that group.`
             });
           }
 
@@ -2138,8 +2138,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
                 .join('; ');
               violations.push({
                 severity: 'high',
-                title: 'Primary member also linked to other member groups',
-                detail: `${getMemberDisplayName(member)} (${member.id}) primary=${primaryGroupId} but also in: ${labeled}`
+                title: 'This member is still listed in another group',
+                detail: `${getMemberDisplayName(member)} (${member.id}) has profile group ${primaryGroupId}, but is also listed in: ${labeled}`
               });
             }
           }
@@ -2165,8 +2165,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (!isAdmin && !authorized && !hasValidUpline) {
             violations.push({
               severity: 'high',
-              title: 'Leader without required upline/authorization',
-              detail: `${getMemberDisplayName(leader)} (${leaderId}) leads group(s) but has no uplineGroupId and no explicit create-group authorization flag.`
+              title: 'This leader has members but no upline leader yet',
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) is leading group(s) but has no upline leader on profile and no admin authorization to lead without one.`
             });
           }
         });
