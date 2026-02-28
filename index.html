@@ -5202,10 +5202,16 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
-                                <button id="mainMenuJournalBtn" type="button" onclick="openJournalFromMainMenu()" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
+                                <a id="mainMenuJournalBtn"
+                                   href="?openJournal=1"
+                                   onclick="openJournalFromMainMenu(); return false;"
+                                   onpointerdown="openJournalFromMainMenu(); return false;"
+                                   onmousedown="openJournalFromMainMenu(); return false;"
+                                   ontouchstart="openJournalFromMainMenu(); return false;"
+                                   class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
-                                </button>
+                                </a>
                                 <button onclick="if(window.triggerProfilePhotoPicker){window.triggerProfilePhotoPicker();} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🖼️</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Palitan ang Profile Photo' : 'Change Profile Photo'}</span>
@@ -5990,6 +5996,28 @@
         window.closeJournal = function() {
             document.getElementById('journalModal').classList.add('hidden');
         };
+
+        window.tryAutoOpenJournalFromQuery = async function() {
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                if (params.get('openJournal') !== '1') return;
+                params.delete('openJournal');
+                const nextQuery = params.toString();
+                const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+                window.history.replaceState({}, '', nextUrl);
+                if (typeof window.openJournal === 'function') {
+                    await window.openJournal();
+                }
+            } catch (error) {
+                console.error('[Journal] auto-open from query failed:', error);
+            }
+        };
+
+        setTimeout(() => {
+            if (typeof window.tryAutoOpenJournalFromQuery === 'function') {
+                window.tryAutoOpenJournalFromQuery();
+            }
+        }, 250);
         
         // Placeholder functions for future features
         window.openReadingPlan = function() {
