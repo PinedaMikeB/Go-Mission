@@ -2016,11 +2016,26 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
         const pointerPatch = {};
         const currentUpline = typeof member.uplineGroupId === 'string' ? member.uplineGroupId : null;
-        if ((result.nextPrimaryGroupId || null) !== (currentUpline || null)) {
-          pointerPatch.uplineGroupId = result.nextPrimaryGroupId || null;
+        const currentGroupId = typeof member.groupId === 'string' ? member.groupId : null;
+        const currentRole = String(member.groupRole || '').toLowerCase();
+        const nextPrimary = result.nextPrimaryGroupId || null;
+
+        if (nextPrimary !== (currentUpline || null)) {
+          pointerPatch.uplineGroupId = nextPrimary;
         }
-        if (result.nextPrimaryGroupId && String(member.groupRole || '').toLowerCase() !== 'member') {
-          pointerPatch.groupRole = 'member';
+
+        if (nextPrimary) {
+          if ((currentGroupId || null) !== nextPrimary) {
+            pointerPatch.groupId = nextPrimary;
+          }
+          if (currentRole !== 'member') {
+            pointerPatch.groupRole = 'member';
+          }
+        } else {
+          // Clear stale legacy pointer only when it does not match any valid non-self-led membership.
+          if (currentRole === 'member' && currentGroupId && !result.nonSelfLedGroupIds.includes(currentGroupId)) {
+            pointerPatch.groupId = null;
+          }
         }
         if (Object.keys(pointerPatch).length > 0) {
           await setDoc(doc(db, 'goMission_members', member.id), pointerPatch, { merge: true });
