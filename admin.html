@@ -1894,14 +1894,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
         });
       }
 
-      if (!currentPrimaryGroupId && nonSelfLedGroupIds.length === 1) {
-        issues.push({
-          severity: 'medium',
-          title: 'Missing primary pointer',
-          detail: `Exactly one non-self-led membership exists but uplineGroupId is empty.`
-        });
-      }
-
       return {
         member,
         allLinks,
@@ -2135,12 +2127,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
                 detail: `${getMemberDisplayName(member)} (${member.id}) primary=${primaryGroupId} but also in: ${labeled}`
               });
             }
-          } else if (nonSelfLedGroupIds.length === 1) {
-            violations.push({
-              severity: 'medium',
-              title: 'Missing primary pointer for member',
-              detail: `${getMemberDisplayName(member)} (${member.id}) has one non-self-led member group (${nonSelfLedGroupIds[0]}) but no primary upline pointer.`
-            });
           }
         });
 
