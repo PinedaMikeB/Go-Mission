@@ -10,6 +10,52 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.10] - 2026-02-28 🔐 No-Upline Leader Lock + Admin Inbox Workflow
+
+### ✅ Summary
+Enforced strict no-upline leadership policy with founder/co-founder exemptions only, added admin audit action to lock meetings for violators, and introduced a leader-to-admin inbox request flow for unlock/review.
+
+### Included Changes
+1. **Integrity audit now uses strict exemption list**
+   - In `Group Integrity Audit`, leaders without valid upline are flagged unless they are:
+     - Founder (`michael.marga@gmail.com`)
+     - Co-founder (Irene exemption UID/email)
+   - Violation details now include the exact groups they lead.
+2. **Audit action: lock meetings + notify leader**
+   - New violation action button: `Disable Meetings + Notify Leader`.
+   - Writes group lock metadata (`integrityLock.enabled/type/reason`) for affected groups.
+   - Sends direct notification to that leader.
+3. **App-side meeting lock enforcement**
+   - `My Mission Groups` meeting buttons now show `Meeting Locked` when integrity lock applies.
+   - On click, user sees lock reason instead of entering meeting.
+   - Leaders get modal with message box + `Send Request to Admin`.
+4. **Admin inbox for lock/unlock requests**
+   - New admin panel card: `Admin Inbox`.
+   - Displays leader requests (`upline_unlock_request`) with statuses.
+   - Admin actions: `Mark In Review`, `Mark Resolved`.
+5. **Create-group gate tightened**
+   - Group creation without upline is now restricted to founder/co-founder exemptions.
+   - Non-exempt users must first join a valid upline group.
+6. **Security rules update**
+   - Added `goMission_adminInbox` rules (leader create, admin read/update/delete).
+   - `goMission_groups` create rule now allows no-upline creation only for exemption list.
+
+### Files Modified
+- `/admin.html`
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/firestore.rules`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.10>
+```
+
+---
+
 ## [v2.2.9] - 2026-02-28 🛠️ Integrity Audit Group Role Resolver
 
 ### ✅ Summary

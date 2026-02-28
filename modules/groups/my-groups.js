@@ -14,6 +14,16 @@ const MyGroups = {
     pendingRequestsCount: 0,
     dashboardTab: 'downline', // 'downline' | 'upline'
     pendingGroupDeletionRequestsById: {},
+    currentMemberProfile: null,
+    ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
+    NO_UPLINE_CREATION_EXEMPT_UIDS: [
+        '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
+        'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
+    ],
+    NO_UPLINE_CREATION_EXEMPT_EMAILS: [
+        'michael.marga@gmail.com',
+        'shannen.emerald04@gmail.com'
+    ],
 
     /**
      * Resolve user id from a string or object payload across schemas
@@ -125,6 +135,194 @@ const MyGroups = {
     },
 
     /**
+     * Founder/co-founder exemption for no-upline leadership rule.
+     */
+    isNoUplineCreationExempt(profile = this.currentMemberProfile) {
+        const uid = String(window.currentUser?.uid || profile?.id || '').trim();
+        const email = String(window.currentUser?.email || profile?.email || '').trim().toLowerCase();
+        return this.NO_UPLINE_CREATION_EXEMPT_UIDS.includes(uid) || this.NO_UPLINE_CREATION_EXEMPT_EMAILS.includes(email);
+    },
+
+    /**
+     * Check if current user has a valid non-self upline group.
+     */
+    currentUserHasValidUpline() {
+        if (!this.uplineGroup || !this.uplineGroup.id) return false;
+        return this.uplineGroup.leaderId && this.uplineGroup.leaderId !== window.currentUser?.uid;
+    },
+
+    /**
+     * Determine if meeting actions should be locked for this group.
+     */
+    getGroupMeetingLockState(group) {
+        if (!group) {
+            return { locked: false, reason: '' };
+        }
+
+        const lockMeta = (group.integrityLock && typeof group.integrityLock === 'object') ? group.integrityLock : {};
+        const lockType = String(lockMeta.type || '').toLowerCase();
+        const lockEnabled = lockMeta.enabled === true;
+        if (lockEnabled && lockType === 'missing_upline') {
+            return {
+                locked: true,
+                reason: lockMeta.reason || 'Meeting is temporarily locked until the leader joins a valid upline group.',
+                leaderActionRequired: true
+            };
+        }
+
+        const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
+        if (isLeaderOfGroup && !this.isNoUplineCreationExempt(this.currentMemberProfile) && !this.currentUserHasValidUpline()) {
+            return {
+                locked: true,
+                reason: 'Meeting is locked for this group. Join a valid upline group first, then request unlock from admin.',
+                leaderActionRequired: true
+            };
+        }
+
+        return { locked: false, reason: '', leaderActionRequired: false };
+    },
+
+    /**
+     * Unified click handler for meeting buttons to enforce integrity locks.
+     */
+    handleMeetingAction(groupId, asLeaderStart = false) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+
+        const lockState = this.getGroupMeetingLockState(group);
+        if (lockState.locked) {
+            this.showMeetingLockModal(group, lockState);
+            return;
+        }
+
+        if (asLeaderStart) {
+            this.startMeeting(groupId);
+            return;
+        }
+        this.joinMeeting(groupId);
+    },
+
+    /**
+     * Show lock reason + request-to-admin form.
+     */
+    showMeetingLockModal(group, lockState = {}) {
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        const groupIdSafe = String(group?.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const reason = this.escapeHtml(lockState.reason || 'Meeting is currently locked.');
+        const canRequest = group?.leaderId === window.currentUser?.uid;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-[var(--text-color)]">🚫 Meeting Locked</h3>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+                <div class="rounded-xl border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 p-3">
+                    <p class="text-sm font-semibold text-[var(--mission-red-bright)]">${this.escapeHtml(group?.name || 'This group')}</p>
+                    <p class="text-sm text-[var(--text-color)] mt-1">${reason}</p>
+                    <p class="text-xs text-[var(--text-muted)] mt-2">Action needed: join a valid upline group first.</p>
+                </div>
+
+                ${canRequest ? `
+                    <div class="mt-4">
+                        <label for="uplineUnlockMessage" class="block text-sm font-semibold text-[var(--text-color)] mb-2">Message to admin</label>
+                        <textarea id="uplineUnlockMessage" rows="4" maxlength="400"
+                            placeholder="Please review my group lock and guide me on how to connect to a valid upline group."
+                            class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)]"></textarea>
+                        <div id="uplineUnlockError" class="text-[var(--mission-red-bright)] text-sm mt-2 hidden"></div>
+                    </div>
+
+                    <div class="mt-4 flex gap-3">
+                        <button onclick="window.MyGroups.closeModal()"
+                                class="flex-1 border border-[var(--card-border)] text-[var(--text-muted)] py-3 rounded-lg">
+                            Close
+                        </button>
+                        <button onclick="window.MyGroups.submitUplineUnlockRequest('${groupIdSafe}')"
+                                class="flex-1 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                            Send Request to Admin
+                        </button>
+                    </div>
+                ` : `
+                    <div class="mt-4">
+                        <button onclick="window.MyGroups.closeModal()"
+                                class="w-full border border-[var(--card-border)] text-[var(--text-muted)] py-3 rounded-lg">
+                            Close
+                        </button>
+                    </div>
+                `}
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+        if (canRequest) {
+            document.getElementById('uplineUnlockMessage')?.focus();
+        }
+    },
+
+    /**
+     * Send leader unlock request to admin inbox.
+     */
+    async submitUplineUnlockRequest(groupId) {
+        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+        const errorEl = document.getElementById('uplineUnlockError');
+        if (!group) {
+            if (errorEl) {
+                errorEl.textContent = 'Group not found.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (group.leaderId !== window.currentUser?.uid) {
+            if (errorEl) {
+                errorEl.textContent = 'Only the group leader can send this request.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const message = String(document.getElementById('uplineUnlockMessage')?.value || '').trim();
+        if (message.length < 8) {
+            if (errorEl) {
+                errorEl.textContent = 'Please enter at least 8 characters.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        try {
+            await window.addDoc(window.collection(window.db, this.ADMIN_INBOX_COLLECTION), {
+                type: 'upline_unlock_request',
+                status: 'new',
+                groupId: group.id,
+                groupName: group.name || 'Unnamed Group',
+                leaderId: window.currentUser.uid,
+                leaderName: window.currentUser.displayName || group.leaderName || 'Unknown',
+                leaderEmail: window.currentUser.email || '',
+                message,
+                createdAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                createdAtIso: new Date().toISOString(),
+                source: 'my_groups_meeting_lock'
+            });
+
+            this.closeModal();
+            alert('Request sent to admin.');
+        } catch (error) {
+            console.error('[MyGroups] submitUplineUnlockRequest error:', error);
+            if (errorEl) {
+                errorEl.textContent = 'Failed to send request. Please try again.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+    },
+
+    /**
      * Load pending group-deletion requests keyed by downline group id
      */
     async loadPendingGroupDeletionRequests() {
@@ -189,6 +387,7 @@ const MyGroups = {
             this.uplineGroup = null;
             this.downlineGroups = [];
             this.guestGroups = [];
+            this.currentMemberProfile = null;
             const userDoc = await window.getDoc(
                 window.doc(window.db, 'goMission_members', uid)
             );
@@ -196,6 +395,7 @@ const MyGroups = {
             if (!userDoc.exists()) return;
             
             const userData = userDoc.data();
+            this.currentMemberProfile = userData || null;
             
             // Load upline/member group (legacy groupId fallback is guarded against self-led groups)
             const memberGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(userData, uid);
@@ -824,25 +1024,15 @@ const MyGroups = {
      * Strict eligibility: must have an upline OR be explicitly authorized/admin.
      */
     hasStrictGroupCreationEligibility(profile) {
-        const roles = profile?.roles || {};
-        const isAdmin = roles.isAdmin === true || roles.isSuperAdmin === true;
-        const explicitlyAuthorized = !!(
-            profile?.canCreateGroup === true
-            || profile?.endorsementApproved === true
-            || profile?.leaderEndorsed === true
-            || profile?.endorsedToLead === true
-            || roles.canCreateGroup === true
-            || roles.isGroupLeader === true
-        );
+        const exemptNoUpline = this.isNoUplineCreationExempt(profile);
         const hasActiveUpline = !!(
             this.uplineGroup
             && this.uplineGroup.id
             && this.uplineGroup.leaderId !== window.currentUser?.uid
         );
         return {
-            allowed: isAdmin || explicitlyAuthorized || hasActiveUpline,
-            isAdmin,
-            explicitlyAuthorized,
+            allowed: exemptNoUpline || hasActiveUpline,
+            exemptNoUpline,
             hasActiveUpline
         };
     },
@@ -871,10 +1061,9 @@ const MyGroups = {
 
         return {
             allowed: !!(groupsEligibility.allowed || strict.allowed),
-            reason: groupsEligibility.reason || (strict.allowed ? 'strict_ok' : 'requires_upline_or_authorization'),
+            reason: groupsEligibility.reason || (strict.allowed ? 'strict_ok' : 'requires_upline'),
             hasActiveUpline: strict.hasActiveUpline,
-            explicitlyAuthorized: strict.explicitlyAuthorized,
-            isAdmin: strict.isAdmin
+            exemptNoUpline: strict.exemptNoUpline
         };
     },
 
@@ -1103,6 +1292,7 @@ const MyGroups = {
             const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
+            const meetingLock = this.getGroupMeetingLockState(group);
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
             const pendingDeleteRequest = (isLeaderOfGroup && group.role === 'downline')
                 ? this.pendingGroupDeletionRequestsById?.[group.id]
@@ -1144,6 +1334,9 @@ const MyGroups = {
                         ${hasPendingDelete ? `
                             <p class="text-[var(--mission-red-bright)] font-semibold">🗑️ Delete request pending admin approval</p>
                         ` : ''}
+                        ${meetingLock.locked ? `
+                            <p class="text-[var(--mission-red-bright)] font-semibold">🚫 Meeting locked: ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first')}</p>
+                        ` : ''}
                     </div>
                     ${isLeaderOfGroup ? `
                     <div class="mt-4 grid grid-cols-4 gap-2">
@@ -1173,24 +1366,24 @@ const MyGroups = {
                                 </span>
                             ` : ''}
                         </button>
-                        <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
+                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', true)"
                                 class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border transition-colors ${isMeetingNow
                                     ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
-                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'}"
-                                title="${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}"
-                                aria-label="${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}">
+                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}"
+                                title="${meetingLock.locked ? 'Meeting locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}"
+                                aria-label="${meetingLock.locked ? 'Meeting locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}">
                             <span class="text-base leading-none">🎥</span>
-                            <span>${isMeetingNow ? 'Live' : 'Join'}</span>
+                            <span>${meetingLock.locked ? 'Locked' : (isMeetingNow ? 'Live' : 'Join')}</span>
                         </button>
                     </div>
                     ` : `
                     <div class="mt-4 grid ${group.role === 'upline' ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
-                        <button onclick="window.MyGroups.joinMeeting('${groupIdForJs}')"
+                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', false)"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
                                     ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
-                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'}">
+                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}">
                             <span>🎥</span>
-                            <span>${isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting'}</span>
+                            <span>${meetingLock.locked ? 'Meeting Locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}</span>
                         </button>
                         <button onclick="window.MyGroups.openGroupChat('${groupIdForJs}')"
                                 class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors">
@@ -1267,6 +1460,7 @@ const MyGroups = {
                 ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
                 : 'No meeting schedule set';
             const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
+            const meetingLock = this.getGroupMeetingLockState(group);
             const groupNameSafe = this.escapeHtml(group.name || 'Mission Group');
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
             const groupIdForJs = String(groupId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -1340,11 +1534,14 @@ const MyGroups = {
                                         class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
                                     Edit Day & Time
                                 </button>
-                                <button onclick="window.MyGroups.joinMeeting('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-                                        class="px-3 py-2 rounded-lg text-xs font-bold border ${meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]'}">
-                                    ${meetingLive ? 'Join Meeting (Live)' : 'Join Meeting'}
+                                <button onclick="window.MyGroups.handleMeetingAction('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', true)"
+                                        class="px-3 py-2 rounded-lg text-xs font-bold border ${meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}">
+                                    ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting (Live)' : 'Join Meeting')}
                                 </button>
                             </div>
+                            ${meetingLock.locked ? `
+                                <p class="mt-3 text-xs text-[var(--mission-red-bright)]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
+                            ` : ''}
                         </div>
 
                         <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
@@ -1594,6 +1791,7 @@ const MyGroups = {
         const requestCount = this.getUnifiedJoinRequests(group).length;
         const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
+        const meetingLock = this.getGroupMeetingLockState(group);
         
         // Determine icon based on type
         let typeIcon = '👥';
@@ -1627,19 +1825,22 @@ const MyGroups = {
                             ` : `
                                 <p class="text-sm text-[var(--text-muted)]">Not scheduled</p>
                             `}
+                            ${meetingLock.locked ? `
+                                <p class="text-xs text-[var(--mission-red-bright)] mt-1">🚫 ${this.escapeHtml(meetingLock.reason || 'Meeting locked')}</p>
+                            ` : ''}
                         </div>
                         ${type === 'downline' ? `
                             <!-- Leader: Start Meeting + Edit Schedule -->
                             <div class="flex items-center gap-2">
                                 <button onclick="window.MyGroups.editSchedule('${group.id}')" class="text-[var(--mission-gold)] text-xs">Edit</button>
-                                <button onclick="window.MyGroups.startMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
-                                    <span>📹</span> Start Meeting
+                                <button onclick="window.MyGroups.handleMeetingAction('${group.id}', true)" class="text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] border border-[var(--mission-red-bright)]/40' : 'bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)]'}">
+                                    <span>📹</span> ${meetingLock.locked ? 'Meeting Locked' : 'Start Meeting'}
                                 </button>
                             </div>
                         ` : `
                             <!-- Member/Guest: Join Meeting -->
-                            <button onclick="window.MyGroups.joinMeeting('${group.id}')" class="bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity">
-                                <span>📹</span> Join Meeting
+                            <button onclick="window.MyGroups.handleMeetingAction('${group.id}', false)" class="text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1 transition-opacity ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] border border-[var(--mission-red-bright)]/40' : 'bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)]'}">
+                                <span>📹</span> ${meetingLock.locked ? 'Meeting Locked' : 'Join Meeting'}
                             </button>
                         `}
                     </div>
@@ -1966,7 +2167,7 @@ const MyGroups = {
             const eligibility = await this.canShowCreateGroupAction();
             if (!eligibility.allowed) {
                 if (errorEl) {
-                    errorEl.textContent = 'You are not yet eligible to create a group.';
+                    errorEl.textContent = 'You must join a valid upline group first before creating a group.';
                     errorEl.classList.remove('hidden');
                 }
                 return;
@@ -2264,6 +2465,12 @@ const MyGroups = {
             console.error('[MyGroups] Group not found for startMeeting:', groupId);
             return;
         }
+
+        const lockState = this.getGroupMeetingLockState(group);
+        if (lockState.locked) {
+            this.showMeetingLockModal(group, lockState);
+            return;
+        }
         
         // Use GroupMeeting module if available
         if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
@@ -2295,6 +2502,12 @@ const MyGroups = {
         if (!group) {
             console.error('[MyGroups] Group not found for joinMeeting:', groupId);
             alert('Group not found');
+            return;
+        }
+
+        const lockState = this.getGroupMeetingLockState(group);
+        if (lockState.locked) {
+            this.showMeetingLockModal(group, lockState);
             return;
         }
         

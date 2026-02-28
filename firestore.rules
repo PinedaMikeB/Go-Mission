@@ -46,6 +46,21 @@ service cloud.firestore {
       );
     }
 
+    function hasNoUplineCreationExemption(uid) {
+      let m = memberData(uid);
+      let email = request.auth.token.email != null
+        ? request.auth.token.email
+        : (m != null && m.email is string ? m.email : '');
+      return uid in [
+          '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
+          'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
+        ] ||
+        email in [
+          'michael.marga@gmail.com',
+          'shannen.emerald04@gmail.com'
+        ];
+    }
+
     function hasValidUplineForLeadership(uid) {
       let m = memberData(uid);
       let g = m != null && m.uplineGroupId is string && m.uplineGroupId.size() > 0
@@ -245,8 +260,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
         request.resource.data.leaderId == request.auth.uid && (
-          isAdmin() ||
-          hasExplicitGroupCreationAuthorization(request.auth.uid) ||
+          hasNoUplineCreationExemption(request.auth.uid) ||
           hasValidUplineForLeadership(request.auth.uid)
         );
       allow update: if
@@ -255,6 +269,16 @@ service cloud.firestore {
         canSelfAppendOwnJoinRequest() ||
         canSelfAppendOwnPendingRequest();
       allow delete: if isAdmin() || (isSignedIn() && resource.data.leaderId == request.auth.uid);
+    }
+
+    match /goMission_adminInbox/{docId} {
+      allow read: if isAdmin();
+      allow create: if
+        isSignedIn() &&
+        request.resource.data.type == 'upline_unlock_request' &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.leaderId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     match /goMission_groupDeletionRequests/{docId} {

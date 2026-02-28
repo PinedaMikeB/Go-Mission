@@ -1072,6 +1072,17 @@
         </div>
 
         <div class="col-6 panel">
+          <h2>Admin Inbox</h2>
+          <p class="sub">Requests from leaders whose meeting access is locked until they join a valid upline group.</p>
+          <div class="actions">
+            <button id="reloadAdminInboxBtn" class="secondary">Reload Inbox</button>
+          </div>
+          <div id="adminInboxSummary" class="small"></div>
+          <div id="adminInboxList" class="list"></div>
+          <div id="adminInboxStatus" class="small"></div>
+        </div>
+
+        <div class="col-6 panel">
           <h2>Push Notification Settings</h2>
           <p class="sub">Global defaults for push behavior and reminder enablement.</p>
           <div class="role-grid">
@@ -1219,6 +1230,14 @@ match /goMission/watch-series-covers/{allPaths=**} {
       'michael.marga@gmail.com',
       'vasquezperlie18@gmail.com'
     ];
+    const NO_UPLINE_CREATION_EXEMPT_UIDS = [
+      '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
+      'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
+    ];
+    const NO_UPLINE_CREATION_EXEMPT_EMAILS = [
+      'michael.marga@gmail.com',
+      'shannen.emerald04@gmail.com'
+    ];
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     let cachedGroups = [];
@@ -1269,6 +1288,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const workspace = document.getElementById('workspace');
     const globalStatus = document.getElementById('globalStatus');
     const GROUP_DELETION_REQUESTS_COLLECTION = 'goMission_groupDeletionRequests';
+    const ADMIN_INBOX_COLLECTION = 'goMission_adminInbox';
 
     function showStatus(message, type = 'info', sticky = false) {
       globalStatus.className = `status-banner show ${type}`;
@@ -1716,6 +1736,187 @@ match /goMission/watch-series-covers/{allPaths=**} {
       } catch (error) {
         console.error('[Admin] rejectGroupDeleteRequest error:', error);
         setInlineStatus('groupDeleteRequestsStatus', `Failed to reject request: ${error.message}`, 'error');
+      }
+    }
+
+    function getAdminInboxStatusChip(status) {
+      const normalized = String(status || 'new').toLowerCase();
+      const color =
+        normalized === 'resolved' ? 'rgba(115, 192, 151, 0.2)' :
+        normalized === 'in_review' ? 'rgba(245, 189, 89, 0.2)' :
+        normalized === 'dismissed' ? 'rgba(120, 120, 120, 0.22)' :
+        'rgba(217, 95, 74, 0.2)';
+      const border =
+        normalized === 'resolved' ? 'rgba(115, 192, 151, 0.4)' :
+        normalized === 'in_review' ? 'rgba(245, 189, 89, 0.35)' :
+        normalized === 'dismissed' ? 'rgba(160, 160, 160, 0.35)' :
+        'rgba(217, 95, 74, 0.45)';
+      const text =
+        normalized === 'resolved' ? '#d9f3e5' :
+        normalized === 'in_review' ? '#ffecbf' :
+        normalized === 'dismissed' ? '#d8d8d8' :
+        '#ffd4cd';
+      return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
+    }
+
+    async function loadAdminInbox() {
+      const listEl = document.getElementById('adminInboxList');
+      const summaryEl = document.getElementById('adminInboxSummary');
+      if (!listEl || !summaryEl) return;
+
+      setInlineStatus('adminInboxStatus', 'Loading admin inbox...', 'info');
+
+      try {
+        const snap = await getDocs(query(
+          collection(db, ADMIN_INBOX_COLLECTION),
+          orderBy('createdAt', 'desc'),
+          limit(120)
+        ));
+
+        const items = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter((item) => String(item.type || '') === 'upline_unlock_request');
+        const pending = items.filter((item) => ['new', 'in_review'].includes(String(item.status || 'new').toLowerCase()));
+        const resolved = items.filter((item) => !['new', 'in_review'].includes(String(item.status || 'new').toLowerCase()));
+
+        summaryEl.textContent = `Pending: ${pending.length}${resolved.length ? ` • Reviewed: ${resolved.length}` : ''}`;
+
+        if (!items.length) {
+          listEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No inbox messages yet.</div>';
+          setInlineStatus('adminInboxStatus', 'Admin inbox is empty.', 'info');
+          return;
+        }
+
+        const renderRow = (item, isPending) => {
+          const createdAt = formatDateTime(item.createdAt || item.createdAtIso);
+          const updatedAt = item.updatedAt ? formatDateTime(item.updatedAt) : (item.updatedAtIso ? formatDateTime(item.updatedAtIso) : '');
+          const status = String(item.status || 'new').toLowerCase();
+          return `
+            <div style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,0.18);">
+              <div class="split" style="margin-top:0;align-items:flex-start;">
+                <div style="min-width:0;">
+                  <div style="font-weight:800;color:var(--gold-strong);">${escapeHtml(item.groupName || 'Unknown group')}</div>
+                  <div class="small">Leader: ${escapeHtml(item.leaderName || item.leaderEmail || item.leaderId || 'Unknown')}</div>
+                  <div class="small">Group ID: <code>${escapeHtml(item.groupId || 'n/a')}</code></div>
+                  <div class="small">Created: ${createdAt}</div>
+                  ${updatedAt ? `<div class="small">Updated: ${updatedAt}</div>` : ''}
+                  <div class="small" style="margin-top:6px;"><b style="color:var(--text-main);">Message:</b> ${escapeHtml(item.message || 'No message')}</div>
+                  ${item.adminNote ? `<div class="small" style="margin-top:4px;"><b style="color:var(--text-main);">Admin note:</b> ${escapeHtml(item.adminNote)}</div>` : ''}
+                </div>
+                <div>${getAdminInboxStatusChip(status)}</div>
+              </div>
+              ${isPending ? `
+                <div class="actions" style="margin-top:10px;">
+                  <button class="secondary" data-action="admin-inbox-in-review" data-inbox-id="${escapeHtml(item.id)}">Mark In Review</button>
+                  <button class="warning" data-action="admin-inbox-resolve" data-inbox-id="${escapeHtml(item.id)}">Mark Resolved</button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        };
+
+        listEl.innerHTML = `
+          ${pending.length ? `<div class="small" style="margin-top:6px;color:var(--gold-strong);font-weight:700;">Pending</div>${pending.map((item) => renderRow(item, true)).join('')}` : '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No pending inbox messages.</div>'}
+          ${resolved.length ? `<div class="small" style="margin-top:14px;color:var(--text-muted);font-weight:700;">Reviewed</div>${resolved.slice(0, 12).map((item) => renderRow(item, false)).join('')}` : ''}
+        `;
+
+        setInlineStatus('adminInboxStatus', 'Admin inbox loaded.', 'info');
+      } catch (error) {
+        console.error('[Admin] loadAdminInbox error:', error);
+        listEl.innerHTML = '';
+        setInlineStatus('adminInboxStatus', `Failed to load inbox: ${error.message}`, 'error');
+      }
+    }
+
+    async function updateAdminInboxStatus(inboxId, status) {
+      if (!inboxId || !status) return;
+      const nextStatus = String(status).toLowerCase();
+      if (!['in_review', 'resolved', 'dismissed'].includes(nextStatus)) return;
+
+      setInlineStatus('adminInboxStatus', 'Updating inbox item...', 'info');
+      try {
+        await setDoc(doc(db, ADMIN_INBOX_COLLECTION, inboxId), {
+          status: nextStatus,
+          updatedAt: serverTimestamp(),
+          updatedAtIso: new Date().toISOString(),
+          updatedBy: auth.currentUser?.uid || null,
+          updatedByEmail: auth.currentUser?.email || null
+        }, { merge: true });
+        await loadAdminInbox();
+        setInlineStatus('adminInboxStatus', 'Inbox item updated.', 'success');
+      } catch (error) {
+        console.error('[Admin] updateAdminInboxStatus error:', error);
+        setInlineStatus('adminInboxStatus', `Failed updating inbox item: ${error.message}`, 'error');
+      }
+    }
+
+    async function lockLeaderGroupsForMissingUpline(leaderId) {
+      if (!leaderId) return;
+      setInlineStatus('groupIntegrityStatus', 'Applying meeting lock for leader...', 'info');
+
+      try {
+        const [leaderSnap, groupsSnap] = await Promise.all([
+          getDoc(doc(db, 'goMission_members', leaderId)),
+          getDocs(collection(db, 'goMission_groups'))
+        ]);
+
+        if (!leaderSnap.exists()) {
+          setInlineStatus('groupIntegrityStatus', 'Leader profile not found.', 'warn');
+          return;
+        }
+
+        const leader = { id: leaderSnap.id, ...(leaderSnap.data() || {}) };
+        if (isLeaderExemptFromNoUplineRule(leader)) {
+          setInlineStatus('groupIntegrityStatus', 'Leader is exempt from no-upline restriction. No lock applied.', 'warn');
+          return;
+        }
+
+        const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const groupsById = new Map(groups.map((group) => [group.id, group]));
+        if (hasLeaderValidUpline(leader, groupsById)) {
+          setInlineStatus('groupIntegrityStatus', 'Leader already has a valid upline. No lock applied.', 'warn');
+          return;
+        }
+
+        const ledGroups = getLeaderLedGroups(leader.id, groups);
+        if (!ledGroups.length) {
+          setInlineStatus('groupIntegrityStatus', 'No led groups found for this leader.', 'warn');
+          return;
+        }
+
+        const lockReason = 'Meeting is temporarily locked. Join a valid upline group first, then request unlock from admin.';
+        const updatedAtIso = new Date().toISOString();
+
+        for (const group of ledGroups) {
+          await setDoc(doc(db, 'goMission_groups', group.id), {
+            integrityLock: {
+              enabled: true,
+              type: 'missing_upline',
+              reason: lockReason,
+              updatedAtIso,
+              updatedBy: auth.currentUser?.uid || null,
+              updatedByEmail: auth.currentUser?.email || null
+            }
+          }, { merge: true });
+        }
+
+        try {
+          const names = ledGroups.map((group) => group.name || group.id).join(', ');
+          await callCustomNotification({
+            targetType: 'user',
+            targetId: leader.id,
+            targetFilter: null,
+            title: 'Action needed: Join an upline group',
+            body: `Your group meeting access is locked (${names}). Join an upline group, then send request to admin.`,
+            notificationType: 'group_integrity'
+          });
+        } catch (notifyError) {
+          console.warn('[Admin] lockLeaderGroupsForMissingUpline notification warning:', notifyError);
+        }
+
+        setInlineStatus('groupIntegrityStatus', `Meeting lock applied to ${ledGroups.length} group(s) for ${getMemberDisplayName(leader)}.`, 'success');
+      } catch (error) {
+        console.error('[Admin] lockLeaderGroupsForMissingUpline error:', error);
+        setInlineStatus('groupIntegrityStatus', `Failed applying meeting lock: ${error.message}`, 'error');
       }
     }
 
@@ -2441,15 +2642,27 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }
     }
 
-    function isMemberExplicitlyAuthorizedForCreatingGroup(member = {}) {
-      const roles = member?.roles || {};
-      return Boolean(
-        member?.canCreateGroup === true ||
-        member?.endorsementApproved === true ||
-        member?.leaderEndorsed === true ||
-        member?.endorsedToLead === true ||
-        roles?.canCreateGroup === true
-      );
+    function isLeaderExemptFromNoUplineRule(member = {}) {
+      const uid = String(member?.id || '').trim();
+      const email = String(member?.email || '').trim().toLowerCase();
+      return NO_UPLINE_CREATION_EXEMPT_UIDS.includes(uid) || NO_UPLINE_CREATION_EXEMPT_EMAILS.includes(email);
+    }
+
+    function hasLeaderValidUpline(leader = {}, groupsById = new Map()) {
+      const leaderId = String(leader?.id || '').trim();
+      const uplineGroupId = String(leader?.uplineGroupId || '').trim();
+      if (!leaderId || !uplineGroupId) return false;
+      const uplineGroup = groupsById.get(uplineGroupId);
+      if (!uplineGroup || !uplineGroup.leaderId || uplineGroup.leaderId === leaderId) return false;
+      const members = Array.isArray(uplineGroup.members) ? uplineGroup.members : [];
+      const memberIds = members
+        .map((entry) => (typeof entry === 'string' ? entry : (entry?.odId || entry?.uid || entry?.id || null)))
+        .filter(Boolean);
+      return memberIds.includes(leaderId);
+    }
+
+    function getLeaderLedGroups(leaderId, groups = []) {
+      return groups.filter((group) => String(group?.leaderId || '') === String(leaderId || ''));
     }
 
     async function runGroupIntegrityAudit() {
@@ -2527,29 +2740,28 @@ match /goMission/watch-series-covers/{allPaths=**} {
           }
         });
 
-        // Rule 2: Group creation eligibility - leaders must have upline unless admin/explicitly authorized.
+        // Rule 2: Leaders must have valid upline. Only founder/co-founder are exempt.
         const seenLeaders = new Set();
         groups.forEach((group) => {
           const leaderId = group?.leaderId || null;
           if (!leaderId || seenLeaders.has(leaderId)) return;
           seenLeaders.add(leaderId);
 
-          const leader = membersById.get(leaderId) || {};
-          const leaderEmail = String(leader?.email || '').toLowerCase();
-          const isAdmin = ADMIN_UIDS.includes(leaderId) || ADMIN_EMAILS.includes(leaderEmail) || leader?.roles?.isAdmin === true;
-          const authorized = isMemberExplicitlyAuthorizedForCreatingGroup(leader);
-          const hasValidUpline = Boolean(
-            leader?.uplineGroupId &&
-            groupsById.get(leader.uplineGroupId) &&
-            groupsById.get(leader.uplineGroupId)?.leaderId !== leaderId
-          );
+          const leader = { ...(membersById.get(leaderId) || {}), id: leaderId };
+          const exempt = isLeaderExemptFromNoUplineRule(leader);
+          const hasValidUpline = hasLeaderValidUpline(leader, groupsById);
+          const ledGroups = getLeaderLedGroups(leaderId, groups);
+          const groupLabels = ledGroups
+            .map((entry) => getGroupIntegrityLabel(entry, membersById))
+            .join('; ');
 
-          if (!isAdmin && !authorized && !hasValidUpline) {
+          if (!exempt && !hasValidUpline) {
             violations.push({
               severity: 'high',
               title: 'This leader has members but no upline leader yet',
-              detail: `${getMemberDisplayName(leader)} (${leaderId}) is leading group(s) but has no upline leader on profile and no admin authorization to lead without one.`,
-              memberId: leaderId
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) is leading ${ledGroups.length} group(s) with no valid upline: ${groupLabels || 'No groups found'}.`,
+              memberId: leaderId,
+              action: 'lock_missing_upline_meetings'
             });
           }
         });
@@ -2603,11 +2815,15 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const resolverBtn = violation.memberId
             ? `<div style="margin-top:8px;"><button class="secondary" style="width:auto;padding:6px 10px;" data-action="open-group-role-resolver" data-member-id="${escapeHtml(violation.memberId)}">Resolve Group Roles</button></div>`
             : '';
+          const lockMeetingBtn = (violation.action === 'lock_missing_upline_meetings' && violation.memberId)
+            ? `<div style="margin-top:8px;"><button class="warning" style="width:auto;padding:6px 10px;" data-action="lock-missing-upline-meetings" data-member-id="${escapeHtml(violation.memberId)}">Disable Meetings + Notify Leader</button></div>`
+            : '';
           return `
             <div style="margin-top:10px;padding:10px;border:1px solid ${border};border-radius:10px;background:${bg};">
               <div class="small" style="font-weight:800;color:var(--text-main);">${escapeHtml(violation.title)} <span style="font-size:10px;opacity:.8;">[${badge}]</span></div>
               <div class="small" style="margin-top:4px;">${escapeHtml(violation.detail)}</div>
               ${resolverBtn}
+              ${lockMeetingBtn}
             </div>
           `;
         }).join('');
@@ -4353,6 +4569,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       await Promise.all([
         loadMissionHealth(),
         loadGroupDeletionRequests(),
+        loadAdminInbox(),
         loadForceUpdateStatus(),
         loadEmailSequence(),
         loadPushSettings(),
@@ -4389,11 +4606,20 @@ match /goMission/watch-series-covers/{allPaths=**} {
         await openGroupRoleResolverForMember(memberId);
       });
       document.getElementById('groupIntegrityViolations').addEventListener('click', async (event) => {
-        const btn = event.target.closest('button[data-action="open-group-role-resolver"][data-member-id]');
+        const btn = event.target.closest('button[data-action][data-member-id]');
         if (!btn) return;
+        const action = btn.getAttribute('data-action');
         const memberId = btn.getAttribute('data-member-id');
         if (!memberId) return;
-        await openGroupRoleResolverForMember(memberId);
+        if (action === 'open-group-role-resolver') {
+          await openGroupRoleResolverForMember(memberId);
+          return;
+        }
+        if (action === 'lock-missing-upline-meetings') {
+          const confirmed = confirm('Disable meetings for this leader\'s group(s) and send them a notification?');
+          if (!confirmed) return;
+          await lockLeaderGroupsForMissingUpline(memberId);
+        }
       });
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {
@@ -4453,6 +4679,23 @@ match /goMission/watch-series-covers/{allPaths=**} {
         }
         if (action === 'reject-group-delete') {
           await rejectGroupDeleteRequest(requestId);
+        }
+      });
+
+      document.getElementById('reloadAdminInboxBtn').addEventListener('click', loadAdminInbox);
+      document.getElementById('adminInboxList').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action][data-inbox-id]');
+        if (!btn) return;
+        const inboxId = btn.getAttribute('data-inbox-id');
+        const action = btn.getAttribute('data-action');
+        if (!inboxId || !action) return;
+
+        if (action === 'admin-inbox-in-review') {
+          await updateAdminInboxStatus(inboxId, 'in_review');
+          return;
+        }
+        if (action === 'admin-inbox-resolve') {
+          await updateAdminInboxStatus(inboxId, 'resolved');
         }
       });
 

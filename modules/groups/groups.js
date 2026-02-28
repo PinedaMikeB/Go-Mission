@@ -24,6 +24,14 @@ const Groups = {
     'michael.marga@gmail.com',
     'vasquezperlie18@gmail.com'
   ],
+  NO_UPLINE_CREATION_EXEMPT_UIDS: [
+    '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
+    'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
+  ],
+  NO_UPLINE_CREATION_EXEMPT_EMAILS: [
+    'michael.marga@gmail.com',
+    'shannen.emerald04@gmail.com'
+  ],
 
   normalizeInviteCode(rawCode) {
     return String(rawCode || '')
@@ -63,6 +71,12 @@ const Groups = {
     const email = String(window.currentUser?.email || '').toLowerCase();
     return this.ADMIN_EMAILS.includes(email);
   },
+
+  isNoUplineCreationExempt(userData = {}) {
+    const uid = String(window.currentUser?.uid || '').trim();
+    const email = String(window.currentUser?.email || userData?.email || '').toLowerCase().trim();
+    return this.NO_UPLINE_CREATION_EXEMPT_UIDS.includes(uid) || this.NO_UPLINE_CREATION_EXEMPT_EMAILS.includes(email);
+  },
   
   // Check if user has been a group member (disciple) before
   async hasBeenDisciple() {
@@ -90,31 +104,18 @@ const Groups = {
       return { allowed: false, reason: 'not_signed_in' };
     }
 
-    // Admin can always create
-    if (this.isAdmin()) return { allowed: true, reason: 'admin' };
-
     try {
       const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
       const userDoc = await window.getDoc(userRef);
       const userData = userDoc.exists() ? (userDoc.data() || {}) : {};
-      const roles = userData.roles || {};
-
-      const explicitlyAuthorized = !!(
-        userData.canCreateGroup === true ||
-        userData.endorsementApproved === true ||
-        userData.leaderEndorsed === true ||
-        userData.endorsedToLead === true ||
-        roles.canCreateGroup === true ||
-        roles.isGroupLeader === true
-      );
-      if (explicitlyAuthorized) {
-        return { allowed: true, reason: 'authorized' };
+      if (this.isNoUplineCreationExempt(userData)) {
+        return { allowed: true, reason: 'no_upline_exempt' };
       }
 
-      // STRICT RULE: non-admin users need an active upline group to create downline.
+      // STRICT RULE: all non-exempt users need an active upline group to create downline.
       const uplineGroupId = userData.uplineGroupId || null;
       if (!uplineGroupId) {
-        return { allowed: false, reason: 'requires_upline_or_authorization' };
+        return { allowed: false, reason: 'requires_upline' };
       }
 
       const uplineRef = window.doc(window.db, 'goMission_groups', uplineGroupId);
@@ -901,7 +902,7 @@ const Groups = {
   
   /**
    * Create a new group (for leaders)
-   * Requires: user was a disciple OR has valid endorsement code OR is admin
+   * Requires: valid upline membership unless founder/co-founder exemption.
    */
   async createGroup(groupData, endorsementCode = null) {
     if (!window.currentUser || !window.db) {
@@ -913,18 +914,8 @@ const Groups = {
     const canCreate = await this.canCreateGroup();
     
     if (!canCreate.allowed) {
-      // Need endorsement code
-      if (!endorsementCode) {
-        alert('You need an endorsement code to create a group. Please join a group first to become a disciple, or enter an endorsement code from your leader.');
-        return null;
-      }
-      
-      // Validate the code
-      const validation = await this.validateEndorsementCode(endorsementCode);
-      if (!validation.valid) {
-        alert(validation.message);
-        return null;
-      }
+      alert('You must join a valid upline group first before creating a group.');
+      return null;
     }
     
     try {
@@ -950,8 +941,8 @@ const Groups = {
         status: 'active',
         createdAt: window.serverTimestamp(),
         // Track how group was created
-        createdVia: endorsementCode ? 'endorsement' : (this.isAdmin() ? 'admin' : 'disciple'),
-        endorsementCode: endorsementCode || null
+        createdVia: canCreate.reason === 'no_upline_exempt' ? 'founder_exempt' : 'upline_member',
+        endorsementCode: null
       };
       
       // Create group
@@ -967,11 +958,6 @@ const Groups = {
         // Track that user became a disciple-maker
         becameLeaderAt: new Date().toISOString()
       }, { merge: true });
-      
-      // Mark endorsement code as used
-      if (endorsementCode) {
-        await this.markCodeUsed(endorsementCode, groupId);
-      }
       
       // Refresh local data
       await this.loadUserGroup();
@@ -1108,20 +1094,20 @@ const Groups = {
     let createButtonHtml = '';
     
     if (canCreate.allowed) {
-      // User can create directly (admin or former disciple)
+      // User can create directly (valid upline or founder/co-founder exemption)
       createButtonHtml = `
         <button onclick="Groups.showCreateModal()" class="w-full py-3 border border-amber-500/30 rounded-xl text-amber-500 text-sm font-bold hover:bg-amber-500/10 transition-colors">
           ➕ Create New Group
         </button>
       `;
     } else {
-      // User needs endorsement code or must join first
+      // User must join an upline first
       createButtonHtml = `
-        <button onclick="Groups.showCreateModal(true)" class="w-full py-3 border border-slate-600/30 rounded-xl text-slate-400 text-sm font-bold hover:bg-slate-500/10 transition-colors">
-          ➕ Create Group (Need Code)
+        <button onclick="Groups.showCreateModal()" class="w-full py-3 border border-slate-600/30 rounded-xl text-slate-400 text-sm font-bold hover:bg-slate-500/10 transition-colors">
+          ➕ Create Group (Locked)
         </button>
         <p class="text-[10px] text-slate-500 text-center mt-2">
-          Join a group first to become a disciple, or use an endorsement code from your leader
+          Join a valid upline group first before creating your own group
         </p>
       `;
     }
@@ -1422,39 +1408,24 @@ const Groups = {
   
   /**
    * Show modal to create a new group
-   * @param {boolean} requireCode - If true, show endorsement code field
    */
-  async showCreateModal(requireCode = false) {
+  async showCreateModal() {
     const modal = document.getElementById('groupModal');
     const content = document.getElementById('groupModalContent');
     
     if (!modal || !content) return;
     
-    // Check if user can create without code
     const canCreate = await this.canCreateGroup();
-    const needsCode = requireCode || !canCreate.allowed;
-    
-    let endorsementCodeHtml = '';
-    if (needsCode) {
-      endorsementCodeHtml = `
-        <div class="mb-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30">
-          <p class="text-amber-400 text-xs mb-2">⚠️ You need an endorsement code to create a group</p>
-          <p class="text-slate-400 text-[10px]">Ask your Mission Group leader or admin for a code, or join a group first to become a disciple.</p>
-        </div>
-        <div class="mb-4">
-          <label class="block text-xs text-slate-400 mb-1">Endorsement Code *</label>
-          <input type="text" id="endorsementCode" placeholder="Enter code from your leader" 
-                 class="w-full bg-black/40 border border-amber-500/30 rounded-xl p-3 text-sm text-amber-400 placeholder-slate-500 uppercase tracking-wider"
-                 style="text-transform: uppercase;">
-        </div>
-      `;
-    }
     
     content.innerHTML = `
       <div class="p-4">
         <h3 class="text-lg font-bold text-amber-400 mb-4">Create Mission Group</h3>
-        
-        ${endorsementCodeHtml}
+        ${!canCreate.allowed ? `
+          <div class="mb-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30">
+            <p class="text-amber-400 text-xs mb-1">⚠️ Join upline first</p>
+            <p class="text-slate-400 text-[10px]">You must join a valid upline group before creating your own group.</p>
+          </div>
+        ` : ''}
         
         <div class="space-y-4">
           <div>
@@ -1494,7 +1465,7 @@ const Groups = {
           <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
             Cancel
           </button>
-          <button onclick="Groups.submitCreateGroup()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400">
+          <button onclick="Groups.submitCreateGroup()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400" ${!canCreate.allowed ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
             Create Group
           </button>
         </div>
@@ -1512,7 +1483,6 @@ const Groups = {
     const day = document.getElementById('newGroupDay')?.value;
     const time = document.getElementById('newGroupTime')?.value;
     const link = document.getElementById('newGroupLink')?.value?.trim();
-    const endorsementCode = document.getElementById('endorsementCode')?.value?.trim()?.toUpperCase() || null;
     
     if (!name) {
       alert('Please enter a group name');
@@ -1524,7 +1494,7 @@ const Groups = {
       meetingDay: day,
       meetingTime: time,
       meetingLink: link
-    }, endorsementCode);
+    }, null);
     
     if (groupId) {
       this.closeModal();

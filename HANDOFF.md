@@ -38,6 +38,66 @@
 
 ---
 
+## Current Task Status (2026-02-28) — Thread 5 No-Upline Leadership Enforcement + Admin Inbox
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+  - `/firestore.rules`
+- **Goal completed**: Enforce strict no-upline leadership policy (founder/co-founder exemptions only), provide audit action to lock meetings, and route leader unlock requests into an admin inbox.
+
+### Policy Baseline (Do Not Break)
+
+1. Only founder + co-founder are allowed to lead/create without upline.
+2. All other leaders must have a valid upline (not self-led, and actually listed in that upline `members[]`).
+3. If violated:
+  - audit must flag them,
+  - admin can lock meetings from audit action,
+  - leader sees lock reason and can send request to admin inbox.
+
+### Runtime Workflow
+
+1. Admin runs `Group Integrity Audit`.
+2. For violation `This leader has members but no upline leader yet`, admin clicks `Disable Meetings + Notify Leader`.
+3. System writes `integrityLock` on each affected group (`enabled`, `type=missing_upline`, `reason`).
+4. Leader sees `Meeting Locked` in My Mission Groups and cannot start/join until fixed.
+5. Leader opens lock modal, writes message, clicks `Send Request to Admin`.
+6. Admin handles request in `Admin Inbox` (`Mark In Review` / `Mark Resolved`).
+
+### Collections/Fields Added or Used
+
+- `goMission_groups/{groupId}.integrityLock`:
+  - `enabled: boolean`
+  - `type: "missing_upline"`
+  - `reason: string`
+  - `updatedAtIso`, `updatedBy`, `updatedByEmail`
+- `goMission_adminInbox/{docId}` for leader requests:
+  - `type: "upline_unlock_request"`
+  - `status: "new" | "in_review" | "resolved" | "dismissed"`
+  - `leaderId`, `leaderName`, `leaderEmail`
+  - `groupId`, `groupName`
+  - `message`
+  - `createdAt`, `createdAtIso`, `updatedAt`, `updatedAtIso`
+
+### Security Rules Notes
+
+- `goMission_groups` create now allows no-upline creation only for explicit exemption list (founder/co-founder).
+- `goMission_adminInbox`:
+  - create: signed-in leader creating own request (`leaderId == request.auth.uid`, `type=upline_unlock_request`, `status=new`)
+  - read/update/delete: admin only
+
+### Regression Checklist
+
+- Audit excludes founder + co-founder from no-upline violations.
+- Audit violations for other no-upline leaders include led-group list.
+- `Disable Meetings + Notify Leader` writes `integrityLock` on all groups led by that leader.
+- Locked leader sees blocked meeting buttons and lock reason in both card and modal.
+- `Send Request to Admin` creates inbox doc and appears in admin `Admin Inbox`.
+- Non-exempt users cannot create group without valid upline.
+
+---
+
 ## Current Task Status (2026-02-28) — Thread 5 Multi-Group Member Resolver
 
 - **Active modules**
