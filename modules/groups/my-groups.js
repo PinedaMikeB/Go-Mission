@@ -94,6 +94,37 @@ const MyGroups = {
     },
 
     /**
+     * Resolve primary upline group id with safety against self-led fallback pointers.
+     */
+    async resolvePrimaryMemberGroupIdFromProfile(profile = {}, userId = window.currentUser?.uid) {
+        const uplineGroupId = typeof profile?.uplineGroupId === 'string' ? profile.uplineGroupId.trim() : '';
+        if (uplineGroupId) return uplineGroupId;
+
+        const fallbackGroupId = typeof profile?.groupId === 'string' ? profile.groupId.trim() : '';
+        if (!fallbackGroupId) return null;
+
+        const groupRole = String(profile?.groupRole || '').toLowerCase().trim();
+        if (groupRole && groupRole !== 'member') return null;
+
+        if (!window.db) return groupRole === 'member' ? fallbackGroupId : null;
+
+        try {
+            const groupDoc = await window.getDoc(
+                window.doc(window.db, 'goMission_groups', fallbackGroupId)
+            );
+            if (!groupDoc.exists()) return groupRole === 'member' ? fallbackGroupId : null;
+            const groupData = groupDoc.data() || {};
+            if (groupData?.leaderId && userId && groupData.leaderId === userId) {
+                return null;
+            }
+            return fallbackGroupId;
+        } catch (error) {
+            console.warn('[MyGroups] Failed resolving fallback primary group:', error);
+            return groupRole === 'member' ? fallbackGroupId : null;
+        }
+    },
+
+    /**
      * Load pending group-deletion requests keyed by downline group id
      */
     async loadPendingGroupDeletionRequests() {
@@ -166,14 +197,17 @@ const MyGroups = {
             
             const userData = userDoc.data();
             
-            // Load upline/member group (supports legacy userData.groupId)
-            const memberGroupId = userData.uplineGroupId || userData.groupId || null;
+            // Load upline/member group (legacy groupId fallback is guarded against self-led groups)
+            const memberGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(userData, uid);
             if (memberGroupId) {
                 const uplineDoc = await window.getDoc(
                     window.doc(window.db, 'goMission_groups', memberGroupId)
                 );
                 if (uplineDoc.exists()) {
                     const groupData = uplineDoc.data();
+                    if (groupData?.leaderId === uid) {
+                        this.uplineGroup = null;
+                    } else {
                     // Verify user is still a member of this group
                     const isMember = this.isUserMemberInGroupData(groupData, uid);
                     const isGuest = this.isUserGuestInGroupData(groupData, uid);
@@ -199,6 +233,7 @@ const MyGroups = {
                         if (typeof Groups !== 'undefined') {
                             Groups.currentGroup = this.uplineGroup;
                         }
+                    }
                     }
                 } else {
                     // Group doesn't exist anymore
@@ -2641,7 +2676,7 @@ const MyGroups = {
                     window.doc(window.db, 'goMission_members', odId)
                 );
                 const memberData = memberDoc.exists() ? (memberDoc.data() || {}) : {};
-                const existingPrimaryGroupId = memberData.uplineGroupId || memberData.groupId || null;
+                const existingPrimaryGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(memberData, odId);
                 if (existingPrimaryGroupId && existingPrimaryGroupId !== groupId) {
                     alert(`${request.name} already has an upline group. Approve as Guest only or process a transfer first.`);
                     return;

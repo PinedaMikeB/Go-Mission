@@ -38,6 +38,39 @@
 
 ---
 
+## Current Task Status (2026-02-28) — Thread 5 Integrity Audit Precision + Safe Member Correction
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/groups.js`
+  - `/modules/groups/my-groups.js`
+- **Goal completed**: Remove false positives for leaders in integrity audit and provide account-level verify/fix tooling for mixed memberships.
+
+### What Changed
+
+1. `Group Integrity Audit` now excludes self-led memberships when evaluating multiple-upline violations.
+2. New member lookup controls in admin:
+  - `Verify Member Integrity`
+  - `Apply Safe Correction`
+3. Safe correction behavior:
+  - removes member from conflicting non-self-led group `members[]`
+  - updates `uplineGroupId` if a single valid primary remains
+  - keeps self-led memberships unchanged
+4. Group modules now resolve primary member group safely:
+  - fallback `groupId` is ignored when it points to a self-led group
+  - avoids false member locks for leaders.
+
+### Regression Checklist (Run Before Push)
+
+- Audit no longer flags a leader solely because they appear in their own led groups.
+- For `Michael Pineda` + `Eric` case:
+  - verify should show self-led links separately from non-self-led links
+  - correction should only remove conflicting non-self-led member links
+  - guest relationship should remain unaffected
+- Approve-as-member and join-by-code checks should no longer misread self-led `groupId` as external upline.
+
+---
+
 ## Current Task Status (2026-02-28) — Thread 5 Group Integrity Security Hardening
 
 - **Active modules**

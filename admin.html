@@ -604,6 +604,17 @@
           <div class="actions">
             <button id="runGroupIntegrityAuditBtn" class="warning">Run Integrity Audit</button>
           </div>
+          <div class="row" style="margin-top:10px;">
+            <div>
+              <label for="groupIntegrityMemberLookup">Verify member (UID or email)</label>
+              <input id="groupIntegrityMemberLookup" placeholder="9zVKHJ11zaXD0f4GI6P7LHD6re32 or michael@example.com">
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:8px;">
+              <button id="verifyGroupMemberIntegrityBtn" class="secondary" style="width:auto;">Verify Member Integrity</button>
+              <button id="fixGroupMemberIntegrityBtn" class="warning" style="width:auto;">Apply Safe Correction</button>
+            </div>
+          </div>
+          <div id="groupIntegrityMemberResult" class="list" style="margin-top:8px;"></div>
           <div id="groupIntegritySummary" class="small"></div>
           <div id="groupIntegrityViolations" class="list"></div>
           <div id="groupIntegrityStatus" class="small"></div>
@@ -1774,6 +1785,277 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }).filter(Boolean))];
     }
 
+    function getGroupMemberUid(entry) {
+      if (typeof entry === 'string') return entry;
+      if (!entry || typeof entry !== 'object') return null;
+      return entry.odId || entry.uid || entry.id || null;
+    }
+
+    function removeMemberUidFromGroupMembers(rawMembers, uid) {
+      const input = Array.isArray(rawMembers) ? rawMembers : [];
+      const filtered = input.filter((entry) => getGroupMemberUid(entry) !== uid);
+      const normalizedCount = [...new Set(filtered.map((entry) => getGroupMemberUid(entry)).filter(Boolean))].length;
+      return {
+        members: filtered,
+        currentCount: normalizedCount,
+        removedCount: input.length - filtered.length
+      };
+    }
+
+    function resolvePrimaryMemberGroupId(member = {}, groupsById = new Map()) {
+      const uplineGroupId = typeof member?.uplineGroupId === 'string' ? member.uplineGroupId.trim() : '';
+      if (uplineGroupId) return uplineGroupId;
+
+      const fallbackGroupId = typeof member?.groupId === 'string' ? member.groupId.trim() : '';
+      if (!fallbackGroupId) return null;
+
+      const groupRole = String(member?.groupRole || '').toLowerCase().trim();
+      if (groupRole && groupRole !== 'member') return null;
+
+      const fallbackGroup = groupsById.get(fallbackGroupId);
+      if (!fallbackGroup) return groupRole === 'member' ? fallbackGroupId : null;
+
+      if (fallbackGroup?.leaderId && fallbackGroup.leaderId === member?.id) {
+        return null;
+      }
+      return fallbackGroupId;
+    }
+
+    function getGroupLeaderName(leaderId, membersById = new Map()) {
+      const leader = membersById.get(leaderId || '');
+      if (leader) return getMemberDisplayName(leader);
+      return leaderId || 'Unknown leader';
+    }
+
+    function getGroupIntegrityLabel(group, membersById = new Map()) {
+      const groupName = group?.name || 'Unnamed group';
+      const leaderName = getGroupLeaderName(group?.leaderId || '', membersById);
+      return `${groupName} (${group?.id || 'n/a'}) led by ${leaderName}`;
+    }
+
+    function buildGroupIntegritySnapshot(members = [], groups = []) {
+      const membersById = new Map(members.map((member) => [member.id, member]));
+      const groupsById = new Map(groups.map((group) => [group.id, group]));
+      const membershipByUser = new Map();
+
+      groups.forEach((group) => {
+        const memberUids = getNormalizedGroupMemberUids(group);
+        memberUids.forEach((uid) => {
+          if (!membershipByUser.has(uid)) membershipByUser.set(uid, []);
+          membershipByUser.get(uid).push({
+            groupId: group.id,
+            groupName: group.name || '',
+            leaderId: group.leaderId || null,
+            selfLed: group.leaderId === uid
+          });
+        });
+      });
+
+      return { membersById, groupsById, membershipByUser };
+    }
+
+    function analyzeMemberGroupIntegrity(member = {}, snapshot) {
+      const allLinks = snapshot.membershipByUser.get(member.id) || [];
+      const nonSelfLedLinks = allLinks.filter((link) => !link.selfLed);
+      const selfLedLinks = allLinks.filter((link) => link.selfLed);
+      const nonSelfLedGroupIds = [...new Set(nonSelfLedLinks.map((link) => link.groupId).filter(Boolean))];
+      const nonSelfLedLeaderIds = [...new Set(nonSelfLedLinks.map((link) => link.leaderId).filter(Boolean))];
+
+      const currentPrimaryGroupId = resolvePrimaryMemberGroupId(member, snapshot.groupsById);
+      let nextPrimaryGroupId = null;
+      if (currentPrimaryGroupId && nonSelfLedGroupIds.includes(currentPrimaryGroupId)) {
+        nextPrimaryGroupId = currentPrimaryGroupId;
+      } else if (nonSelfLedGroupIds.length === 1) {
+        nextPrimaryGroupId = nonSelfLedGroupIds[0];
+      }
+
+      const groupsToRemove = nonSelfLedGroupIds.filter((groupId) => groupId !== nextPrimaryGroupId);
+      const issues = [];
+
+      if (nonSelfLedLeaderIds.length > 1) {
+        issues.push({
+          severity: 'high',
+          title: 'Multiple upline leaders',
+          detail: `Linked as member to ${nonSelfLedLeaderIds.length} different leaders.`
+        });
+      } else if (nonSelfLedGroupIds.length > 1) {
+        issues.push({
+          severity: 'medium',
+          title: 'Multiple member groups under same leader',
+          detail: `Linked as member to ${nonSelfLedGroupIds.length} groups under one leader.`
+        });
+      }
+
+      if (currentPrimaryGroupId && !nonSelfLedGroupIds.includes(currentPrimaryGroupId)) {
+        issues.push({
+          severity: 'medium',
+          title: 'Primary pointer mismatch',
+          detail: `Primary pointer is ${currentPrimaryGroupId}, but member is not listed in that non-self-led group.`
+        });
+      }
+
+      if (!currentPrimaryGroupId && nonSelfLedGroupIds.length === 1) {
+        issues.push({
+          severity: 'medium',
+          title: 'Missing primary pointer',
+          detail: `Exactly one non-self-led membership exists but uplineGroupId is empty.`
+        });
+      }
+
+      return {
+        member,
+        allLinks,
+        selfLedLinks,
+        nonSelfLedLinks,
+        nonSelfLedGroupIds,
+        nonSelfLedLeaderIds,
+        currentPrimaryGroupId,
+        nextPrimaryGroupId,
+        groupsToRemove,
+        issues
+      };
+    }
+
+    function renderMemberIntegrityResult(result, snapshot) {
+      const container = document.getElementById('groupIntegrityMemberResult');
+      if (!container) return;
+
+      if (!result) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const member = result.member || {};
+      const selfLedText = result.selfLedLinks.length
+        ? result.selfLedLinks
+            .map((link) => escapeHtml(getGroupIntegrityLabel(snapshot.groupsById.get(link.groupId), snapshot.membersById)))
+            .join('<br>')
+        : 'None';
+      const nonSelfLedText = result.nonSelfLedLinks.length
+        ? result.nonSelfLedLinks
+            .map((link) => escapeHtml(getGroupIntegrityLabel(snapshot.groupsById.get(link.groupId), snapshot.membersById)))
+            .join('<br>')
+        : 'None';
+      const issuesHtml = result.issues.length
+        ? result.issues.map((issue) => {
+            const level = issue.severity === 'high' ? 'HIGH' : 'MEDIUM';
+            return `<div class="small" style="margin-top:6px;"><b>[${level}] ${escapeHtml(issue.title)}</b> - ${escapeHtml(issue.detail)}</div>`;
+          }).join('')
+        : '<div class="small" style="margin-top:6px;">No integrity issue for this member.</div>';
+
+      container.innerHTML = `
+        <div style="padding:10px;border:1px solid rgba(245,189,89,0.25);border-radius:10px;background:rgba(245,189,89,0.06);">
+          <div class="small"><b>Member:</b> ${escapeHtml(getMemberDisplayName(member))} (${escapeHtml(member.id || 'n/a')})</div>
+          <div class="small"><b>Current primary:</b> ${escapeHtml(result.currentPrimaryGroupId || 'none')}</div>
+          <div class="small"><b>Recommended primary:</b> ${escapeHtml(result.nextPrimaryGroupId || 'none')}</div>
+          <div class="small"><b>Self-led group links:</b><br>${selfLedText}</div>
+          <div class="small" style="margin-top:6px;"><b>Non-self-led member links:</b><br>${nonSelfLedText}</div>
+          <div class="small" style="margin-top:6px;"><b>Groups to remove from member list:</b> ${escapeHtml(result.groupsToRemove.join(', ') || 'none')}</div>
+          <div style="margin-top:8px;">${issuesHtml}</div>
+        </div>
+      `;
+    }
+
+    async function resolveMemberByLookup(lookupRaw) {
+      const lookup = String(lookupRaw || '').trim();
+      if (!lookup) {
+        return auth.currentUser ? { id: auth.currentUser.uid, ...((await getDoc(doc(db, 'goMission_members', auth.currentUser.uid))).data() || {}) } : null;
+      }
+
+      if (lookup.includes('@')) {
+        const email = lookup.toLowerCase();
+        const snap = await getDocs(query(collection(db, 'goMission_members'), where('email', '==', email), limit(1)));
+        if (snap.empty) return null;
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+
+      const byId = await getDoc(doc(db, 'goMission_members', lookup));
+      if (byId.exists()) return { id: byId.id, ...byId.data() };
+
+      const fallbackByEmail = await getDocs(query(collection(db, 'goMission_members'), where('email', '==', lookup.toLowerCase()), limit(1)));
+      if (fallbackByEmail.empty) return null;
+      const docSnap = fallbackByEmail.docs[0];
+      return { id: docSnap.id, ...docSnap.data() };
+    }
+
+    async function verifySpecificMemberIntegrity(applySafeCorrection = false) {
+      const lookupEl = document.getElementById('groupIntegrityMemberLookup');
+      const lookup = lookupEl ? lookupEl.value : '';
+      setInlineStatus('groupIntegrityStatus', applySafeCorrection ? 'Applying safe correction...' : 'Verifying member integrity...', 'info');
+
+      try {
+        const member = await resolveMemberByLookup(lookup);
+        if (!member || !member.id) {
+          renderMemberIntegrityResult(null, { groupsById: new Map(), membersById: new Map() });
+          setInlineStatus('groupIntegrityStatus', 'Member not found for lookup.', 'warn');
+          return;
+        }
+
+        const [membersSnap, groupsSnap] = await Promise.all([
+          getDocs(collection(db, 'goMission_members')),
+          getDocs(collection(db, 'goMission_groups'))
+        ]);
+        const members = membersSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const snapshot = buildGroupIntegritySnapshot(members, groups);
+
+        let result = analyzeMemberGroupIntegrity(member, snapshot);
+        renderMemberIntegrityResult(result, snapshot);
+
+        if (!applySafeCorrection) {
+          setInlineStatus('groupIntegrityStatus', 'Member integrity verification complete.', result.issues.length ? 'warn' : 'success');
+          return;
+        }
+
+        const changes = [];
+        for (const groupId of result.groupsToRemove) {
+          const group = snapshot.groupsById.get(groupId);
+          if (!group) continue;
+          const updated = removeMemberUidFromGroupMembers(group.members, member.id);
+          if (updated.removedCount <= 0) continue;
+          await setDoc(doc(db, 'goMission_groups', groupId), {
+            members: updated.members,
+            currentCount: updated.currentCount,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          changes.push(`removed from ${groupId}`);
+        }
+
+        const pointerPatch = {};
+        const currentUpline = typeof member.uplineGroupId === 'string' ? member.uplineGroupId : null;
+        if ((result.nextPrimaryGroupId || null) !== (currentUpline || null)) {
+          pointerPatch.uplineGroupId = result.nextPrimaryGroupId || null;
+        }
+        if (result.nextPrimaryGroupId && String(member.groupRole || '').toLowerCase() !== 'member') {
+          pointerPatch.groupRole = 'member';
+        }
+        if (Object.keys(pointerPatch).length > 0) {
+          await setDoc(doc(db, 'goMission_members', member.id), pointerPatch, { merge: true });
+          changes.push('updated member pointer');
+        }
+
+        const refreshedMemberDoc = await getDoc(doc(db, 'goMission_members', member.id));
+        const refreshedMember = refreshedMemberDoc.exists() ? { id: refreshedMemberDoc.id, ...refreshedMemberDoc.data() } : member;
+        const refreshedGroupsSnap = await getDocs(collection(db, 'goMission_groups'));
+        const refreshedGroups = refreshedGroupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const refreshedSnapshot = buildGroupIntegritySnapshot(members, refreshedGroups);
+        const refreshedResult = analyzeMemberGroupIntegrity(refreshedMember, refreshedSnapshot);
+        renderMemberIntegrityResult(refreshedResult, refreshedSnapshot);
+
+        setInlineStatus(
+          'groupIntegrityStatus',
+          changes.length
+            ? `Safe correction applied: ${changes.join(', ')}.`
+            : 'No data correction needed for this member.',
+          changes.length ? 'success' : 'info'
+        );
+      } catch (error) {
+        console.error('[Admin] verifySpecificMemberIntegrity error:', error);
+        setInlineStatus('groupIntegrityStatus', `Member integrity check failed: ${error.message}`, 'error');
+      }
+    }
+
     function isMemberExplicitlyAuthorizedForCreatingGroup(member = {}) {
       const roles = member?.roles || {};
       return Boolean(
@@ -1802,53 +2084,63 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
         const members = membersSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
         const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-        const membersById = new Map(members.map((member) => [member.id, member]));
-        const groupsById = new Map(groups.map((group) => [group.id, group]));
-
-        const membershipByUser = new Map();
-        groups.forEach((group) => {
-          const memberUids = getNormalizedGroupMemberUids(group);
-          memberUids.forEach((uid) => {
-            if (!membershipByUser.has(uid)) membershipByUser.set(uid, []);
-            membershipByUser.get(uid).push(group.id);
-          });
-        });
+        const snapshot = buildGroupIntegritySnapshot(members, groups);
+        const { membersById, groupsById, membershipByUser } = snapshot;
 
         const violations = [];
 
-        // Rule 1: No member should belong to 2+ upline groups as MEMBER.
-        membershipByUser.forEach((groupIds, uid) => {
-          const uniqueGroupIds = [...new Set(groupIds)];
+        // Rule 1: No member should belong to 2+ upline leaders as MEMBER.
+        membershipByUser.forEach((links, uid) => {
+          const nonSelfLedLinks = links.filter((link) => !link.selfLed);
+          const uniqueGroupIds = [...new Set(nonSelfLedLinks.map((link) => link.groupId).filter(Boolean))];
+          const uniqueLeaderIds = [...new Set(nonSelfLedLinks.map((link) => link.leaderId).filter(Boolean))];
           if (uniqueGroupIds.length <= 1) return;
           const member = membersById.get(uid) || {};
-          violations.push({
+          const labeledGroups = uniqueGroupIds
+            .map((groupId) => getGroupIntegrityLabel(groupsById.get(groupId), membersById))
+            .join('; ');
+          violations.push(uniqueLeaderIds.length > 1 ? {
             severity: 'high',
-            title: 'Member linked to multiple upline groups',
-            detail: `${getMemberDisplayName(member)} (${uid}) appears as member in ${uniqueGroupIds.length} groups: ${uniqueGroupIds.join(', ')}`
+            title: 'Member linked to multiple upline leaders',
+            detail: `${getMemberDisplayName(member)} (${uid}) is member in ${uniqueGroupIds.length} non-self-led groups across ${uniqueLeaderIds.length} leaders: ${labeledGroups}`
+          } : {
+            severity: 'medium',
+            title: 'Member linked to multiple groups under same upline leader',
+            detail: `${getMemberDisplayName(member)} (${uid}) is member in ${uniqueGroupIds.length} non-self-led groups under one leader: ${labeledGroups}`
           });
         });
 
         members.forEach((member) => {
-          const primaryGroupId = member?.uplineGroupId || member?.groupId || null;
-          const memberGroupLinks = membershipByUser.get(member.id) || [];
+          const memberAnalysis = analyzeMemberGroupIntegrity(member, snapshot);
+          const primaryGroupId = memberAnalysis.currentPrimaryGroupId;
+          const nonSelfLedGroupIds = memberAnalysis.nonSelfLedGroupIds;
 
-          if (primaryGroupId && !memberGroupLinks.includes(primaryGroupId)) {
+          if (primaryGroupId && !nonSelfLedGroupIds.includes(primaryGroupId)) {
             violations.push({
               severity: 'medium',
               title: 'Member pointer mismatch',
-              detail: `${getMemberDisplayName(member)} (${member.id}) has primary group pointer ${primaryGroupId} but is not listed in that group's members array.`
+              detail: `${getMemberDisplayName(member)} (${member.id}) has primary pointer ${primaryGroupId} but is not in that non-self-led group's members list.`
             });
           }
 
           if (primaryGroupId) {
-            const otherMemberGroups = [...new Set(memberGroupLinks.filter((gid) => gid !== primaryGroupId))];
+            const otherMemberGroups = [...new Set(nonSelfLedGroupIds.filter((gid) => gid !== primaryGroupId))];
             if (otherMemberGroups.length > 0) {
+              const labeled = otherMemberGroups
+                .map((gid) => getGroupIntegrityLabel(groupsById.get(gid), membersById))
+                .join('; ');
               violations.push({
                 severity: 'high',
                 title: 'Primary member also linked to other member groups',
-                detail: `${getMemberDisplayName(member)} (${member.id}) primary=${primaryGroupId} but also member in: ${otherMemberGroups.join(', ')}`
+                detail: `${getMemberDisplayName(member)} (${member.id}) primary=${primaryGroupId} but also in: ${labeled}`
               });
             }
+          } else if (nonSelfLedGroupIds.length === 1) {
+            violations.push({
+              severity: 'medium',
+              title: 'Missing primary pointer for member',
+              detail: `${getMemberDisplayName(member)} (${member.id}) has one non-self-led member group (${nonSelfLedGroupIds[0]}) but no primary upline pointer.`
+            });
           }
         });
 
@@ -1863,9 +2155,13 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const leaderEmail = String(leader?.email || '').toLowerCase();
           const isAdmin = ADMIN_UIDS.includes(leaderId) || ADMIN_EMAILS.includes(leaderEmail) || leader?.roles?.isAdmin === true;
           const authorized = isMemberExplicitlyAuthorizedForCreatingGroup(leader);
-          const hasUpline = Boolean(leader?.uplineGroupId);
+          const hasValidUpline = Boolean(
+            leader?.uplineGroupId &&
+            groupsById.get(leader.uplineGroupId) &&
+            groupsById.get(leader.uplineGroupId)?.leaderId !== leaderId
+          );
 
-          if (!isAdmin && !authorized && !hasUpline) {
+          if (!isAdmin && !authorized && !hasValidUpline) {
             violations.push({
               severity: 'high',
               title: 'Leader without required upline/authorization',
@@ -1882,6 +2178,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (!uplineGroupId) return;
           const uplineGroup = groupsById.get(uplineGroupId);
           if (!uplineGroup?.leaderId) return;
+          if (uplineGroup.leaderId === leaderId) return;
           leaderToUplineLeader.set(leaderId, uplineGroup.leaderId);
         });
 
@@ -3683,6 +3980,12 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
       document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
       document.getElementById('runGroupIntegrityAuditBtn').addEventListener('click', runGroupIntegrityAudit);
+      document.getElementById('verifyGroupMemberIntegrityBtn').addEventListener('click', () => verifySpecificMemberIntegrity(false));
+      document.getElementById('fixGroupMemberIntegrityBtn').addEventListener('click', async () => {
+        const confirmed = confirm('Apply safe correction for this member?\n\nThis will only remove non-self-led member links that conflict with strict integrity rules.');
+        if (!confirmed) return;
+        await verifySpecificMemberIntegrity(true);
+      });
 
       document.getElementById('announcementAudience').addEventListener('change', (event) => {
         const groupWrap = document.getElementById('groupAudienceWrap');
@@ -3779,6 +4082,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
         authPanel.classList.add('hidden');
         workspace.classList.remove('hidden');
         showStatus(`Signed in as admin: ${user.email || user.uid}`, 'success');
+        const memberLookupEl = document.getElementById('groupIntegrityMemberLookup');
+        if (memberLookupEl && !memberLookupEl.value) {
+          memberLookupEl.value = user.uid;
+        }
 
         await initializeWorkspace();
       } catch (error) {

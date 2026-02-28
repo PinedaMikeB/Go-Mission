@@ -31,6 +31,32 @@ const Groups = {
       .replace(/[^A-Z0-9]/g, '')
       .slice(0, 6);
   },
+
+  async resolvePrimaryMemberGroupId(userData = {}, uid = window.currentUser?.uid) {
+    const uplineGroupId = typeof userData?.uplineGroupId === 'string' ? userData.uplineGroupId.trim() : '';
+    if (uplineGroupId) return uplineGroupId;
+
+    const fallbackGroupId = typeof userData?.groupId === 'string' ? userData.groupId.trim() : '';
+    if (!fallbackGroupId) return null;
+
+    const groupRole = String(userData?.groupRole || '').toLowerCase().trim();
+    if (groupRole && groupRole !== 'member') return null;
+
+    if (!window.db) return groupRole === 'member' ? fallbackGroupId : null;
+
+    try {
+      const fallbackDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', fallbackGroupId));
+      if (!fallbackDoc.exists()) return groupRole === 'member' ? fallbackGroupId : null;
+      const fallbackGroup = fallbackDoc.data() || {};
+      if (fallbackGroup?.leaderId && uid && fallbackGroup.leaderId === uid) {
+        return null;
+      }
+      return fallbackGroupId;
+    } catch (error) {
+      console.warn('[Groups] Failed resolving fallback primary group:', error);
+      return groupRole === 'member' ? fallbackGroupId : null;
+    }
+  },
   
   // Check if current user is admin
   isAdmin() {
@@ -258,7 +284,7 @@ const Groups = {
       const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
       const userDoc = await window.getDoc(userRef);
       const userData = userDoc.exists() ? (userDoc.data() || {}) : {};
-      const existingPrimaryGroupId = userData.uplineGroupId || userData.groupId || null;
+      const existingPrimaryGroupId = await this.resolvePrimaryMemberGroupId(userData, window.currentUser.uid);
       if (existingPrimaryGroupId && existingPrimaryGroupId !== validation.groupId) {
         alert('You already have an upline group as a member. Ask the leader to approve you as a guest or process a transfer first.');
         return false;
@@ -652,7 +678,7 @@ const Groups = {
       const requesterRef = window.doc(window.db, 'goMission_members', requestUid);
       const requesterDoc = await window.getDoc(requesterRef);
       const requesterData = requesterDoc.exists() ? (requesterDoc.data() || {}) : {};
-      const existingPrimaryGroupId = requesterData.uplineGroupId || requesterData.groupId || null;
+      const existingPrimaryGroupId = await this.resolvePrimaryMemberGroupId(requesterData, requestUid);
       if (existingPrimaryGroupId && existingPrimaryGroupId !== this.currentGroup.id) {
         alert(`${request.name || 'This user'} already has an upline group. Approve as guest instead to keep integrity.`);
         return false;

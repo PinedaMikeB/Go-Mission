@@ -10,6 +10,49 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.8] - 2026-02-28 🧭 Integrity Audit False-Positive Fix + Member Safe Correction
+
+### ✅ Summary
+Fixed false positives in Group Integrity Audit for leaders who appear in their own downline group member arrays, and added targeted member verification/safe-correction controls for account-level cleanup.
+
+### Included Changes
+1. **Audit logic precision fix**
+   - `multiple upline` checks now use only **non-self-led** member links.
+   - Leader-owned groups no longer count as upline violations for the same user.
+   - Violation output now shows readable group + leader context.
+2. **Targeted verification in admin**
+   - Added `Verify member (UID or email)` in `Group Integrity Audit`.
+   - New action `Verify Member Integrity` shows:
+     - self-led links
+     - non-self-led links
+     - current vs recommended primary pointer
+     - groups marked for safe cleanup
+3. **Safe correction action**
+   - New action `Apply Safe Correction`:
+     - removes member UID from conflicting non-self-led `members[]` entries
+     - updates `uplineGroupId` pointer when a single valid primary remains
+     - preserves self-led links
+4. **Primary-pointer guard hardening in app modules**
+   - Added safe primary-group resolution in:
+     - `/modules/groups/groups.js`
+     - `/modules/groups/my-groups.js`
+   - Fallback `groupId` is ignored when it points to a self-led group (prevents false “already has upline” locks).
+
+### Files Modified
+- `/admin.html`
+- `/modules/groups/groups.js`
+- `/modules/groups/my-groups.js`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.8>
+```
+
+---
+
 ## [v2.2.7] - 2026-02-28 🔒 Mission Group Integrity Hardening
 
 ### ✅ Summary
