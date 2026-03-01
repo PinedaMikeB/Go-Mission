@@ -16,6 +16,7 @@
   - Meeting slides overlay now supports adjustable transparency (opacity slider) so participants/video remain visible behind slides
   - Meeting slides overlay updated to teleprompter-style text rendering (removed inner slide card, text directly over video with stronger shadow/stroke)
   - Meeting slides chrome refined into floating mini-bars (top: title+opacity+counter, bottom: prev/next) with no large boxed shell around the text area
+  - Meeting slides note surface updated to white-paper style (black text, higher hierarchy, accent rail/chip) while keeping floating mini-bars and opacity control
   - Admin page wiring added for:
     - `Parse + Publish to Meeting Slides`
     - `Reload Published Deck`

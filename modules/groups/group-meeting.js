@@ -802,8 +802,9 @@ const GroupMeeting = {
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
-    const bodyAlpha = Math.max(0.01, panelAlpha * 0.08);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
+    // Opacity slider now controls the white reading surface transparency.
+    const noteSurfaceAlpha = Math.min(0.9, Math.max(0.46, 0.35 + (opacityPct / 100) * 0.55));
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
     if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
@@ -831,7 +832,11 @@ const GroupMeeting = {
     }
 
     if (state.loading) {
-      if (body) body.innerHTML = `<p class="text-white/70 text-sm">Loading slides…</p>`;
+      if (body) body.innerHTML = `
+        <div style="background:rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}); border-radius:18px; border:1px solid rgba(255,255,255,0.55); padding:16px;">
+          <p style="color:#2a2a2a; font-size:14px; margin:0;">Loading slides…</p>
+        </div>
+      `;
       if (counterEl) counterEl.textContent = '0 / 0';
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
@@ -839,7 +844,11 @@ const GroupMeeting = {
     }
 
     if (state.error) {
-      if (body) body.innerHTML = `<p class="text-red-300 text-sm">Could not load slides: ${this.escapeHtml(state.error)}</p>`;
+      if (body) body.innerHTML = `
+        <div style="background:rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}); border-radius:18px; border:1px solid rgba(255,255,255,0.55); padding:16px;">
+          <p style="color:#8b1e1e; font-size:14px; margin:0;">Could not load slides: ${this.escapeHtml(state.error)}</p>
+        </div>
+      `;
       if (counterEl) counterEl.textContent = '0 / 0';
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
@@ -848,7 +857,11 @@ const GroupMeeting = {
 
     const slides = state.deck?.slides || [];
     if (!slides.length) {
-      if (body) body.innerHTML = `<p class="text-white/70 text-sm">No slides available yet.</p>`;
+      if (body) body.innerHTML = `
+        <div style="background:rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}); border-radius:18px; border:1px solid rgba(255,255,255,0.55); padding:16px;">
+          <p style="color:#2a2a2a; font-size:14px; margin:0;">No slides available yet.</p>
+        </div>
+      `;
       if (counterEl) counterEl.textContent = '0 / 0';
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
@@ -863,26 +876,38 @@ const GroupMeeting = {
       const isBullet = /^\s*[•*-]\s+/.test(p);
       const cleaned = p.replace(/^\s*[•*-]\s+/, '');
       return isBullet
-        ? `<li style="color:rgba(255,255,255,0.97); font-size:18px; line-height:1.42; text-shadow:0 2px 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.18px rgba(0,0,0,0.55);">${this.escapeHtml(cleaned)}</li>`
-        : `<p style="color:rgba(255,255,255,0.98); font-size:18px; line-height:1.46; margin:0 0 12px 0; text-shadow:0 2px 9px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.18px rgba(0,0,0,0.55);">${this.escapeHtml(p)}</p>`;
+        ? `<li style="color:#181818; font-size:18px; line-height:1.45;">${this.escapeHtml(cleaned)}</li>`
+        : `<p style="color:#1f1f1f; font-size:18px; line-height:1.52; margin:0 0 12px 0;">${this.escapeHtml(p)}</p>`;
     });
 
     const hasBullets = (slide.paragraphs || []).some((p) => /^\s*[•*-]\s+/.test(p));
     const kickerHtml = slide.kicker
-      ? `<div style="font-size:12px; line-height:1.35; letter-spacing:0.18em; text-transform:uppercase; color:#f7d34a; font-weight:800; margin-bottom:10px; text-shadow:0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.2px rgba(0,0,0,0.6);">${this.escapeHtml(slide.kicker)}</div>`
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:5px 10px; font-weight:800; margin-bottom:10px;">
+          <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
+        </div>`
       : '';
-    const titleHtml = `<div style="color:#fbf8ef; font-size:clamp(26px,6vw,42px); line-height:0.98; font-weight:900; letter-spacing:0.01em; margin-bottom:${slide.subtitle ? '10px' : '16px'}; text-wrap:balance; text-shadow:0 3px 14px rgba(0,0,0,0.98), 0 1px 2px rgba(0,0,0,0.95); -webkit-text-stroke:0.45px rgba(0,0,0,0.72);">${this.escapeHtml(slide.title || 'Slide')}</div>`;
+    const titleHtml = `<div style="color:#141414; font-size:clamp(24px,5.8vw,38px); line-height:1.02; font-weight:900; letter-spacing:-0.01em; margin-bottom:${slide.subtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(slide.title || 'Slide')}</div>`;
     const subtitleHtml = slide.subtitle
-      ? `<div style="color:rgba(255,255,255,0.88); font-size:14px; line-height:1.35; margin-bottom:14px; text-shadow:0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); -webkit-text-stroke:0.2px rgba(0,0,0,0.6);">${this.escapeHtml(slide.subtitle)}</div>`
+      ? `<div style="color:#5a4a3a; font-size:14px; line-height:1.4; margin-bottom:14px; font-weight:600;">${this.escapeHtml(slide.subtitle)}</div>`
       : '';
     const bodyHtml = `
-      <div style="padding:8px 4px 10px 4px;">
-        ${kickerHtml}
-        ${titleHtml}
-        ${subtitleHtml}
-        ${hasBullets
-          ? `<ul style="margin:0; padding-left:22px; display:flex; flex-direction:column; gap:10px;">${paragraphsHtml.join('')}</ul>`
-          : `<div>${paragraphsHtml.join('')}</div>`}
+      <div style="
+        position:relative;
+        border-radius:18px;
+        border:1px solid rgba(255,255,255,0.55);
+        background:
+          linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.4, noteSurfaceAlpha - 0.08).toFixed(2)}));
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        padding:18px 18px 16px 18px;">
+        <div style="position:absolute; left:0; top:14px; bottom:14px; width:5px; border-radius:5px; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
+        <div style="padding-left:12px;">
+          ${kickerHtml}
+          ${titleHtml}
+          ${subtitleHtml}
+          ${hasBullets
+            ? `<ul style="margin:0; padding-left:22px; display:flex; flex-direction:column; gap:10px;">${paragraphsHtml.join('')}</ul>`
+            : `<div>${paragraphsHtml.join('')}</div>`}
+        </div>
       </div>
     `;
 
@@ -893,7 +918,7 @@ const GroupMeeting = {
     if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
     if (body) {
-      body.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.03, bodyAlpha * 0.35).toFixed(2)}), rgba(0,0,0,${Math.max(0.01, bodyAlpha * 0.18).toFixed(2)}))`;
+      body.style.background = 'transparent';
       body.style.borderRadius = '0';
     }
 
