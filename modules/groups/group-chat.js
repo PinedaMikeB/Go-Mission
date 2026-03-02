@@ -97,6 +97,61 @@ const GroupChat = {
   init() {
     console.log('[GroupChat] Initializing...');
   },
+
+  /**
+   * Normalize array/map collections into flat entries.
+   */
+  normalizeCollectionEntries(value) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') {
+      return Object.entries(value).map(([key, entry]) => {
+        if (entry && typeof entry === 'object') return { ...entry, _key: key };
+        return { id: key, value: entry, _key: key };
+      });
+    }
+    return [];
+  },
+
+  /**
+   * Resolve user id from mixed schema payloads.
+   */
+  getEntityUserId(entry) {
+    if (!entry) return '';
+    if (typeof entry === 'string') return entry.trim();
+    return String(
+      entry.odId ||
+      entry.uid ||
+      entry.id ||
+      entry.userId ||
+      entry.memberId ||
+      entry.profileId ||
+      entry._key ||
+      ''
+    ).trim();
+  },
+
+  /**
+   * Normalize member ids from group.members.
+   */
+  getGroupMemberIds(groupData = {}) {
+    const entries = this.normalizeCollectionEntries(groupData.members);
+    return [...new Set(entries.map((entry) => this.getEntityUserId(entry)).filter(Boolean))];
+  },
+
+  /**
+   * Match guest membership with uid-first and email fallback.
+   */
+  isUserGuestInGroup(groupData = {}, userId = '', userEmail = '') {
+    const entries = this.normalizeCollectionEntries(groupData.guests);
+    const normalizedEmail = String(userEmail || '').trim().toLowerCase();
+    return entries.some((entry) => {
+      const entryId = this.getEntityUserId(entry);
+      const entryEmail = String(entry?.email || '').trim().toLowerCase();
+      if (userId && entryId === userId) return true;
+      if (normalizedEmail && entryEmail && entryEmail === normalizedEmail) return true;
+      return false;
+    });
+  },
   
   /**
    * Open the chat modal
@@ -116,8 +171,8 @@ const GroupChat = {
       }
       
       const groupData = groupDoc.data();
-      const isMember = groupData.members?.includes(window.currentUser.uid);
-      const isGuest = groupData.guests?.some(g => g.odId === window.currentUser.uid);
+      const isMember = this.getGroupMemberIds(groupData).includes(window.currentUser.uid);
+      const isGuest = this.isUserGuestInGroup(groupData, window.currentUser.uid, window.currentUser.email);
       
       if (!isMember && !isGuest) {
         alert('You are no longer a member of this group.');
@@ -685,7 +740,7 @@ const GroupChat = {
   updateMemberCount() {
     const memberCount = document.getElementById('chatMemberCount');
     if (memberCount && Groups.currentGroup) {
-      const count = Groups.currentGroup.members?.length || Groups.currentGroup.currentCount || 0;
+      const count = this.getGroupMemberIds(Groups.currentGroup).length || Groups.currentGroup.currentCount || 0;
       memberCount.textContent = `${count} member${count !== 1 ? 's' : ''}`;
     }
   },
@@ -798,8 +853,8 @@ const GroupChat = {
     if (this.isSendingMessage || this.isSendingAttachment) return;
     
     // Verify user is still a member or guest of the group
-    const isMember = Groups.currentGroup.members?.includes(window.currentUser.uid);
-    const isGuest = Groups.currentGroup.guests?.some(g => g.odId === window.currentUser.uid);
+    const isMember = this.getGroupMemberIds(Groups.currentGroup).includes(window.currentUser.uid);
+    const isGuest = this.isUserGuestInGroup(Groups.currentGroup, window.currentUser.uid, window.currentUser.email);
     
     if (!isMember && !isGuest) {
       alert('You are no longer a member of this group.');
@@ -2457,8 +2512,10 @@ const GroupChat = {
 
     const group = Groups.currentGroup || {};
     const memberIds = [
-      ...(Array.isArray(group.members) ? group.members : []),
-      ...((Array.isArray(group.guests) ? group.guests : []).map((guest) => guest?.odId).filter(Boolean))
+      ...this.getGroupMemberIds(group),
+      ...this.normalizeCollectionEntries(group.guests)
+        .map((guest) => this.getEntityUserId(guest))
+        .filter(Boolean)
     ];
     const uniqueIds = [...new Set(memberIds)];
 
@@ -2617,13 +2674,13 @@ const GroupChat = {
     }
     
     const group = Groups.currentGroup;
-    const memberIds = group.members || [];
+    const memberIds = this.getGroupMemberIds(group);
     const isLeader = group.leaderId === window.currentUser?.uid;
     
     // Create modal with loading state
     const modal = document.createElement('div');
     modal.id = 'membersModal';
-    modal.className = 'fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4';
+    modal.className = 'fixed inset-0 z-[140] bg-black/80 flex items-center justify-center p-4';
     modal.innerHTML = `
       <div class="bg-[var(--card-bg)] rounded-2xl w-full max-w-md p-6 text-center">
         <p class="text-[var(--text-muted)]">Loading members...</p>
