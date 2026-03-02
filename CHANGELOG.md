@@ -10,6 +10,39 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.13] - 2026-03-02 🧾 Integrity Duplicate Group Inspector (View/Edit/Delete/Clean)
+
+### ✅ Summary
+Expanded Group Integrity Audit duplicate violations into a clickable admin workflow: open duplicate group sets, inspect members, edit group names, clean invalid/duplicate member entries, and delete groups directly from the audit panel.
+
+### Included Changes
+1. **Duplicate inspector UI in Integrity Audit**
+   - Added `Duplicate Group Details` panel under `Group Integrity Audit`.
+   - Duplicate violations now include `View Groups` action.
+2. **Per-group admin actions**
+   - `View Members`: shows member validity and duplicate-entry flags.
+   - `Edit Name`: rename group and persist normalized `nameKey`.
+   - `Clean Members`: removes invalid member UIDs and duplicate member entries.
+   - `Delete Group`: direct admin delete with member/guest pointer cleanup + invite code cleanup.
+3. **Member integrity visibility inside duplicate groups**
+   - Member list now surfaces:
+     - invalid UIDs (missing member doc),
+     - duplicate member entries in a single group,
+     - members currently in multiple member groups.
+
+### Files Modified
+- `/admin.html`
+- `/CHANGELOG.md`
+- `/HANDOFF.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.13>
+```
+
+---
+
 ## [v2.2.12] - 2026-03-02 🛡️ Duplicate Group Guard + Integrity Duplicate-Leader Audit
 
 ### ✅ Summary

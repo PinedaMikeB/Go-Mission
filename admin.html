@@ -629,6 +629,15 @@
           </div>
           <div id="groupIntegritySummary" class="small"></div>
           <div id="groupIntegrityViolations" class="list"></div>
+          <div id="groupDuplicateInspector" class="hidden" style="margin-top:10px;padding:10px;border:1px solid rgba(245,189,89,0.28);border-radius:10px;background:rgba(245,189,89,0.08);">
+            <div class="split" style="margin-top:0;">
+              <h3 id="groupDuplicateInspectorTitle" style="margin:0;">Duplicate Group Details</h3>
+              <button id="closeGroupDuplicateInspectorBtn" class="secondary" style="width:auto;padding:6px 10px;">Close</button>
+            </div>
+            <p class="small" id="groupDuplicateInspectorSummary" style="margin-top:6px;"></p>
+            <div id="groupDuplicateInspectorGroups" class="list"></div>
+            <div id="groupDuplicateInspectorMembers" class="list" style="margin-top:10px;"></div>
+          </div>
           <div id="groupIntegrityStatus" class="small"></div>
         </div>
 
@@ -1247,6 +1256,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let latestMissionHealth = null;
     let activeMetricKey = null;
     let activeGroupRoleResolver = null;
+    let latestGroupIntegrityState = null;
+    let activeDuplicateInspector = null;
 
     const METRIC_DETAILS_CONFIG = {
       active_users: {
@@ -2673,6 +2684,306 @@ match /goMission/watch-series-covers/{allPaths=**} {
         .replace(/[^a-z0-9 ]/g, '');
     }
 
+    function closeGroupDuplicateInspector() {
+      activeDuplicateInspector = null;
+      const panel = document.getElementById('groupDuplicateInspector');
+      const groupsEl = document.getElementById('groupDuplicateInspectorGroups');
+      const membersEl = document.getElementById('groupDuplicateInspectorMembers');
+      const summaryEl = document.getElementById('groupDuplicateInspectorSummary');
+      if (groupsEl) groupsEl.innerHTML = '';
+      if (membersEl) membersEl.innerHTML = '';
+      if (summaryEl) summaryEl.textContent = '';
+      if (panel) panel.classList.add('hidden');
+    }
+
+    function getDuplicateGroupsByLeaderAndNameKey(leaderId = '', nameKey = '') {
+      if (!latestGroupIntegrityState) return [];
+      const safeLeaderId = String(leaderId || '').trim();
+      const safeNameKey = normalizeGroupNameKeyForIntegrity(nameKey);
+      if (!safeLeaderId || !safeNameKey) return [];
+      return (latestGroupIntegrityState.groups || [])
+        .filter((group) => (
+          String(group?.leaderId || '').trim() === safeLeaderId &&
+          normalizeGroupNameKeyForIntegrity(group?.nameKey || group?.name || '') === safeNameKey
+        ))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+
+    function analyzeGroupMembersForAdmin(group = {}) {
+      const snapshot = latestGroupIntegrityState?.snapshot;
+      const membersById = snapshot?.membersById || new Map();
+      const membershipByUser = snapshot?.membershipByUser || new Map();
+
+      const rawEntries = normalizeGroupEntityEntries(group.members);
+      const uidCounts = new Map();
+      const malformedEntries = [];
+
+      rawEntries.forEach((entry, idx) => {
+        const uid = getGroupMemberUid(entry);
+        if (!uid) {
+          malformedEntries.push({ index: idx, entry });
+          return;
+        }
+        uidCounts.set(uid, (uidCounts.get(uid) || 0) + 1);
+      });
+
+      const uniqueUids = [...uidCounts.keys()];
+      const invalidUids = uniqueUids.filter((uid) => !membersById.has(uid));
+      const duplicateUids = uniqueUids.filter((uid) => (uidCounts.get(uid) || 0) > 1);
+      const crossGroupUids = uniqueUids.filter((uid) => {
+        const links = (membershipByUser.get(uid) || []).filter((link) => !link.selfLed);
+        const uniqueGroupIds = [...new Set(links.map((link) => link.groupId).filter(Boolean))];
+        return uniqueGroupIds.length > 1;
+      });
+
+      return {
+        rawEntries,
+        uidCounts,
+        uniqueUids,
+        invalidUids,
+        duplicateUids,
+        crossGroupUids,
+        malformedEntries
+      };
+    }
+
+    function renderDuplicateGroupMembers(groupId = '') {
+      const membersEl = document.getElementById('groupDuplicateInspectorMembers');
+      if (!membersEl) return;
+      const group = (latestGroupIntegrityState?.groups || []).find((entry) => entry.id === groupId);
+      if (!group) {
+        membersEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">Group not found.</div>';
+        return;
+      }
+
+      const snapshot = latestGroupIntegrityState?.snapshot;
+      const membersById = snapshot?.membersById || new Map();
+      const analysis = analyzeGroupMembersForAdmin(group);
+      const sortedUids = [...analysis.uniqueUids].sort((a, b) => {
+        const left = getMemberDisplayName(membersById.get(a) || { id: a });
+        const right = getMemberDisplayName(membersById.get(b) || { id: b });
+        return left.localeCompare(right);
+      });
+
+      const rowsHtml = sortedUids.map((uid) => {
+        const member = membersById.get(uid) || null;
+        const duplicateCount = analysis.uidCounts.get(uid) || 1;
+        const flags = [];
+        if (!member) flags.push('<span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(217,95,74,0.45);background:rgba(217,95,74,0.18);color:#ffd4cd;font-size:10px;font-weight:800;">INVALID UID</span>');
+        if (duplicateCount > 1) flags.push(`<span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(245,189,89,0.4);background:rgba(245,189,89,0.18);color:#ffecbf;font-size:10px;font-weight:800;">DUPLICATE ENTRY ×${duplicateCount}</span>`);
+        if (analysis.crossGroupUids.includes(uid)) flags.push('<span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(245,189,89,0.4);background:rgba(245,189,89,0.18);color:#ffecbf;font-size:10px;font-weight:800;">IN MULTIPLE MEMBER GROUPS</span>');
+        const displayName = escapeHtml(getMemberDisplayName(member || { id: uid }));
+        const email = escapeHtml(member?.email || '');
+        return `
+          <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(0,0,0,0.16);margin-top:8px;">
+            <div style="font-weight:700;color:var(--text-main);">${displayName}</div>
+            <div class="small">UID: <code>${escapeHtml(uid)}</code>${email ? ` • ${email}` : ''}</div>
+            ${flags.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${flags.join('')}</div>` : '<div class="small" style="margin-top:6px;color:#b7efd1;">Valid member entry</div>'}
+          </div>
+        `;
+      }).join('');
+
+      membersEl.innerHTML = `
+        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(0,0,0,0.12);">
+          <div class="small" style="font-weight:800;color:var(--gold-strong);">Members • ${escapeHtml(group.name || group.id)}</div>
+          <div class="small" style="margin-top:4px;">Total entries: ${analysis.rawEntries.length} • Unique members: ${analysis.uniqueUids.length} • Invalid: ${analysis.invalidUids.length} • Duplicate entries: ${analysis.duplicateUids.length} • Multi-group conflicts: ${analysis.crossGroupUids.length}</div>
+          ${analysis.malformedEntries.length ? `<div class="small" style="margin-top:4px;color:#ffd4cd;">Malformed entries: ${analysis.malformedEntries.length}</div>` : ''}
+          <div style="margin-top:8px;">${rowsHtml || '<div class="small">No members found.</div>'}</div>
+        </div>
+      `;
+    }
+
+    function renderDuplicateInspectorGroups(leaderId = '', nameKey = '') {
+      const panel = document.getElementById('groupDuplicateInspector');
+      const titleEl = document.getElementById('groupDuplicateInspectorTitle');
+      const summaryEl = document.getElementById('groupDuplicateInspectorSummary');
+      const groupsEl = document.getElementById('groupDuplicateInspectorGroups');
+      const membersEl = document.getElementById('groupDuplicateInspectorMembers');
+      if (!panel || !titleEl || !summaryEl || !groupsEl || !membersEl) return;
+
+      const groups = getDuplicateGroupsByLeaderAndNameKey(leaderId, nameKey);
+      const leader = latestGroupIntegrityState?.snapshot?.membersById?.get(leaderId) || { id: leaderId };
+      const leaderName = getMemberDisplayName(leader);
+      titleEl.textContent = 'Duplicate Group Details';
+      summaryEl.textContent = `${leaderName} (${leaderId}) • name key: "${nameKey}" • groups: ${groups.length}`;
+
+      if (!groups.length) {
+        groupsEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No duplicate groups found for this key (may already be fixed).</div>';
+        membersEl.innerHTML = '';
+        panel.classList.remove('hidden');
+        return;
+      }
+
+      groupsEl.innerHTML = groups.map((group) => {
+        const analysis = analyzeGroupMembersForAdmin(group);
+        const membersCount = Array.isArray(group.members) ? group.members.length : normalizeGroupEntityEntries(group.members).length;
+        const guestsCount = Array.isArray(group.guests) ? group.guests.length : normalizeGroupEntityEntries(group.guests).length;
+        return `
+          <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(0,0,0,0.18);margin-top:8px;">
+            <div class="split" style="margin-top:0;align-items:flex-start;">
+              <div>
+                <div style="font-weight:800;color:var(--gold-strong);">${escapeHtml(group.name || 'Unnamed Group')}</div>
+                <div class="small">Group ID: <code>${escapeHtml(group.id)}</code></div>
+                <div class="small">members: ${membersCount} • guests: ${guestsCount}</div>
+                <div class="small">member issues: invalid ${analysis.invalidUids.length}, duplicates ${analysis.duplicateUids.length}, multi-group ${analysis.crossGroupUids.length}</div>
+              </div>
+            </div>
+            <div class="actions" style="margin-top:8px;">
+              <button class="secondary" style="width:auto;padding:6px 10px;" data-action="view-duplicate-group-members" data-group-id="${escapeHtml(group.id)}">View Members</button>
+              <button class="secondary" style="width:auto;padding:6px 10px;" data-action="edit-duplicate-group" data-group-id="${escapeHtml(group.id)}">Edit Name</button>
+              <button class="secondary" style="width:auto;padding:6px 10px;" data-action="clean-duplicate-group-members" data-group-id="${escapeHtml(group.id)}">Clean Members</button>
+              <button class="warning" style="width:auto;padding:6px 10px;" data-action="delete-duplicate-group" data-group-id="${escapeHtml(group.id)}">Delete Group</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      membersEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">Click <b>View Members</b> to inspect member validity and duplicates.</div>';
+      panel.classList.remove('hidden');
+    }
+
+    function openDuplicateGroupInspector(leaderId = '', nameKey = '') {
+      if (!latestGroupIntegrityState) {
+        setInlineStatus('groupIntegrityStatus', 'Run integrity audit first.', 'warn');
+        return;
+      }
+      const safeLeaderId = String(leaderId || '').trim();
+      const safeNameKey = normalizeGroupNameKeyForIntegrity(nameKey);
+      if (!safeLeaderId || !safeNameKey) {
+        setInlineStatus('groupIntegrityStatus', 'Missing duplicate-group identifier.', 'warn');
+        return;
+      }
+      activeDuplicateInspector = { leaderId: safeLeaderId, nameKey: safeNameKey };
+      renderDuplicateInspectorGroups(safeLeaderId, safeNameKey);
+    }
+
+    async function renameDuplicateGroup(groupId = '') {
+      const group = (latestGroupIntegrityState?.groups || []).find((entry) => entry.id === groupId);
+      if (!group) {
+        setInlineStatus('groupIntegrityStatus', 'Group not found.', 'warn');
+        return;
+      }
+
+      const nextNameRaw = window.prompt('Enter new group name:', String(group.name || ''));
+      if (nextNameRaw == null) return;
+      const nextName = String(nextNameRaw || '').trim().replace(/\s+/g, ' ');
+      if (nextName.length < 3) {
+        setInlineStatus('groupIntegrityStatus', 'Group name must be at least 3 characters.', 'warn');
+        return;
+      }
+
+      const nextNameKey = normalizeGroupNameKeyForIntegrity(nextName);
+      const hasCollision = (latestGroupIntegrityState?.groups || []).some((entry) => (
+        entry.id !== groupId &&
+        String(entry.leaderId || '') === String(group.leaderId || '') &&
+        normalizeGroupNameKeyForIntegrity(entry.nameKey || entry.name || '') === nextNameKey
+      ));
+      if (hasCollision) {
+        setInlineStatus('groupIntegrityStatus', 'Rename blocked: leader already has another group with that same name.', 'warn');
+        return;
+      }
+
+      await setDoc(doc(db, 'goMission_groups', groupId), {
+        name: nextName,
+        nameKey: nextNameKey,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      setInlineStatus('groupIntegrityStatus', 'Group name updated. Refreshing audit...', 'success');
+      await runGroupIntegrityAudit();
+      if (activeDuplicateInspector) {
+        openDuplicateGroupInspector(activeDuplicateInspector.leaderId, activeDuplicateInspector.nameKey);
+      }
+    }
+
+    async function deleteDuplicateGroupDirect(groupId = '') {
+      const groupRef = doc(db, 'goMission_groups', groupId);
+      const groupSnap = await getDoc(groupRef);
+      if (!groupSnap.exists()) {
+        setInlineStatus('groupIntegrityStatus', 'Group already missing.', 'warn');
+        await runGroupIntegrityAudit();
+        return;
+      }
+
+      const groupData = groupSnap.data() || {};
+      const confirmed = window.confirm(`Delete group "${groupData.name || groupId}" now?\n\nThis will remove the group and clean member/guest pointers.`);
+      if (!confirmed) return;
+
+      setInlineStatus('groupIntegrityStatus', 'Deleting group and cleaning links...', 'info');
+      await cleanupGroupLinksFromMembers(groupId, groupData);
+
+      const inviteCodeSnap = await getDocs(query(
+        collection(db, 'goMission_groupInviteCodes'),
+        where('groupId', '==', groupId)
+      ));
+      for (const codeDoc of inviteCodeSnap.docs) {
+        await deleteDoc(codeDoc.ref);
+      }
+
+      await deleteDoc(groupRef);
+      setInlineStatus('groupIntegrityStatus', 'Group deleted. Refreshing audit...', 'success');
+      await runGroupIntegrityAudit();
+      if (activeDuplicateInspector) {
+        openDuplicateGroupInspector(activeDuplicateInspector.leaderId, activeDuplicateInspector.nameKey);
+      }
+    }
+
+    async function cleanDuplicateGroupMembers(groupId = '') {
+      const group = (latestGroupIntegrityState?.groups || []).find((entry) => entry.id === groupId);
+      const membersById = latestGroupIntegrityState?.snapshot?.membersById || new Map();
+      if (!group) {
+        setInlineStatus('groupIntegrityStatus', 'Group not found.', 'warn');
+        return;
+      }
+
+      const rawEntries = normalizeGroupEntityEntries(group.members);
+      const kept = [];
+      const seen = new Set();
+      let removedInvalid = 0;
+      let removedDuplicate = 0;
+
+      rawEntries.forEach((entry) => {
+        const uid = getGroupMemberUid(entry);
+        if (!uid || !membersById.has(uid)) {
+          removedInvalid += 1;
+          return;
+        }
+        if (seen.has(uid)) {
+          removedDuplicate += 1;
+          return;
+        }
+        seen.add(uid);
+        if (typeof entry === 'string') {
+          kept.push(uid);
+          return;
+        }
+        const nextEntry = { ...entry };
+        delete nextEntry._key;
+        delete nextEntry.value;
+        kept.push(nextEntry);
+      });
+
+      if (removedInvalid === 0 && removedDuplicate === 0) {
+        setInlineStatus('groupIntegrityStatus', 'No member cleanup needed for this group.', 'info');
+        return;
+      }
+
+      const confirmed = window.confirm(`Clean members for "${group.name || group.id}"?\n\nRemove invalid entries: ${removedInvalid}\nRemove duplicate entries: ${removedDuplicate}`);
+      if (!confirmed) return;
+
+      await setDoc(doc(db, 'goMission_groups', groupId), {
+        members: kept,
+        currentCount: seen.size,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      setInlineStatus('groupIntegrityStatus', `Members cleaned (invalid removed: ${removedInvalid}, duplicates removed: ${removedDuplicate}). Refreshing audit...`, 'success');
+      await runGroupIntegrityAudit();
+      if (activeDuplicateInspector) {
+        openDuplicateGroupInspector(activeDuplicateInspector.leaderId, activeDuplicateInspector.nameKey);
+      }
+    }
+
     async function runGroupIntegrityAudit() {
       const summaryEl = document.getElementById('groupIntegritySummary');
       const listEl = document.getElementById('groupIntegrityViolations');
@@ -2692,6 +3003,12 @@ match /goMission/watch-series-covers/{allPaths=**} {
         const groups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
         const snapshot = buildGroupIntegritySnapshot(members, groups);
         const { membersById, groupsById, membershipByUser } = snapshot;
+        latestGroupIntegrityState = {
+          members,
+          groups,
+          snapshot,
+          ranAtIso: new Date().toISOString()
+        };
 
         const violations = [];
 
@@ -2802,7 +3119,11 @@ match /goMission/watch-series-covers/{allPaths=**} {
             violations.push({
               severity: 'high',
               title: 'This leader has duplicate groups with same name',
-              detail: `${getMemberDisplayName(leader)} (${leaderId}) has ${sameNameGroups.length} groups with the same name key "${nameKey}": ${labels}. Keep one valid group and request admin deletion for duplicates.`
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) has ${sameNameGroups.length} groups with the same name key "${nameKey}": ${labels}. Keep one valid group and request admin deletion for duplicates.`,
+              action: 'view_duplicate_groups',
+              leaderId: leaderId,
+              nameKey: nameKey,
+              groupIds: sameNameGroups.map((entry) => entry.id)
             });
           });
         });
@@ -2840,6 +3161,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         summaryEl.textContent = `Members: ${members.length} | Groups: ${groups.length} | Violations: ${totalViolations} (high: ${highCount}, medium: ${mediumCount})`;
 
         if (!violations.length) {
+          closeGroupDuplicateInspector();
           listEl.innerHTML = `
             <div class="small" style="padding:10px;border:1px solid rgba(115,192,151,0.4);border-radius:10px;background:rgba(115,192,151,0.12);">
               No integrity violations detected using current strict rules.
@@ -2859,15 +3181,23 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const lockMeetingBtn = (violation.action === 'lock_missing_upline_meetings' && violation.memberId)
             ? `<div style="margin-top:8px;"><button class="warning" style="width:auto;padding:6px 10px;" data-action="lock-missing-upline-meetings" data-member-id="${escapeHtml(violation.memberId)}">Disable Meetings + Notify Leader</button></div>`
             : '';
+          const viewDuplicateBtn = (violation.action === 'view_duplicate_groups' && violation.leaderId && violation.nameKey)
+            ? `<div style="margin-top:8px;"><button class="secondary" style="width:auto;padding:6px 10px;" data-action="view-duplicate-groups" data-leader-id="${escapeHtml(violation.leaderId)}" data-name-key="${escapeHtml(violation.nameKey)}">View Groups</button></div>`
+            : '';
           return `
             <div style="margin-top:10px;padding:10px;border:1px solid ${border};border-radius:10px;background:${bg};">
               <div class="small" style="font-weight:800;color:var(--text-main);">${escapeHtml(violation.title)} <span style="font-size:10px;opacity:.8;">[${badge}]</span></div>
               <div class="small" style="margin-top:4px;">${escapeHtml(violation.detail)}</div>
               ${resolverBtn}
               ${lockMeetingBtn}
+              ${viewDuplicateBtn}
             </div>
           `;
         }).join('');
+
+        if (activeDuplicateInspector?.leaderId && activeDuplicateInspector?.nameKey) {
+          renderDuplicateInspectorGroups(activeDuplicateInspector.leaderId, activeDuplicateInspector.nameKey);
+        }
 
         setInlineStatus('groupIntegrityStatus', 'Integrity audit completed with violations.', 'warn');
       } catch (error) {
@@ -4633,6 +4963,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         await verifySpecificMemberIntegrity(true);
       });
       document.getElementById('closeGroupRoleResolverBtn').addEventListener('click', closeGroupRoleResolver);
+      document.getElementById('closeGroupDuplicateInspectorBtn').addEventListener('click', closeGroupDuplicateInspector);
       document.getElementById('applyGroupRoleResolverBtn').addEventListener('click', applyGroupRoleResolverChanges);
       document.getElementById('groupRoleResolverRows').addEventListener('change', (event) => {
         const select = event.target.closest('select[data-action="resolver-role-change"][data-group-id]');
@@ -4647,19 +4978,53 @@ match /goMission/watch-series-covers/{allPaths=**} {
         await openGroupRoleResolverForMember(memberId);
       });
       document.getElementById('groupIntegrityViolations').addEventListener('click', async (event) => {
-        const btn = event.target.closest('button[data-action][data-member-id]');
+        const btn = event.target.closest('button[data-action]');
         if (!btn) return;
         const action = btn.getAttribute('data-action');
-        const memberId = btn.getAttribute('data-member-id');
-        if (!memberId) return;
         if (action === 'open-group-role-resolver') {
+          const memberId = btn.getAttribute('data-member-id');
+          if (!memberId) return;
           await openGroupRoleResolverForMember(memberId);
           return;
         }
         if (action === 'lock-missing-upline-meetings') {
+          const memberId = btn.getAttribute('data-member-id');
+          if (!memberId) return;
           const confirmed = confirm('Disable meetings for this leader\'s group(s) and send them a notification?');
           if (!confirmed) return;
           await lockLeaderGroupsForMissingUpline(memberId);
+          return;
+        }
+        if (action === 'view-duplicate-groups') {
+          const leaderId = btn.getAttribute('data-leader-id');
+          const nameKey = btn.getAttribute('data-name-key');
+          if (!leaderId || !nameKey) return;
+          openDuplicateGroupInspector(leaderId, nameKey);
+          return;
+        }
+      });
+
+      document.getElementById('groupDuplicateInspectorGroups').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action][data-group-id]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const groupId = btn.getAttribute('data-group-id');
+        if (!groupId) return;
+
+        if (action === 'view-duplicate-group-members') {
+          renderDuplicateGroupMembers(groupId);
+          return;
+        }
+        if (action === 'edit-duplicate-group') {
+          await renameDuplicateGroup(groupId);
+          return;
+        }
+        if (action === 'delete-duplicate-group') {
+          await deleteDuplicateGroupDirect(groupId);
+          return;
+        }
+        if (action === 'clean-duplicate-group-members') {
+          await cleanDuplicateGroupMembers(groupId);
         }
       });
 

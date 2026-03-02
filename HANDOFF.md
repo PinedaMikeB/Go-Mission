@@ -39,6 +39,36 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Duplicate Group Inspector Actions
+
+- **Active modules**
+  - `/admin.html`
+- **Goal completed**: Duplicate-group violations in integrity audit are now actionable with per-group admin controls.
+
+### What Was Added
+
+1. **Clickable duplicate violation drill-down**
+  - Duplicate-group violation cards now include `View Groups`.
+  - Opens `Duplicate Group Details` panel with all groups in that duplicate cluster.
+2. **Per-group actions inside inspector**
+  - `View Members`: list members with integrity tags (`INVALID UID`, `DUPLICATE ENTRY`, `IN MULTIPLE MEMBER GROUPS`).
+  - `Edit Name`: rename group and update `nameKey`.
+  - `Clean Members`: remove invalid + duplicate member entries and recalc `currentCount`.
+  - `Delete Group`: direct admin delete from inspector with full cleanup (member links + invite codes).
+3. **Audit-state persistence**
+  - Integrity snapshot is now cached in-memory after each audit run so inspector actions operate against current data and can re-render after changes.
+
+### Regression Checklist
+
+- Run `Group Integrity Audit` -> duplicate violation shows `View Groups`.
+- `View Groups` opens list of duplicate groups for that leader/name key.
+- `View Members` shows valid/invalid/duplicate membership statuses.
+- `Edit Name` updates group and reflected violations on next audit pass.
+- `Clean Members` removes duplicate/invalid entries and updates counts.
+- `Delete Group` removes group + linked invite codes + user pointers; audit updates accordingly.
+
+---
+
 ## Current Task Status (2026-03-02) — Thread 5 Duplicate Leader Group Protection
 
 - **Active modules**
