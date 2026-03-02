@@ -39,6 +39,39 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Guest Upline Visibility + Invite Code Validation
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+  - `/modules/dashboard/leader-dashboard.js`
+- **Goal completed**: Fix missing `Upline` guest cards after leader approval and stop false `Invalid invite code` failures.
+
+### What Was Fixed
+
+1. **Guest cards now recover reliably**
+  - Guest loading now always scans `goMission_groups` for real guest membership and merges missing results.
+  - This prevents cases where user profile `guestGroups` was stale and only older guest cards appeared.
+2. **Invite-code matching now tolerates legacy formats**
+  - Join flow now supports normalized matching across:
+    - `goMission_groupInviteCodes` doc id,
+    - `goMission_groupInviteCodes.code` field,
+    - legacy `goMission_groups.inviteCode`.
+  - Handles lowercase/separated legacy codes and mixed timestamp formats for expiration checks.
+3. **Approval no longer falsely fails on profile-sync write**
+  - If leader approval updates group successfully but member-profile mirror write is blocked, flow still completes and logs warning.
+  - Prevents “approved in group but shown as failed” confusion.
+
+### Regression Checklist
+
+- Guest approved by any leader appears in member `Upline` tab after refresh, even if `guestGroups` pointer is stale.
+- Existing guest cards remain visible and deduped.
+- Valid invite codes with legacy formatting no longer return `Invalid invite code`.
+- Expired codes still correctly fail.
+- Leader approval UI completes without false hard-fail when only profile mirror write is denied.
+
+---
+
 ## Current Task Status (2026-02-28) — Thread 5 No-Upline Leadership Enforcement + Admin Inbox
 
 - **Active modules**

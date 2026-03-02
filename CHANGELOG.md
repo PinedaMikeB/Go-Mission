@@ -10,6 +10,41 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.11] - 2026-03-02 🧩 Guest Upline Visibility + Invite Code False-Invalid Fix
+
+### ✅ Summary
+Fixed two production issues in Mission Groups: newly approved guest groups not always showing in `Upline`, and valid invite codes being rejected as invalid due to legacy code/doc formatting.
+
+### Included Changes
+1. **Always-on guest recovery merge (Upline reliability)**
+   - `My Groups` and `Leader Dashboard` now always scan actual `goMission_groups` guest membership and merge missing guest cards.
+   - Prevents hidden guest cards when `goMission_members.guestGroups` pointers are stale or partially updated.
+2. **Safer guest pointer trust**
+   - Explicit `guestGroups` pointers are trusted only when a group has no concrete `guests` entries.
+   - Reduces false guest card display from stale pointers.
+3. **Invite code validation hardened**
+   - Added normalized fallback matching for invite-code docs (handles lowercase/separated legacy values).
+   - Added legacy fallback scan against `goMission_groups.inviteCode` using normalized comparison.
+   - Handles timestamp/date variants for code expiration checks.
+4. **Approval flow resilience**
+   - Leader approval continues even if cross-user profile sync is blocked by rules.
+   - Prevents false “approval failed” state when group update succeeded but member profile write is denied.
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/modules/dashboard/leader-dashboard.js`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.11>
+```
+
+---
+
 ## [v2.2.10] - 2026-02-28 🔐 No-Upline Leader Lock + Admin Inbox Workflow
 
 ### ✅ Summary

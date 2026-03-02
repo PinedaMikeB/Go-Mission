@@ -292,7 +292,10 @@ const LeaderDashboard = {
           if (groupDoc.exists()) {
             const data = groupDoc.data() || {};
             if (data.leaderId === uid) continue;
-            if (isGuestInGroup(data, uid) || declaredGuestGroupIds.includes(groupId)) {
+            const hasGuestEntries = Array.isArray(data.guests)
+              ? data.guests.length > 0
+              : !!(data.guests && typeof data.guests === 'object' && Object.keys(data.guests).length > 0);
+            if (isGuestInGroup(data, uid) || (!hasGuestEntries && declaredGuestGroupIds.includes(groupId))) {
               guestGroupMap.set(groupId, { id: groupId, ...data, role: 'guest' });
             }
           } else {
@@ -303,20 +306,29 @@ const LeaderDashboard = {
         }
       }
 
-      // Recovery scan for legacy data (when guestGroups pointer is missing/stale).
-      if (guestGroupMap.size === 0) {
-        try {
-          const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
-          allGroupsSnapshot.forEach((doc) => {
-            const data = doc.data() || {};
-            if (data.leaderId === uid) return;
-            if (isGuestInGroup(data, uid)) {
-              guestGroupMap.set(doc.id, { id: doc.id, ...data, role: 'guest' });
-            }
-          });
-        } catch (scanError) {
-          console.warn('[LeaderDashboard] Guest recovery scan failed:', scanError);
+      // Recovery scan: always merge actual guest memberships so newly approved guests appear immediately.
+      try {
+        const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+        const recoveredGroupIds = [];
+        allGroupsSnapshot.forEach((doc) => {
+          const data = doc.data() || {};
+          if (data.leaderId === uid) return;
+          if (isGuestInGroup(data, uid)) {
+            if (!guestGroupMap.has(doc.id)) recoveredGroupIds.push(doc.id);
+            guestGroupMap.set(doc.id, { id: doc.id, ...data, role: 'guest' });
+          }
+        });
+
+        const missingPointerIds = recoveredGroupIds.filter((groupId) => !declaredGuestGroupIds.includes(groupId));
+        if (missingPointerIds.length > 0) {
+          await window.setDoc(
+            window.doc(window.db, 'goMission_members', uid),
+            { guestGroups: window.arrayUnion(...missingPointerIds) },
+            { merge: true }
+          );
         }
+      } catch (scanError) {
+        console.warn('[LeaderDashboard] Guest recovery scan failed:', scanError);
       }
     } catch (error) {
       console.error('[LeaderDashboard] Error loading guest groups:', error);

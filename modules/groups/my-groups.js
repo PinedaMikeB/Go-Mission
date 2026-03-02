@@ -532,8 +532,8 @@ const MyGroups = {
                         );
                         if (guestGroupDoc.exists()) {
                             const groupData = guestGroupDoc.data();
-                            // Trust explicit guestGroups pointers and tolerate legacy guest schemas.
-                            if (this.isUserGuestInGroupData(groupData, uid) || declaredGuestGroupIds.includes(groupId)) {
+                            const hasGuestEntries = this.normalizeCollectionEntries(groupData?.guests).length > 0;
+                            if (this.isUserGuestInGroupData(groupData, uid) || (!hasGuestEntries && declaredGuestGroupIds.includes(groupId))) {
                                 guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
                             }
                         } else {
@@ -552,32 +552,34 @@ const MyGroups = {
                 }
             }
 
-            // Recovery path: handle legacy data where member.guestGroups is missing or stale.
-            // This ensures guest groups still appear in My Mission Groups modal.
-            if (guestGroupMap.size === 0) {
-                try {
-                    const allGroupsSnapshot = await window.getDocs(
-                        window.collection(window.db, 'goMission_groups')
-                    );
-                    allGroupsSnapshot.forEach((groupDoc) => {
-                        const groupData = groupDoc.data();
-                        if (this.isUserGuestInGroupData(groupData, uid)) {
-                            guestGroupMap.set(groupDoc.id, { id: groupDoc.id, ...groupData });
+            // Recovery path: always scan for actual guest membership and merge missing cards.
+            // This prevents newly approved guest groups from being hidden when profile pointers are stale.
+            try {
+                const allGroupsSnapshot = await window.getDocs(
+                    window.collection(window.db, 'goMission_groups')
+                );
+                const recoveredGroupIds = [];
+                allGroupsSnapshot.forEach((groupDoc) => {
+                    const groupData = groupDoc.data();
+                    if (this.isUserGuestInGroupData(groupData, uid)) {
+                        if (!guestGroupMap.has(groupDoc.id)) {
+                            recoveredGroupIds.push(groupDoc.id);
                         }
-                    });
-
-                    const recoveredGroupIds = [...guestGroupMap.keys()]
-                        .filter((groupId) => !declaredGuestGroupIds.includes(groupId));
-                    if (recoveredGroupIds.length > 0) {
-                        await window.setDoc(
-                            window.doc(window.db, 'goMission_members', uid),
-                            { guestGroups: window.arrayUnion(...recoveredGroupIds) },
-                            { merge: true }
-                        );
+                        guestGroupMap.set(groupDoc.id, { id: groupDoc.id, ...groupData });
                     }
-                } catch (scanError) {
-                    console.warn('[MyGroups] Guest recovery scan failed:', scanError);
+                });
+
+                const missingPointerIds = recoveredGroupIds
+                    .filter((groupId) => !declaredGuestGroupIds.includes(groupId));
+                if (missingPointerIds.length > 0) {
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', uid),
+                        { guestGroups: window.arrayUnion(...missingPointerIds) },
+                        { merge: true }
+                    );
                 }
+            } catch (scanError) {
+                console.warn('[MyGroups] Guest recovery scan failed:', scanError);
             }
 
             // Keep explicit guest-group pointers visible even when direct group reads are unavailable.
@@ -2012,6 +2014,15 @@ const MyGroups = {
             let groupData = null;
             let codeRef = window.doc(window.db, 'goMission_groupInviteCodes', code);
             let codeDoc = await window.getDoc(codeRef);
+
+            const parseTimestamp = (value) => {
+                if (!value) return null;
+                if (typeof value?.toDate === 'function') {
+                    return value.toDate();
+                }
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? null : date;
+            };
             
             // Method 1: Check goMission_groupInviteCodes collection (new system)
             // Legacy compatibility: some old invite code docs were saved with random doc ids.
@@ -2026,12 +2037,29 @@ const MyGroups = {
                     codeRef = codeDoc.ref;
                 }
             }
+
+            // Fallback: tolerate legacy lowercase/separated code values.
+            if (!codeDoc.exists()) {
+                const allCodeSnapshot = await window.getDocs(
+                    window.collection(window.db, 'goMission_groupInviteCodes')
+                );
+                const normalizedMatch = allCodeSnapshot.docs.find((docSnap) => {
+                    const data = docSnap.data() || {};
+                    const stored = this.normalizeInviteCode(data.code || data.inviteCode || docSnap.id);
+                    return stored === code;
+                });
+                if (normalizedMatch) {
+                    codeDoc = normalizedMatch;
+                    codeRef = normalizedMatch.ref;
+                }
+            }
             
             if (codeDoc.exists()) {
-                const codeData = codeDoc.data();
+                const codeData = codeDoc.data() || {};
                 
                 // Check if code expired
-                if (codeData.expiresAt && new Date(codeData.expiresAt) < new Date()) {
+                const codeExpiry = parseTimestamp(codeData.expiresAt);
+                if (codeExpiry && codeExpiry.getTime() < Date.now()) {
                     if (errorEl) {
                         errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
                         errorEl.classList.remove('hidden');
@@ -2049,20 +2077,18 @@ const MyGroups = {
                 }
                 
                 // Get the group
-                const groupRef = window.doc(window.db, 'goMission_groups', codeData.groupId);
-                groupDoc = await window.getDoc(groupRef);
-                
-                if (!groupDoc.exists()) {
-                    if (errorEl) {
-                        errorEl.textContent = 'Group not found';
-                        errorEl.classList.remove('hidden');
-                    }
-                    return;
+                const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+                if (linkedGroupId) {
+                    const groupRef = window.doc(window.db, 'goMission_groups', linkedGroupId);
+                    groupDoc = await window.getDoc(groupRef);
                 }
-                
-                groupData = groupDoc.data();
-                
-            } else {
+
+                if (groupDoc?.exists()) {
+                    groupData = groupDoc.data();
+                }
+            }
+
+            if (!groupDoc || !groupDoc.exists() || !groupData) {
                 // Method 2: Check inviteCode field directly on groups (legacy system)
                 const groupQuery = window.query(
                     window.collection(window.db, 'goMission_groups'),
@@ -2071,18 +2097,30 @@ const MyGroups = {
                 const snapshot = await window.getDocs(groupQuery);
                 
                 if (snapshot.empty) {
-                    if (errorEl) {
-                        errorEl.textContent = 'Invalid invite code';
-                        errorEl.classList.remove('hidden');
+                    const allGroupsSnapshot = await window.getDocs(
+                        window.collection(window.db, 'goMission_groups')
+                    );
+                    const normalizedGroupMatch = allGroupsSnapshot.docs.find((docSnap) => {
+                        const data = docSnap.data() || {};
+                        return this.normalizeInviteCode(data.inviteCode) === code;
+                    });
+                    if (normalizedGroupMatch) {
+                        groupDoc = normalizedGroupMatch;
+                        groupData = normalizedGroupMatch.data() || {};
+                    } else {
+                        if (errorEl) {
+                            errorEl.textContent = 'Invalid invite code';
+                            errorEl.classList.remove('hidden');
+                        }
+                        return;
                     }
-                    return;
+                } else {
+                    groupDoc = snapshot.docs[0];
+                    groupData = groupDoc.data();
                 }
-                
-                groupDoc = snapshot.docs[0];
-                groupData = groupDoc.data();
-                
-                // Check if legacy invite code has expired
-                if (groupData.inviteCodeExpiresAt && new Date(groupData.inviteCodeExpiresAt) < new Date()) {
+
+                const legacyExpiry = parseTimestamp(groupData.inviteCodeExpiresAt);
+                if (legacyExpiry && legacyExpiry.getTime() < Date.now()) {
                     if (errorEl) {
                         errorEl.textContent = 'This invite code has expired. Ask the group leader for a new code.';
                         errorEl.classList.remove('hidden');
@@ -2972,16 +3010,20 @@ const MyGroups = {
                 );
                 
                 // Canonical membership pointer: member approvals must always appear in Upline.
-                await window.setDoc(
-                    window.doc(window.db, 'goMission_members', odId),
-                    {
-                        uplineGroupId: groupId,
-                        groupId: groupId,
-                        groupRole: 'member',
-                        guestGroups: window.arrayRemove(groupId)
-                    },
-                    { merge: true }
-                );
+                try {
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', odId),
+                        {
+                            uplineGroupId: groupId,
+                            groupId: groupId,
+                            groupRole: 'member',
+                            guestGroups: window.arrayRemove(groupId)
+                        },
+                        { merge: true }
+                    );
+                } catch (profileSyncError) {
+                    console.warn('[MyGroups] Member profile sync skipped after approval:', profileSyncError);
+                }
                 
                 alert(`${request.name} is now a member!`);
                 
@@ -3010,22 +3052,26 @@ const MyGroups = {
                 );
                 
                 // Also update user's guestGroups array
-                await window.setDoc(
-                    window.doc(window.db, 'goMission_members', odId),
-                    {
-                        guestGroups: window.arrayUnion(groupId),
-                        guestGroupMeta: {
-                            [groupId]: {
-                                groupId,
-                                name: group.name || 'Mission Group',
-                                leaderId: group.leaderId || null,
-                                approvedAt: new Date().toISOString(),
-                                approvedBy: window.currentUser.uid
+                try {
+                    await window.setDoc(
+                        window.doc(window.db, 'goMission_members', odId),
+                        {
+                            guestGroups: window.arrayUnion(groupId),
+                            guestGroupMeta: {
+                                [groupId]: {
+                                    groupId,
+                                    name: group.name || 'Mission Group',
+                                    leaderId: group.leaderId || null,
+                                    approvedAt: new Date().toISOString(),
+                                    approvedBy: window.currentUser.uid
+                                }
                             }
-                        }
-                    },
-                    { merge: true }
-                );
+                        },
+                        { merge: true }
+                    );
+                } catch (profileSyncError) {
+                    console.warn('[MyGroups] Guest profile sync skipped after approval:', profileSyncError);
+                }
                 
                 alert(`${request.name} is now a guest!`);
             }

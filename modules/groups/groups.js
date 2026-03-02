@@ -195,6 +195,13 @@ const Groups = {
         return { valid: false, message: 'Please enter a valid 6-character invite code' };
       }
 
+      const parseTimestamp = (value) => {
+        if (!value) return null;
+        if (typeof value?.toDate === 'function') return value.toDate();
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      };
+
       // Check goMission_groupInviteCodes collection
       let codeRef = window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode);
       let codeDoc = await window.getDoc(codeRef);
@@ -212,14 +219,83 @@ const Groups = {
         }
       }
 
+      // Tolerate legacy lowercase/separated values by normalizing stored code fields.
       if (!codeDoc.exists()) {
-        return { valid: false, message: 'Invalid invite code' };
+        const allCodeSnapshot = await window.getDocs(
+          window.collection(window.db, 'goMission_groupInviteCodes')
+        );
+        const normalizedMatch = allCodeSnapshot.docs.find((docSnap) => {
+          const data = docSnap.data() || {};
+          const stored = this.normalizeInviteCode(data.code || data.inviteCode || docSnap.id);
+          return stored === normalizedCode;
+        });
+        if (normalizedMatch) {
+          codeDoc = normalizedMatch;
+          codeRef = normalizedMatch.ref;
+        }
+      }
+
+      if (!codeDoc.exists()) {
+        // Legacy fallback: groups where inviteCode was only stored in group doc.
+        const groupQuery = window.query(
+          window.collection(window.db, 'goMission_groups'),
+          window.where('inviteCode', '==', normalizedCode)
+        );
+        let groupSnapshot = await window.getDocs(groupQuery);
+
+        if (groupSnapshot.empty) {
+          const allGroupsSnapshot = await window.getDocs(
+            window.collection(window.db, 'goMission_groups')
+          );
+          const normalizedGroupMatch = allGroupsSnapshot.docs.find((docSnap) => {
+            const data = docSnap.data() || {};
+            return this.normalizeInviteCode(data.inviteCode) === normalizedCode;
+          });
+          if (normalizedGroupMatch) {
+            groupSnapshot = { empty: false, docs: [normalizedGroupMatch] };
+          }
+        }
+
+        if (groupSnapshot.empty) {
+          return { valid: false, message: 'Invalid invite code' };
+        }
+
+        const legacyGroupDoc = groupSnapshot.docs[0];
+        const legacyGroupData = legacyGroupDoc.data() || {};
+        const legacyExpiry = parseTimestamp(legacyGroupData.inviteCodeExpiresAt);
+        if (legacyExpiry && legacyExpiry.getTime() < Date.now()) {
+          return { valid: false, message: 'This invite code has expired' };
+        }
+
+        if (legacyGroupData.currentCount >= legacyGroupData.capacity) {
+          return { valid: false, message: 'This group is already full' };
+        }
+
+        if (legacyGroupData.members?.includes(window.currentUser?.uid)) {
+          return { valid: false, message: 'You are already a member of this group' };
+        }
+
+        return {
+          valid: true,
+          message: 'Code verified',
+          groupId: legacyGroupDoc.id,
+          groupName: legacyGroupData.name,
+          groupData: legacyGroupData,
+          codeData: {
+            code: normalizedCode,
+            groupId: legacyGroupDoc.id,
+            usedCount: 0
+          },
+          normalizedCode: normalizedCode,
+          codeDocId: normalizedCode
+        };
       }
       
       const codeData = codeDoc.data();
       
       // Check if code is still valid
-      if (codeData.expiresAt && new Date(codeData.expiresAt) < new Date()) {
+      const codeExpiry = parseTimestamp(codeData.expiresAt);
+      if (codeExpiry && codeExpiry.getTime() < Date.now()) {
         return { valid: false, message: 'This invite code has expired' };
       }
       
@@ -229,7 +305,12 @@ const Groups = {
       }
       
       // Get group info
-      const groupRef = window.doc(window.db, 'goMission_groups', codeData.groupId);
+      const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+      if (!linkedGroupId) {
+        return { valid: false, message: 'Group not found' };
+      }
+
+      const groupRef = window.doc(window.db, 'goMission_groups', linkedGroupId);
       const groupDoc = await window.getDoc(groupRef);
       
       if (!groupDoc.exists()) {
@@ -251,7 +332,7 @@ const Groups = {
       return { 
         valid: true, 
         message: 'Code verified',
-        groupId: codeData.groupId,
+        groupId: linkedGroupId,
         groupName: groupData.name,
         groupData: groupData,
         codeData: codeData,
@@ -700,12 +781,16 @@ const Groups = {
       
       // Update member's profile
       const memberRef = window.doc(window.db, 'goMission_members', requestUid);
-      await window.setDoc(memberRef, {
-        uplineGroupId: this.currentGroup.id,
-        groupId: this.currentGroup.id,
-        groupRole: 'member',
-        guestGroups: window.arrayRemove(this.currentGroup.id)
-      }, { merge: true });
+      try {
+        await window.setDoc(memberRef, {
+          uplineGroupId: this.currentGroup.id,
+          groupId: this.currentGroup.id,
+          groupRole: 'member',
+          guestGroups: window.arrayRemove(this.currentGroup.id)
+        }, { merge: true });
+      } catch (profileSyncError) {
+        console.warn('[Groups] Member profile sync skipped after approval:', profileSyncError);
+      }
       
       // Refresh local data
       await this.loadUserGroup();
