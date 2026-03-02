@@ -39,6 +39,44 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Integrity Failure Logs (Attempts / Blocked / Errors)
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+  - `/firestore.rules`
+- **Goal completed**: show operational failure logs inside `Group Integrity Audit` and provide quick admin actions to fix.
+
+### What Was Added
+
+1. **Integrity log panel in admin audit**
+  - Added `Integrity Failure Logs` block under `Group Integrity Audit`.
+  - Shows recent logs from `goMission_integrityLogs` with status/severity chips.
+2. **Action buttons per log**
+  - `Verify Member` (loads member lookup + runs verify)
+  - `Resolve Roles` (opens Group Role Resolver)
+  - `Disable Meetings + Notify` (for missing-upline reason logs)
+  - `Mark Resolved` / `Reopen`
+  - `Run Audit`
+3. **Client-side event logging for group creation**
+  - Both create flows now write structured logs:
+    - `group_create_attempt`
+    - `group_create_blocked`
+    - `group_create_failed`
+    - `group_create_success`
+4. **Security rules**
+  - Added `goMission_integrityLogs` rules:
+    - signed-in users can `create` logs only for themselves
+    - admins can `read/update/delete`
+
+### Important Deployment Note
+
+- Firestore rules must be deployed for log writes/reads to work in production:
+  - `firebase deploy --only firestore:rules`
+
+---
+
 ## Current Task Status (2026-03-02) — Thread 5 Duplicate Group Lock Rule
 
 - **Active modules**

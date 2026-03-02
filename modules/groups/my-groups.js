@@ -17,6 +17,7 @@ const MyGroups = {
     isCreatingGroup: false,
     currentMemberProfile: null,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
+    INTEGRITY_LOGS_COLLECTION: 'goMission_integrityLogs',
     NO_UPLINE_CREATION_EXEMPT_UIDS: [
         '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
         'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
@@ -60,6 +61,49 @@ const MyGroups = {
             .map((entry) => this.getEntityUserId(entry))
             .filter(Boolean);
         return [...new Set(ids)];
+    },
+
+    /**
+     * Write non-blocking integrity event logs for admin troubleshooting.
+     */
+    async logIntegrityEvent(eventType, payload = {}) {
+        if (!window.db || !window.currentUser || typeof window.addDoc !== 'function' || typeof window.collection !== 'function') {
+            return;
+        }
+        const nowIso = new Date().toISOString();
+        const normalizedType = String(eventType || 'unknown').trim() || 'unknown';
+        const defaultStatus = (normalizedType.includes('failed') || normalizedType.includes('blocked')) ? 'open' : 'logged';
+        const defaultSeverity = normalizedType.includes('failed') ? 'high' : (normalizedType.includes('blocked') ? 'medium' : 'info');
+        const requestedGroupName = String(payload.requestedGroupName || '').trim();
+        const requestedNameKey = String(payload.requestedNameKey || this.normalizeGroupNameKey(requestedGroupName || '')).trim();
+        const context = (payload.context && typeof payload.context === 'object') ? payload.context : {};
+
+        const eventData = {
+            category: String(payload.category || 'group_creation'),
+            type: normalizedType,
+            source: String(payload.source || 'my_groups'),
+            status: String(payload.status || defaultStatus),
+            severity: String(payload.severity || defaultSeverity),
+            actionRequired: payload.actionRequired === true || defaultStatus === 'open',
+            message: String(payload.message || ''),
+            reasonCode: String(payload.reasonCode || ''),
+            errorCode: String(payload.errorCode || ''),
+            errorMessage: String(payload.errorMessage || ''),
+            userId: window.currentUser.uid,
+            userEmail: window.currentUser.email || '',
+            userName: window.currentUser.displayName || '',
+            requestedGroupName,
+            requestedNameKey,
+            context,
+            createdAt: (typeof window.serverTimestamp === 'function') ? window.serverTimestamp() : nowIso,
+            createdAtIso: nowIso
+        };
+
+        try {
+            await window.addDoc(window.collection(window.db, this.INTEGRITY_LOGS_COLLECTION), eventData);
+        } catch (error) {
+            console.warn('[MyGroups] logIntegrityEvent skipped:', error);
+        }
     },
 
     /**
@@ -2251,8 +2295,34 @@ const MyGroups = {
                 submitBtn.textContent = 'Creating...';
             }
 
+            await this.logIntegrityEvent('group_create_attempt', {
+                status: 'logged',
+                severity: 'info',
+                actionRequired: false,
+                requestedGroupName: name,
+                requestedNameKey: this.normalizeGroupNameKey(name),
+                message: `Create group attempt: ${name}`,
+                context: {
+                    dashboardTab: this.dashboardTab || 'downline'
+                }
+            });
+
             const eligibility = await this.canShowCreateGroupAction();
             if (!eligibility.allowed) {
+                await this.logIntegrityEvent('group_create_blocked', {
+                    status: 'open',
+                    severity: 'medium',
+                    actionRequired: true,
+                    requestedGroupName: name,
+                    requestedNameKey: this.normalizeGroupNameKey(name),
+                    reasonCode: String(eligibility.reason || 'requires_upline'),
+                    message: 'Create group blocked: user has no valid upline/authorization.',
+                    context: {
+                        eligibilityReason: String(eligibility.reason || ''),
+                        hasActiveUpline: !!eligibility.hasActiveUpline,
+                        exemptNoUpline: !!eligibility.exemptNoUpline
+                    }
+                });
                 if (errorEl) {
                     errorEl.textContent = 'You must join a valid upline group first before creating a group.';
                     errorEl.classList.remove('hidden');
@@ -2274,6 +2344,19 @@ const MyGroups = {
                 this.normalizeGroupNameKey(group?.name) === nextNameKey
             ));
             if (duplicateGroup) {
+                await this.logIntegrityEvent('group_create_blocked', {
+                    status: 'open',
+                    severity: 'medium',
+                    actionRequired: true,
+                    requestedGroupName: name,
+                    requestedNameKey: nextNameKey,
+                    reasonCode: 'duplicate_name',
+                    message: `Create group blocked: duplicate name exists (${duplicateGroup.name || duplicateGroup.id}).`,
+                    context: {
+                        duplicateGroupId: duplicateGroup.id || null,
+                        duplicateGroupName: duplicateGroup.name || null
+                    }
+                });
                 if (errorEl) {
                     errorEl.textContent = `This group already exists: "${duplicateGroup.name || 'Existing Group'}".`;
                     errorEl.classList.remove('hidden');
@@ -2303,6 +2386,17 @@ const MyGroups = {
             );
             
             console.log('[MyGroups] Created group:', groupRef.id);
+            await this.logIntegrityEvent('group_create_success', {
+                status: 'resolved',
+                severity: 'info',
+                actionRequired: false,
+                requestedGroupName: name,
+                requestedNameKey: nextNameKey,
+                message: `Group created successfully (${groupRef.id}).`,
+                context: {
+                    groupId: groupRef.id
+                }
+            });
             
             // Reload and close
             await this.loadGroups();
@@ -2315,6 +2409,20 @@ const MyGroups = {
             
         } catch (error) {
             console.error('[MyGroups] Create error:', error);
+            await this.logIntegrityEvent('group_create_failed', {
+                status: 'open',
+                severity: 'high',
+                actionRequired: true,
+                requestedGroupName: name,
+                requestedNameKey: this.normalizeGroupNameKey(name),
+                reasonCode: 'exception',
+                message: 'Create group failed due to system error.',
+                errorCode: String(error?.code || ''),
+                errorMessage: String(error?.message || error || ''),
+                context: {
+                    stack: String(error?.stack || '').slice(0, 1200)
+                }
+            });
             if (errorEl) {
                 errorEl.textContent = 'Failed to create group';
                 errorEl.classList.remove('hidden');

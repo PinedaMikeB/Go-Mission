@@ -10,6 +10,49 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.15] - 2026-03-02 🧪 Integrity Failure Logs + Admin Fix Actions
+
+### ✅ Summary
+Added integrity failure logging for group creation attempts/errors and surfaced these logs directly inside `Group Integrity Audit` with actionable admin buttons.
+
+### Included Changes
+1. **Integrity failure log stream**
+   - Added Firestore log collection usage: `goMission_integrityLogs`.
+   - Group create flows now log:
+     - `group_create_attempt`
+     - `group_create_blocked` (no valid upline, duplicate name, etc.)
+     - `group_create_failed` (runtime/system error)
+     - `group_create_success`
+2. **Admin audit visibility**
+   - `Group Integrity Audit` now includes `Integrity Failure Logs` panel.
+   - Shows attempts/blocked/errors with status + severity chips.
+3. **Action buttons on logs**
+   - `Verify Member`
+   - `Resolve Roles`
+   - `Disable Meetings + Notify` (for missing-upline related reasons)
+   - `Mark Resolved` / `Reopen`
+   - `Run Audit`
+4. **Rules support**
+   - Added Firestore rule block for `goMission_integrityLogs`:
+     - signed-in users can create their own logs
+     - only admins can read/update/delete
+
+### Files Modified
+- `/admin.html`
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/firestore.rules`
+- `/CHANGELOG.md`
+- `/HANDOFF.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.15>
+```
+
+---
+
 ## [v2.2.14] - 2026-03-02 🔒 Duplicate Group Lock Rule
 
 ### ✅ Summary

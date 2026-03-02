@@ -638,6 +638,16 @@
             <div id="groupDuplicateInspectorGroups" class="list"></div>
             <div id="groupDuplicateInspectorMembers" class="list" style="margin-top:10px;"></div>
           </div>
+          <div style="margin-top:12px;padding:10px;border:1px solid rgba(245,189,89,0.28);border-radius:10px;background:rgba(245,189,89,0.06);">
+            <div class="split" style="margin-top:0;">
+              <h3 style="margin:0;">Integrity Failure Logs</h3>
+              <button id="refreshGroupIntegrityLogsBtn" class="secondary" style="width:auto;padding:6px 10px;">Refresh Logs</button>
+            </div>
+            <p class="small" style="margin-top:6px;">Shows recent attempts, blocked actions, and errors (ex: failed create-group) with quick admin actions.</p>
+            <div id="groupIntegrityLogsSummary" class="small" style="margin-top:6px;"></div>
+            <div id="groupIntegrityLogsList" class="list" style="margin-top:8px;"></div>
+            <div id="groupIntegrityLogsStatus" class="small" style="margin-top:6px;"></div>
+          </div>
           <div id="groupIntegrityStatus" class="small"></div>
         </div>
 
@@ -1258,6 +1268,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let activeGroupRoleResolver = null;
     let latestGroupIntegrityState = null;
     let activeDuplicateInspector = null;
+    let latestGroupIntegrityLogs = [];
 
     const METRIC_DETAILS_CONFIG = {
       active_users: {
@@ -1300,6 +1311,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const globalStatus = document.getElementById('globalStatus');
     const GROUP_DELETION_REQUESTS_COLLECTION = 'goMission_groupDeletionRequests';
     const ADMIN_INBOX_COLLECTION = 'goMission_adminInbox';
+    const GROUP_INTEGRITY_LOGS_COLLECTION = 'goMission_integrityLogs';
 
     function showStatus(message, type = 'info', sticky = false) {
       globalStatus.className = `status-banner show ${type}`;
@@ -1768,6 +1780,185 @@ match /goMission/watch-series-covers/{allPaths=**} {
         normalized === 'dismissed' ? '#d8d8d8' :
         '#ffd4cd';
       return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
+    }
+
+    function normalizeIntegrityLogStatus(status) {
+      const normalized = String(status || '').toLowerCase();
+      if (['resolved', 'done', 'closed'].includes(normalized)) return 'resolved';
+      if (['in_review', 'pending'].includes(normalized)) return 'in_review';
+      if (['logged', 'ok', 'success'].includes(normalized)) return 'logged';
+      return 'open';
+    }
+
+    function normalizeIntegrityLogSeverity(severity) {
+      const normalized = String(severity || '').toLowerCase();
+      if (normalized === 'high') return 'high';
+      if (normalized === 'info') return 'info';
+      return 'medium';
+    }
+
+    function getIntegrityLogStatusChip(status) {
+      const normalized = normalizeIntegrityLogStatus(status);
+      const color =
+        normalized === 'resolved' ? 'rgba(115, 192, 151, 0.2)' :
+        normalized === 'in_review' ? 'rgba(245, 189, 89, 0.2)' :
+        normalized === 'logged' ? 'rgba(120, 120, 120, 0.22)' :
+        'rgba(217, 95, 74, 0.2)';
+      const border =
+        normalized === 'resolved' ? 'rgba(115, 192, 151, 0.4)' :
+        normalized === 'in_review' ? 'rgba(245, 189, 89, 0.35)' :
+        normalized === 'logged' ? 'rgba(160, 160, 160, 0.35)' :
+        'rgba(217, 95, 74, 0.45)';
+      const text =
+        normalized === 'resolved' ? '#d9f3e5' :
+        normalized === 'in_review' ? '#ffecbf' :
+        normalized === 'logged' ? '#d8d8d8' :
+        '#ffd4cd';
+      return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
+    }
+
+    function getIntegrityLogSeverityChip(severity) {
+      const normalized = normalizeIntegrityLogSeverity(severity);
+      const color =
+        normalized === 'high' ? 'rgba(217, 95, 74, 0.2)' :
+        normalized === 'info' ? 'rgba(120, 120, 120, 0.2)' :
+        'rgba(245, 189, 89, 0.2)';
+      const border =
+        normalized === 'high' ? 'rgba(217, 95, 74, 0.45)' :
+        normalized === 'info' ? 'rgba(160, 160, 160, 0.35)' :
+        'rgba(245, 189, 89, 0.35)';
+      const text =
+        normalized === 'high' ? '#ffd4cd' :
+        normalized === 'info' ? '#d8d8d8' :
+        '#ffecbf';
+      return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
+    }
+
+    function getIntegrityLogReasonLabel(item = {}) {
+      const reasonCode = String(item.reasonCode || item.reason || '').trim();
+      if (!reasonCode) return '';
+      const reasonMap = {
+        requires_upline: 'This user cannot create a group yet because they need a valid upline group first.',
+        upline_missing: 'The upline group pointer is set, but that group does not exist.',
+        upline_self_invalid: 'User is pointing to own group as upline, which is not valid.',
+        not_member_of_upline: 'User has an upline pointer but is not listed as member in that upline group.',
+        duplicate_name: 'Group name already exists under this leader.',
+        exception: 'System error happened during action.'
+      };
+      return reasonMap[reasonCode] || reasonCode;
+    }
+
+    async function loadGroupIntegrityFailureLogs({ silent = false } = {}) {
+      const listEl = document.getElementById('groupIntegrityLogsList');
+      const summaryEl = document.getElementById('groupIntegrityLogsSummary');
+      if (!listEl || !summaryEl) return;
+
+      if (!silent) {
+        setInlineStatus('groupIntegrityLogsStatus', 'Loading integrity failure logs...', 'info');
+      }
+
+      try {
+        let snap = null;
+        try {
+          snap = await getDocs(query(
+            collection(db, GROUP_INTEGRITY_LOGS_COLLECTION),
+            orderBy('createdAt', 'desc'),
+            limit(120)
+          ));
+        } catch (queryError) {
+          snap = await getDocs(collection(db, GROUP_INTEGRITY_LOGS_COLLECTION));
+        }
+
+        const logs = snap.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .sort((a, b) => {
+            const aTime = pickDate(a.createdAt, a.createdAtIso)?.getTime() || 0;
+            const bTime = pickDate(b.createdAt, b.createdAtIso)?.getTime() || 0;
+            return bTime - aTime;
+          })
+          .slice(0, 120);
+
+        latestGroupIntegrityLogs = logs;
+        const openCount = logs.filter((item) => normalizeIntegrityLogStatus(item.status) === 'open').length;
+        const inReviewCount = logs.filter((item) => normalizeIntegrityLogStatus(item.status) === 'in_review').length;
+        const resolvedCount = logs.filter((item) => normalizeIntegrityLogStatus(item.status) === 'resolved').length;
+        summaryEl.textContent = `Logs: ${logs.length} | Open: ${openCount} | In review: ${inReviewCount} | Resolved: ${resolvedCount}`;
+
+        if (!logs.length) {
+          listEl.innerHTML = '<div class="small" style="padding:10px;border:1px solid var(--line);border-radius:10px;">No integrity failure logs yet.</div>';
+          if (!silent) setInlineStatus('groupIntegrityLogsStatus', 'No integrity failure logs found.', 'info');
+          return;
+        }
+
+        listEl.innerHTML = logs.map((item) => {
+          const status = normalizeIntegrityLogStatus(item.status);
+          const severity = normalizeIntegrityLogSeverity(item.severity);
+          const userLookup = String(item.userId || item.userEmail || '').trim();
+          const userLabel = item.userName || item.userEmail || item.userId || 'Unknown user';
+          const createdAtLabel = formatDateTime(item.createdAt || item.createdAtIso);
+          const resolvedAtLabel = item.resolvedAt || item.resolvedAtIso
+            ? formatDateTime(item.resolvedAt || item.resolvedAtIso)
+            : '';
+          const reasonLabel = getIntegrityLogReasonLabel(item);
+          const note = item.note || item.errorMessage || '';
+          const isMissingUplineReason = ['requires_upline', 'upline_missing', 'upline_self_invalid', 'not_member_of_upline'].includes(String(item.reasonCode || item.reason || ''));
+          return `
+            <div style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,0.18);">
+              <div class="split" style="margin-top:0;align-items:flex-start;">
+                <div style="min-width:0;">
+                  <div style="font-weight:800;color:var(--gold-strong);">${escapeHtml(item.message || item.type || 'Integrity log')}</div>
+                  <div class="small">User: ${escapeHtml(userLabel)}</div>
+                  <div class="small">Type: ${escapeHtml(item.type || 'unknown')} • Source: ${escapeHtml(item.source || 'app')}</div>
+                  ${item.requestedGroupName ? `<div class="small">Requested group: ${escapeHtml(item.requestedGroupName)}</div>` : ''}
+                  ${reasonLabel ? `<div class="small"><b style="color:var(--text-main);">Reason:</b> ${escapeHtml(reasonLabel)}</div>` : ''}
+                  ${note ? `<div class="small"><b style="color:var(--text-main);">Error/Note:</b> ${escapeHtml(note)}</div>` : ''}
+                  <div class="small">Logged: ${createdAtLabel}</div>
+                  ${resolvedAtLabel ? `<div class="small">Resolved: ${resolvedAtLabel}</div>` : ''}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+                  ${getIntegrityLogStatusChip(status)}
+                  ${getIntegrityLogSeverityChip(severity)}
+                </div>
+              </div>
+              <div class="actions" style="margin-top:10px;">
+                ${userLookup ? `<button class="secondary" style="width:auto;padding:6px 10px;" data-action="integrity-log-verify-member" data-member-lookup="${escapeHtml(userLookup)}">Verify Member</button>` : ''}
+                ${item.userId ? `<button class="secondary" style="width:auto;padding:6px 10px;" data-action="integrity-log-resolve-roles" data-member-id="${escapeHtml(item.userId)}">Resolve Roles</button>` : ''}
+                ${(item.userId && isMissingUplineReason) ? `<button class="warning" style="width:auto;padding:6px 10px;" data-action="integrity-log-lock-missing-upline" data-member-id="${escapeHtml(item.userId)}">Disable Meetings + Notify</button>` : ''}
+                <button class="secondary" style="width:auto;padding:6px 10px;" data-action="integrity-log-run-audit">Run Audit</button>
+                <button class="warning" style="width:auto;padding:6px 10px;" data-action="integrity-log-set-status" data-log-id="${escapeHtml(item.id)}" data-next-status="${status === 'resolved' ? 'open' : 'resolved'}">${status === 'resolved' ? 'Reopen' : 'Mark Resolved'}</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        if (!silent) setInlineStatus('groupIntegrityLogsStatus', 'Integrity failure logs loaded.', 'success');
+      } catch (error) {
+        console.error('[Admin] loadGroupIntegrityFailureLogs error:', error);
+        if (listEl) listEl.innerHTML = '';
+        setInlineStatus('groupIntegrityLogsStatus', `Failed to load integrity logs: ${error.message}`, 'error');
+      }
+    }
+
+    async function updateIntegrityFailureLogStatus(logId, nextStatus) {
+      if (!logId || !nextStatus) return;
+      const normalized = normalizeIntegrityLogStatus(nextStatus);
+      setInlineStatus('groupIntegrityLogsStatus', 'Updating log status...', 'info');
+      try {
+        await setDoc(doc(db, GROUP_INTEGRITY_LOGS_COLLECTION, logId), {
+          status: normalized,
+          resolvedAt: normalized === 'resolved' ? serverTimestamp() : null,
+          resolvedAtIso: normalized === 'resolved' ? new Date().toISOString() : null,
+          updatedAt: serverTimestamp(),
+          updatedAtIso: new Date().toISOString(),
+          updatedBy: auth.currentUser?.uid || null,
+          updatedByEmail: auth.currentUser?.email || null
+        }, { merge: true });
+        await loadGroupIntegrityFailureLogs({ silent: true });
+        setInlineStatus('groupIntegrityLogsStatus', 'Integrity log status updated.', 'success');
+      } catch (error) {
+        console.error('[Admin] updateIntegrityFailureLogStatus error:', error);
+        setInlineStatus('groupIntegrityLogsStatus', `Failed updating integrity log: ${error.message}`, 'error');
+      }
     }
 
     async function loadAdminInbox() {
@@ -3024,6 +3215,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
       if (!summaryEl || !listEl) return;
 
       setInlineStatus('groupIntegrityStatus', 'Running integrity audit...', 'info');
+      loadGroupIntegrityFailureLogs({ silent: true }).catch((error) => {
+        console.warn('[Admin] Could not refresh integrity logs during audit:', error);
+      });
       summaryEl.textContent = '';
       listEl.innerHTML = '';
 
@@ -4980,6 +5174,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         loadMissionHealth(),
         loadGroupDeletionRequests(),
         loadAdminInbox(),
+        loadGroupIntegrityFailureLogs({ silent: true }),
         loadForceUpdateStatus(),
         loadEmailSequence(),
         loadPushSettings(),
@@ -4995,6 +5190,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
       document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
       document.getElementById('runGroupIntegrityAuditBtn').addEventListener('click', runGroupIntegrityAudit);
+      document.getElementById('refreshGroupIntegrityLogsBtn').addEventListener('click', () => loadGroupIntegrityFailureLogs({ silent: false }));
       document.getElementById('verifyGroupMemberIntegrityBtn').addEventListener('click', () => verifySpecificMemberIntegrity(false));
       document.getElementById('fixGroupMemberIntegrityBtn').addEventListener('click', async () => {
         const confirmed = confirm('Apply safe correction for this member?\n\nThis will only remove non-self-led member links that conflict with strict integrity rules.');
@@ -5047,6 +5243,48 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (!leaderId || !nameKey) return;
           await lockDuplicateGroupsForLeaderNameKey(leaderId, nameKey);
           return;
+        }
+      });
+      document.getElementById('groupIntegrityLogsList').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+
+        if (action === 'integrity-log-verify-member') {
+          const lookup = String(btn.getAttribute('data-member-lookup') || '').trim();
+          if (!lookup) return;
+          const input = document.getElementById('groupIntegrityMemberLookup');
+          if (input) input.value = lookup;
+          await verifySpecificMemberIntegrity(false);
+          return;
+        }
+
+        if (action === 'integrity-log-resolve-roles') {
+          const memberId = String(btn.getAttribute('data-member-id') || '').trim();
+          if (!memberId) return;
+          await openGroupRoleResolverForMember(memberId);
+          return;
+        }
+
+        if (action === 'integrity-log-lock-missing-upline') {
+          const memberId = String(btn.getAttribute('data-member-id') || '').trim();
+          if (!memberId) return;
+          const confirmed = confirm('Disable meetings for this leader and send notification?');
+          if (!confirmed) return;
+          await lockLeaderGroupsForMissingUpline(memberId);
+          return;
+        }
+
+        if (action === 'integrity-log-run-audit') {
+          await runGroupIntegrityAudit();
+          return;
+        }
+
+        if (action === 'integrity-log-set-status') {
+          const logId = String(btn.getAttribute('data-log-id') || '').trim();
+          const nextStatus = String(btn.getAttribute('data-next-status') || '').trim();
+          if (!logId || !nextStatus) return;
+          await updateIntegrityFailureLogStatus(logId, nextStatus);
         }
       });
 
