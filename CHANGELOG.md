@@ -10,6 +10,36 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.16] - 2026-03-02 🧭 Create-Group Pointer Auto-Sync + Clearer Permission Failure Handling
+
+### ✅ Summary
+Fixed recurring create-group permission failures caused by missing `uplineGroupId/groupId` pointers even when user is already listed as a member in an upline group.
+
+### Included Changes
+1. **Auto-sync before create**
+   - `MyGroups.createGroup()` and `Groups.createGroup()` now validate and repair upline pointers before write.
+   - If user is valid member of a non-self-led upline group, profile is patched automatically.
+2. **Explicit blocked reason + logs**
+   - If pointer cannot be resolved, create is blocked with a clear message and a high-severity integrity log entry.
+   - Added `group_create_profile_sync` log event when profile is auto-repaired.
+3. **Clearer permission error UX**
+   - `Missing or insufficient permissions` now maps to user-facing message:
+     - `Create blocked by profile-group mismatch. Refresh your groups and retry.`
+
+### Files Modified
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/CHANGELOG.md`
+- `/HANDOFF.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.16>
+```
+
+---
+
 ## [v2.2.15] - 2026-03-02 🧪 Integrity Failure Logs + Admin Fix Actions
 
 ### ✅ Summary

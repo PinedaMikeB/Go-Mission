@@ -1054,6 +1054,69 @@ const MyGroups = {
     },
 
     /**
+     * Ensure member profile points to a valid upline before group creation.
+     * Fixes cases where user is in members[] but profile pointers are empty/stale.
+     */
+    async ensureCreationUplineProfilePointer(profile = null) {
+        if (!window.currentUser?.uid || !window.db) {
+            return { ok: false, reason: 'missing_context', patched: false, targetGroupId: null };
+        }
+
+        const uid = window.currentUser.uid;
+        const memberProfile = profile || await this.getCurrentMemberData() || {};
+        if (this.isNoUplineCreationExempt(memberProfile)) {
+            return { ok: true, reason: 'exempt', patched: false, targetGroupId: null };
+        }
+
+        const candidateIds = [];
+        const profileUpline = typeof memberProfile?.uplineGroupId === 'string' ? memberProfile.uplineGroupId.trim() : '';
+        const profileGroup = typeof memberProfile?.groupId === 'string' ? memberProfile.groupId.trim() : '';
+        if (profileUpline) candidateIds.push(profileUpline);
+        if (profileGroup) candidateIds.push(profileGroup);
+        if (this.uplineGroup?.id) candidateIds.push(this.uplineGroup.id);
+
+        let targetGroupId = null;
+        for (const groupId of [...new Set(candidateIds.filter(Boolean))]) {
+            try {
+                const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', groupId));
+                if (!groupDoc.exists()) continue;
+                const groupData = groupDoc.data() || {};
+                if (!groupData.leaderId || groupData.leaderId === uid) continue;
+                if (!this.isUserMemberInGroupData(groupData, uid)) continue;
+                targetGroupId = groupDoc.id;
+                break;
+            } catch (error) {
+                console.warn('[MyGroups] ensureCreationUplineProfilePointer candidate check failed:', groupId, error);
+            }
+        }
+
+        if (!targetGroupId) {
+            return { ok: false, reason: 'requires_upline_pointer', patched: false, targetGroupId: null };
+        }
+
+        const patch = {};
+        if (profileUpline !== targetGroupId) patch.uplineGroupId = targetGroupId;
+        if (!profileGroup) patch.groupId = targetGroupId;
+        if (String(memberProfile?.groupRole || '').toLowerCase() === 'guest') patch.groupRole = 'member';
+
+        if (!Object.keys(patch).length) {
+            return { ok: true, reason: 'already_synced', patched: false, targetGroupId };
+        }
+
+        try {
+            await window.setDoc(
+                window.doc(window.db, 'goMission_members', uid),
+                patch,
+                { merge: true }
+            );
+            return { ok: true, reason: 'synced', patched: true, targetGroupId };
+        } catch (error) {
+            console.warn('[MyGroups] ensureCreationUplineProfilePointer patch failed:', error);
+            return { ok: false, reason: 'pointer_patch_failed', patched: false, targetGroupId };
+        }
+    },
+
+    /**
      * Determine if user completed leadership training milestone
      */
     hasCompletedLeadershipTraining(userData) {
@@ -2330,6 +2393,43 @@ const MyGroups = {
                 return;
             }
 
+            const profileBeforeCreate = await this.getCurrentMemberData();
+            const pointerSync = await this.ensureCreationUplineProfilePointer(profileBeforeCreate);
+            if (!pointerSync.ok) {
+                await this.logIntegrityEvent('group_create_blocked', {
+                    status: 'open',
+                    severity: 'high',
+                    actionRequired: true,
+                    requestedGroupName: name,
+                    requestedNameKey: this.normalizeGroupNameKey(name),
+                    reasonCode: String(pointerSync.reason || 'requires_upline_pointer'),
+                    message: 'Create group blocked: member profile upline pointer is missing/invalid.',
+                    context: {
+                        profileUplineGroupId: profileBeforeCreate?.uplineGroupId || '',
+                        profileGroupId: profileBeforeCreate?.groupId || '',
+                        detectedUplineGroupId: this.uplineGroup?.id || ''
+                    }
+                });
+                if (errorEl) {
+                    errorEl.textContent = 'Cannot create yet. Your upline link is incomplete. Open your upline group first, then retry.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+            if (pointerSync.patched) {
+                await this.logIntegrityEvent('group_create_profile_sync', {
+                    status: 'logged',
+                    severity: 'info',
+                    actionRequired: false,
+                    requestedGroupName: name,
+                    requestedNameKey: this.normalizeGroupNameKey(name),
+                    message: `Profile pointer synced before create: ${pointerSync.targetGroupId}.`,
+                    context: {
+                        targetGroupId: pointerSync.targetGroupId
+                    }
+                });
+            }
+
             const nextNameKey = this.normalizeGroupNameKey(name);
             let leaderGroups = Array.isArray(this.downlineGroups) ? [...this.downlineGroups] : [];
             if (leaderGroups.length === 0) {
@@ -2424,7 +2524,10 @@ const MyGroups = {
                 }
             });
             if (errorEl) {
-                errorEl.textContent = 'Failed to create group';
+                const msg = String(error?.message || '');
+                errorEl.textContent = msg.toLowerCase().includes('missing or insufficient permissions')
+                    ? 'Create blocked by profile-group mismatch. Refresh your groups and retry.'
+                    : 'Failed to create group';
                 errorEl.classList.remove('hidden');
             }
         } finally {

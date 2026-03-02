@@ -50,6 +50,77 @@ const Groups = {
       .replace(/[^a-z0-9 ]/g, '');
   },
 
+  normalizeCollectionEntries(value) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') {
+      return Object.entries(value).map(([key, entry]) => {
+        if (entry && typeof entry === 'object') return { ...entry, _key: key };
+        return { id: key, value: entry, _key: key };
+      });
+    }
+    return [];
+  },
+
+  getEntityUserId(entry) {
+    if (!entry) return '';
+    if (typeof entry === 'string') return entry.trim();
+    return String(entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || entry.profileId || entry._key || '').trim();
+  },
+
+  isUserMemberInGroupData(groupData, userId) {
+    if (!groupData || !userId) return false;
+    return this.normalizeCollectionEntries(groupData.members).some((entry) => this.getEntityUserId(entry) === userId);
+  },
+
+  async ensureCreationUplineProfilePointer(profile = null) {
+    if (!window.currentUser?.uid || !window.db) {
+      return { ok: false, reason: 'missing_context', patched: false, targetGroupId: null };
+    }
+
+    const uid = window.currentUser.uid;
+    const memberProfile = profile || {};
+    if (this.isNoUplineCreationExempt(memberProfile)) {
+      return { ok: true, reason: 'exempt', patched: false, targetGroupId: null };
+    }
+
+    const profileUpline = typeof memberProfile?.uplineGroupId === 'string' ? memberProfile.uplineGroupId.trim() : '';
+    const profileGroup = typeof memberProfile?.groupId === 'string' ? memberProfile.groupId.trim() : '';
+    const candidateIds = [...new Set([profileUpline, profileGroup].filter(Boolean))];
+
+    let targetGroupId = null;
+    for (const groupId of candidateIds) {
+      try {
+        const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', groupId));
+        if (!groupDoc.exists()) continue;
+        const groupData = groupDoc.data() || {};
+        if (!groupData.leaderId || groupData.leaderId === uid) continue;
+        if (!this.isUserMemberInGroupData(groupData, uid)) continue;
+        targetGroupId = groupDoc.id;
+        break;
+      } catch (error) {
+        console.warn('[Groups] ensureCreationUplineProfilePointer candidate check failed:', groupId, error);
+      }
+    }
+
+    if (!targetGroupId) {
+      return { ok: false, reason: 'requires_upline_pointer', patched: false, targetGroupId: null };
+    }
+
+    const patch = {};
+    if (profileUpline !== targetGroupId) patch.uplineGroupId = targetGroupId;
+    if (!profileGroup) patch.groupId = targetGroupId;
+    if (String(memberProfile?.groupRole || '').toLowerCase() === 'guest') patch.groupRole = 'member';
+    if (!Object.keys(patch).length) return { ok: true, reason: 'already_synced', patched: false, targetGroupId };
+
+    try {
+      await window.setDoc(window.doc(window.db, 'goMission_members', uid), patch, { merge: true });
+      return { ok: true, reason: 'synced', patched: true, targetGroupId };
+    } catch (error) {
+      console.warn('[Groups] ensureCreationUplineProfilePointer patch failed:', error);
+      return { ok: false, reason: 'pointer_patch_failed', patched: false, targetGroupId };
+    }
+  },
+
   async logIntegrityEvent(eventType, payload = {}) {
     if (!window.db || !window.currentUser || typeof window.addDoc !== 'function' || typeof window.collection !== 'function') {
       return;
@@ -1051,6 +1122,9 @@ const Groups = {
     
     // Check if user can create a group
     const canCreate = await this.canCreateGroup();
+    const profileRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+    const profileDoc = await window.getDoc(profileRef);
+    const profileData = profileDoc.exists() ? (profileDoc.data() || {}) : {};
     
     if (!canCreate.allowed) {
       await this.logIntegrityEvent('group_create_blocked', {
@@ -1068,9 +1142,41 @@ const Groups = {
       alert('You must join a valid upline group first before creating a group.');
       return null;
     }
+
+    const pointerSync = await this.ensureCreationUplineProfilePointer(profileData);
+    if (!pointerSync.ok) {
+      await this.logIntegrityEvent('group_create_blocked', {
+        status: 'open',
+        severity: 'high',
+        actionRequired: true,
+        requestedGroupName: groupData?.name || '',
+        requestedNameKey: this.normalizeGroupNameKey(groupData?.name || ''),
+        reasonCode: String(pointerSync.reason || 'requires_upline_pointer'),
+        message: 'Create group blocked: member profile upline pointer is missing/invalid.',
+        context: {
+          profileUplineGroupId: profileData?.uplineGroupId || '',
+          profileGroupId: profileData?.groupId || ''
+        }
+      });
+      alert('Cannot create yet. Your upline link is incomplete. Open your upline group first, then retry.');
+      return null;
+    }
     
     try {
       this.isCreatingGroup = true;
+      if (pointerSync.patched) {
+        await this.logIntegrityEvent('group_create_profile_sync', {
+          status: 'logged',
+          severity: 'info',
+          actionRequired: false,
+          requestedGroupName: groupData?.name || '',
+          requestedNameKey: this.normalizeGroupNameKey(groupData?.name || ''),
+          message: `Profile pointer synced before create: ${pointerSync.targetGroupId}.`,
+          context: {
+            targetGroupId: pointerSync.targetGroupId
+          }
+        });
+      }
       await this.logIntegrityEvent('group_create_attempt', {
         status: 'logged',
         severity: 'info',
@@ -1182,7 +1288,12 @@ const Groups = {
           stack: String(error?.stack || '').slice(0, 1200)
         }
       });
-      alert('Error creating group. Please try again.');
+      const msg = String(error?.message || '');
+      if (msg.toLowerCase().includes('missing or insufficient permissions')) {
+        alert('Create blocked by profile-group mismatch. Refresh your groups and retry.');
+      } else {
+        alert('Error creating group. Please try again.');
+      }
       return null;
     } finally {
       this.isCreatingGroup = false;

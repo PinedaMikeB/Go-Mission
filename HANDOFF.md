@@ -39,6 +39,38 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Create-Group Pointer Sync Fix (Razel case)
+
+- **Active modules**
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+- **Goal completed**: prevent false `Missing or insufficient permissions` create failures when member profile pointers are stale.
+
+### What Was Added
+
+1. **Pre-create pointer sync**
+  - New preflight in both create flows:
+    - verifies user is in a valid non-self-led upline group,
+    - auto-patches missing profile pointers (`uplineGroupId`, optional `groupId`) before create.
+2. **Hard block with specific reason**
+  - If pointer cannot be resolved, create is blocked before Firestore write with clear in-app message.
+3. **Logging upgrade**
+  - Adds `group_create_profile_sync` integrity event for traceability.
+  - Blocks/failures include richer pointer context (`profileUplineGroupId`, `profileGroupId`, detected upline).
+4. **User-facing error clarity**
+  - Permission-denied create errors now show:
+    - `Create blocked by profile-group mismatch. Refresh your groups and retry.`
+
+### Live Data Intervention (Razel)
+
+- Patched `goMission_members/vgCEqxAw9JO9qn2rQTbAoEo9laD2`:
+  - `uplineGroupId = HJAljTAvSzv4UBWQDn4q`
+  - `groupId = HJAljTAvSzv4UBWQDn4q`
+  - `groupRole = member`
+- Reason: user was already in that upline group members list but profile pointers were blank, causing rule-denied create.
+
+---
+
 ## Current Task Status (2026-03-02) — Thread 5 Integrity Failure Logs (Attempts / Blocked / Errors)
 
 - **Active modules**
