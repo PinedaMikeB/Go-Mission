@@ -2665,6 +2665,14 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return groups.filter((group) => String(group?.leaderId || '') === String(leaderId || ''));
     }
 
+    function normalizeGroupNameKeyForIntegrity(name = '') {
+      return String(name || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/[^a-z0-9 ]/g, '');
+    }
+
     async function runGroupIntegrityAudit() {
       const summaryEl = document.getElementById('groupIntegritySummary');
       const listEl = document.getElementById('groupIntegrityViolations');
@@ -2764,6 +2772,39 @@ match /goMission/watch-series-covers/{allPaths=**} {
               action: 'lock_missing_upline_meetings'
             });
           }
+        });
+
+        // Rule 3: Flag duplicate same-name groups under the same leader.
+        const groupsByLeaderAndName = new Map();
+        groups.forEach((group) => {
+          const leaderId = String(group?.leaderId || '').trim();
+          if (!leaderId) return;
+          const nameKey = normalizeGroupNameKeyForIntegrity(group?.name || '');
+          if (!nameKey) return;
+          if (!groupsByLeaderAndName.has(leaderId)) {
+            groupsByLeaderAndName.set(leaderId, new Map());
+          }
+          const byName = groupsByLeaderAndName.get(leaderId);
+          if (!byName.has(nameKey)) {
+            byName.set(nameKey, []);
+          }
+          byName.get(nameKey).push(group);
+        });
+
+        groupsByLeaderAndName.forEach((byName, leaderId) => {
+          byName.forEach((sameNameGroups, nameKey) => {
+            if ((sameNameGroups || []).length <= 1) return;
+            const leader = { ...(membersById.get(leaderId) || {}), id: leaderId };
+            const labels = sameNameGroups
+              .map((entry) => `${getGroupIntegrityLabel(entry, membersById)} [${entry.id}]`)
+              .join('; ');
+
+            violations.push({
+              severity: 'high',
+              title: 'This leader has duplicate groups with same name',
+              detail: `${getMemberDisplayName(leader)} (${leaderId}) has ${sameNameGroups.length} groups with the same name key "${nameKey}": ${labels}. Keep one valid group and request admin deletion for duplicates.`
+            });
+          });
         });
 
         // Rule 4: Detect direct crossover loops (A under B and B under A).

@@ -15,6 +15,7 @@ const Groups = {
   isLeader: false,
   pendingRequests: [],
   members: [],
+  isCreatingGroup: false,
   
   // Available groups (for joining)
   availableGroups: [],
@@ -38,6 +39,14 @@ const Groups = {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
       .slice(0, 6);
+  },
+
+  normalizeGroupNameKey(rawName) {
+    return String(rawName || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[^a-z0-9 ]/g, '');
   },
 
   async resolvePrimaryMemberGroupId(userData = {}, uid = window.currentUser?.uid) {
@@ -994,6 +1003,10 @@ const Groups = {
       alert('Please sign in first');
       return null;
     }
+
+    if (this.isCreatingGroup) {
+      return null;
+    }
     
     // Check if user can create a group
     const canCreate = await this.canCreateGroup();
@@ -1004,12 +1017,29 @@ const Groups = {
     }
     
     try {
+      this.isCreatingGroup = true;
+      const nameKey = this.normalizeGroupNameKey(groupData?.name || '');
+
+      const existingGroupsSnap = await window.getDocs(window.query(
+        window.collection(window.db, 'goMission_groups'),
+        window.where('leaderId', '==', window.currentUser.uid)
+      ));
+      const duplicate = existingGroupsSnap.docs.find((docSnap) => {
+        const data = docSnap.data() || {};
+        return this.normalizeGroupNameKey(data.name) === nameKey;
+      });
+      if (duplicate) {
+        alert('Duplicate group name detected. Please rename the new group before creating it.');
+        return null;
+      }
+
       // Generate group ID
       const groupId = 'group_' + Date.now();
       
       const newGroup = {
         id: groupId,
         name: groupData.name,
+        nameKey: nameKey,
         schedule: {
           day: groupData.meetingDay || 'saturday',
           time: groupData.meetingTime || '19:00',
@@ -1055,6 +1085,8 @@ const Groups = {
       console.error('[Groups] Error creating group:', error);
       alert('Error creating group. Please try again.');
       return null;
+    } finally {
+      this.isCreatingGroup = false;
     }
   },
   
@@ -1550,7 +1582,7 @@ const Groups = {
           <button onclick="Groups.closeModal()" class="flex-1 py-3 border border-white/10 rounded-xl text-slate-400 text-sm hover:bg-white/5">
             Cancel
           </button>
-          <button onclick="Groups.submitCreateGroup()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400" ${!canCreate.allowed ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+          <button id="groupsCreateSubmitBtn" onclick="Groups.submitCreateGroup()" class="flex-1 py-3 bg-amber-500 text-[#2a0505] rounded-xl text-sm font-bold hover:bg-amber-400" ${!canCreate.allowed ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
             Create Group
           </button>
         </div>
@@ -1568,21 +1600,39 @@ const Groups = {
     const day = document.getElementById('newGroupDay')?.value;
     const time = document.getElementById('newGroupTime')?.value;
     const link = document.getElementById('newGroupLink')?.value?.trim();
+    const submitBtn = document.getElementById('groupsCreateSubmitBtn');
     
     if (!name) {
       alert('Please enter a group name');
       return;
     }
+
+    if (this.isCreatingGroup) return;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.6';
+      submitBtn.style.cursor = 'not-allowed';
+      submitBtn.textContent = 'Creating...';
+    }
     
-    const groupId = await this.createGroup({
-      name: name,
-      meetingDay: day,
-      meetingTime: time,
-      meetingLink: link
-    }, null);
-    
-    if (groupId) {
-      this.closeModal();
+    try {
+      const groupId = await this.createGroup({
+        name: name,
+        meetingDay: day,
+        meetingTime: time,
+        meetingLink: link
+      }, null);
+      
+      if (groupId) {
+        this.closeModal();
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '';
+        submitBtn.style.cursor = '';
+        submitBtn.textContent = 'Create Group';
+      }
     }
   },
   

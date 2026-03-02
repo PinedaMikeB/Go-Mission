@@ -14,6 +14,7 @@ const MyGroups = {
     pendingRequestsCount: 0,
     dashboardTab: 'downline', // 'downline' | 'upline'
     pendingGroupDeletionRequestsById: {},
+    isCreatingGroup: false,
     currentMemberProfile: null,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
     NO_UPLINE_CREATION_EXEMPT_UIDS: [
@@ -1926,6 +1927,17 @@ const MyGroups = {
             .replace(/[^A-Z0-9]/g, '')
             .slice(0, 6);
     },
+
+    /**
+     * Canonical group-name key for duplicate checks
+     */
+    normalizeGroupNameKey(rawName) {
+        return String(rawName || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .replace(/[^a-z0-9 ]/g, '');
+    },
     
     /**
      * Show join group modal
@@ -1972,7 +1984,7 @@ const MyGroups = {
                 <input type="text" id="newGroupName" placeholder="Group name" 
                     class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-4 py-3 text-[var(--text-color)] mb-4">
                 <div id="createError" class="text-[var(--mission-red-bright)] text-sm text-center mb-4 hidden"></div>
-                <button onclick="window.MyGroups.createGroup()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
+                <button id="myGroupsCreateSubmitBtn" onclick="window.MyGroups.createGroup()" class="w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-3 rounded-lg">
                     Create Group
                 </button>
             </div>
@@ -2209,6 +2221,7 @@ const MyGroups = {
     async createGroup() {
         const name = document.getElementById('newGroupName')?.value?.trim();
         const errorEl = document.getElementById('createError');
+        const submitBtn = document.getElementById('myGroupsCreateSubmitBtn');
         
         if (!name) {
             if (errorEl) {
@@ -2217,12 +2230,44 @@ const MyGroups = {
             }
             return;
         }
+
+        if (this.isCreatingGroup) {
+            return;
+        }
         
         try {
+            this.isCreatingGroup = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                submitBtn.textContent = 'Creating...';
+            }
+
             const eligibility = await this.canShowCreateGroupAction();
             if (!eligibility.allowed) {
                 if (errorEl) {
                     errorEl.textContent = 'You must join a valid upline group first before creating a group.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const nextNameKey = this.normalizeGroupNameKey(name);
+            let leaderGroups = Array.isArray(this.downlineGroups) ? [...this.downlineGroups] : [];
+            if (leaderGroups.length === 0) {
+                const groupsSnap = await window.getDocs(window.query(
+                    window.collection(window.db, 'goMission_groups'),
+                    window.where('leaderId', '==', window.currentUser.uid)
+                ));
+                leaderGroups = groupsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+            }
+
+            const duplicateGroup = leaderGroups.find((group) => (
+                this.normalizeGroupNameKey(group?.name) === nextNameKey
+            ));
+            if (duplicateGroup) {
+                if (errorEl) {
+                    errorEl.textContent = `Duplicate group name detected: "${duplicateGroup.name || 'Existing Group'}". Rename this group first or request admin delete for duplicates.`;
                     errorEl.classList.remove('hidden');
                 }
                 return;
@@ -2237,6 +2282,7 @@ const MyGroups = {
                 window.collection(window.db, 'goMission_groups'),
                 {
                     name: name,
+                    nameKey: nextNameKey,
                     leaderId: window.currentUser.uid,
                     leaderName: window.currentUser.displayName || 'Leader',
                     members: [window.currentUser.uid],
@@ -2264,6 +2310,13 @@ const MyGroups = {
             if (errorEl) {
                 errorEl.textContent = 'Failed to create group';
                 errorEl.classList.remove('hidden');
+            }
+        } finally {
+            this.isCreatingGroup = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                submitBtn.textContent = 'Create Group';
             }
         }
     },

@@ -39,6 +39,36 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Duplicate Leader Group Protection
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+- **Goal completed**: Prevent accidental duplicate same-name group creation and make duplicate-led groups visible in integrity audit.
+
+### What Was Added
+
+1. **Create-group duplicate guard**
+  - Leader cannot create another group with the same normalized group name.
+  - Implemented in both `MyGroups` flow and `Groups` modal flow.
+2. **Multi-click race guard**
+  - Added `isCreatingGroup` lock + submit-button disabled/`Creating...` state.
+  - Prevents accidental double-submit duplicate group creation.
+3. **Integrity audit violation for duplicate group names**
+  - `Run Integrity Audit` now flags leaders with duplicate same-name groups as `HIGH`.
+  - Violation detail includes affected group IDs for cleanup.
+4. **`nameKey` persistence**
+  - New groups now save `nameKey` for stable duplicate comparisons.
+
+### Notes
+
+- Firestore rules alone cannot reliably enforce cross-document uniqueness for arbitrary same-name groups.
+- Current hardening is app-side prevention + admin audit detection.
+- For absolute server-side uniqueness, move create-group writes to a callable function/transaction lock pattern.
+
+---
+
 ## Current Task Status (2026-03-02) — Thread 5 Guest Upline Visibility + Invite Code Validation
 
 - **Active modules**

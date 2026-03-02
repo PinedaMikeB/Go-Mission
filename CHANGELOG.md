@@ -10,6 +10,38 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.12] - 2026-03-02 🛡️ Duplicate Group Guard + Integrity Duplicate-Leader Audit
+
+### ✅ Summary
+Added strict duplicate-group protections for leaders at creation time and added an integrity audit violation that flags leaders with duplicate same-name groups.
+
+### Included Changes
+1. **Duplicate-create prevention (leader-side)**
+   - Added canonical name-key checks before creating a group in:
+     - `/modules/groups/my-groups.js`
+     - `/modules/groups/groups.js`
+   - Creation now blocks when the same leader already has a group with the same normalized name.
+   - Added in-flight create lock (`isCreatingGroup`) and disabled submit state to prevent multi-click duplicate creation.
+2. **Group metadata for future integrity checks**
+   - New groups now store `nameKey` (normalized group name) for safer duplicate matching.
+3. **Integrity audit: duplicate leader groups**
+   - `/admin.html` `Run Integrity Audit` now flags:
+     - **This leader has duplicate groups with same name [HIGH]**
+   - Violation lists all duplicate group IDs for admin cleanup action.
+
+### Files Modified
+- `/admin.html`
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.12>
+```
+
+---
+
 ## [v2.2.11] - 2026-03-02 🧩 Guest Upline Visibility + Invite Code False-Invalid Fix
 
 ### ✅ Summary
