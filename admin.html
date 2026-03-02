@@ -2928,6 +2928,40 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }
     }
 
+    async function lockDuplicateGroupsForLeaderNameKey(leaderId = '', nameKey = '') {
+      const groups = getDuplicateGroupsByLeaderAndNameKey(leaderId, nameKey);
+      if (groups.length <= 1) {
+        setInlineStatus('groupIntegrityStatus', 'No duplicate group set found to lock.', 'warn');
+        return;
+      }
+
+      const confirmed = window.confirm(`Lock ${groups.length} duplicate group(s) for this leader?\n\nMembers will see meeting locked until duplicates are resolved.`);
+      if (!confirmed) return;
+
+      const updatedAtIso = new Date().toISOString();
+      const lockReason = 'Group is locked because duplicate groups were detected. Request admin review to keep one valid group and remove duplicates.';
+
+      for (const group of groups) {
+        await setDoc(doc(db, 'goMission_groups', group.id), {
+          integrityLock: {
+            enabled: true,
+            type: 'duplicate_group',
+            reason: lockReason,
+            duplicateNameKey: normalizeGroupNameKeyForIntegrity(nameKey),
+            updatedAtIso,
+            updatedBy: auth.currentUser?.uid || null,
+            updatedByEmail: auth.currentUser?.email || null
+          }
+        }, { merge: true });
+      }
+
+      setInlineStatus('groupIntegrityStatus', `Locked ${groups.length} duplicate group(s).`, 'success');
+      await runGroupIntegrityAudit();
+      if (activeDuplicateInspector) {
+        openDuplicateGroupInspector(activeDuplicateInspector.leaderId, activeDuplicateInspector.nameKey);
+      }
+    }
+
     async function cleanDuplicateGroupMembers(groupId = '') {
       const group = (latestGroupIntegrityState?.groups || []).find((entry) => entry.id === groupId);
       const membersById = latestGroupIntegrityState?.snapshot?.membersById || new Map();
@@ -3121,6 +3155,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
               title: 'This leader has duplicate groups with same name',
               detail: `${getMemberDisplayName(leader)} (${leaderId}) has ${sameNameGroups.length} groups with the same name key "${nameKey}": ${labels}. Keep one valid group and request admin deletion for duplicates.`,
               action: 'view_duplicate_groups',
+              secondaryAction: 'lock_duplicate_groups',
               leaderId: leaderId,
               nameKey: nameKey,
               groupIds: sameNameGroups.map((entry) => entry.id)
@@ -3184,6 +3219,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const viewDuplicateBtn = (violation.action === 'view_duplicate_groups' && violation.leaderId && violation.nameKey)
             ? `<div style="margin-top:8px;"><button class="secondary" style="width:auto;padding:6px 10px;" data-action="view-duplicate-groups" data-leader-id="${escapeHtml(violation.leaderId)}" data-name-key="${escapeHtml(violation.nameKey)}">View Groups</button></div>`
             : '';
+          const lockDuplicateBtn = (violation.secondaryAction === 'lock_duplicate_groups' && violation.leaderId && violation.nameKey)
+            ? `<div style="margin-top:8px;"><button class="warning" style="width:auto;padding:6px 10px;" data-action="lock-duplicate-groups" data-leader-id="${escapeHtml(violation.leaderId)}" data-name-key="${escapeHtml(violation.nameKey)}">Lock Duplicate Groups</button></div>`
+            : '';
           return `
             <div style="margin-top:10px;padding:10px;border:1px solid ${border};border-radius:10px;background:${bg};">
               <div class="small" style="font-weight:800;color:var(--text-main);">${escapeHtml(violation.title)} <span style="font-size:10px;opacity:.8;">[${badge}]</span></div>
@@ -3191,6 +3229,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
               ${resolverBtn}
               ${lockMeetingBtn}
               ${viewDuplicateBtn}
+              ${lockDuplicateBtn}
             </div>
           `;
         }).join('');
@@ -5000,6 +5039,13 @@ match /goMission/watch-series-covers/{allPaths=**} {
           const nameKey = btn.getAttribute('data-name-key');
           if (!leaderId || !nameKey) return;
           openDuplicateGroupInspector(leaderId, nameKey);
+          return;
+        }
+        if (action === 'lock-duplicate-groups') {
+          const leaderId = btn.getAttribute('data-leader-id');
+          const nameKey = btn.getAttribute('data-name-key');
+          if (!leaderId || !nameKey) return;
+          await lockDuplicateGroupsForLeaderNameKey(leaderId, nameKey);
           return;
         }
       });

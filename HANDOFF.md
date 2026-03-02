@@ -39,6 +39,32 @@
 
 ---
 
+## Current Task Status (2026-03-02) — Thread 5 Duplicate Group Lock Rule
+
+- **Active modules**
+  - `/admin.html`
+  - `/modules/groups/my-groups.js`
+  - `/modules/groups/groups.js`
+- **Goal completed**: duplicate sets can be hard-locked by admin and are enforced in app meeting actions.
+
+### What Was Added
+
+1. **Audit action**
+  - Duplicate-group violations now include `Lock Duplicate Groups`.
+  - Action sets `goMission_groups/{groupId}.integrityLock`:
+    - `enabled: true`
+    - `type: "duplicate_group"`
+    - `reason`
+    - admin audit metadata fields
+2. **Runtime lock handling**
+  - `MyGroups.getGroupMeetingLockState()` now locks meetings for `duplicate_group` type.
+  - Lock modal + admin request flow remains available.
+3. **UX message standard**
+  - Duplicate create rejection text standardized to:
+    - `This group already exists.`
+
+---
+
 ## Current Task Status (2026-03-02) — Thread 5 Duplicate Group Inspector Actions
 
 - **Active modules**

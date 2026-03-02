@@ -186,6 +186,14 @@ const MyGroups = {
             };
         }
 
+        if (lockEnabled && lockType === 'duplicate_group') {
+            return {
+                locked: true,
+                reason: lockMeta.reason || 'Group is temporarily locked because a duplicate group was detected. Request admin review.',
+                leaderActionRequired: true
+            };
+        }
+
         const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
         if (isLeaderOfGroup && !this.isNoUplineCreationExempt(this.currentMemberProfile) && !this.currentUserHasValidUpline()) {
             return {
@@ -2267,7 +2275,7 @@ const MyGroups = {
             ));
             if (duplicateGroup) {
                 if (errorEl) {
-                    errorEl.textContent = `Duplicate group name detected: "${duplicateGroup.name || 'Existing Group'}". Rename this group first or request admin delete for duplicates.`;
+                    errorEl.textContent = `This group already exists: "${duplicateGroup.name || 'Existing Group'}".`;
                     errorEl.classList.remove('hidden');
                 }
                 return;

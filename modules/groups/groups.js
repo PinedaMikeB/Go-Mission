@@ -1029,7 +1029,7 @@ const Groups = {
         return this.normalizeGroupNameKey(data.name) === nameKey;
       });
       if (duplicate) {
-        alert('Duplicate group name detected. Please rename the new group before creating it.');
+        alert('This group already exists.');
         return null;
       }
 

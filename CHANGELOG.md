@@ -10,6 +10,36 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.14] - 2026-03-02 🔒 Duplicate Group Lock Rule
+
+### ✅ Summary
+Implemented lock enforcement for duplicate group sets: admins can now lock all duplicates directly from integrity audit, and app meeting actions respect this duplicate lock.
+
+### Included Changes
+1. **Integrity audit lock action for duplicates**
+   - Duplicate-group violations now include `Lock Duplicate Groups`.
+   - Applies `integrityLock` with `type: duplicate_group` to all matching duplicate groups.
+2. **App lock enforcement**
+   - `My Mission Groups` now blocks meeting actions when `integrityLock.type === 'duplicate_group'`.
+   - Users see lock reason and can request admin support from lock modal.
+3. **Create message wording**
+   - Duplicate create attempt now shows: `This group already exists.`
+
+### Files Modified
+- `/admin.html`
+- `/modules/groups/my-groups.js`
+- `/modules/groups/groups.js`
+- `/CHANGELOG.md`
+- `/HANDOFF.md`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+git revert <commit-hash-for-v2.2.14>
+```
+
+---
+
 ## [v2.2.13] - 2026-03-02 🧾 Integrity Duplicate Group Inspector (View/Edit/Delete/Clean)
 
 ### ✅ Summary
