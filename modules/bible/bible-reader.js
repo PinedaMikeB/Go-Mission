@@ -510,16 +510,16 @@ const BibleReader = {
    */
   generateCommentaryHTML() {
     const lang = this.bibleTranslation || ((typeof i18n !== 'undefined') ? i18n.getLang() : 'en');
+    const verseInsights = this.quickInsightsData?.verses && typeof this.quickInsightsData.verses === 'object'
+      ? this.quickInsightsData.verses
+      : {};
+    const hasVerseInsights = Object.keys(verseInsights).length > 0;
 
     if (this.insightsLoading) {
       return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'Naglo-load ng insights...' : 'Loading insights...'}</p>`;
     }
 
-    if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
-      if (this.highlightedVerses.length > 0) {
-        const err = this.insightsLastError ? ` (${this.insightsLastError})` : '';
-        return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'Wala pang insights para sa napiling talata.' : 'No insights available for the selected verse(s) yet.'}${err}</p>`;
-      }
+    if (this.highlightedVerses.length === 0) {
       return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'I-tap ang mga talata para makita ang insights' : 'Tap verses to see insights'}</p>`;
     }
 
@@ -562,7 +562,8 @@ const BibleReader = {
         roleGuest: 'Guest',
         roleGroup: 'Group',
         groupIdSuffix: 'ID',
-        save: '💾 Save Reflection'
+        save: '💾 Save Reflection',
+        noInsightsSelected: 'No insights available for the selected verse(s) yet.'
       },
       tl: {
         understanding: '📖 Pag-unawa',
@@ -602,7 +603,8 @@ const BibleReader = {
         roleGuest: 'Guest',
         roleGroup: 'Group',
         groupIdSuffix: 'ID',
-        save: '💾 I-save ang Reflection'
+        save: '💾 I-save ang Reflection',
+        noInsightsSelected: 'Wala pang insights para sa napiling talata.'
       }
     };
     const L = labels[lang] || labels.en;
@@ -617,9 +619,12 @@ const BibleReader = {
       this.inlineReflectionDraft.shareWithGroup = !!shareToggle?.classList.contains('active');
     }
     
-    let html = '';
+    const noInsightsNotice = !hasVerseInsights
+      ? `<p class="text-[var(--text-muted)] italic mb-3 text-sm">${L.noInsightsSelected}${this.insightsLastError ? ` (${this.escapeHTML(this.insightsLastError)})` : ''}</p>`
+      : '';
+    let html = noInsightsNotice;
     const reflectionQuestions = [];
-    for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
+    for (const [verseNum, insight] of Object.entries(verseInsights)) {
       if (insight?.reflection) {
         reflectionQuestions.push(insight.reflection);
       }
