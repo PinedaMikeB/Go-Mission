@@ -2523,7 +2523,7 @@
                         B
                     </button>
                     <textarea id="dmChatInput" rows="1" placeholder="Type a message..." onkeydown="window.ChatApp && window.ChatApp.handleDmKeyDown && window.ChatApp.handleDmKeyDown(event)" oninput="window.ChatApp && window.ChatApp.handleDmInput && window.ChatApp.handleDmInput(event)" onfocus="window.ChatApp && window.ChatApp.closeDmEmojiPicker && window.ChatApp.closeDmEmojiPicker()"
-                           class="flex-1 min-h-[48px] max-h-44 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none overflow-y-auto"></textarea>
+                           class="flex-1 min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none overflow-y-auto"></textarea>
                     <button id="dmChatSendBtn" onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
                         <span id="dmChatSendIconWrap" class="inline-flex items-center justify-center">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2607,9 +2607,9 @@
                         </svg>
                     </button>
                     <div class="flex-1 relative">
-                        <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[var(--text-color)] overflow-hidden rounded-xl"><div id="chatInputPreviewText" class="block whitespace-pre-wrap break-words"></div></div>
+                        <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[#5a0505] bg-white overflow-hidden rounded-xl"><div id="chatInputPreviewText" class="block whitespace-pre-wrap break-words"></div></div>
                         <textarea id="chatInput" rows="1" placeholder="Type a message..." 
-                               class="relative z-10 w-full min-h-[48px] max-h-44 bg-transparent border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-transparent placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto"
+                               class="relative z-10 w-full min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-transparent placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto"
                                style="caret-color: var(--text-color);"
                                oninput="GroupChat.handleInputChange(event)"
                                onscroll="GroupChat.syncComposerPreviewScroll(event)"
@@ -2644,7 +2644,7 @@
                         Tap <span class="text-amber-500 font-bold">Done</span> to continue, or use the send button below to send immediately.
                     </div>
                     <textarea id="chatFullscreenInput"
-                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none"
+                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Type a message..."
                               oninput="GroupChat.handleFullscreenComposerInput(event)"
                               onkeydown="GroupChat.handleFullscreenComposerKeyDown(event)"></textarea>
@@ -2685,7 +2685,7 @@
                         Use line breaks for structure. For bold text, select words and tap <span class="font-bold text-amber-500">B</span>.
                     </div>
                     <textarea id="chatEditInput"
-                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none"
+                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Edit message..."
                               onkeydown="GroupChat.handleEditComposerKeyDown(event)"></textarea>
                     <div class="flex gap-2">
