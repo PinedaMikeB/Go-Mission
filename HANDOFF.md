@@ -49,6 +49,11 @@
   - Mirrored certificates/keys copied and permissions fixed for TURN TLS.
   - Services verified `active`: `prosody`, `jicofo`, `jitsi-videobridge2`, `coturn`, `nginx`
   - Verified listeners: `80/tcp`, `443/tcp`, `3478 tcp/udp`, `5349 tcp/udp`, `10000/udp`, `5280/tcp`
+  - Emergency live fix applied after cutover:
+    - Symptom: embedded meetings stuck at `Connecting...`, browser-side `replaceTrack` object errors
+    - Root cause: internal XMPP TLS trust issue (`PKIX path building failed`) between `jicofo/jvb` and `prosody`
+    - Hotfix: enabled internal cert verification bypass for `jicofo` + `jvb` XMPP clients and restored call-domain XMPP wiring
+    - Validation: `jicofo /stats` reports `bridge_count=1`, `operational_bridge_count=1`; `jvb` joins brewery MUC successfully
 
 ### Next Steps
 
