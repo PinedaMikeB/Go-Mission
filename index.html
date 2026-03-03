@@ -5244,16 +5244,13 @@
                                     <span class="text-lg">🌓</span>
                                     <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
                                 </button>
-                                <a id="mainMenuJournalBtn"
-                                   href="?openJournal=1"
-                                   onclick="openJournalFromMainMenu(); return false;"
-                                   onpointerdown="openJournalFromMainMenu(); return false;"
-                                   onmousedown="openJournalFromMainMenu(); return false;"
-                                   ontouchstart="openJournalFromMainMenu(); return false;"
+                                <button id="mainMenuJournalBtn"
+                                   type="button"
+                                   onclick="openJournalFromMainMenu(event)"
                                    class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
-                                </a>
+                                </button>
                                 <button onclick="if(window.triggerProfilePhotoPicker){window.triggerProfilePhotoPicker();} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
                                     <span class="text-lg">🖼️</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Palitan ang Profile Photo' : 'Change Profile Photo'}</span>
@@ -5281,8 +5278,6 @@
                 const journalTapHandler = (event) => window.openJournalFromMainMenu(event);
                 if (journalBtn) {
                     journalBtn.addEventListener('click', journalTapHandler);
-                    journalBtn.addEventListener('touchend', journalTapHandler, { passive: false });
-                    journalBtn.addEventListener('pointerup', journalTapHandler);
                 }
                 if (menuEl) {
                     menuEl.addEventListener('click', (event) => {
