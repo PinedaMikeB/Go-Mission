@@ -10,6 +10,37 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.17] - 2026-03-03 🎛️ Jitsi Logo Research + Safe Branding Rollout Plan
+
+### ✅ Summary
+Completed focused research for clean Jitsi logo handling (disable or replace) with a no-obstruction-first strategy. No runtime meeting behavior changed in this entry.
+
+### Included Changes
+1. **Research findings documented**
+   - Confirmed server default watermark toggle currently enabled in `/usr/share/jitsi-meet/interface_config.js`.
+   - Confirmed native replacement paths in `/etc/jitsi/meet/call.wotgonline.com-config.js`:
+     - `defaultLogoUrl`
+     - `dynamicBrandingUrl` (`logoImageUrl`, `logoClickUrl`).
+2. **Safe rollout sequence defined**
+   - Step 1: disable watermark at source.
+   - Step 2: optionally replace with Go Mission logo.
+   - Step 3: optional dynamic branding endpoint for future multi-brand control.
+3. **Rollback point added**
+   - Added rollback helper script for this checkpoint.
+
+### Files Modified
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+- `/rollback-jitsi-logo-research-20260303.sh`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+./rollback-jitsi-logo-research-20260303.sh
+```
+
+---
+
 ## [v2.2.16] - 2026-03-02 🧭 Create-Group Pointer Auto-Sync + Clearer Permission Failure Handling
 
 ### ✅ Summary

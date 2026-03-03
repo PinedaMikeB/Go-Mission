@@ -2,6 +2,45 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 
+## Current Task Status (2026-03-03) — Jitsi Logo Research (Disable vs Replace, No Obstruction)
+
+- **Active modules**
+  - `/HANDOFF.md`
+  - `/CHANGELOG.md`
+  - `call.wotgonline.com` server config references:
+    - `/etc/jitsi/meet/call.wotgonline.com-config.js`
+    - `/usr/share/jitsi-meet/interface_config.js`
+- **Goal**: remove visible Jitsi logo cleanly (no overlays/masks), or replace with Go Mission branding, without destabilizing meetings.
+- **Status**: ✅ Research complete, implementation order prepared (safe-first, no app runtime change in this step).
+
+### Verified Findings
+
+1. **Server default still enables Jitsi watermark**
+  - On current server file `/usr/share/jitsi-meet/interface_config.js`, `SHOW_JITSI_WATERMARK` is `true`.
+2. **Jitsi supports clean logo replacement via config**
+  - `/etc/jitsi/meet/call.wotgonline.com-config.js` includes:
+    - `defaultLogoUrl` (application logo URL)
+    - `dynamicBrandingUrl` with `logoImageUrl` and `logoClickUrl` fields in returned JSON.
+3. **Best no-obstruction approach**
+  - Prefer native config/branding controls instead of UI masks/cover blocks.
+
+### Recommended Safe Rollout Order
+
+1. **Disable watermark at source first**
+  - Set `SHOW_JITSI_WATERMARK: false` in server-side interface config.
+2. **If replacement is preferred**
+  - Set `defaultLogoUrl` to a Go Mission logo asset (small SVG/PNG optimized for dark stage).
+3. **If multi-brand/future flexibility is needed**
+  - Use `dynamicBrandingUrl` and return `logoImageUrl` via JSON.
+4. **Persistence note**
+  - Any direct edit in `/usr/share/jitsi-meet/interface_config.js` can be overwritten by package updates; track and re-apply after upgrades.
+
+### Next Steps
+
+- Execute step 1 on server (disable watermark natively), test desktop + mobile.
+- If acceptable, stop there (cleanest view). If branding required, apply step 2.
+- Keep rollback ready: `/rollback-jitsi-logo-research-20260303.sh`
+
 ## Current Task Status (2026-03-03) — Jitsi Media Startup Parity (Mobile + Desktop)
 
 - **Active modules**
