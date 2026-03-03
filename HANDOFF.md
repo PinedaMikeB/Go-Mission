@@ -25,6 +25,16 @@
   - keep `startWithAudioMuted: false`, `startWithVideoMuted: false`
 - Removed extra media/network overrides from embed options (`constraints`, explicit `bosh/websocket`, `startSilent`) to reduce custom edge-case failures.
 
+### Update (2026-03-03, same thread) — Join Button No-Action Hotfix
+
+- Symptom reported: prejoin showed camera preview but tapping `Join meeting` did not proceed, with `errorOccurred` surfaced as `[object Object]`.
+- Hotfix applied in app embed:
+  - Switched embedded Jitsi to direct join mode (`USE_PREJOIN: false`) to bypass unreliable in-iframe prejoin step.
+  - Added structured Jitsi error formatting so status shows real details instead of `[object Object]`.
+  - Added cache-busting version on `group-meeting.js` script include in `index.html` to force clients to load latest fix quickly.
+- Next validation:
+  - Hard refresh app and re-test Join on desktop + mobile.
+
 ## Current Task Status (2026-02-22) — Meeting Slides Admin DOCX Upload
 
 - **Active modules**

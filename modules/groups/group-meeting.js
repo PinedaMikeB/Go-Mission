@@ -42,6 +42,7 @@ const GroupMeeting = {
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
   allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
+  USE_PREJOIN: false, // Keep direct-join in embed for reliability
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -161,6 +162,21 @@ const GroupMeeting = {
     const a = this.lastJoinArgs;
     if (!a) return;
     this.joinMeeting(a.groupId, a.groupName, a.userName, a.userEmail, a.isLeader);
+  },
+
+  formatJitsiError(evt) {
+    const pick = evt?.message
+      || evt?.name
+      || evt?.details?.error
+      || evt?.error?.message
+      || evt?.error?.name
+      || evt?.error;
+    if (typeof pick === 'string' && pick.trim()) return pick;
+    try {
+      return JSON.stringify(evt);
+    } catch (_) {
+      return 'unknown error';
+    }
   },
   
   /**
@@ -312,9 +328,9 @@ const GroupMeeting = {
         },
         configOverwrite: {
           // Basic settings
-          prejoinPageEnabled: true,
+          prejoinPageEnabled: this.USE_PREJOIN,
           prejoinConfig: {
-            enabled: true
+            enabled: this.USE_PREJOIN
           },
           startWithAudioMuted: false,
           startWithVideoMuted: false,
@@ -420,7 +436,7 @@ const GroupMeeting = {
       // Surface failures that otherwise look like "black screen"
       this.api.addListener('errorOccurred', (evt) => {
         console.error('[GroupMeeting] Jitsi errorOccurred:', evt);
-        const msg = evt?.message || evt?.error?.message || evt?.error || 'Meeting error';
+        const msg = this.formatJitsiError(evt);
         this.setMeetingStatus(`Error: ${msg}`);
       });
 
@@ -432,7 +448,8 @@ const GroupMeeting = {
 
       this.api.addListener('conferenceFailed', (evt) => {
         console.error('[GroupMeeting] Jitsi conferenceFailed:', evt);
-        this.setMeetingStatus('Conference failed. Tap Retry.');
+        const msg = this.formatJitsiError(evt);
+        this.setMeetingStatus(`Conference failed: ${msg}. Tap Retry.`);
       });
       
       this.api.addListener('participantJoined', (data) => {
