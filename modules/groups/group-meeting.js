@@ -42,6 +42,18 @@ const GroupMeeting = {
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
   allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
+  MEDIA_CONSTRAINTS: {
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    },
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 24, max: 30 }
+    }
+  },
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before
@@ -162,6 +174,45 @@ const GroupMeeting = {
     if (!a) return;
     this.joinMeeting(a.groupId, a.groupName, a.userName, a.userEmail, a.isLeader);
   },
+
+  /**
+   * Trigger browser media permission prompt early so users can join with mic/cam on.
+   * This keeps startup behavior consistent between desktop and mobile.
+   */
+  async primeMediaPermissions() {
+    if (!navigator?.mediaDevices?.getUserMedia) return true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(this.MEDIA_CONSTRAINTS);
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch (error) {
+      console.warn('[GroupMeeting] Media permission check failed:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Force mic/cam state to ON after join.
+   * Jitsi can restore previous muted state from device/browser cache.
+   */
+  async enforceMediaOn() {
+    if (!this.api) return;
+
+    try {
+      const isAudioMuted = await this.api.isAudioMuted();
+      if (isAudioMuted) this.api.executeCommand('toggleAudio');
+    } catch (error) {
+      console.warn('[GroupMeeting] Failed to enforce audio ON:', error);
+    }
+
+    try {
+      const isVideoMuted = await this.api.isVideoMuted();
+      if (isVideoMuted) this.api.executeCommand('toggleVideo');
+    } catch (error) {
+      console.warn('[GroupMeeting] Failed to enforce video ON:', error);
+    }
+  },
   
   /**
    * Generate unique room name for group (Self-hosted format)
@@ -277,6 +328,12 @@ const GroupMeeting = {
         this.setMeetingStatus('Loading Jitsi API…');
         await this.init();
       }
+
+      this.setMeetingStatus('Preparing camera and microphone…');
+      const mediaReady = await this.primeMediaPermissions();
+      if (!mediaReady) {
+        this.setMeetingStatus('Please allow camera and microphone access, then tap Retry.');
+      }
       
       if (!window.JitsiMeetExternalAPI) {
         throw new Error('Jitsi API not available');
@@ -318,8 +375,10 @@ const GroupMeeting = {
           },
           startWithAudioMuted: false,
           startWithVideoMuted: false,
+          startSilent: false,
           disableDeepLinking: true,
           disableInviteFunctions: true,
+          constraints: this.MEDIA_CONSTRAINTS,
 
           // Make XMPP endpoints explicit (helps some reverse-proxy setups).
           bosh: `https://${activeDomain}/http-bind`,
@@ -407,6 +466,11 @@ const GroupMeeting = {
         }
         this.setMeetingStatus('');
         this.onJoined(groupId, userName);
+
+        // Re-assert defaults for both mobile and desktop after conference init settles.
+        setTimeout(() => {
+          this.enforceMediaOn();
+        }, 900);
         
         // Switch to tile view for better group view
         setTimeout(() => {

@@ -2,6 +2,20 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 
+## Current Task Status (2026-03-03) — Jitsi Media Startup Parity (Mobile + Desktop)
+
+- **Active modules**
+  - `/modules/groups/group-meeting.js`
+- **Goal**: Make mobile and desktop meeting startup behavior match desktop defaults for mic/camera (prompt early, join with mic/cam ON).
+- **Status**: ✅ Implemented in app code (ready for live validation)
+  - Added unified media constraints object used for both platforms.
+  - Added early media permission priming (`getUserMedia`) before Jitsi room init.
+  - Added post-join media enforcement to unmute audio/video if Jitsi restores prior muted state.
+  - Kept `startWithAudioMuted: false` and `startWithVideoMuted: false` with explicit `startSilent: false`.
+- **Next Steps**
+  - Validate on production (`gomission.netlify.app`) on both iOS Safari and Android Chrome.
+  - If a device previously denied permissions, user must re-allow camera/mic in browser site settings, then tap `Retry`.
+
 ## Current Task Status (2026-02-22) — Meeting Slides Admin DOCX Upload
 
 - **Active modules**
