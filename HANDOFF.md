@@ -31,6 +31,32 @@
 - Add meeting slides display mode toggle (`Panel` vs `Teleprompter`) if leaders want to switch between readability-first and camera-visible layouts
 - Phase 2: host-synced slides mode for mobile-led meetings (no Jitsi screen share required)
 
+## Current Task Status (2026-03-03) — Jitsi Scale-Out (KVM4)
+
+- **Active infrastructure**
+  - Existing Jitsi source: `147.93.81.200` (`call.wotgonline.com`)
+  - New Jitsi node: `187.77.133.57` (KVM4)
+- **Goal**: Install a second Jitsi stack on KVM4 using the same runtime configuration as current production.
+- **Status**: ✅ Installed and mirrored
+  - Installed: `jitsi-meet`, `jicofo`, `jitsi-videobridge2`, `prosody 13`, `coturn`, `nginx`
+  - Mirrored configs applied from source node:
+    - `/etc/jitsi/meet/call.wotgonline.com-config.js`
+    - `/etc/prosody/conf.avail/call.wotgonline.com.cfg.lua`
+    - `/etc/jitsi/jicofo/jicofo.conf`
+    - `/etc/jitsi/videobridge/jvb.conf`
+    - `/etc/turnserver.conf` (updated server IP to `187.77.133.57`)
+    - nginx vhost routing for room URLs and XMPP endpoints
+  - Mirrored certificates/keys copied and permissions fixed for TURN TLS.
+  - Services verified `active`: `prosody`, `jicofo`, `jitsi-videobridge2`, `coturn`, `nginx`
+  - Verified listeners: `80/tcp`, `443/tcp`, `3478 tcp/udp`, `5349 tcp/udp`, `10000/udp`, `5280/tcp`
+
+### Next Steps
+
+- DNS cutover/load split decision:
+  - If replacing old node: point `call.wotgonline.com` to `187.77.133.57`
+  - If running both: provision separate meeting domain for KVM4 and route app traffic intentionally
+- Run live room join test against KVM4 domain target after DNS update.
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app
