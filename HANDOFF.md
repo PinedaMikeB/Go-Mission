@@ -111,6 +111,14 @@
   - `group-meeting.js`: `USE_PREJOIN: true` (default prejoin flow).
   - `index.html`: cache-bust version updated to force clients to fetch latest meeting module.
 
+### Update (2026-03-03, UI pass) — Meeting Header Refresh + Retry Removal
+
+- Applied frontend header redesign in `/modules/groups/group-meeting.js` for better readability and cleaner hierarchy.
+- Removed `Retry` button from meeting header (kept `Slides` and `Leave` only).
+- Improved group-name and header contrast (high-contrast text + refined button styling).
+- Added top-left brand mask in meeting stage to hide visible Jitsi logo/watermark area inside embed.
+- Left meeting state feedback behavior unchanged per request.
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app

@@ -539,28 +539,33 @@ const GroupMeeting = {
     modal.style.flexDirection = 'column';
     modal.innerHTML = `
       <!-- Header -->
-      <div class="flex-shrink-0 bg-black/90 px-4 py-3 flex items-center justify-between border-b border-white/10">
-        <div class="flex items-center gap-3">
-          <span class="text-2xl">🔥</span>
-          <div>
-            <p class="text-white font-bold text-sm">${groupName || 'Go Mission Meeting'}</p>
-            <p id="participant-count" class="text-white/60 text-xs">Connecting...</p>
+      <div class="flex-shrink-0 px-4 py-3 border-b"
+           style="background: linear-gradient(135deg, rgba(10,10,10,0.98), rgba(32,12,8,0.96)); border-color: rgba(245, 180, 53, 0.22); box-shadow: inset 0 -1px 0 rgba(255,255,255,0.03);">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-2xl" style="filter: drop-shadow(0 0 10px rgba(255,120,0,0.3));">🔥</span>
+            <div class="min-w-0">
+              <p class="font-bold text-sm truncate"
+                 style="color: #f7f2e9; letter-spacing: 0.01em; text-shadow: 0 1px 2px rgba(0,0,0,0.55);">
+                ${groupName || 'Go Mission Meeting'}
+              </p>
+              <p id="participant-count" class="text-xs"
+                 style="color: rgba(245, 233, 214, 0.72);">Connecting...</p>
+            </div>
           </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="window.GroupMeeting.toggleSlidesPanel()"
-                  id="meeting-slides-toggle-btn"
-                  class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-sm font-bold transition-colors">
-            🗂 Slides
-          </button>
-          <button onclick="window.GroupMeeting.retryLastJoin()"
-                  class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-sm font-bold transition-colors">
-            ↻ Retry
-          </button>
-          <button onclick="window.GroupMeeting.leaveMeeting()" 
-                  class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-bold transition-colors">
-            ✕ Leave
-          </button>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="window.GroupMeeting.toggleSlidesPanel()"
+                    id="meeting-slides-toggle-btn"
+                    class="px-4 py-2 rounded-full text-sm font-bold transition-all"
+                    style="background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 8px 20px rgba(242, 162, 37, 0.28), inset 0 1px 0 rgba(255,255,255,0.35);">
+              🗂 Slides
+            </button>
+            <button onclick="window.GroupMeeting.leaveMeeting()" 
+                    class="px-4 py-2 rounded-full text-sm font-bold transition-colors"
+                    style="background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 10px 20px rgba(210, 22, 22, 0.30);">
+              ✕ Leave
+            </button>
+          </div>
         </div>
       </div>
 
@@ -613,7 +618,13 @@ const GroupMeeting = {
       </div>
       
       <!-- Jitsi Container -->
-      <div id="jitsi-container" class="flex-1 w-full"></div>
+      <div class="relative flex-1 w-full">
+        <div id="jitsi-container" class="absolute inset-0"></div>
+        <!-- Brand mask: hides top-left Jitsi watermark/logo area -->
+        <div aria-hidden="true"
+             class="pointer-events-none absolute left-0 top-0 z-[5]"
+             style="width: 150px; height: 82px; background: #000;"></div>
+      </div>
     `;
     
     document.body.appendChild(modal);
