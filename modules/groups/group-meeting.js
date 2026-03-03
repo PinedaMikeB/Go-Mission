@@ -334,6 +334,7 @@ const GroupMeeting = {
           },
           startWithAudioMuted: false,
           startWithVideoMuted: false,
+          disableTileEnlargement: true,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           
@@ -416,6 +417,11 @@ const GroupMeeting = {
         }
         this.setMeetingStatus('');
         this.onJoined(groupId, userName);
+
+        // Default to tile view so stage uses space better for larger meetings.
+        setTimeout(() => {
+          this.api.executeCommand('setTileView', true);
+        }, 900);
       });
       
       this.api.addListener('videoConferenceLeft', (data) => {
@@ -613,16 +619,8 @@ const GroupMeeting = {
       </div>
       
       <!-- Jitsi Container -->
-      <div class="relative flex-1 w-full overflow-hidden">
-        <div id="jitsi-container" class="absolute inset-0"></div>
-        <div aria-hidden="true"
-             class="pointer-events-none absolute left-0 top-0 z-[5]"
-             style="width: 176px; height: 70px; background: linear-gradient(120deg, rgba(0,0,0,0.96), rgba(0,0,0,0.72) 68%, rgba(0,0,0,0));"></div>
-        <div aria-hidden="true"
-             class="pointer-events-none absolute left-3 top-3 z-[6] px-2.5 py-1.5 rounded-lg"
-             style="background: rgba(0,0,0,0.62); border: 1px solid rgba(245, 180, 53, 0.25); backdrop-filter: blur(2px);">
-          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.13em; color: #f5c542;">GO MISSION LIVE</span>
-        </div>
+      <div class="relative flex-1 w-full overflow-hidden" style="background:#000;">
+        <div id="jitsi-container" class="absolute inset-0" style="background:#000;"></div>
       </div>
     `;
     

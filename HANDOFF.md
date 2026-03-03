@@ -129,6 +129,14 @@
   - removed forced `setTileView(true)` on join so Jitsi can use default framing and avoid excess dead space in one-participant view.
 - Updated `group-meeting.js` script cache-bust in `index.html` to force live clients to fetch the new UI.
 
+### Update (2026-03-03, UI pass 3) — Dark Stage + Big-Meeting Layout
+
+- Removed all custom stage overlays/masks (`GO MISSION LIVE` and translucent watermark cover) to keep stage clean and solid dark.
+- Forced stage container background to pure black (`#000`) to remove transparent/gray artifact.
+- Restored tile-view default on conference join for better scaling in larger groups (12/15/40 participants).
+- Enabled `disableTileEnlargement: true` so participant tiles keep more consistent sizing in multi-user sessions.
+- Updated cache-bust in `index.html` for immediate live pickup.
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app
