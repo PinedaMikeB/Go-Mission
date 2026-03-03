@@ -42,7 +42,7 @@ const GroupMeeting = {
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
   allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
-  USE_PREJOIN: false, // Keep direct-join in embed for reliability
+  USE_PREJOIN: true, // Default Jitsi prejoin flow
   
   // Meeting window (minutes before/after scheduled time)
   MEETING_WINDOW_BEFORE: 15,  // Can join 15 min before

@@ -95,6 +95,22 @@
   - If running both: provision separate meeting domain for KVM4 and route app traffic intentionally
 - Run live room join test against KVM4 domain target after DNS update.
 
+### Update (2026-03-03, emergency) — Full Fresh Reinstall on KVM4 (No Old Config Copy)
+
+- Per request, old Jitsi stack on `187.77.133.57` was fully purged and reinstalled fresh.
+- Explicitly **did not copy** old config files from previous node.
+- Clean install path completed:
+  - Purged: `jitsi-meet`, `jicofo`, `jitsi-videobridge2`, `prosody`, `coturn`, old configs and old LE cert files.
+  - Reinstalled: `jitsi-meet` + dependencies on clean state.
+  - Installed Prosody package path compatible with current Jitsi deps (`prosody-0.12`).
+  - Re-issued Let's Encrypt cert for `call.wotgonline.com`.
+- Runtime validation after clean restart:
+  - `jicofo /stats` shows `bridge_count=1`, `operational_bridge_count=1`.
+  - Services active: `nginx`, `prosody`, `jicofo`, `jitsi-videobridge2`, `coturn`.
+- App-side reset to default startup mode:
+  - `group-meeting.js`: `USE_PREJOIN: true` (default prejoin flow).
+  - `index.html`: cache-bust version updated to force clients to fetch latest meeting module.
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app
