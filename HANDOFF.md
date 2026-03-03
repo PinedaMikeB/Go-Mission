@@ -119,6 +119,16 @@
 - Added top-left brand mask in meeting stage to hide visible Jitsi logo/watermark area inside embed.
 - Left meeting state feedback behavior unchanged per request.
 
+### Update (2026-03-03, UI pass 2) — Header + Stage Polish
+
+- Replaced previous hard black watermark mask with a softer branded overlay treatment to remove the visible black-square artifact.
+- Refined header layout for tighter mobile spacing:
+  - group name now supports two-line clamp (less aggressive truncation),
+  - `Slides` / `Leave` buttons reduced visual bulk while retaining prominence.
+- Improved stage framing:
+  - removed forced `setTileView(true)` on join so Jitsi can use default framing and avoid excess dead space in one-participant view.
+- Updated `group-meeting.js` script cache-bust in `index.html` to force live clients to fetch the new UI.
+
 ## Quick Context
 - **App**: Disciple-making journey for Filipino seekers worldwide
 - **Live**: https://gomission.netlify.app

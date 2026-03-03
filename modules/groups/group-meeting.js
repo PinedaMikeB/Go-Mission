@@ -416,11 +416,6 @@ const GroupMeeting = {
         }
         this.setMeetingStatus('');
         this.onJoined(groupId, userName);
-        
-        // Switch to tile view for better group view
-        setTimeout(() => {
-          this.api.executeCommand('setTileView', true);
-        }, 1000);
       });
       
       this.api.addListener('videoConferenceLeft', (data) => {
@@ -539,14 +534,14 @@ const GroupMeeting = {
     modal.style.flexDirection = 'column';
     modal.innerHTML = `
       <!-- Header -->
-      <div class="flex-shrink-0 px-4 py-3 border-b"
+      <div class="flex-shrink-0 px-3 py-2 border-b"
            style="background: linear-gradient(135deg, rgba(10,10,10,0.98), rgba(32,12,8,0.96)); border-color: rgba(245, 180, 53, 0.22); box-shadow: inset 0 -1px 0 rgba(255,255,255,0.03);">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
             <span class="text-2xl" style="filter: drop-shadow(0 0 10px rgba(255,120,0,0.3));">🔥</span>
             <div class="min-w-0">
-              <p class="font-bold text-sm truncate"
-                 style="color: #f7f2e9; letter-spacing: 0.01em; text-shadow: 0 1px 2px rgba(0,0,0,0.55);">
+              <p class="font-bold text-sm"
+                 style="color: #f7f2e9; letter-spacing: 0.01em; text-shadow: 0 1px 2px rgba(0,0,0,0.55); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.15;">
                 ${groupName || 'Go Mission Meeting'}
               </p>
               <p id="participant-count" class="text-xs"
@@ -556,13 +551,13 @@ const GroupMeeting = {
           <div class="flex items-center gap-2 shrink-0">
             <button onclick="window.GroupMeeting.toggleSlidesPanel()"
                     id="meeting-slides-toggle-btn"
-                    class="px-4 py-2 rounded-full text-sm font-bold transition-all"
-                    style="background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 8px 20px rgba(242, 162, 37, 0.28), inset 0 1px 0 rgba(255,255,255,0.35);">
+                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-all"
+                    style="background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
               🗂 Slides
             </button>
             <button onclick="window.GroupMeeting.leaveMeeting()" 
-                    class="px-4 py-2 rounded-full text-sm font-bold transition-colors"
-                    style="background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 10px 20px rgba(210, 22, 22, 0.30);">
+                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-colors"
+                    style="background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 6px 14px rgba(210, 22, 22, 0.28);">
               ✕ Leave
             </button>
           </div>
@@ -618,12 +613,16 @@ const GroupMeeting = {
       </div>
       
       <!-- Jitsi Container -->
-      <div class="relative flex-1 w-full">
+      <div class="relative flex-1 w-full overflow-hidden">
         <div id="jitsi-container" class="absolute inset-0"></div>
-        <!-- Brand mask: hides top-left Jitsi watermark/logo area -->
         <div aria-hidden="true"
              class="pointer-events-none absolute left-0 top-0 z-[5]"
-             style="width: 150px; height: 82px; background: #000;"></div>
+             style="width: 176px; height: 70px; background: linear-gradient(120deg, rgba(0,0,0,0.96), rgba(0,0,0,0.72) 68%, rgba(0,0,0,0));"></div>
+        <div aria-hidden="true"
+             class="pointer-events-none absolute left-3 top-3 z-[6] px-2.5 py-1.5 rounded-lg"
+             style="background: rgba(0,0,0,0.62); border: 1px solid rgba(245, 180, 53, 0.25); backdrop-filter: blur(2px);">
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.13em; color: #f5c542;">GO MISSION LIVE</span>
+        </div>
       </div>
     `;
     
