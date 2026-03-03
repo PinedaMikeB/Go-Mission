@@ -2515,12 +2515,15 @@
                         <p class="col-span-8 text-xs text-[var(--text-muted)] text-center py-4">Loading emojis...</p>
                     </div>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 items-end">
                     <button id="dmEmojiToggleBtn" onclick="window.ChatApp && window.ChatApp.toggleDmEmojiPicker && window.ChatApp.toggleDmEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji" aria-label="Add emoji">
                         😊
                     </button>
-                    <input id="dmChatInput" type="text" placeholder="Type a message..." onkeypress="window.ChatApp && window.ChatApp.handleDmKeyPress && window.ChatApp.handleDmKeyPress(event)" onfocus="window.ChatApp && window.ChatApp.closeDmEmojiPicker && window.ChatApp.closeDmEmojiPicker()"
-                           class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50">
+                    <button id="dmBoldBtn" onclick="window.ChatApp && window.ChatApp.wrapDmSelectionWithBold && window.ChatApp.wrapDmSelectionWithBold()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text" aria-label="Bold selected text">
+                        B
+                    </button>
+                    <textarea id="dmChatInput" rows="1" placeholder="Type a message..." onkeydown="window.ChatApp && window.ChatApp.handleDmKeyDown && window.ChatApp.handleDmKeyDown(event)" oninput="window.ChatApp && window.ChatApp.handleDmInput && window.ChatApp.handleDmInput(event)" onfocus="window.ChatApp && window.ChatApp.closeDmEmojiPicker && window.ChatApp.closeDmEmojiPicker()"
+                           class="flex-1 min-h-[48px] max-h-44 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none overflow-y-auto"></textarea>
                     <button id="dmChatSendBtn" onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
                         <span id="dmChatSendIconWrap" class="inline-flex items-center justify-center">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2591,9 +2594,12 @@
                 <input id="chatGalleryInput" type="file" accept="image/*" class="hidden" onchange="GroupChat.handleAttachmentSelected(event, 'gallery')">
                 <input id="chatCameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="GroupChat.handleAttachmentSelected(event, 'camera')">
 
-                <div class="flex gap-2 items-center">
+                <div class="flex gap-2 items-end">
                     <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
                         😊
+                    </button>
+                    <button id="chatBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
+                        B
                     </button>
                     <button id="chatAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2601,16 +2607,16 @@
                         </svg>
                     </button>
                     <div class="flex-1 relative">
-                        <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[var(--text-color)] overflow-hidden rounded-xl"><span id="chatInputPreviewText" class="block min-w-full whitespace-pre"></span></div>
-                        <input type="text" id="chatInput" placeholder="Type a message..." 
-                               class="relative z-10 w-full bg-transparent border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-transparent placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
+                        <div id="chatInputPreview" class="pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[var(--text-color)] overflow-hidden rounded-xl"><div id="chatInputPreviewText" class="block whitespace-pre-wrap break-words"></div></div>
+                        <textarea id="chatInput" rows="1" placeholder="Type a message..." 
+                               class="relative z-10 w-full min-h-[48px] max-h-44 bg-transparent border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-transparent placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto"
                                style="caret-color: var(--text-color);"
                                oninput="GroupChat.handleInputChange(event)"
                                onscroll="GroupChat.syncComposerPreviewScroll(event)"
                                onkeyup="GroupChat.syncComposerPreviewScroll(event)"
                                onfocus="GroupChat.handleComposerInputFocus(event)"
                                onclick="GroupChat.syncComposerPreviewScroll(event)"
-                               onkeypress="GroupChat.handleKeyPress(event)">
+                               onkeydown="GroupChat.handleComposerKeyDown(event)"></textarea>
                     </div>
                     <button id="chatSendBtn" onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 h-12 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2640,8 +2646,12 @@
                     <textarea id="chatFullscreenInput"
                               class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Type a message..."
-                              oninput="GroupChat.handleFullscreenComposerInput(event)"></textarea>
+                              oninput="GroupChat.handleFullscreenComposerInput(event)"
+                              onkeydown="GroupChat.handleFullscreenComposerKeyDown(event)"></textarea>
                     <div class="flex gap-2">
+                        <button id="chatFullscreenBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatFullscreenInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
+                            B
+                        </button>
                         <button id="chatFullscreenAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.19-9.2a3.5 3.5 0 114.95 4.95l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.49"></path>
@@ -2652,6 +2662,38 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
                             <span data-chat-send-label>Send</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full-screen edit overlay (for editing sent messages) -->
+        <div id="chatEditModal" class="fixed inset-0 z-[145] hidden bg-[var(--bg-color)]/95 backdrop-blur-sm">
+            <div class="h-full flex flex-col">
+                <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] px-4 py-3 flex items-center justify-between gap-2">
+                    <button id="chatEditCancelBtn" onclick="GroupChat.closeEditComposer()" class="px-3 py-2 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-color)] text-sm font-semibold">
+                        Cancel
+                    </button>
+                    <p id="chatEditTitle" class="text-sm font-bold text-[var(--text-color)]">Edit Message</p>
+                    <button id="chatEditSaveBtn" onclick="GroupChat.saveEditedMessage()" class="px-3 py-2 rounded-lg bg-amber-500 text-[#2a0505] text-sm font-bold hover:bg-amber-400">
+                        Save
+                    </button>
+                </div>
+                <div class="p-4 flex-1 flex flex-col gap-3">
+                    <div class="rounded-xl border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-xs text-[var(--text-muted)]">
+                        Use line breaks for structure. For bold text, select words and tap <span class="font-bold text-amber-500">B</span>.
+                    </div>
+                    <textarea id="chatEditInput"
+                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none"
+                              placeholder="Edit message..."
+                              onkeydown="GroupChat.handleEditComposerKeyDown(event)"></textarea>
+                    <div class="flex gap-2">
+                        <button id="chatEditBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatEditInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
+                            B
+                        </button>
+                        <button id="chatEditFooterSaveBtn" onclick="GroupChat.saveEditedMessage()" class="flex-1 h-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors">
+                            Save Changes
                         </button>
                     </div>
                 </div>

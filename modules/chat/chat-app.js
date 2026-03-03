@@ -588,6 +588,7 @@ const ChatApp = {
     if (photo) photo.src = this.getMemberPhoto(peer);
     if (name) name.textContent = this.getMemberDisplayName(peer) || 'Direct Message';
     if (input) input.value = '';
+    this.autoResizeDmInput(input);
     this.closeDmEmojiPicker();
     this.dmIsSending = false;
     this.setDmComposerSendingState(false);
@@ -694,7 +695,7 @@ const ChatApp = {
       html += `
         <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
           <div class="max-w-[80%] rounded-2xl border ${isMe ? 'bg-amber-500/20 border-amber-500/30' : 'bg-[var(--card-bg)] border-[var(--card-border)]'} px-3 py-2">
-            <p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.escapeHtml(message.text || '')}</p>
+            <p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(message.text || '')}</p>
             <p class="text-[10px] text-[var(--text-muted)] mt-1 ${isMe ? 'text-right' : ''}">${timeLabel}</p>
           </div>
         </div>
@@ -755,6 +756,7 @@ const ChatApp = {
       );
 
       input.value = '';
+      this.autoResizeDmInput(input);
       await this.loadDirectMessages(true);
       await this.buildDirectThreads();
       this.renderDirect();
@@ -768,13 +770,33 @@ const ChatApp = {
   },
 
   /**
-   * Enter key send for DM input
+   * Keep Enter for line breaks; use Ctrl/Cmd+Enter to send.
    */
-  handleDmKeyPress(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
+  handleDmKeyDown(event) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       this.sendDirectMessage();
     }
+  },
+
+  /**
+   * Auto-grow DM composer textarea.
+   */
+  handleDmInput(event) {
+    this.autoResizeDmInput(event?.target || null);
+  },
+
+  /**
+   * Resize helper for DM textarea.
+   */
+  autoResizeDmInput(inputEl = null) {
+    const input = inputEl || document.getElementById('dmChatInput');
+    if (!input) return;
+    const maxHeight = 176;
+    input.style.height = 'auto';
+    const nextHeight = Math.min(maxHeight, Math.max(48, input.scrollHeight || 48));
+    input.style.height = `${nextHeight}px`;
+    input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
   },
 
   /**
@@ -836,6 +858,41 @@ const ChatApp = {
       input.setSelectionRange(nextPos, nextPos);
     }
     input.focus();
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Wrap selected text in **bold** markers in DM composer.
+   */
+  wrapDmSelectionWithBold() {
+    const input = document.getElementById('dmChatInput');
+    if (!input) return;
+
+    const value = input.value || '';
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : value.length;
+    const selected = value.slice(start, end);
+    const hasSelection = end > start;
+    const replacement = hasSelection ? `**${selected}**` : '**bold**';
+
+    input.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+    const cursorStart = start + 2;
+    const cursorEnd = hasSelection ? cursorStart + selected.length : cursorStart + 4;
+    if (typeof input.setSelectionRange === 'function') {
+      input.setSelectionRange(cursorStart, cursorEnd);
+    }
+    input.focus();
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Render DM message body with safe bold + line break support.
+   */
+  formatDmMessageRichText(text = '') {
+    const escaped = this.escapeHtml(String(text || ''));
+    if (!escaped) return '';
+    const withBold = escaped.replace(/\*\*([^\n*][^*]*?)\*\*/g, '<strong class="font-bold text-[var(--text-color)]">$1</strong>');
+    return withBold.replace(/\n/g, '<br>');
   },
 
   /**
@@ -845,8 +902,9 @@ const ChatApp = {
     const input = document.getElementById('dmChatInput');
     const sendBtn = document.getElementById('dmChatSendBtn');
     const emojiBtn = document.getElementById('dmEmojiToggleBtn');
+    const boldBtn = document.getElementById('dmBoldBtn');
 
-    [input, sendBtn, emojiBtn].filter(Boolean).forEach((el) => {
+    [input, sendBtn, emojiBtn, boldBtn].filter(Boolean).forEach((el) => {
       if (isSending) {
         el.setAttribute('disabled', 'disabled');
         el.classList.add('opacity-60', 'cursor-not-allowed');

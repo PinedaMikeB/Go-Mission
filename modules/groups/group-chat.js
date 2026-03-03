@@ -75,6 +75,9 @@ const GroupChat = {
   pendingAttachment: null,
   isSendingAttachment: false,
   isSendingMessage: false,
+  editingMessageId: null,
+  editingMessageIsImage: false,
+  isSavingEditMessage: false,
   isFullscreenComposerOpen: false,
   suppressNextComposerFocusOverlay: false,
   forwardSourceMessageId: null,
@@ -239,14 +242,21 @@ const GroupChat = {
     this.releasePendingAttachmentPreview();
     this.pendingAttachment = null;
     this.isSendingAttachment = false;
+    this.isSendingMessage = false;
     this.forwardSourceMessageId = null;
+    this.editingMessageId = null;
+    this.editingMessageIsImage = false;
+    this.isSavingEditMessage = false;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
     this.closeForwardModal(true);
+    this.closeEditComposer(true);
     this.closeFullscreenComposer(true, true);
     this.renderEmojiPicker();
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
+    this.setComposerSendingState(false);
+    this.autoResizeComposerInput(input);
     this.renderComposerPreview('');
     this.renderReplyDraft();
     this.renderAttachmentDraft();
@@ -285,13 +295,20 @@ const GroupChat = {
     this.releasePendingAttachmentPreview();
     this.pendingAttachment = null;
     this.isSendingAttachment = false;
+    this.isSendingMessage = false;
     this.forwardSourceMessageId = null;
+    this.editingMessageId = null;
+    this.editingMessageIsImage = false;
+    this.isSavingEditMessage = false;
     this.closeComposeEmojiPicker();
     this.closeMentionPicker();
     this.closeForwardModal(true);
+    this.closeEditComposer(true);
     this.closeFullscreenComposer(true, true);
     const input = document.getElementById('chatInput');
     if (input) input.value = '';
+    this.setComposerSendingState(false);
+    this.autoResizeComposerInput(input);
     this.renderComposerPreview('');
     this.renderReplyDraft();
     this.renderAttachmentDraft();
@@ -914,6 +931,7 @@ const GroupChat = {
       // Clear input
       const input = document.getElementById('chatInput');
       if (input) input.value = '';
+      this.autoResizeComposerInput(input);
       this.closeComposeEmojiPicker(true);
       this.closeMentionPicker();
       this.selectedMentionsByToken = {};
@@ -1335,7 +1353,7 @@ const GroupChat = {
     if (!replySenderRaw && !replyTextRaw) return '';
 
     const replySender = this.escapeHtml(replySenderRaw || 'Someone');
-    const preview = this.highlightMentions(this.escapeHtml(replyTextRaw || ''));
+    const preview = this.formatMessageRichText(replyTextRaw || '');
     const isOwnMessage = message?.senderId === window.currentUser?.uid;
     const headline = isOwnMessage ? `↩ You replied to ${replySender}` : `↩ Replied to ${replySender}`;
     return `
@@ -1371,13 +1389,25 @@ const GroupChat = {
 
     if (hasImage) {
       if (caption) {
-        return `<p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(caption))}</p>`;
+        return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatMessageRichText(caption)}</p>`;
       }
       if (rawText === '📷 Photo' || !rawText) return '';
     }
 
     if (!rawText) return '';
-    return `<p class="text-sm text-[var(--text-color)]">${this.highlightMentions(this.escapeHtml(rawText))}</p>`;
+    return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatMessageRichText(rawText)}</p>`;
+  },
+
+  /**
+   * Format message body with safe escaped HTML + mention highlight + markdown bold + line breaks.
+   */
+  formatMessageRichText(text = '') {
+    const escaped = this.escapeHtml(String(text || ''));
+    if (!escaped) return '';
+
+    const withMentions = this.highlightMentions(escaped);
+    const withBold = withMentions.replace(/\*\*([^\n*][^*]*?)\*\*/g, '<strong class="font-bold text-[var(--text-color)]">$1</strong>');
+    return withBold.replace(/\n/g, '<br>');
   },
 
   /**
@@ -1418,12 +1448,14 @@ const GroupChat = {
   setComposerSendingState(isSending) {
     const sendBtn = document.getElementById('chatSendBtn');
     const attachBtn = document.getElementById('chatAttachBtn');
+    const boldBtn = document.getElementById('chatBoldBtn');
     const input = document.getElementById('chatInput');
     const fullscreenSendBtn = document.getElementById('chatFullscreenSendBtn');
     const fullscreenAttachBtn = document.getElementById('chatFullscreenAttachBtn');
+    const fullscreenBoldBtn = document.getElementById('chatFullscreenBoldBtn');
     const fullscreenInput = document.getElementById('chatFullscreenInput');
 
-    [sendBtn, attachBtn, input, fullscreenSendBtn, fullscreenAttachBtn, fullscreenInput]
+    [sendBtn, attachBtn, boldBtn, input, fullscreenSendBtn, fullscreenAttachBtn, fullscreenBoldBtn, fullscreenInput]
       .filter(Boolean)
       .forEach((el) => {
         if (isSending) {
@@ -1688,6 +1720,7 @@ const GroupChat = {
 
     if (syncBack && fullscreenInput && input) {
       input.value = fullscreenInput.value || '';
+      this.autoResizeComposerInput(input);
       this.handleInputChange({ target: input });
       this.syncComposerPreviewScroll({ target: input });
     }
@@ -1709,6 +1742,7 @@ const GroupChat = {
     const input = document.getElementById('chatInput');
     if (!fullscreenInput || !input) return;
     input.value = fullscreenInput.value || '';
+    this.autoResizeComposerInput(input);
     this.handleInputChange({ target: input });
   },
 
@@ -1721,6 +1755,7 @@ const GroupChat = {
     const input = document.getElementById('chatInput');
     if (!fullscreenInput || !input) return;
     input.value = fullscreenInput.value || '';
+    this.autoResizeComposerInput(input);
     this.handleInputChange({ target: input });
   },
 
@@ -1796,6 +1831,7 @@ const GroupChat = {
   async handleInputChange(event) {
     const input = event?.target || document.getElementById('chatInput');
     if (!input) return;
+    this.autoResizeComposerInput(input);
     this.renderComposerPreview(input.value || '');
     this.syncComposerPreviewScroll({ target: input });
     await this.renderMentionSuggestions(input.value || '', input.selectionStart ?? input.value.length);
@@ -1803,13 +1839,15 @@ const GroupChat = {
   },
 
   /**
-   * Keep highlighted preview aligned with horizontal input scrolling.
+   * Keep highlighted preview aligned with textarea scrolling.
    */
   syncComposerPreviewScroll(event) {
     const input = event?.target || document.getElementById('chatInput');
     const previewText = document.getElementById('chatInputPreviewText');
     if (!input || !previewText) return;
-    previewText.style.transform = `translateX(${-1 * (input.scrollLeft || 0)}px)`;
+    const x = -1 * (input.scrollLeft || 0);
+    const y = -1 * (input.scrollTop || 0);
+    previewText.style.transform = `translate(${x}px, ${y}px)`;
   },
 
   /**
@@ -1831,7 +1869,7 @@ const GroupChat = {
     const escaped = this.escapeHtml(String(text || ''));
     if (!escaped) return '';
 
-    return escaped.replace(
+    const withMentions = escaped.replace(
       /(^|\s)(@[a-zA-Z0-9._-]{2,32})/g,
       (match, prefix, mention) => {
         const token = this.normalizeMentionToken(mention);
@@ -1840,6 +1878,43 @@ const GroupChat = {
         return `${prefix}<span class="${mentionClass}">${mention}</span>`;
       }
     );
+    const withBold = withMentions.replace(/\*\*([^\n*][^*]*?)\*\*/g, '<strong class="font-bold text-[var(--text-color)]">$1</strong>');
+    return withBold.replace(/\n/g, '<br>');
+  },
+
+  /**
+   * Auto-grow compact composer textarea without exceeding max height.
+   */
+  autoResizeComposerInput(inputEl = null) {
+    const input = inputEl || document.getElementById('chatInput');
+    if (!input) return;
+    const maxHeight = 176;
+    input.style.height = 'auto';
+    const nextHeight = Math.min(maxHeight, Math.max(48, input.scrollHeight || 48));
+    input.style.height = `${nextHeight}px`;
+    input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+  },
+
+  /**
+   * Keep Enter for line breaks; use Ctrl/Cmd+Enter to send.
+   */
+  handleComposerKeyDown(event) {
+    if (!event) return;
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.handleSend();
+    }
+  },
+
+  /**
+   * Fullscreen composer keyboard shortcut (Ctrl/Cmd+Enter to send).
+   */
+  handleFullscreenComposerKeyDown(event) {
+    if (!event) return;
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.sendFromFullscreenComposer();
+    }
   },
 
   /**
@@ -1953,6 +2028,7 @@ const GroupChat = {
     input.value = nextValue;
     input.setSelectionRange(cursorPos, cursorPos);
     input.focus();
+    this.autoResizeComposerInput(input);
 
     this.selectedMentionsByToken[safeToken] = {
       uid,
@@ -2046,10 +2122,41 @@ const GroupChat = {
     const nextPos = start + emoji.length;
     input.setSelectionRange(nextPos, nextPos);
     input.focus();
+    this.autoResizeComposerInput(input);
     this.renderComposerPreview(input.value);
     this.syncComposerPreviewScroll({ target: input });
     this.renderMentionSuggestions(input.value, nextPos);
     this.syncMainInputToFullscreenComposer();
+  },
+
+  /**
+   * Wrap selected text in **bold** markers inside a composer textarea.
+   */
+  wrapSelectionWithBold(inputId = 'chatInput') {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const value = input.value || '';
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : value.length;
+    const selected = value.slice(start, end);
+    const hasSelection = end > start;
+    const replacement = hasSelection ? `**${selected}**` : '**bold**';
+
+    input.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+    const cursorStart = start + 2;
+    const cursorEnd = hasSelection ? cursorStart + selected.length : cursorStart + 4;
+    if (typeof input.setSelectionRange === 'function') {
+      input.setSelectionRange(cursorStart, cursorEnd);
+    }
+    input.focus();
+
+    if (inputId === 'chatEditInput') return;
+    if (inputId === 'chatFullscreenInput') {
+      this.handleFullscreenComposerInput({ target: input });
+      return;
+    }
+    this.handleInputChange({ target: input });
   },
 
   /**
@@ -2128,24 +2235,76 @@ const GroupChat = {
   },
 
   /**
-   * Edit a sent message (text/image caption) using a simple prompt dialog.
+   * Open full-screen editor for a sent message.
    */
-  async editMessage(messageId) {
+  editMessage(messageId) {
+    this.openEditComposer(messageId);
+  },
+
+  /**
+   * Open edit composer modal with current message text.
+   */
+  openEditComposer(messageId) {
     const message = this.messages.find((item) => item.id === messageId);
     if (!message) return;
     if (!this.canEditMessage(message)) {
       alert('Only your text messages or photo captions can be edited.');
       return;
     }
-    if (!window.db || !window.currentUser) return;
 
     const isImage = message.type === 'image';
     const currentValue = this.getEditableMessageText(message);
-    const promptLabel = isImage ? 'Edit photo caption:' : 'Edit message:';
-    const nextValueRaw = window.prompt(promptLabel, currentValue);
-    if (nextValueRaw === null) return;
+    const modal = document.getElementById('chatEditModal');
+    const title = document.getElementById('chatEditTitle');
+    const input = document.getElementById('chatEditInput');
+    if (!modal || !title || !input) return;
 
-    const nextValue = String(nextValueRaw);
+    this.editingMessageId = messageId;
+    this.editingMessageIsImage = isImage;
+    this.isSavingEditMessage = false;
+    this.setEditComposerBusy(false);
+    title.textContent = isImage ? 'Edit Photo Caption' : 'Edit Message';
+    input.value = currentValue;
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => input.focus());
+  },
+
+  /**
+   * Close edit composer modal.
+   */
+  closeEditComposer(silent = false) {
+    const modal = document.getElementById('chatEditModal');
+    if (modal) modal.classList.add('hidden');
+    this.editingMessageId = null;
+    this.editingMessageIsImage = false;
+    this.isSavingEditMessage = false;
+    this.setEditComposerBusy(false);
+
+    if (!silent) {
+      const input = document.getElementById('chatInput');
+      if (input && this.isOpen) input.focus();
+    }
+  },
+
+  /**
+   * Save edited message from modal textarea.
+   */
+  async saveEditedMessage() {
+    if (!this.editingMessageId || this.isSavingEditMessage) return;
+    if (!window.db || !window.currentUser) return;
+
+    const messageId = this.editingMessageId;
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message || !this.canEditMessage(message)) {
+      this.closeEditComposer(true);
+      return;
+    }
+
+    const isImage = this.editingMessageIsImage || message.type === 'image';
+    const input = document.getElementById('chatEditInput');
+    if (!input) return;
+    const nextValue = String(input.value || '');
+
     const trimmedValue = nextValue.trim();
 
     if (!isImage && !trimmedValue) {
@@ -2154,6 +2313,9 @@ const GroupChat = {
     }
 
     try {
+      this.isSavingEditMessage = true;
+      this.setEditComposerBusy(true);
+
       const mentions = (trimmedValue && /@[a-zA-Z0-9._-]{2,32}/.test(trimmedValue))
         ? await this.extractMentionsFromText(trimmedValue)
         : [];
@@ -2199,10 +2361,47 @@ const GroupChat = {
           senderName: message.senderName || 'Unknown'
         });
       }
+
+      this.closeEditComposer(true);
     } catch (error) {
       console.error('[GroupChat] Error editing message:', error);
       alert('Could not edit message. Please try again.');
+    } finally {
+      this.isSavingEditMessage = false;
+      this.setEditComposerBusy(false);
     }
+  },
+
+  /**
+   * Keyboard shortcut inside edit composer (Ctrl/Cmd+Enter to save).
+   */
+  handleEditComposerKeyDown(event) {
+    if (!event) return;
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.saveEditedMessage();
+    }
+  },
+
+  /**
+   * Toggle edit modal button/input state while saving.
+   */
+  setEditComposerBusy(isBusy) {
+    const saveTop = document.getElementById('chatEditSaveBtn');
+    const saveBottom = document.getElementById('chatEditFooterSaveBtn');
+    const cancelBtn = document.getElementById('chatEditCancelBtn');
+    const input = document.getElementById('chatEditInput');
+    const boldBtn = document.getElementById('chatEditBoldBtn');
+
+    [saveTop, saveBottom, cancelBtn, input, boldBtn].filter(Boolean).forEach((el) => {
+      if (isBusy) {
+        el.setAttribute('disabled', 'disabled');
+        el.classList.add('opacity-60', 'cursor-not-allowed');
+      } else {
+        el.removeAttribute('disabled');
+        el.classList.remove('opacity-60', 'cursor-not-allowed');
+      }
+    });
   },
 
   /**
