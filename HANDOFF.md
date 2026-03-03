@@ -16,6 +16,15 @@
   - Validate on production (`gomission.netlify.app`) on both iOS Safari and Android Chrome.
   - If a device previously denied permissions, user must re-allow camera/mic in browser site settings, then tap `Retry`.
 
+### Update (2026-03-03, same thread) — Reverted to Default Startup for Stability
+
+- Removed forced media priming (`getUserMedia`) and post-join forced unmute logic due ongoing connection/start instability reports.
+- Restored near-default Jitsi startup behavior:
+  - `prejoinPageEnabled: true`
+  - `prejoinConfig.enabled: true`
+  - keep `startWithAudioMuted: false`, `startWithVideoMuted: false`
+- Removed extra media/network overrides from embed options (`constraints`, explicit `bosh/websocket`, `startSilent`) to reduce custom edge-case failures.
+
 ## Current Task Status (2026-02-22) — Meeting Slides Admin DOCX Upload
 
 - **Active modules**
