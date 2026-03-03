@@ -681,6 +681,21 @@
         <div class="col-6 panel">
           <h2>Announcements</h2>
           <p class="sub">Save announcements and optionally push to selected recipients.</p>
+          <div class="row" style="margin-top:10px;">
+            <div>
+              <label for="announcementTitlePreset">Title preset (optional)</label>
+              <select id="announcementTitlePreset">
+                <option value="">Type custom title...</option>
+              </select>
+            </div>
+            <div>
+              <label for="announcementBodyPreset">Message preset (optional)</label>
+              <select id="announcementBodyPreset">
+                <option value="">Type custom message...</option>
+              </select>
+            </div>
+          </div>
+          <div class="small">Ready-made notifications are stored in a reusable list for manual send, scheduling, and approval workflows.</div>
           <div class="row">
             <div>
               <label for="announcementTitle">Title</label>
@@ -718,6 +733,10 @@
           <div class="actions">
             <button id="sendAnnouncementBtn">Save and Send</button>
             <button id="clearAnnouncementBtn" class="secondary">Clear</button>
+          </div>
+          <div class="actions">
+            <button id="saveAnnouncementTemplateBtn" class="secondary">Save to Notifications List</button>
+            <button id="reloadAnnouncementTemplatesBtn" class="secondary">Reload Presets</button>
           </div>
           <div id="announcementStatus" class="small"></div>
         </div>
@@ -1167,6 +1186,11 @@ match /goMission_announcements/{docId} {
   allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
 }
 
+match /goMission_notificationTemplates/{docId} {
+  allow read: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+  allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
+}
+
 match /goMission_sundayVideos/{docId} {
   allow read: if true;
   allow write: if request.auth != null && request.auth.uid in ['9zVKHJ11zaXD0f4GI6P7LHD6re32'];
@@ -1269,6 +1293,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let latestGroupIntegrityState = null;
     let activeDuplicateInspector = null;
     let latestGroupIntegrityLogs = [];
+    let announcementTemplates = [];
 
     const METRIC_DETAILS_CONFIG = {
       active_users: {
@@ -1312,6 +1337,25 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const GROUP_DELETION_REQUESTS_COLLECTION = 'goMission_groupDeletionRequests';
     const ADMIN_INBOX_COLLECTION = 'goMission_adminInbox';
     const GROUP_INTEGRITY_LOGS_COLLECTION = 'goMission_integrityLogs';
+    const NOTIFICATION_TEMPLATES_COLLECTION = 'goMission_notificationTemplates';
+
+    const DEFAULT_ANNOUNCEMENT_TEMPLATES = [
+      {
+        title: 'Video Meeting Server Upgrade',
+        body: 'We noticed last Saturday that some mission group meetings became unstable due to a sudden increase in participants. We have upgraded our video meeting server. Thank you for your patience, and enjoy your meeting.',
+        category: 'infra_update'
+      },
+      {
+        title: 'System Maintenance Advisory',
+        body: 'We are running scheduled maintenance to improve app stability. Some features may refresh during the update window. Thank you for your patience.',
+        category: 'maintenance'
+      },
+      {
+        title: 'Feature Update Released',
+        body: 'A new app update is now live with improvements to mission groups and meeting reliability. Please refresh your app to get the latest experience.',
+        category: 'feature_release'
+      }
+    ];
 
     function showStatus(message, type = 'info', sticky = false) {
       globalStatus.className = `status-banner show ${type}`;
@@ -3848,6 +3892,209 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return { targetType: 'all', targetId: null, targetFilter: {} };
     }
 
+    function normalizeAnnouncementTemplateText(value) {
+      return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    function stableHash(input) {
+      let hash = 0;
+      const str = String(input || '');
+      for (let i = 0; i < str.length; i += 1) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash).toString(36);
+    }
+
+    function buildAnnouncementTemplateId(title, body) {
+      return `tmpl_${stableHash(`${normalizeAnnouncementTemplateText(title)}|${normalizeAnnouncementTemplateText(body)}`)}`;
+    }
+
+    function truncateTemplatePreview(text, max = 96) {
+      const clean = String(text || '').replace(/\s+/g, ' ').trim();
+      if (clean.length <= max) return clean;
+      return `${clean.slice(0, max - 1)}…`;
+    }
+
+    function findAnnouncementTemplateById(templateId) {
+      return announcementTemplates.find((item) => item.id === templateId) || null;
+    }
+
+    function renderAnnouncementPresetOptions() {
+      const titleSelect = document.getElementById('announcementTitlePreset');
+      const bodySelect = document.getElementById('announcementBodyPreset');
+      if (!titleSelect || !bodySelect) return;
+
+      titleSelect.innerHTML = '';
+      bodySelect.innerHTML = '';
+
+      const titleDefault = document.createElement('option');
+      titleDefault.value = '';
+      titleDefault.textContent = 'Type custom title...';
+      titleSelect.appendChild(titleDefault);
+
+      const bodyDefault = document.createElement('option');
+      bodyDefault.value = '';
+      bodyDefault.textContent = 'Type custom message...';
+      bodySelect.appendChild(bodyDefault);
+
+      const uniqueTitles = new Map();
+      announcementTemplates.forEach((item) => {
+        const key = normalizeAnnouncementTemplateText(item.title);
+        if (key && !uniqueTitles.has(key)) {
+          uniqueTitles.set(key, item);
+        }
+      });
+
+      uniqueTitles.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.title;
+        titleSelect.appendChild(option);
+      });
+
+      announcementTemplates.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.title} — ${truncateTemplatePreview(item.body, 88)}`;
+        bodySelect.appendChild(option);
+      });
+    }
+
+    async function upsertAnnouncementTemplate({
+      title,
+      body,
+      category = 'manual',
+      source = 'admin_announcement',
+      incrementUsage = true
+    }) {
+      const cleanTitle = String(title || '').trim();
+      const cleanBody = String(body || '').trim();
+      if (!cleanTitle || !cleanBody) return null;
+
+      const templateId = buildAnnouncementTemplateId(cleanTitle, cleanBody);
+      const templateRef = doc(db, NOTIFICATION_TEMPLATES_COLLECTION, templateId);
+      const existingSnap = await getDoc(templateRef);
+      const existingData = existingSnap.exists() ? (existingSnap.data() || {}) : {};
+      const usageCount = Number(existingData.usageCount || 0);
+
+      const payload = {
+        title: cleanTitle,
+        body: cleanBody,
+        category: category || existingData.category || 'manual',
+        source: source || existingData.source || 'admin_announcement',
+        approvalStatus: existingData.approvalStatus || 'approved',
+        usageCount: incrementUsage ? usageCount + 1 : usageCount,
+        updatedAt: serverTimestamp(),
+        updatedByUid: auth.currentUser?.uid || null,
+        updatedByEmail: auth.currentUser?.email || null
+      };
+
+      if (!existingSnap.exists()) {
+        payload.createdAt = serverTimestamp();
+        payload.createdByUid = auth.currentUser?.uid || null;
+        payload.createdByEmail = auth.currentUser?.email || null;
+      }
+
+      await setDoc(templateRef, payload, { merge: true });
+      return templateId;
+    }
+
+    async function seedDefaultAnnouncementTemplates() {
+      for (const item of DEFAULT_ANNOUNCEMENT_TEMPLATES) {
+        await upsertAnnouncementTemplate({
+          title: item.title,
+          body: item.body,
+          category: item.category || 'system',
+          source: 'codex_seed',
+          incrementUsage: false
+        });
+      }
+    }
+
+    async function loadAnnouncementTemplates({ silent = false, ensureDefaults = true } = {}) {
+      try {
+        let snap;
+        try {
+          snap = await getDocs(query(
+            collection(db, NOTIFICATION_TEMPLATES_COLLECTION),
+            orderBy('updatedAt', 'desc'),
+            limit(200)
+          ));
+        } catch (_) {
+          snap = await getDocs(collection(db, NOTIFICATION_TEMPLATES_COLLECTION));
+        }
+
+        announcementTemplates = snap.docs.map((docSnap) => {
+          const data = docSnap.data() || {};
+          return {
+            id: docSnap.id,
+            title: String(data.title || '').trim(),
+            body: String(data.body || '').trim(),
+            category: data.category || 'manual',
+            usageCount: Number(data.usageCount || 0),
+            updatedAt: data.updatedAt || null
+          };
+        }).filter((item) => item.title && item.body);
+
+        if (!announcementTemplates.length && ensureDefaults) {
+          await seedDefaultAnnouncementTemplates();
+          await loadAnnouncementTemplates({ silent, ensureDefaults: false });
+          return;
+        }
+
+        renderAnnouncementPresetOptions();
+        if (!silent) {
+          setInlineStatus('announcementStatus', `Loaded ${announcementTemplates.length} notification template(s).`, 'info');
+        }
+      } catch (error) {
+        if (!silent) {
+          setInlineStatus('announcementStatus', `Failed to load notification templates: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    function applyAnnouncementTitlePreset(templateId) {
+      const template = findAnnouncementTemplateById(templateId);
+      if (!template) return;
+      const titleInput = document.getElementById('announcementTitle');
+      if (titleInput) titleInput.value = template.title;
+    }
+
+    function applyAnnouncementBodyPreset(templateId) {
+      const template = findAnnouncementTemplateById(templateId);
+      if (!template) return;
+      const bodyInput = document.getElementById('announcementBody');
+      if (bodyInput) bodyInput.value = template.body;
+    }
+
+    async function saveAnnouncementTemplateFromForm() {
+      const title = document.getElementById('announcementTitle').value.trim();
+      const body = document.getElementById('announcementBody').value.trim();
+
+      if (!title || !body) {
+        setInlineStatus('announcementStatus', 'Enter both title and message before saving to notifications list.', 'warn');
+        return;
+      }
+
+      try {
+        await upsertAnnouncementTemplate({
+          title,
+          body,
+          category: 'manual',
+          source: 'admin_template_save',
+          incrementUsage: false
+        });
+        await loadAnnouncementTemplates({ silent: true, ensureDefaults: false });
+        setInlineStatus('announcementStatus', 'Saved to notifications list.', 'success');
+      } catch (error) {
+        setInlineStatus('announcementStatus', `Failed to save notification template: ${error.message}`, 'error');
+      }
+    }
+
     function isRetryableCallableError(error) {
       const code = String(error?.code || '').toLowerCase();
       const message = String(error?.message || '').toLowerCase();
@@ -3964,6 +4211,21 @@ match /goMission/watch-series-covers/{allPaths=**} {
           return summary;
         };
 
+        const trackTemplateUsage = async (sourceTag) => {
+          try {
+            await upsertAnnouncementTemplate({
+              title,
+              body,
+              category: 'announcement',
+              source: sourceTag,
+              incrementUsage: true
+            });
+            await loadAnnouncementTemplates({ silent: true, ensureDefaults: false });
+          } catch (templateError) {
+            console.warn('[Announcements] Failed to upsert notification template:', templateError);
+          }
+        };
+
         let savedRef = null;
         let pushSummary = 'Saved without push.';
         const isSpecificMemberTest = audience === 'specific_member';
@@ -3974,6 +4236,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
             return;
           }
           pushSummary = await sendPushNow();
+          await trackTemplateUsage('admin_send_specific_member');
           setInlineStatus('announcementStatus', `Test push sent successfully. ${pushSummary} Not saved to announcements feed.`, 'success');
           return;
         } else {
@@ -3981,6 +4244,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (pushNow) {
             pushSummary = await sendPushNow();
           }
+          await trackTemplateUsage('admin_send');
         }
 
         const saveLabel = savedRef?.id
@@ -4000,6 +4264,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('announcementAudience').value = 'all_users';
       document.getElementById('announcementPushNow').checked = true;
       document.getElementById('announcementMemberLookup').value = '';
+      document.getElementById('announcementTitlePreset').value = '';
+      document.getElementById('announcementBodyPreset').value = '';
       document.getElementById('groupAudienceWrap').classList.add('hidden');
       document.getElementById('memberAudienceWrap').classList.add('hidden');
       setInlineStatus('announcementStatus', 'Announcement form cleared.', 'info');
@@ -5205,7 +5471,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
         loadWatchSeries(),
         loadWatchEpisodes(),
         loadRecentTraining(),
-        loadPublishedMeetingSlidesDeck()
+        loadPublishedMeetingSlidesDeck(),
+        loadAnnouncementTemplates({ silent: true, ensureDefaults: true })
       ]);
     }
 
@@ -5342,8 +5609,18 @@ match /goMission/watch-series-covers/{allPaths=**} {
         groupWrap.classList.toggle('hidden', value !== 'specific_group');
         memberWrap.classList.toggle('hidden', value !== 'specific_member');
       });
+      document.getElementById('announcementTitlePreset').addEventListener('change', (event) => {
+        applyAnnouncementTitlePreset(event.target.value);
+      });
+      document.getElementById('announcementBodyPreset').addEventListener('change', (event) => {
+        applyAnnouncementBodyPreset(event.target.value);
+      });
       document.getElementById('sendAnnouncementBtn').addEventListener('click', saveAndSendAnnouncement);
       document.getElementById('clearAnnouncementBtn').addEventListener('click', clearAnnouncementForm);
+      document.getElementById('saveAnnouncementTemplateBtn').addEventListener('click', saveAnnouncementTemplateFromForm);
+      document.getElementById('reloadAnnouncementTemplatesBtn').addEventListener('click', () => {
+        loadAnnouncementTemplates({ silent: false, ensureDefaults: true });
+      });
 
       document.getElementById('publishSundayVideoBtn').addEventListener('click', saveSundayVideo);
       document.getElementById('clearSundayVideoBtn').addEventListener('click', clearSundayVideoForm);

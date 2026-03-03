@@ -237,6 +237,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /goMission_notificationTemplates/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
     match /goMission_trainingContent/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

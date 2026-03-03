@@ -10,6 +10,44 @@ Each entry includes rollback instructions.
 
 ---
 
+## [v2.2.18] - 2026-03-03 📣 Admin Notifications List + Announcement Preset Workflow
+
+### ✅ Summary
+Upgraded Admin Announcements so titles/messages can be selected from reusable notification presets or typed manually, and every sent announcement is automatically saved back into the reusable notifications list.
+
+### Included Changes
+1. **Reusable notifications list (Firestore-backed)**
+   - Added `goMission_notificationTemplates` collection integration in admin.
+   - Added default Codex-style templates, including:
+     - `Video Meeting Server Upgrade`
+     - `System Maintenance Advisory`
+     - `Feature Update Released`
+2. **Dual compose mode: dropdown + manual**
+   - Added Title preset dropdown and Message preset dropdown.
+   - Preset selection populates title/message inputs but still allows manual edits.
+3. **Template persistence controls**
+   - Added `Save to Notifications List` and `Reload Presets` actions in Announcements panel.
+   - Added auto-template upsert after send/test-send so new announcements become reusable.
+4. **Rules support**
+   - Added Firestore admin read/write rule block for `goMission_notificationTemplates`.
+5. **Process memory update**
+   - Updated handoff to treat significant app/infrastructure changes as notification-template candidates by default.
+
+### Files Modified
+- `/admin.html`
+- `/firestore.rules`
+- `/HANDOFF.md`
+- `/CHANGELOG.md`
+- `/rollback-admin-announcement-templates-20260303.sh`
+
+### Rollback
+```bash
+cd "/Volumes/Wotg Drive Mike/GitHub/Go-Mission"
+./rollback-admin-announcement-templates-20260303.sh
+```
+
+---
+
 ## [v2.2.17] - 2026-03-03 🎛️ Jitsi Logo Research + Safe Branding Rollout Plan
 
 ### ✅ Summary

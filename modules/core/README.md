@@ -148,6 +148,30 @@ goMission_members/{
 - `showLoading()` / `hideLoading()` - Loading spinner
 - `formatDate(date)` - Date formatting
 
+## Admin Notifications Templates (Firestore)
+
+Collection: `goMission_notificationTemplates`
+
+```javascript
+// goMission_notificationTemplates/{templateId}
+{
+  title: "Video Meeting Server Upgrade",
+  body: "Reusable announcement message...",
+  category: "infra_update | maintenance | feature_release | manual | announcement",
+  source: "codex_seed | admin_template_save | admin_send | admin_send_specific_member",
+  approvalStatus: "approved",
+  usageCount: 0,
+  createdAt: timestamp,
+  createdByUid: "adminUid",
+  createdByEmail: "admin@email.com",
+  updatedAt: timestamp,
+  updatedByUid: "adminUid",
+  updatedByEmail: "admin@email.com"
+}
+```
+
+Used by Admin Announcements for dropdown presets + manual composition, and as a reusable notifications list for send/schedule/approval workflows.
+
 ## Dependencies
 - shared/firebase-config.js
 

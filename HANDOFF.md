@@ -2,6 +2,32 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 
+## Current Task Status (2026-03-03) — Admin Notifications List + Announcement Presets
+
+- **Active modules**
+  - `/admin.html`
+  - `/firestore.rules`
+  - `/HANDOFF.md`
+  - `/CHANGELOG.md`
+- **Goal**: Persist reusable announcement templates in a notifications list, allow dropdown/manual title+message composition, and auto-save sent announcements into reusable presets.
+- **Status**: ✅ Implemented
+  - Added Title preset + Message preset dropdowns in Admin Announcements panel.
+  - Added save/reload controls for notifications list templates.
+  - Added Firestore collection integration: `goMission_notificationTemplates`.
+  - Added default Codex-generated templates (including **Video Meeting Server Upgrade**).
+  - Added auto-upsert so every sent announcement is stored/reinforced in notifications list for future manual send/schedule/approval flow.
+
+### Operational Memory (Team Rule)
+
+- For significant production changes, create/update an announcement template in `goMission_notificationTemplates` so Admin can quickly send or schedule it later.
+- Keep announcement copy reusable and audience-ready (title + message both stored).
+
+### Next Steps
+
+- Add explicit `status` + `scheduledAt` fields in notifications list UI for direct schedule queueing (not only send-now flow).
+- Add approval workflow fields (`draft`, `pending_approval`, `approved`) and filters in admin list.
+- Add lightweight template manager table (search, edit, archive, usage count).
+
 ## Current Task Status (2026-03-03) — Jitsi Logo Research (Disable vs Replace, No Obstruction)
 
 - **Active modules**
