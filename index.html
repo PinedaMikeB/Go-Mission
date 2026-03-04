@@ -5184,7 +5184,18 @@
         
         // Toggle main menu (header menu button)
         window.__openingJournalFromMenu = false;
+        window.notifyJournalButtonWorking = function() {
+            const now = Date.now();
+            const last = Number(window.__journalDebugLastTap || 0);
+            if (now - last < 450) return;
+            window.__journalDebugLastTap = now;
+            alert('button is working');
+        };
+
         window.forceOpenJournalModal = async function() {
+            if (typeof window.notifyJournalButtonWorking === 'function') {
+                window.notifyJournalButtonWorking();
+            }
             const mainMenu = document.getElementById('mainMenuModal');
             if (mainMenu) {
                 mainMenu.remove();
@@ -5210,6 +5221,9 @@
         };
 
         window.openJournalFromMainMenu = async function(ev) {
+            if (typeof window.notifyJournalButtonWorking === 'function') {
+                window.notifyJournalButtonWorking();
+            }
             if (window.__openingJournalFromMenu) return false;
             window.__openingJournalFromMenu = true;
             const eventObj = ev || window.event;
