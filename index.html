@@ -5184,21 +5184,21 @@
         
         // Toggle main menu (header menu button)
         window.__openingJournalFromMenu = false;
-        window.notifyJournalButtonWorking = function() {
-            const now = Date.now();
-            const last = Number(window.__journalDebugLastTap || 0);
-            if (now - last < 450) return;
-            window.__journalDebugLastTap = now;
-            alert('button is working');
+        window.traceJournalStep = function(step, message, extra) {
+            const suffix = extra !== undefined ? ` ${typeof extra === 'string' ? extra : JSON.stringify(extra)}` : '';
+            console.log(`[JournalTrace] step ${step}: ${message}${suffix}`);
         };
 
         window.forceOpenJournalModal = async function() {
-            if (typeof window.notifyJournalButtonWorking === 'function') {
-                window.notifyJournalButtonWorking();
+            if (typeof window.traceJournalStep === 'function') {
+                window.traceJournalStep(1, 'forceOpenJournalModal called');
             }
             const mainMenu = document.getElementById('mainMenuModal');
             if (mainMenu) {
                 mainMenu.remove();
+                if (typeof window.traceJournalStep === 'function') {
+                    window.traceJournalStep(2, 'main menu removed');
+                }
             }
 
             const modal = document.getElementById('journalModal');
@@ -5208,6 +5208,9 @@
             }
 
             modal.classList.remove('hidden');
+            if (typeof window.traceJournalStep === 'function') {
+                window.traceJournalStep(3, 'journal modal shown');
+            }
             try {
                 if (typeof window.renderJournalEntriesList === 'function') {
                     await window.renderJournalEntriesList();
@@ -5221,8 +5224,8 @@
         };
 
         window.openJournalFromMainMenu = async function(ev) {
-            if (typeof window.notifyJournalButtonWorking === 'function') {
-                window.notifyJournalButtonWorking();
+            if (typeof window.traceJournalStep === 'function') {
+                window.traceJournalStep(1, 'openJournalFromMainMenu called');
             }
             if (window.__openingJournalFromMenu) return false;
             window.__openingJournalFromMenu = true;
