@@ -5247,7 +5247,6 @@
                                 </button>
                                 <button id="mainMenuJournalBtn"
                                    type="button"
-                                   onclick="openJournalFromMainMenu(event)"
                                    class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
@@ -5274,6 +5273,30 @@
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', menuHTML);
+                const journalBtn = document.getElementById('mainMenuJournalBtn');
+                if (journalBtn) {
+                    const openJournalHandler = (event) => {
+                        if (event?.preventDefault) event.preventDefault();
+                        if (event?.stopPropagation) event.stopPropagation();
+                        if (typeof window.openJournalFromMainMenu === 'function') {
+                            window.openJournalFromMainMenu(event);
+                            return;
+                        }
+
+                        // Last-resort fallback so local/file protocol testing still opens Journal UI.
+                        const mainMenu = document.getElementById('mainMenuModal');
+                        if (mainMenu) mainMenu.remove();
+                        const modal = document.getElementById('journalModal');
+                        if (modal) modal.classList.remove('hidden');
+                    };
+
+                    journalBtn.addEventListener('click', openJournalHandler);
+                    journalBtn.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            openJournalHandler(event);
+                        }
+                    });
+                }
             }
         };
         
