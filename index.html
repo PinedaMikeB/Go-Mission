@@ -5189,6 +5189,27 @@
             console.log(`[JournalTrace] step ${step}: ${message}${suffix}`);
         };
 
+        window.ensureJournalModalVisibility = function(modalEl) {
+            const modal = modalEl || document.getElementById('journalModal');
+            if (!modal) return null;
+
+            // Ensure modal is not trapped by parent stacking/overflow contexts.
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+
+            modal.classList.remove('hidden');
+            modal.removeAttribute('hidden');
+            modal.style.display = 'flex';
+            modal.style.position = 'fixed';
+            modal.style.inset = '0';
+            modal.style.zIndex = '9999';
+            modal.style.background = 'var(--bg-color)';
+            modal.style.flexDirection = 'column';
+            modal.style.pointerEvents = 'auto';
+            return modal;
+        };
+
         window.forceOpenJournalModal = async function() {
             if (typeof window.traceJournalStep === 'function') {
                 window.traceJournalStep(1, 'forceOpenJournalModal called');
@@ -5207,7 +5228,7 @@
                 return false;
             }
 
-            modal.classList.remove('hidden');
+            window.ensureJournalModalVisibility(modal);
             if (typeof window.traceJournalStep === 'function') {
                 window.traceJournalStep(3, 'journal modal shown');
             }
@@ -6046,13 +6067,16 @@
                 alert('Journal is not available right now. Please refresh and try again.');
                 return;
             }
-            modal.classList.remove('hidden');
+            window.ensureJournalModalVisibility(modal);
             await renderJournalEntriesList();
         };
         
         // Close journal
         window.closeJournal = function() {
-            document.getElementById('journalModal').classList.add('hidden');
+            const modal = document.getElementById('journalModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
         };
 
         window.tryAutoOpenJournalFromQuery = async function() {
