@@ -650,6 +650,45 @@
             background: rgba(42, 5, 5, 0.1);
         }
 
+        /* Journal modal mobile scroll + layout safeguards */
+        #journalModal {
+            height: 100dvh;
+            max-height: 100dvh;
+        }
+        #journalModal .journal-shell {
+            min-height: 0;
+        }
+        #journalModal .journal-scroll-area {
+            min-height: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+        }
+        #journalModal .journal-action-btn {
+            min-height: 34px;
+            white-space: nowrap;
+        }
+        @media (max-width: 640px) {
+            #journalModal .journal-header {
+                padding: 0.85rem 0.9rem;
+            }
+            #journalModal .journal-title {
+                font-size: 1.2rem;
+            }
+            #journalModal .journal-filters-wrap {
+                padding: 0.65rem;
+            }
+            #journalModal .journal-card {
+                padding: 0.8rem;
+            }
+            #journalModal .journal-card-title {
+                font-size: 1.05rem;
+                line-height: 1.25;
+            }
+        }
+
         /* ============================================
            LOGIN SCREEN - DESIGN SYSTEM ALIGNMENT
            ============================================ */
@@ -2143,10 +2182,10 @@
             
             <!-- JOURNAL MODAL (List of past devotions) -->
             <div id="journalModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)] hidden flex flex-col">
-                <div class="flex-1 flex flex-col max-w-lg mx-auto w-full">
+                <div class="journal-shell flex-1 min-h-0 flex flex-col max-w-lg mx-auto w-full">
                     <!-- Header -->
-                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
-                        <h2 class="text-lg font-bold text-amber-500 flex items-center gap-2">
+                    <div class="journal-header flex items-center justify-between p-4 border-b border-[var(--card-border)]">
+                        <h2 class="journal-title text-lg font-bold text-amber-500 flex items-center gap-2">
                             <span>📖</span> My Journal
                         </h2>
                         <button onclick="closeJournal()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
@@ -2157,16 +2196,16 @@
                     </div>
 
                     <!-- Journal Tabs + Filters -->
-                    <div class="p-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
-                        <div class="flex items-center gap-2 mb-3">
+                    <div class="journal-filters-wrap p-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
+                        <div class="grid grid-cols-2 gap-2 mb-3">
                             <button id="journalEntriesTabBtn"
                                     onclick="switchJournalTab('entries')"
-                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35">
+                                    class="journal-action-btn w-full px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35">
                                 Entries
                             </button>
                             <button id="journalPrayersTabBtn"
                                     onclick="switchJournalTab('prayers')"
-                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--card-border)] text-[var(--text-color)]">
+                                    class="journal-action-btn w-full px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--card-border)] text-[var(--text-color)]">
                                 Prayer Tracker
                             </button>
                         </div>
@@ -2249,7 +2288,7 @@
                     </div>
                     
                     <!-- Journal Lists -->
-                    <div class="flex-1 p-4 overflow-y-auto">
+                    <div class="journal-scroll-area flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto">
                         <div id="journalEntriesList">
                             <p class="text-[var(--text-muted)] text-center py-8">Loading journal...</p>
                         </div>
@@ -5327,6 +5366,7 @@
         
         // Toggle main menu (header menu button)
         window.__openingJournalFromMenu = false;
+        window.__journalPrevBodyOverflow = null;
 
         window.ensureJournalModalVisibility = function(modalEl) {
             const modal = modalEl || document.getElementById('journalModal');
@@ -5346,6 +5386,14 @@
             modal.style.background = 'var(--bg-color)';
             modal.style.flexDirection = 'column';
             modal.style.pointerEvents = 'auto';
+            modal.style.overflow = 'hidden';
+
+            if (window.__journalPrevBodyOverflow === null) {
+                window.__journalPrevBodyOverflow = document.body?.style?.overflow ?? '';
+            }
+            if (document.body) {
+                document.body.style.overflow = 'hidden';
+            }
             return modal;
         };
 
@@ -5892,13 +5940,13 @@
                                   placeholder="${escapeDevotionHtml(prayerLabels.answerSummaryPlaceholder)}"
                                   onblur="saveJournalPrayerAnswerSummary('${entryIdForJs}', '${prayerIdForJs}', this.value)">${escapeDevotionHtml(item.answerSummary || '')}</textarea>
                         <div class="mt-2 flex flex-wrap gap-2">
-                            <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')" class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')" class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙏 ${escapeDevotionHtml(prayerLabels.shareRequest)}
                             </button>
-                            <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')" class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')" class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙌 ${escapeDevotionHtml(prayerLabels.shareThanks)}
                             </button>
-                            <button onclick="shareJournalPrayerThankYou('${entryIdForJs}', '${prayerIdForJs}')" class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            <button onclick="shareJournalPrayerThankYou('${entryIdForJs}', '${prayerIdForJs}')" class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 💌 ${escapeDevotionHtml(prayerLabels.shareThankPeople)}
                             </button>
                         </div>
@@ -5951,35 +5999,35 @@
             const summaryLine = truncateDevotionText(understandingText || actionText || scriptureText || '', 170);
 
             return `
-                <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
-                    <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="journal-card p-3 sm:p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-2">
                         <div>
-                            <span class="text-amber-500 font-bold text-sm block">${escapeDevotionHtml(formattedDate)}</span>
+                            <span class="journal-card-title text-amber-500 font-bold text-base sm:text-sm block">${escapeDevotionHtml(formattedDate)}</span>
                             ${scriptureReference ? `<span class="text-xs text-[var(--text-muted)]">${escapeDevotionHtml(scriptureReference)}</span>` : ''}
                         </div>
                         ${isEditing ? `
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <button onclick="saveJournalEntryEdits('${entryIdForJs}')"
-                                        class="px-2.5 py-1 rounded-lg text-xs bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/30 transition-colors">
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/30 transition-colors">
                                     Save
                                 </button>
                                 <button onclick="cancelJournalEntryEdit()"
-                                        class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
                                     Cancel
                                 </button>
                             </div>
                         ` : `
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <button onclick="toggleJournalEntryDetails('${entryIdForJs}')"
-                                        class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
                                     ${isExpanded ? 'Hide' : 'View'}
                                 </button>
                                 <button onclick="editJournalEntry('${entryIdForJs}')"
-                                        class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
                                     Edit
                                 </button>
                                 <button onclick="editJournalEntryTime('${entryIdForJs}')"
-                                        class="px-2.5 py-1 rounded-lg text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
                                     Edit time
                                 </button>
                             </div>
@@ -5987,9 +6035,9 @@
                     </div>
 
                     <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                        <div class="flex items-center justify-between gap-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <p class="text-[11px] text-[var(--text-muted)]">${escapeDevotionHtml(summaryLine || '-')}</p>
-                            <div class="flex items-center gap-1 text-[10px]">
+                            <div class="flex items-center gap-1 text-[10px] shrink-0">
                                 <span class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">${openPrayerCount} open</span>
                                 <span class="px-2 py-0.5 rounded-full bg-green-500/15 text-green-500">${answeredPrayerCount} answered</span>
                             </div>
@@ -6098,23 +6146,23 @@
                         ${item.thankYouSharedAt ? `<p class="text-[11px] text-green-500 mt-1">${escapeDevotionHtml(L.thankYouSharedAt)}: ${escapeDevotionHtml(formatPrayerTimestamp(item.thankYouSharedAt, item.lang))}</p>` : ''}
                         <div class="mt-2 flex flex-wrap gap-2">
                             <button onclick="openJournalEntryFromPrayer('${entryIdForJs}')"
-                                    class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 📘 ${escapeDevotionHtml(L.openEntry)}
                             </button>
                             <button onclick="editJournalEntryFromPrayer('${entryIdForJs}')"
-                                    class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 ✏️ ${escapeDevotionHtml(L.editEntry)}
                             </button>
                             <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙏 ${escapeDevotionHtml(L.shareRequest)}
                             </button>
                             <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙌 ${escapeDevotionHtml(L.shareThanks)}
                             </button>
                             <button onclick="shareJournalPrayerThankYou('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 💌 ${escapeDevotionHtml(L.shareThankPeople)}
                             </button>
                         </div>
@@ -6585,6 +6633,10 @@
             if (!modal) return;
             modal.classList.add('hidden');
             modal.style.display = 'none';
+            if (document.body) {
+                document.body.style.overflow = window.__journalPrevBodyOverflow ?? '';
+            }
+            window.__journalPrevBodyOverflow = null;
         };
 
         window.tryAutoOpenJournalFromQuery = async function() {
