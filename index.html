@@ -5184,6 +5184,31 @@
         
         // Toggle main menu (header menu button)
         window.__openingJournalFromMenu = false;
+        window.forceOpenJournalModal = async function() {
+            const mainMenu = document.getElementById('mainMenuModal');
+            if (mainMenu) {
+                mainMenu.remove();
+            }
+
+            const modal = document.getElementById('journalModal');
+            if (!modal) {
+                console.error('[Journal] journalModal element not found in forceOpenJournalModal.');
+                return false;
+            }
+
+            modal.classList.remove('hidden');
+            try {
+                if (typeof window.renderJournalEntriesList === 'function') {
+                    await window.renderJournalEntriesList();
+                } else if (typeof renderJournalEntriesList === 'function') {
+                    await renderJournalEntriesList();
+                }
+            } catch (error) {
+                console.error('[Journal] forceOpenJournalModal render error:', error);
+            }
+            return false;
+        };
+
         window.openJournalFromMainMenu = async function(ev) {
             if (window.__openingJournalFromMenu) return false;
             window.__openingJournalFromMenu = true;
@@ -5196,21 +5221,7 @@
                     return false;
                 }
 
-                const mainMenu = document.getElementById('mainMenuModal');
-                if (mainMenu) {
-                    mainMenu.remove();
-                }
-
-                const modal = document.getElementById('journalModal');
-                if (modal) {
-                    modal.classList.remove('hidden');
-                    if (typeof window.renderJournalEntriesList === 'function') {
-                        await window.renderJournalEntriesList();
-                    } else if (typeof renderJournalEntriesList === 'function') {
-                        await renderJournalEntriesList();
-                    }
-                    return false;
-                }
+                return await window.forceOpenJournalModal();
             } catch (error) {
                 console.error('[Journal] Failed to open from main menu:', error);
             } finally {
@@ -5247,7 +5258,9 @@
                                 </button>
                                 <button id="mainMenuJournalBtn"
                                    type="button"
-                                   class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
+                                   onclick="window.openJournalFromMainMenu(event); return false;"
+                                   onpointerdown="window.forceOpenJournalModal(); return false;"
+                                   class="relative z-10 w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
                                     <span class="text-lg">📖</span>
                                     <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
                                 </button>
@@ -5284,10 +5297,7 @@
                         }
 
                         // Last-resort fallback so local/file protocol testing still opens Journal UI.
-                        const mainMenu = document.getElementById('mainMenuModal');
-                        if (mainMenu) mainMenu.remove();
-                        const modal = document.getElementById('journalModal');
-                        if (modal) modal.classList.remove('hidden');
+                        window.forceOpenJournalModal();
                     };
 
                     journalBtn.addEventListener('click', openJournalHandler);
