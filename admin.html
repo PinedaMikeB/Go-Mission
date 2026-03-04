@@ -1354,6 +1354,11 @@ match /goMission/watch-series-covers/{allPaths=**} {
         title: 'Feature Update Released',
         body: 'A new app update is now live with improvements to mission groups and meeting reliability. Please refresh your app to get the latest experience.',
         category: 'feature_release'
+      },
+      {
+        title: 'Journal Update (March 6, 2026)',
+        body: 'Starting March 6, 2026, Journal now includes a Prayer Tracker tab, better mobile scrolling, entry view/edit actions, and easier follow-up for answered prayers and thank-you sharing. Please refresh your app to get the latest experience.',
+        category: 'feature_release'
       }
     ];
 
@@ -4003,8 +4008,12 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return templateId;
     }
 
-    async function seedDefaultAnnouncementTemplates() {
+    async function seedDefaultAnnouncementTemplates(existingTemplateIds = null) {
       for (const item of DEFAULT_ANNOUNCEMENT_TEMPLATES) {
+        const templateId = buildAnnouncementTemplateId(item.title, item.body);
+        if (existingTemplateIds && existingTemplateIds.has(templateId)) {
+          continue;
+        }
         await upsertAnnouncementTemplate({
           title: item.title,
           body: item.body,
@@ -4040,10 +4049,18 @@ match /goMission/watch-series-covers/{allPaths=**} {
           };
         }).filter((item) => item.title && item.body);
 
-        if (!announcementTemplates.length && ensureDefaults) {
-          await seedDefaultAnnouncementTemplates();
-          await loadAnnouncementTemplates({ silent, ensureDefaults: false });
-          return;
+        if (ensureDefaults) {
+          const existingTemplateIds = new Set(announcementTemplates.map((item) => item.id));
+          const hasMissingDefaults = DEFAULT_ANNOUNCEMENT_TEMPLATES.some((item) => {
+            const templateId = buildAnnouncementTemplateId(item.title, item.body);
+            return !existingTemplateIds.has(templateId);
+          });
+
+          if (hasMissingDefaults) {
+            await seedDefaultAnnouncementTemplates(existingTemplateIds);
+            await loadAnnouncementTemplates({ silent, ensureDefaults: false });
+            return;
+          }
         }
 
         renderAnnouncementPresetOptions();
