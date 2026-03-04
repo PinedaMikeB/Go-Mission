@@ -5185,12 +5185,17 @@
         // Toggle main menu (header menu button)
         window.__openingJournalFromMenu = false;
         window.openJournalFromMainMenu = async function(ev) {
-            if (window.__openingJournalFromMenu) return;
+            if (window.__openingJournalFromMenu) return false;
             window.__openingJournalFromMenu = true;
             const eventObj = ev || window.event;
             if (eventObj?.preventDefault) eventObj.preventDefault();
             if (eventObj?.stopPropagation) eventObj.stopPropagation();
             try {
+                if (typeof window.openJournal === 'function') {
+                    await window.openJournal();
+                    return false;
+                }
+
                 const mainMenu = document.getElementById('mainMenuModal');
                 if (mainMenu) {
                     mainMenu.remove();
@@ -5204,12 +5209,7 @@
                     } else if (typeof renderJournalEntriesList === 'function') {
                         await renderJournalEntriesList();
                     }
-                    return;
-                }
-
-                if (typeof window.openJournal === 'function') {
-                    await window.openJournal();
-                    return;
+                    return false;
                 }
             } catch (error) {
                 console.error('[Journal] Failed to open from main menu:', error);
@@ -5217,6 +5217,7 @@
                 setTimeout(() => { window.__openingJournalFromMenu = false; }, 50);
             }
             alert('Journal is not available right now. Please refresh and try again.');
+            return false;
         };
 
         window.toggleMainMenu = function() {
@@ -5273,38 +5274,8 @@
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', menuHTML);
-                const menuEl = document.getElementById('mainMenuModal');
-                const journalBtn = document.getElementById('mainMenuJournalBtn');
-                const journalTapHandler = (event) => window.openJournalFromMainMenu(event);
-                if (journalBtn) {
-                    journalBtn.addEventListener('click', journalTapHandler);
-                }
-                if (menuEl) {
-                    menuEl.addEventListener('click', (event) => {
-                        const target = event.target instanceof Element ? event.target.closest('#mainMenuJournalBtn') : null;
-                        if (target) {
-                            window.openJournalFromMainMenu(event);
-                        }
-                    }, true);
-                }
             }
         };
-
-        if (!window.__journalMenuCaptureBound) {
-            document.addEventListener('click', (event) => {
-                const menu = document.getElementById('mainMenuModal');
-                if (!menu) return;
-                const targetEl = event.target instanceof Element ? event.target : null;
-                if (!targetEl) return;
-                const btn = targetEl.closest('button');
-                if (!btn) return;
-                const label = (btn.textContent || '').toLowerCase();
-                if (label.includes('aking journal') || label.includes('my journal')) {
-                    window.openJournalFromMainMenu(event);
-                }
-            }, true);
-            window.__journalMenuCaptureBound = true;
-        }
         
         // Toggle popup share
         window.togglePopupShare = function() {
