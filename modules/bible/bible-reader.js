@@ -391,6 +391,12 @@ const BibleReader = {
         <!-- Insights Button -->
         <div class="flex items-center gap-2">
           <button type="button"
+                  onclick="BibleReader.openJournalFromFullscreen()"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-[var(--mission-gold)]/10 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/20">
+            <span>📖</span>
+            <span>${lang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
+          </button>
+          <button type="button"
                   onclick="BibleReader.toggleFullscreenCommentary()" 
                   id="fullscreenCommentaryBtn"
                   class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/25' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
