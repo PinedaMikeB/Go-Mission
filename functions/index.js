@@ -33,6 +33,42 @@ const MOTIVATION_TIMEZONE = 'Asia/Manila';
 const MOTIVATION_START_DATE_KEY = '2026-03-06';
 const MOTIVATION_TRIGGER_EVERY_DAYS = 2;
 const MOTIVATION_ROTATION_STATE_DOC = 'notificationRotation_motivationConversationTime';
+const JOIN_GROUP_NOTIFICATION_TAG = 'join_mission_group_sequence';
+const JOIN_GROUP_ROTATION_STATE_DOC = 'notificationRotation_joinMissionGroupSequence';
+const JOIN_GROUP_TIMEZONE = 'Asia/Manila';
+
+const JOIN_GROUP_MESSAGES = [
+  '🛡️ You are called! Step into your God-given purpose today. The mission awaits!',
+  '⚔️ We are soldiers of Christ. Put on your armor today and share His light.',
+  '🌍 God has a specific mission only you can fulfill. Ready to step up?',
+  '✨ Your everyday life is your mission field. Who can you encourage today?',
+  '📖 The Word is alive! Share a simple truth with someone today and watch it work.',
+  '🔥 You are not here by accident. You are chosen for such a time as this!',
+  '🤝 We go further together. Jump into the app and connect with your group today!',
+  '👑 You represent the King. Walk in confidence and grace today.',
+  "💡 Do not hide your light! Someone in your world needs the hope you carry.",
+  '🛡️ A soldier does not fight alone. Stand strong with your Go Mission family today!',
+  '👣 Every step of obedience is a victory. What is God asking you to do today?',
+  "🗣️ Keep it simple. Sharing God's love does not have to be complicated.",
+  '🌱 Seeds planted today bring a harvest tomorrow. Keep sharing the Word!',
+  '⚓ Anchored in truth, ready for action. Let us impact the world today!',
+  '🗓️ Halfway through the month! Stay focused. Your daily mission matters.',
+  "🦅 Rise above the noise. Take a moment to listen to the Commander's voice today.",
+  '💬 A simple conversation can change a destiny. Who will you talk to today?',
+  '🛡️ Faith is our shield. March forward knowing God goes before you!',
+  '❤️ Love is our greatest weapon. Show radical kindness to someone today.',
+  '🗺️ Your community is your assignment. Be a blessing right where you are.',
+  '⚔️ The battle belongs to the Lord, but He calls us to stand on the front lines.',
+  '🌅 New day, new mercies, new opportunities for the Kingdom. Let us go!',
+  '📖 Truth transforms. Open the app and share a verse that encouraged you recently.',
+  '🙌 We are called to be fishers of men. Cast your net today!',
+  '💪 You are equipped for every good work. Do not doubt what God has placed inside you.',
+  '🌟 Be the salt and light today. Your presence brings flavor and hope.',
+  '🏃‍♂️ Run the race with endurance. The eternal reward is worth the daily mission.',
+  '🗣️ Your testimony is powerful. Do not be afraid to share your story!',
+  '🌍 The world needs the gospel. Thank you for being a willing messenger.',
+  '🎺 The call never stops! Stay engaged, stay equipped, and keep making disciples.'
+];
 
 const MOTIVATION_MESSAGES = [
   "Start your day with Jesus. Even 5 minutes of quiet conversation with God can change everything.",
@@ -88,6 +124,56 @@ function getDayDiff(startDateKey, endDateKey) {
   const endMs = dateKeyToUtcMs(endDateKey);
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
   return Math.floor((endMs - startMs) / 86400000);
+}
+
+function isCadenceDay({ todayKey, startDateKey, everyDays }) {
+  const cadence = Math.max(1, Number(everyDays || 1));
+  const dayDiff = getDayDiff(startDateKey, todayKey);
+  if (dayDiff === null || dayDiff < 0) return false;
+  return dayDiff % cadence === 0;
+}
+
+function getSafeProfileName(memberData = {}) {
+  const displayName = String(
+    memberData.displayName ||
+    memberData.name ||
+    memberData.fullName ||
+    ''
+  ).trim();
+  if (displayName) return displayName;
+  const email = String(memberData.email || '').trim();
+  if (email && email.includes('@')) return email.split('@')[0];
+  return 'Someone';
+}
+
+async function getAdminRecipientIds({ excludeUserId = '' } = {}) {
+  const adminIds = new Set([...ADMIN_UID_ALLOWLIST]);
+  try {
+    const usersSnapshot = await db.collection('goMission_members').get();
+    usersSnapshot.forEach((docSnap) => {
+      const member = docSnap.data() || {};
+      const roles = (member.roles && !Array.isArray(member.roles)) ? member.roles : {};
+      const roleList = Array.isArray(member.roles) ? member.roles : [];
+      const email = String(member.email || '').toLowerCase().trim();
+      const isAdmin = Boolean(
+        roles.isAdmin ||
+        roleList.includes('admin') ||
+        ADMIN_UID_ALLOWLIST.has(docSnap.id) ||
+        ADMIN_EMAIL_ALLOWLIST.has(email)
+      );
+      if (isAdmin) {
+        adminIds.add(docSnap.id);
+      }
+    });
+  } catch (error) {
+    console.warn('[AdminRecipients] Could not query member list:', error);
+  }
+
+  if (excludeUserId) {
+    adminIds.delete(String(excludeUserId));
+  }
+
+  return [...adminIds];
 }
 
 async function upsertSystemNotificationTemplate({
@@ -884,6 +970,58 @@ exports.onDevotionShared = onDocumentCreated('goMission_devotions/{devotionId}',
   return null;
 });
 
+exports.onMemberSignup = onDocumentCreated('goMission_members/{memberId}', async (event) => {
+  const memberData = event.data?.data() || {};
+  const memberId = String(event.params?.memberId || '').trim();
+  if (!memberId) return null;
+
+  const memberName = getSafeProfileName(memberData);
+  const memberEmail = String(memberData.email || '').trim();
+  const adminRecipientIds = await getAdminRecipientIds({ excludeUserId: memberId });
+  if (!adminRecipientIds.length) return null;
+
+  const notification = {
+    title: '🆕 New Member Signup',
+    body: memberEmail
+      ? `${memberName} just signed up (${memberEmail}).`
+      : `${memberName} just signed up in Go Mission.`,
+    data: {
+      type: 'admin_event',
+      event: 'member_signup',
+      memberId
+    }
+  };
+
+  await sendToUsers(adminRecipientIds, notification);
+  return null;
+});
+
+exports.onGroupCreated = onDocumentCreated('goMission_groups/{groupId}', async (event) => {
+  const groupData = event.data?.data() || {};
+  const groupId = String(event.params?.groupId || '').trim();
+  if (!groupId) return null;
+
+  const groupName = String(groupData.name || 'Mission Group').trim();
+  const creatorName = String(groupData.leaderName || groupData.createdByName || '').trim();
+  const adminRecipientIds = await getAdminRecipientIds();
+  if (!adminRecipientIds.length) return null;
+
+  const notification = {
+    title: '🧭 New Group Formed',
+    body: creatorName
+      ? `${groupName} was formed by ${creatorName}.`
+      : `${groupName} was newly formed in Go Mission.`,
+    data: {
+      type: 'admin_event',
+      event: 'group_created',
+      groupId
+    }
+  };
+
+  await sendToUsers(adminRecipientIds, notification);
+  return null;
+});
+
 // ============================================
 // CALLABLE FUNCTIONS
 // ============================================
@@ -1657,6 +1795,179 @@ exports.dispatchConversationTimeMotivation = onSchedule({
 
   console.log(
     `[Motivation] Sent ${selectedTemplate.id} to ${recipientIds.length} users (success=${sendResult.successCount || 0}, failure=${sendResult.failureCount || 0})`
+  );
+
+  return null;
+});
+
+/**
+ * Sends Join Mission Group encouragement sequence every other day
+ * on dates that are NOT Conversation Time motivation dates.
+ *
+ * Target: active users who are not yet in any mission group.
+ * Sequence: 30 messages, advancing per user on each successful send.
+ */
+exports.dispatchJoinMissionGroupSequence = onSchedule({
+  schedule: '30 6 * * *',
+  timeZone: JOIN_GROUP_TIMEZONE,
+}, async () => {
+  const todayKey = getManilaDateKey();
+
+  const motivationStateDoc = await db.collection('goMission_config').doc(MOTIVATION_ROTATION_STATE_DOC).get();
+  const motivationState = motivationStateDoc.exists ? (motivationStateDoc.data() || {}) : {};
+  const motivationStartDateKey = String(motivationState.startDate || MOTIVATION_START_DATE_KEY);
+  const motivationEveryDays = Math.max(
+    1,
+    Number(motivationState.triggerEveryDays || MOTIVATION_TRIGGER_EVERY_DAYS)
+  );
+  const motivationCadenceDay = isCadenceDay({
+    todayKey,
+    startDateKey: motivationStartDateKey,
+    everyDays: motivationEveryDays
+  });
+  const motivationAlreadySentToday = String(motivationState.lastSentDateKey || '') === todayKey;
+
+  if (motivationCadenceDay || motivationAlreadySentToday) {
+    console.log('[JoinGroupSequence] Skipped: conversation-time motivation is active today.');
+    return null;
+  }
+
+  const stateRef = db.collection('goMission_config').doc(JOIN_GROUP_ROTATION_STATE_DOC);
+  const stateDoc = await stateRef.get();
+  const state = stateDoc.exists ? (stateDoc.data() || {}) : {};
+  if (state.enabled === false) {
+    console.log('[JoinGroupSequence] Skipped: sequence disabled in config.');
+    return null;
+  }
+  if (String(state.lastSentDateKey || '') === todayKey) {
+    console.log(`[JoinGroupSequence] Skipped: already sent on ${todayKey}.`);
+    return null;
+  }
+
+  const announcementId = `sys_join_mission_group_sequence_${todayKey.replace(/-/g, '')}`;
+  const announcementRef = db.collection('goMission_announcements').doc(announcementId);
+  const title = '🤝 Join a Mission Group';
+  const body = 'Take your next step: connect with a mission group and grow together.';
+
+  try {
+    await announcementRef.create({
+      title,
+      body,
+      audience: 'ungrouped_users',
+      pushRequested: true,
+      source: SYSTEM_TEMPLATE_SOURCE,
+      deliveryMode: 'repeatable',
+      notificationTag: JOIN_GROUP_NOTIFICATION_TAG,
+      status: 'dispatching',
+      createdByUid: 'system',
+      createdByEmail: 'system@gomission.local',
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    if (code === '6' || code.toLowerCase() === 'already-exists' || message.includes('Already exists')) {
+      console.log('[JoinGroupSequence] Skipped: daily announcement already exists.');
+      return null;
+    }
+    throw error;
+  }
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const activeUngroupedUsers = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .filter((entry) => !hasGroupMembership(entry.data));
+
+  let successCount = 0;
+  let failureCount = 0;
+  let skippedCount = 0;
+  const errors = [];
+
+  for (const entry of activeUngroupedUsers) {
+    const memberId = entry.id;
+    const memberData = entry.data || {};
+    const campaignState = (memberData.notificationCampaigns?.joinMissionGroup || {});
+    const lastSentDateKey = String(campaignState.lastSentDateKey || '');
+    if (lastSentDateKey === todayKey) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const nextIndexRaw = Number(campaignState.nextIndex);
+    const nextIndex = Number.isFinite(nextIndexRaw) && nextIndexRaw >= 0 ? nextIndexRaw : 0;
+    if (nextIndex >= JOIN_GROUP_MESSAGES.length) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const messageNumber = nextIndex + 1;
+    const messageBody = JOIN_GROUP_MESSAGES[nextIndex];
+    const sendResult = await sendToUser(memberId, {
+      title: `🤝 Join Mission Group (${messageNumber}/${JOIN_GROUP_MESSAGES.length})`,
+      body: messageBody,
+      data: {
+        type: 'announcement',
+        notificationTag: JOIN_GROUP_NOTIFICATION_TAG,
+        campaign: 'join_mission_group',
+        sequenceIndex: String(messageNumber),
+        announcementId
+      }
+    });
+
+    if (sendResult?.success) {
+      successCount += 1;
+      const nextMessageIndex = nextIndex + 1;
+      const campaignUpdate = {
+        nextIndex: nextMessageIndex,
+        lastSentDateKey: todayKey,
+        lastSentAt: FieldValue.serverTimestamp(),
+        lastMessageNumber: messageNumber,
+        lastMessageBody: messageBody,
+        updatedAt: FieldValue.serverTimestamp()
+      };
+      if (nextMessageIndex >= JOIN_GROUP_MESSAGES.length) {
+        campaignUpdate.completed = true;
+        campaignUpdate.completedAt = FieldValue.serverTimestamp();
+      }
+
+      await db.collection('goMission_members').doc(memberId).set({
+        notificationCampaigns: {
+          joinMissionGroup: campaignUpdate
+        }
+      }, { merge: true });
+    } else {
+      failureCount += 1;
+      errors.push({
+        userId: memberId,
+        error: String(sendResult?.error || 'Unknown error')
+      });
+    }
+  }
+
+  await announcementRef.set({
+    status: 'sent',
+    sentAt: FieldValue.serverTimestamp(),
+    dispatch: {
+      targetCount: activeUngroupedUsers.length,
+      successCount,
+      failureCount,
+      skippedCount,
+      errors: errors.slice(0, 25)
+    },
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  await stateRef.set({
+    enabled: state.enabled !== false,
+    lastSentDateKey: todayKey,
+    lastSentAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  console.log(
+    `[JoinGroupSequence] Sent to ungrouped users: targets=${activeUngroupedUsers.length}, success=${successCount}, failure=${failureCount}, skipped=${skippedCount}`
   );
 
   return null;
