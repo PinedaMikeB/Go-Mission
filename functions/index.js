@@ -27,6 +27,191 @@ const ADMIN_EMAIL_ALLOWLIST = new Set([
   'vasquezperlie18@gmail.com'
 ]);
 
+const SYSTEM_TEMPLATE_SOURCE = 'system_scheduler';
+const MOTIVATION_NOTIFICATION_TAG = 'motivation_conversation_time';
+const MOTIVATION_TIMEZONE = 'Asia/Manila';
+const MOTIVATION_START_DATE_KEY = '2026-03-06';
+const MOTIVATION_TRIGGER_EVERY_DAYS = 2;
+const MOTIVATION_ROTATION_STATE_DOC = 'notificationRotation_motivationConversationTime';
+
+const MOTIVATION_MESSAGES = [
+  "Start your day with Jesus. Even 5 minutes of quiet conversation with God can change everything.",
+  "Pause. Breathe. Talk to God. He's always listening.",
+  "Your time with God today matters more than anything else on your schedule.",
+  "Don't let the day end without having your 'Conversation Time' with the One who loves you most.",
+  "Even when you're busy, God isn't. He's waiting to talk to you.",
+  "A day started with God is a day led by peace. Don't skip your 'Conversation Time.'",
+  "God's not asking for perfection, just connection. Talk to Him today.",
+  "Your heart needs God more than your phone needs Wi-Fi. Connect through prayer.",
+  "Life is noisy, but God's voice brings clarity. Make time to listen today.",
+  "Don't just talk about prayer. Actually pray. Start now.",
+  "Trade worry for worship. Talk to God about what's on your heart.",
+  "God misses you when you don't show up. Take 10 minutes for Him today.",
+  "Nothing is more powerful than a consistent prayer life. Start with today.",
+  "Reset your soul - one prayer at a time. Prioritize God today.",
+  "Jesus took time to pray. So should we.",
+  "Prayer isn't a task - it's a relationship. Go have that conversation.",
+  "Let God speak into your plans. Start your day with Him.",
+  "Busy day? All the more reason to talk to God first.",
+  "Don't run on empty. Fill up with God's presence today.",
+  "Prayer time is soul care. Make space for it.",
+  "When you give God your attention, He gives you direction.",
+  "Prayer isn't a last resort. It's your first response.",
+  "God desires time with you more than anything you could ever do for Him.",
+  "Before you talk to the world, talk to God.",
+  "One whisper to God can calm your heart. Don't skip today's moment with Him.",
+  "You don't need fancy words - just a willing heart. Talk to Him today.",
+  "Interrupt your scrolling for a moment of prayer.",
+  "Prayer doesn't have to be long to be powerful. Start the conversation.",
+  "God's presence is your safe space. Run there today.",
+  "You'll never regret spending time with God. Do it now."
+];
+
+function getManilaDateKey(input = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MOTIVATION_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(input);
+}
+
+function dateKeyToUtcMs(dateKey) {
+  const raw = String(dateKey || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return Date.parse(`${raw}T00:00:00Z`);
+}
+
+function getDayDiff(startDateKey, endDateKey) {
+  const startMs = dateKeyToUtcMs(startDateKey);
+  const endMs = dateKeyToUtcMs(endDateKey);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  return Math.floor((endMs - startMs) / 86400000);
+}
+
+async function upsertSystemNotificationTemplate({
+  id,
+  title,
+  body,
+  category = 'announcement',
+  deliveryMode = 'one_time',
+  notificationTag = '',
+  rotationGroup = '',
+  sequence = null,
+  active = true
+}) {
+  if (!id || !title || !body) return;
+  const ref = db.collection('goMission_notificationTemplates').doc(String(id));
+  const snap = await ref.get();
+  const existing = snap.exists ? (snap.data() || {}) : {};
+
+  const payload = {
+    title: String(title).trim(),
+    body: String(body).trim(),
+    category: category || existing.category || 'announcement',
+    source: existing.source || SYSTEM_TEMPLATE_SOURCE,
+    approvalStatus: existing.approvalStatus || 'approved',
+    usageCount: Number(existing.usageCount || 0),
+    deliveryMode: deliveryMode || existing.deliveryMode || 'one_time',
+    notificationTag: notificationTag || existing.notificationTag || '',
+    rotationGroup: rotationGroup || existing.rotationGroup || '',
+    sequence: Number.isFinite(Number(sequence))
+      ? Number(sequence)
+      : (Number.isFinite(Number(existing.sequence)) ? Number(existing.sequence) : null),
+    active: active !== false,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedByUid: 'system',
+    updatedByEmail: 'system@gomission.local'
+  };
+
+  if (!snap.exists) {
+    payload.createdAt = FieldValue.serverTimestamp();
+    payload.createdByUid = 'system';
+    payload.createdByEmail = 'system@gomission.local';
+  }
+
+  await ref.set(payload, { merge: true });
+}
+
+async function ensureSystemNotificationTemplatesSeeded() {
+  const staticTemplates = [
+    {
+      id: 'sys_announcement_journal_update_20260306',
+      title: 'Journal Update (March 6, 2026)',
+      body: 'Journal now includes Prayer Tracker, improved mobile scrolling, entry view/edit actions, and better answered-prayer follow-up. Please refresh your app for the latest experience.',
+      category: 'feature_release',
+      deliveryMode: 'one_time',
+      notificationTag: 'announcement_release',
+      rotationGroup: ''
+    },
+    {
+      id: 'sys_announcement_insights_1th_2th_hag_jon_20260305',
+      title: 'New Bible Insights Ready',
+      body: 'Insights are now available for 1 Thessalonians, 2 Thessalonians, Haggai, and Jonah. Open Bible and explore these books today.',
+      category: 'feature_release',
+      deliveryMode: 'one_time',
+      notificationTag: 'announcement_release',
+      rotationGroup: ''
+    },
+    {
+      id: 'sys_announcement_system_maintenance_repeatable',
+      title: 'System Maintenance Advisory',
+      body: 'We are running scheduled maintenance to improve app stability. Some features may refresh during the update window. Thank you for your patience.',
+      category: 'maintenance',
+      deliveryMode: 'repeatable',
+      notificationTag: 'announcement_maintenance',
+      rotationGroup: 'ops_maintenance'
+    }
+  ];
+
+  for (const item of staticTemplates) {
+    await upsertSystemNotificationTemplate(item);
+  }
+
+  for (let i = 0; i < MOTIVATION_MESSAGES.length; i += 1) {
+    await upsertSystemNotificationTemplate({
+      id: `sys_motivation_conversation_time_${String(i + 1).padStart(2, '0')}`,
+      title: 'Conversation Time with God',
+      body: MOTIVATION_MESSAGES[i],
+      category: 'motivation',
+      deliveryMode: 'repeatable',
+      notificationTag: MOTIVATION_NOTIFICATION_TAG,
+      rotationGroup: 'motivation_conversation_time',
+      sequence: i + 1
+    });
+  }
+}
+
+async function getMotivationTemplatesFromStore() {
+  const snapshot = await db.collection('goMission_notificationTemplates').get();
+  return snapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((item) =>
+      item.data.notificationTag === MOTIVATION_NOTIFICATION_TAG &&
+      item.data.active !== false
+    )
+    .sort((a, b) => {
+      const seqA = Number(a.data.sequence || 0);
+      const seqB = Number(b.data.sequence || 0);
+      if (seqA !== seqB) return seqA - seqB;
+      return String(a.id).localeCompare(String(b.id));
+    });
+}
+
+async function isMotivationPushEnabled() {
+  try {
+    const configDoc = await db.collection('goMission_config').doc('pushSettings').get();
+    const config = configDoc.exists ? (configDoc.data() || {}) : {};
+    if (config.motivationEnabled === false) return false;
+    if (config.devotionEnabled === false) return false;
+    return true;
+  } catch (error) {
+    console.warn('[Motivation] Could not read pushSettings, defaulting to enabled:', error);
+    return true;
+  }
+}
+
 // ============================================
 // EMAIL CONFIGURATION (using Firebase Secrets)
 // ============================================
@@ -1175,6 +1360,7 @@ exports.dispatchJournalUpdateAnnouncement = onSchedule({
   schedule: '0 * * * *',
   timeZone: 'Asia/Manila',
 }, async () => {
+  await ensureSystemNotificationTemplatesSeeded();
   const sendAfter = Date.parse('2026-03-05T00:25:00+08:00');
   if (Number.isFinite(sendAfter) && Date.now() < sendAfter) {
     return null;
@@ -1192,6 +1378,8 @@ exports.dispatchJournalUpdateAnnouncement = onSchedule({
       audience: 'all_users',
       pushRequested: true,
       source: 'system_scheduler',
+      deliveryMode: 'one_time',
+      notificationTag: 'announcement_release',
       status: 'dispatching',
       createdByUid: 'system',
       createdByEmail: 'system@gomission.local',
@@ -1208,7 +1396,10 @@ exports.dispatchJournalUpdateAnnouncement = onSchedule({
   }
 
   const usersSnapshot = await db.collection('goMission_members').get();
-  const recipientIds = usersSnapshot.docs.map((docSnap) => docSnap.id);
+  const recipientIds = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id);
 
   let sendResult = {
     successCount: 0,
@@ -1256,6 +1447,7 @@ exports.dispatchInsightsBooksAnnouncement = onSchedule({
   schedule: '0 * * * *',
   timeZone: 'Asia/Manila',
 }, async () => {
+  await ensureSystemNotificationTemplatesSeeded();
   const sendAfter = Date.parse('2026-03-05T14:30:00+08:00');
   if (Number.isFinite(sendAfter) && Date.now() < sendAfter) {
     return null;
@@ -1273,6 +1465,8 @@ exports.dispatchInsightsBooksAnnouncement = onSchedule({
       audience: 'all_users',
       pushRequested: true,
       source: 'system_scheduler',
+      deliveryMode: 'one_time',
+      notificationTag: 'announcement_release',
       status: 'dispatching',
       createdByUid: 'system',
       createdByEmail: 'system@gomission.local',
@@ -1289,7 +1483,10 @@ exports.dispatchInsightsBooksAnnouncement = onSchedule({
   }
 
   const usersSnapshot = await db.collection('goMission_members').get();
-  const recipientIds = usersSnapshot.docs.map((docSnap) => docSnap.id);
+  const recipientIds = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id);
 
   let sendResult = {
     successCount: 0,
@@ -1322,6 +1519,144 @@ exports.dispatchInsightsBooksAnnouncement = onSchedule({
 
   console.log(
     `[InsightsAnnouncement] Sent: targets=${recipientIds.length}, success=${sendResult.successCount || 0}, failure=${sendResult.failureCount || 0}`
+  );
+
+  return null;
+});
+
+/**
+ * Sends Conversation Time motivation notifications every other day.
+ * Rotates through 30 repeatable templates stored in goMission_notificationTemplates.
+ */
+exports.dispatchConversationTimeMotivation = onSchedule({
+  schedule: '0 6 * * *',
+  timeZone: MOTIVATION_TIMEZONE,
+}, async () => {
+  await ensureSystemNotificationTemplatesSeeded();
+
+  const motivationEnabled = await isMotivationPushEnabled();
+  if (!motivationEnabled) {
+    console.log('[Motivation] Skipped: push setting disabled.');
+    return null;
+  }
+
+  const stateRef = db.collection('goMission_config').doc(MOTIVATION_ROTATION_STATE_DOC);
+  const stateDoc = await stateRef.get();
+  const state = stateDoc.exists ? (stateDoc.data() || {}) : {};
+
+  if (state.enabled === false) {
+    console.log('[Motivation] Skipped: rotation disabled in config.');
+    return null;
+  }
+
+  const startDateKey = String(state.startDate || MOTIVATION_START_DATE_KEY);
+  const todayKey = getManilaDateKey();
+  const everyDays = Math.max(1, Number(state.triggerEveryDays || MOTIVATION_TRIGGER_EVERY_DAYS));
+  const dayDiff = getDayDiff(startDateKey, todayKey);
+
+  if (dayDiff === null || dayDiff < 0) {
+    console.log(`[Motivation] Skipped: before start date (${startDateKey}).`);
+    return null;
+  }
+  if (dayDiff % everyDays !== 0) {
+    console.log(`[Motivation] Skipped: cadence check failed (every ${everyDays} days).`);
+    return null;
+  }
+  if (String(state.lastSentDateKey || '') === todayKey) {
+    console.log(`[Motivation] Skipped: already sent on ${todayKey}.`);
+    return null;
+  }
+
+  const templates = await getMotivationTemplatesFromStore();
+  if (!templates.length) {
+    console.log('[Motivation] Skipped: no active templates found.');
+    return null;
+  }
+
+  const nextIndexRaw = Number(state.nextIndex || 0);
+  const nextIndex = Number.isFinite(nextIndexRaw) && nextIndexRaw >= 0 ? nextIndexRaw : 0;
+  const selectedTemplate = templates[nextIndex % templates.length];
+  const title = String(selectedTemplate?.data?.title || 'Conversation Time with God').trim();
+  const body = String(selectedTemplate?.data?.body || '').trim();
+  if (!body) {
+    console.log('[Motivation] Skipped: selected template body is empty.');
+    return null;
+  }
+
+  const announcementId = `sys_motivation_conversation_time_${todayKey.replace(/-/g, '')}`;
+  const announcementRef = db.collection('goMission_announcements').doc(announcementId);
+
+  try {
+    await announcementRef.create({
+      title,
+      body,
+      audience: 'all_users',
+      pushRequested: true,
+      source: SYSTEM_TEMPLATE_SOURCE,
+      deliveryMode: 'repeatable',
+      notificationTag: MOTIVATION_NOTIFICATION_TAG,
+      templateId: selectedTemplate.id,
+      status: 'dispatching',
+      createdByUid: 'system',
+      createdByEmail: 'system@gomission.local',
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    if (code === '6' || code.toLowerCase() === 'already-exists' || message.includes('Already exists')) {
+      console.log('[Motivation] Skipped: daily announcement already exists.');
+      return null;
+    }
+    throw error;
+  }
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const recipientIds = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id);
+
+  let sendResult = { successCount: 0, failureCount: 0, errors: [] };
+  if (recipientIds.length > 0) {
+    sendResult = await sendToUsersInBatches(recipientIds, {
+      title,
+      body,
+      data: {
+        type: 'announcement',
+        notificationTag: MOTIVATION_NOTIFICATION_TAG,
+        announcementId,
+        templateId: selectedTemplate.id
+      }
+    });
+  }
+
+  await announcementRef.set({
+    status: 'sent',
+    sentAt: FieldValue.serverTimestamp(),
+    dispatch: {
+      targetCount: recipientIds.length,
+      successCount: Number(sendResult.successCount || 0),
+      failureCount: Number(sendResult.failureCount || 0),
+      errors: Array.isArray(sendResult.errors) ? sendResult.errors.slice(0, 25) : []
+    },
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  await stateRef.set({
+    enabled: state.enabled !== false,
+    startDate: startDateKey,
+    triggerEveryDays: everyDays,
+    nextIndex: (nextIndex + 1) % templates.length,
+    lastSentDateKey: todayKey,
+    lastTemplateId: selectedTemplate.id,
+    lastSentAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  console.log(
+    `[Motivation] Sent ${selectedTemplate.id} to ${recipientIds.length} users (success=${sendResult.successCount || 0}, failure=${sendResult.failureCount || 0})`
   );
 
   return null;

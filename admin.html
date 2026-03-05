@@ -1343,22 +1343,30 @@ match /goMission/watch-series-covers/{allPaths=**} {
       {
         title: 'Video Meeting Server Upgrade',
         body: 'We noticed last Saturday that some mission group meetings became unstable due to a sudden increase in participants. We have upgraded our video meeting server. Thank you for your patience, and enjoy your meeting.',
-        category: 'infra_update'
+        category: 'infra_update',
+        repeatability: 'one_time',
+        notificationTag: 'announcement_release'
       },
       {
         title: 'System Maintenance Advisory',
         body: 'We are running scheduled maintenance to improve app stability. Some features may refresh during the update window. Thank you for your patience.',
-        category: 'maintenance'
+        category: 'maintenance',
+        repeatability: 'repeatable',
+        notificationTag: 'announcement_maintenance'
       },
       {
         title: 'Feature Update Released',
         body: 'A new app update is now live with improvements to mission groups and meeting reliability. Please refresh your app to get the latest experience.',
-        category: 'feature_release'
+        category: 'feature_release',
+        repeatability: 'one_time',
+        notificationTag: 'announcement_release'
       },
       {
         title: 'Journal Update (March 6, 2026)',
         body: 'Starting March 6, 2026, Journal now includes a Prayer Tracker tab, better mobile scrolling, entry view/edit actions, and easier follow-up for answered prayers and thank-you sharing. Please refresh your app to get the latest experience.',
-        category: 'feature_release'
+        category: 'feature_release',
+        repeatability: 'one_time',
+        notificationTag: 'announcement_release'
       }
     ];
 
@@ -3974,6 +3982,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
       body,
       category = 'manual',
       source = 'admin_announcement',
+      repeatability = null,
+      notificationTag = '',
+      rotationGroup = '',
       incrementUsage = true
     }) {
       const cleanTitle = String(title || '').trim();
@@ -3993,6 +4004,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
         source: source || existingData.source || 'admin_announcement',
         approvalStatus: existingData.approvalStatus || 'approved',
         usageCount: incrementUsage ? usageCount + 1 : usageCount,
+        deliveryMode: repeatability || existingData.deliveryMode || 'one_time',
+        notificationTag: notificationTag || existingData.notificationTag || '',
+        rotationGroup: rotationGroup || existingData.rotationGroup || '',
+        active: existingData.active !== false,
         updatedAt: serverTimestamp(),
         updatedByUid: auth.currentUser?.uid || null,
         updatedByEmail: auth.currentUser?.email || null
@@ -4019,6 +4034,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
           body: item.body,
           category: item.category || 'system',
           source: 'codex_seed',
+          repeatability: item.repeatability || 'one_time',
+          notificationTag: item.notificationTag || '',
           incrementUsage: false
         });
       }
