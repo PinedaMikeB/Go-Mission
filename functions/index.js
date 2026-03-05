@@ -1247,3 +1247,82 @@ exports.dispatchJournalUpdateAnnouncement = onSchedule({
 
   return null;
 });
+
+/**
+ * One-time system dispatch for newly added Bible insights books.
+ * Sends once to all users and then no-ops on subsequent runs.
+ */
+exports.dispatchInsightsBooksAnnouncement = onSchedule({
+  schedule: '0 * * * *',
+  timeZone: 'Asia/Manila',
+}, async () => {
+  const sendAfter = Date.parse('2026-03-05T14:30:00+08:00');
+  if (Number.isFinite(sendAfter) && Date.now() < sendAfter) {
+    return null;
+  }
+
+  const announcementId = 'sys_insights_books_1th_2th_hag_jon_20260305';
+  const announcementRef = db.collection('goMission_announcements').doc(announcementId);
+  const title = 'New Bible Insights Ready';
+  const body = 'Insights are now available for 1 Thessalonians, 2 Thessalonians, Haggai, and Jonah. Open Bible and explore these books today.';
+
+  try {
+    await announcementRef.create({
+      title,
+      body,
+      audience: 'all_users',
+      pushRequested: true,
+      source: 'system_scheduler',
+      status: 'dispatching',
+      createdByUid: 'system',
+      createdByEmail: 'system@gomission.local',
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    if (code === '6' || code.toLowerCase() === 'already-exists' || message.includes('Already exists')) {
+      return null;
+    }
+    throw error;
+  }
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const recipientIds = usersSnapshot.docs.map((docSnap) => docSnap.id);
+
+  let sendResult = {
+    successCount: 0,
+    failureCount: 0,
+    errors: []
+  };
+
+  if (recipientIds.length > 0) {
+    sendResult = await sendToUsersInBatches(recipientIds, {
+      title,
+      body,
+      data: {
+        type: 'announcement',
+        announcementId
+      }
+    });
+  }
+
+  await announcementRef.set({
+    status: 'sent',
+    sentAt: FieldValue.serverTimestamp(),
+    dispatch: {
+      targetCount: recipientIds.length,
+      successCount: Number(sendResult.successCount || 0),
+      failureCount: Number(sendResult.failureCount || 0),
+      errors: Array.isArray(sendResult.errors) ? sendResult.errors.slice(0, 25) : []
+    },
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  console.log(
+    `[InsightsAnnouncement] Sent: targets=${recipientIds.length}, success=${sendResult.successCount || 0}, failure=${sendResult.failureCount || 0}`
+  );
+
+  return null;
+});
