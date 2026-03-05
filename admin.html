@@ -1146,6 +1146,65 @@
           <div id="pushSettingsStatus" class="small"></div>
         </div>
 
+        <div class="col-12 panel">
+          <h2>Notification Importer</h2>
+          <p class="sub">Paste text or upload a file, then auto-parse headings and encouragement lines into reusable notification templates.</p>
+          <div class="row" style="margin-top:10px;">
+            <div>
+              <label for="notificationImportTag">Notification tag</label>
+              <input id="notificationImportTag" value="join_mission_group_sequence" placeholder="join_mission_group_sequence">
+            </div>
+            <div>
+              <label for="notificationImportRotationGroup">Rotation group</label>
+              <input id="notificationImportRotationGroup" value="join_mission_group_sequence" placeholder="join_mission_group_sequence">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="notificationImportCategory">Category</label>
+              <select id="notificationImportCategory">
+                <option value="motivation">Motivation</option>
+                <option value="announcement">Announcement</option>
+                <option value="discipleship">Discipleship</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div>
+              <label for="notificationImportDeliveryMode">Delivery mode</label>
+              <select id="notificationImportDeliveryMode">
+                <option value="repeatable">Repeatable</option>
+                <option value="one_time">One-time</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="notificationImportFallbackTitle">Fallback title (if none detected)</label>
+              <input id="notificationImportFallbackTitle" value="Mission Encouragement" maxlength="90">
+            </div>
+            <div>
+              <label for="notificationImportFile">Upload file (.txt .md .csv .json)</label>
+              <input id="notificationImportFile" type="file" accept=".txt,.md,.csv,.json,text/plain,text/csv,application/json">
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="notificationImportText">Paste source content</label>
+            <textarea id="notificationImportText" style="min-height:180px;" placeholder="Paste Week 1 / Week 2 content or upload a file above."></textarea>
+          </div>
+          <div class="role-grid" style="margin-top:10px;">
+            <label class="check"><input type="checkbox" id="notificationImportSkipExisting" checked><span>Skip duplicates already in templates</span></label>
+            <label class="check"><input type="checkbox" id="notificationImportActivate" checked><span>Set imported templates as active</span></label>
+          </div>
+          <div class="actions">
+            <button id="parseNotificationImportBtn">Parse Content</button>
+            <button id="saveNotificationImportBtn" class="warning">Save Parsed Templates</button>
+            <button id="clearNotificationImportBtn" class="secondary">Clear</button>
+          </div>
+          <div id="notificationImportStatus" class="small"></div>
+          <div id="notificationImportSummary" class="small"></div>
+          <div id="notificationImportPreview" class="list"></div>
+        </div>
+
         <div class="col-6 panel">
           <h2>Force Update Control</h2>
           <p class="sub">Trigger or schedule mandatory app update prompt.</p>
@@ -1294,6 +1353,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let activeDuplicateInspector = null;
     let latestGroupIntegrityLogs = [];
     let announcementTemplates = [];
+    let notificationImportParsed = [];
 
     const METRIC_DETAILS_CONFIG = {
       active_users: {
@@ -3985,6 +4045,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
       repeatability = null,
       notificationTag = '',
       rotationGroup = '',
+      sequence = null,
+      importHeading = '',
+      forceActive = null,
       incrementUsage = true
     }) {
       const cleanTitle = String(title || '').trim();
@@ -4007,7 +4070,13 @@ match /goMission/watch-series-covers/{allPaths=**} {
         deliveryMode: repeatability || existingData.deliveryMode || 'one_time',
         notificationTag: notificationTag || existingData.notificationTag || '',
         rotationGroup: rotationGroup || existingData.rotationGroup || '',
-        active: existingData.active !== false,
+        sequence: Number.isFinite(Number(sequence))
+          ? Number(sequence)
+          : (Number.isFinite(Number(existingData.sequence)) ? Number(existingData.sequence) : null),
+        importHeading: importHeading || existingData.importHeading || '',
+        active: typeof forceActive === 'boolean'
+          ? forceActive
+          : (existingData.active !== false),
         updatedAt: serverTimestamp(),
         updatedByUid: auth.currentUser?.uid || null,
         updatedByEmail: auth.currentUser?.email || null
@@ -4127,6 +4196,412 @@ match /goMission/watch-series-covers/{allPaths=**} {
       } catch (error) {
         setInlineStatus('announcementStatus', `Failed to save notification template: ${error.message}`, 'error');
       }
+    }
+
+    function normalizeNotificationImportLine(rawLine) {
+      let line = String(rawLine || '')
+        .replace(/\r/g, '')
+        .trim();
+      if (!line) return '';
+
+      line = line
+        .replace(/^#+\s*/, '')
+        .replace(/^[-*•]+\s*/, '')
+        .replace(/^\d{1,3}[.)]\s*/, '')
+        .replace(/^["'`“”]+|["'`“”]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return line;
+    }
+
+    function extractNotificationHeading(rawLine) {
+      let line = String(rawLine || '')
+        .replace(/\r/g, '')
+        .trim();
+      if (!line) return null;
+
+      line = line
+        .replace(/^#+\s*/, '')
+        .replace(/^\*+|\*+$/g, '')
+        .replace(/^example\s+/i, '')
+        .trim();
+
+      const weekMatch = line.match(/^week\s+(\d+)\s*[:\-–]\s*(.+)$/i);
+      if (weekMatch) {
+        const weekNumber = weekMatch[1];
+        const weekTitle = String(weekMatch[2] || '').trim();
+        return weekTitle ? `Week ${weekNumber}: ${weekTitle}` : `Week ${weekNumber}`;
+      }
+
+      if (/^the final push$/i.test(line)) {
+        return 'The Final Push';
+      }
+
+      if (/^[A-Za-z][A-Za-z0-9 '&/(),.-]{3,90}:$/.test(line)) {
+        return line.replace(/:$/, '').trim();
+      }
+
+      return null;
+    }
+
+    function deriveNotificationTitle(body, heading, fallbackTitle) {
+      const cleanBody = String(body || '').replace(/\s+/g, ' ').trim();
+      const cleanHeading = String(heading || '').replace(/\s+/g, ' ').trim();
+
+      if (cleanHeading) {
+        const withoutWeek = cleanHeading.replace(/^Week\s+\d+\s*:\s*/i, '').trim();
+        return (withoutWeek || cleanHeading).slice(0, 90);
+      }
+
+      const firstSentenceMatch = cleanBody.match(/^(.{8,90}?)([.!?])(?:\s|$)/);
+      if (firstSentenceMatch) {
+        return firstSentenceMatch[1].trim().slice(0, 90);
+      }
+
+      return String(fallbackTitle || 'Mission Encouragement').trim().slice(0, 90);
+    }
+
+    function parseNotificationTextInput(rawText, fallbackTitle) {
+      const lines = String(rawText || '').split('\n');
+      const entries = [];
+      let currentHeading = '';
+
+      for (const rawLine of lines) {
+        const headingCandidate = extractNotificationHeading(rawLine);
+        if (headingCandidate) {
+          currentHeading = headingCandidate;
+          continue;
+        }
+
+        let line = normalizeNotificationImportLine(rawLine);
+        if (!line) continue;
+
+        if (/^week\s+\d+\b/i.test(line) || /^the final push$/i.test(line)) {
+          const fallbackHeading = extractNotificationHeading(line);
+          if (fallbackHeading) {
+            currentHeading = fallbackHeading;
+            continue;
+          }
+        }
+
+        if (!/[A-Za-z]/.test(line)) continue;
+        if (line.length < 12) continue;
+
+        line = line.replace(/^\*+|\*+$/g, '').trim();
+        if (!line) continue;
+
+        const title = deriveNotificationTitle(line, currentHeading, fallbackTitle);
+        entries.push({
+          sequence: entries.length + 1,
+          heading: currentHeading || '',
+          title,
+          body: line
+        });
+      }
+
+      return entries;
+    }
+
+    function parseCsvRow(rawLine) {
+      const row = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < rawLine.length; i += 1) {
+        const char = rawLine[i];
+        const nextChar = rawLine[i + 1];
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+        if (char === ',' && !inQuotes) {
+          row.push(current.trim());
+          current = '';
+          continue;
+        }
+        current += char;
+      }
+
+      row.push(current.trim());
+      return row;
+    }
+
+    function parseNotificationCsvInput(rawText, fallbackTitle) {
+      const lines = String(rawText || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (!lines.length) return [];
+
+      const headerCells = parseCsvRow(lines[0]).map((cell) => cell.toLowerCase());
+      const bodyIndex = headerCells.findIndex((cell) => ['body', 'message', 'text', 'quote'].includes(cell));
+      if (bodyIndex === -1) {
+        return parseNotificationTextInput(rawText, fallbackTitle);
+      }
+
+      const titleIndex = headerCells.findIndex((cell) => ['title', 'subject'].includes(cell));
+      const headingIndex = headerCells.findIndex((cell) => ['heading', 'week', 'section', 'group'].includes(cell));
+      const sequenceIndex = headerCells.findIndex((cell) => ['sequence', 'order', 'index', 'day'].includes(cell));
+
+      const entries = [];
+      for (let i = 1; i < lines.length; i += 1) {
+        const cells = parseCsvRow(lines[i]);
+        const body = normalizeNotificationImportLine(cells[bodyIndex] || '');
+        if (!body) continue;
+
+        const heading = normalizeNotificationImportLine(cells[headingIndex] || '');
+        const parsedSequence = Number(cells[sequenceIndex] || 0);
+        const sequence = Number.isFinite(parsedSequence) && parsedSequence > 0
+          ? parsedSequence
+          : (entries.length + 1);
+        const titleRaw = normalizeNotificationImportLine(cells[titleIndex] || '');
+        const title = titleRaw || deriveNotificationTitle(body, heading, fallbackTitle);
+
+        entries.push({ sequence, heading, title, body });
+      }
+
+      return entries.sort((a, b) => a.sequence - b.sequence);
+    }
+
+    function parseNotificationJsonInput(rawText, fallbackTitle) {
+      const parsed = JSON.parse(String(rawText || '{}'));
+      let items = [];
+
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.messages)) items = parsed.messages;
+        else if (Array.isArray(parsed.notifications)) items = parsed.notifications;
+        else if (Array.isArray(parsed.items)) items = parsed.items;
+      }
+
+      const entries = [];
+      items.forEach((item, idx) => {
+        if (typeof item === 'string') {
+          const body = normalizeNotificationImportLine(item);
+          if (!body) return;
+          entries.push({
+            sequence: idx + 1,
+            heading: '',
+            title: deriveNotificationTitle(body, '', fallbackTitle),
+            body
+          });
+          return;
+        }
+
+        if (!item || typeof item !== 'object') return;
+        const body = normalizeNotificationImportLine(item.body || item.message || item.text || item.quote || '');
+        if (!body) return;
+
+        const heading = normalizeNotificationImportLine(item.heading || item.week || item.section || item.group || '');
+        const titleRaw = normalizeNotificationImportLine(item.title || item.subject || '');
+        const parsedSequence = Number(item.sequence || item.order || item.index || item.day || 0);
+        const sequence = Number.isFinite(parsedSequence) && parsedSequence > 0
+          ? parsedSequence
+          : (idx + 1);
+
+        entries.push({
+          sequence,
+          heading,
+          title: titleRaw || deriveNotificationTitle(body, heading, fallbackTitle),
+          body
+        });
+      });
+
+      return entries.sort((a, b) => a.sequence - b.sequence);
+    }
+
+    function detectNotificationImportFormat(rawText, fileName) {
+      const normalizedName = String(fileName || '').toLowerCase();
+      if (normalizedName.endsWith('.json')) return 'json';
+      if (normalizedName.endsWith('.csv')) return 'csv';
+
+      const sample = String(rawText || '').trim();
+      if (!sample) return 'text';
+      if (sample.startsWith('{') || sample.startsWith('[')) return 'json';
+      if (sample.includes(',') && /\n/.test(sample)) {
+        const firstLine = sample.split('\n')[0].toLowerCase();
+        if (firstLine.includes('title') || firstLine.includes('message') || firstLine.includes('body')) {
+          return 'csv';
+        }
+      }
+      return 'text';
+    }
+
+    function renderNotificationImportPreview(entries) {
+      const list = document.getElementById('notificationImportPreview');
+      const summary = document.getElementById('notificationImportSummary');
+      if (!list || !summary) return;
+
+      if (!entries.length) {
+        summary.textContent = 'No parsed notifications yet.';
+        list.innerHTML = '<div class="list-item">Parse content to preview structured notifications.</div>';
+        return;
+      }
+
+      const headingCounts = {};
+      entries.forEach((entry) => {
+        const key = entry.heading || 'No heading';
+        headingCounts[key] = (headingCounts[key] || 0) + 1;
+      });
+      const headingSummary = Object.entries(headingCounts)
+        .map(([heading, count]) => `${heading}: ${count}`)
+        .join(' | ');
+
+      summary.textContent = `Parsed ${entries.length} notification(s). ${headingSummary}`;
+      list.innerHTML = entries.map((entry) => `
+        <div class="list-item">
+          <b>#${entry.sequence} ${escapeHtml(entry.title)}</b>
+          ${entry.heading ? `<div class="meta">Heading: ${escapeHtml(entry.heading)}</div>` : ''}
+          <div class="meta">${escapeHtml(entry.body)}</div>
+        </div>
+      `).join('');
+    }
+
+    function parseNotificationImportContent() {
+      const rawText = document.getElementById('notificationImportText').value || '';
+      const file = document.getElementById('notificationImportFile')?.files?.[0] || null;
+      const fallbackTitle = document.getElementById('notificationImportFallbackTitle').value.trim() || 'Mission Encouragement';
+
+      if (!rawText.trim()) {
+        notificationImportParsed = [];
+        renderNotificationImportPreview([]);
+        setInlineStatus('notificationImportStatus', 'Paste content or upload a file first.', 'warn');
+        return;
+      }
+
+      const format = detectNotificationImportFormat(rawText, file?.name || '');
+      try {
+        if (format === 'json') {
+          notificationImportParsed = parseNotificationJsonInput(rawText, fallbackTitle);
+        } else if (format === 'csv') {
+          notificationImportParsed = parseNotificationCsvInput(rawText, fallbackTitle);
+        } else {
+          notificationImportParsed = parseNotificationTextInput(rawText, fallbackTitle);
+        }
+      } catch (error) {
+        notificationImportParsed = [];
+        renderNotificationImportPreview([]);
+        setInlineStatus('notificationImportStatus', `Could not parse content: ${error.message}`, 'error');
+        return;
+      }
+
+      renderNotificationImportPreview(notificationImportParsed);
+      setInlineStatus(
+        'notificationImportStatus',
+        notificationImportParsed.length
+          ? `Parsed ${notificationImportParsed.length} notification(s) from ${format.toUpperCase()} input.`
+          : 'No notification lines detected. Adjust content and try again.',
+        notificationImportParsed.length ? 'success' : 'warn'
+      );
+    }
+
+    async function loadNotificationImportFile() {
+      const fileInput = document.getElementById('notificationImportFile');
+      const file = fileInput?.files?.[0] || null;
+      if (!file) return;
+
+      const maxSizeBytes = 2 * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        setInlineStatus('notificationImportStatus', 'File too large. Keep file below 2MB.', 'warn');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        document.getElementById('notificationImportText').value = text;
+        setInlineStatus('notificationImportStatus', `Loaded file: ${file.name}`, 'info');
+      };
+      reader.onerror = () => {
+        setInlineStatus('notificationImportStatus', `Could not read file: ${file.name}`, 'error');
+      };
+      reader.readAsText(file);
+    }
+
+    async function saveParsedNotificationImport() {
+      const tag = document.getElementById('notificationImportTag').value.trim();
+      const rotationGroup = document.getElementById('notificationImportRotationGroup').value.trim();
+      const category = document.getElementById('notificationImportCategory').value;
+      const deliveryMode = document.getElementById('notificationImportDeliveryMode').value;
+      const skipExisting = document.getElementById('notificationImportSkipExisting').checked;
+      const forceActive = document.getElementById('notificationImportActivate').checked;
+      const saveBtn = document.getElementById('saveNotificationImportBtn');
+
+      if (!tag) {
+        setInlineStatus('notificationImportStatus', 'Notification tag is required.', 'warn');
+        return;
+      }
+      if (!notificationImportParsed.length) {
+        setInlineStatus('notificationImportStatus', 'Parse content first before saving.', 'warn');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      setInlineStatus('notificationImportStatus', 'Saving parsed notifications to template list...', 'info');
+
+      try {
+        await loadAnnouncementTemplates({ silent: true, ensureDefaults: false });
+        const existingIds = new Set(announcementTemplates.map((item) => item.id));
+
+        let savedCount = 0;
+        let skippedCount = 0;
+        let failedCount = 0;
+
+        for (const entry of notificationImportParsed) {
+          const templateId = buildAnnouncementTemplateId(entry.title, entry.body);
+          if (skipExisting && existingIds.has(templateId)) {
+            skippedCount += 1;
+            continue;
+          }
+
+          try {
+            await upsertAnnouncementTemplate({
+              title: entry.title,
+              body: entry.body,
+              category,
+              source: 'admin_import',
+              repeatability: deliveryMode,
+              notificationTag: tag,
+              rotationGroup: rotationGroup || tag,
+              sequence: entry.sequence,
+              importHeading: entry.heading,
+              forceActive,
+              incrementUsage: false
+            });
+            savedCount += 1;
+            existingIds.add(templateId);
+          } catch (error) {
+            console.warn('[NotificationImport] Save error:', error);
+            failedCount += 1;
+          }
+        }
+
+        await loadAnnouncementTemplates({ silent: true, ensureDefaults: false });
+        setInlineStatus(
+          'notificationImportStatus',
+          `Import complete. Saved: ${savedCount}, Skipped: ${skippedCount}, Failed: ${failedCount}.`,
+          failedCount ? 'warn' : 'success'
+        );
+      } catch (error) {
+        setInlineStatus('notificationImportStatus', `Import failed: ${error.message}`, 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    function clearNotificationImportInput() {
+      document.getElementById('notificationImportText').value = '';
+      document.getElementById('notificationImportFile').value = '';
+      notificationImportParsed = [];
+      renderNotificationImportPreview([]);
+      setInlineStatus('notificationImportStatus', 'Importer cleared.', 'info');
     }
 
     function isRetryableCallableError(error) {
@@ -5655,6 +6130,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('reloadAnnouncementTemplatesBtn').addEventListener('click', () => {
         loadAnnouncementTemplates({ silent: false, ensureDefaults: true });
       });
+      document.getElementById('notificationImportFile').addEventListener('change', loadNotificationImportFile);
+      document.getElementById('parseNotificationImportBtn').addEventListener('click', parseNotificationImportContent);
+      document.getElementById('saveNotificationImportBtn').addEventListener('click', saveParsedNotificationImport);
+      document.getElementById('clearNotificationImportBtn').addEventListener('click', clearNotificationImportInput);
 
       document.getElementById('publishSundayVideoBtn').addEventListener('click', saveSundayVideo);
       document.getElementById('clearSundayVideoBtn').addEventListener('click', clearSundayVideoForm);
