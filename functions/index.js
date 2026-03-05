@@ -1166,3 +1166,84 @@ exports.cleanupExpiredResetCodes = onSchedule({
   
   return null;
 });
+
+/**
+ * One-time system dispatch for Journal update announcement.
+ * Runs on a minute schedule but sends only once (guarded by fixed doc id).
+ */
+exports.dispatchJournalUpdateAnnouncement = onSchedule({
+  schedule: '0 * * * *',
+  timeZone: 'Asia/Manila',
+}, async () => {
+  const sendAfter = Date.parse('2026-03-05T00:25:00+08:00');
+  if (Number.isFinite(sendAfter) && Date.now() < sendAfter) {
+    return null;
+  }
+
+  const announcementId = 'sys_journal_update_20260305';
+  const announcementRef = db.collection('goMission_announcements').doc(announcementId);
+  const title = 'Journal Update (March 6, 2026)';
+  const body = 'Journal now includes Prayer Tracker, improved mobile scrolling, entry view/edit actions, and better answered-prayer follow-up. Please refresh your app for the latest experience.';
+
+  try {
+    await announcementRef.create({
+      title,
+      body,
+      audience: 'all_users',
+      pushRequested: true,
+      source: 'system_scheduler',
+      status: 'dispatching',
+      createdByUid: 'system',
+      createdByEmail: 'system@gomission.local',
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    if (code === '6' || code.toLowerCase() === 'already-exists' || message.includes('Already exists')) {
+      return null;
+    }
+    throw error;
+  }
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const recipientIds = usersSnapshot.docs.map((docSnap) => docSnap.id);
+
+  let sendResult = {
+    successCount: 0,
+    failureCount: 0,
+    errors: []
+  };
+
+  if (recipientIds.length > 0) {
+    sendResult = await sendToUsersInBatches(recipientIds, {
+      title,
+      body,
+      data: {
+        type: 'announcement',
+        announcementId
+      }
+    });
+  }
+
+  console.log(
+    `[JournalAnnouncement] Dispatch result: targets=${recipientIds.length}, success=${sendResult.successCount || 0}, failure=${sendResult.failureCount || 0}`
+  );
+
+  await announcementRef.set({
+    status: 'sent',
+    sentAt: FieldValue.serverTimestamp(),
+    dispatch: {
+      targetCount: recipientIds.length,
+      successCount: Number(sendResult.successCount || 0),
+      failureCount: Number(sendResult.failureCount || 0),
+      errors: Array.isArray(sendResult.errors) ? sendResult.errors.slice(0, 25) : []
+    },
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  console.log('[JournalAnnouncement] Marked as sent.');
+
+  return null;
+});
