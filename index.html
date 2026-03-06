@@ -2209,6 +2209,13 @@
                                 Prayer Tracker
                             </button>
                         </div>
+                        <div class="mb-3">
+                            <button id="journalContinueBibleBtn"
+                                    onclick="continueJournalToBibleLastVerse()"
+                                    class="journal-action-btn w-full px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/20 transition-colors">
+                                📖 Continue in Bible (Last verse)
+                            </button>
+                        </div>
 
                         <div id="journalEntriesFilters">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -5997,6 +6004,7 @@
                 })
                 : (data.date || '-');
             const summaryLine = truncateDevotionText(understandingText || actionText || scriptureText || '', 170);
+            const continueBibleLabel = lang === 'tl' ? 'Buksan sa Bible' : 'Continue Bible';
 
             return `
                 <div class="journal-card p-3 sm:p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
@@ -6018,6 +6026,10 @@
                             </div>
                         ` : `
                             <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <button onclick="continueJournalToBibleLastVerse()"
+                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/20 transition-colors">
+                                    📖 ${escapeDevotionHtml(continueBibleLabel)}
+                                </button>
                                 <button onclick="toggleJournalEntryDetails('${entryIdForJs}')"
                                         class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
                                     ${isExpanded ? 'Hide' : 'View'}
@@ -6267,6 +6279,30 @@
             });
         };
 
+        window.continueJournalToBibleLastVerse = async function() {
+            try {
+                if (typeof window.closeJournal === 'function') {
+                    window.closeJournal();
+                }
+
+                if (window.BibleReader?.openAtLastSelectedVerse) {
+                    const resumed = await window.BibleReader.openAtLastSelectedVerse({ ensureFullscreen: true });
+                    if (resumed) return;
+                }
+
+                if (window.BibleReader?.openFromNav) {
+                    await window.BibleReader.openFromNav({ preferLastVerse: false });
+                } else if (window.BibleReader?.enterFullscreen) {
+                    window.BibleReader.enterFullscreen();
+                } else {
+                    alert('Bible reader is not available right now. Please refresh and try again.');
+                }
+            } catch (error) {
+                console.error('[Journal] continueJournalToBibleLastVerse failed:', error);
+                alert('Could not open Bible right now. Please try again.');
+            }
+        };
+
         window.openJournalEntryFromPrayer = function(entryId) {
             const normalizedId = String(entryId || '');
             journalState.viewEntryId = normalizedId;
@@ -6377,6 +6413,15 @@
                     prayerList.innerHTML = '<p class="text-red-400 text-center py-8">Error loading prayer tracker. Please try again.</p>';
                 }
             }
+        }
+
+        function updateJournalContinueBibleButtonLabel() {
+            const btn = document.getElementById('journalContinueBibleBtn');
+            if (!btn) return;
+            const lang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
+            btn.textContent = lang === 'tl'
+                ? '📖 Bumalik sa Bible (Huling talata)'
+                : '📖 Continue in Bible (Last verse)';
         }
 
         async function updatePrayerRequestInJournal(entryId, prayerId, mutator) {
@@ -6624,6 +6669,7 @@
                 return;
             }
             window.ensureJournalModalVisibility(modal);
+            updateJournalContinueBibleButtonLabel();
             await renderJournalEntriesList();
         };
         

@@ -66,6 +66,10 @@ const BibleReader = {
     chapter: 3,
     booksProgress: {}
   },
+  lastSelectedVerse: null,
+  storageKeys: {
+    lastSelectedVerse: 'goMission_bibleLastSelectedVerse'
+  },
 
   /**
    * Initialize the reader
@@ -76,6 +80,7 @@ const BibleReader = {
     // Load saved progress and preferences
     await this.loadProgress();
     this.loadPreferences();
+    this.loadLastSelectedVerse();
     
     // Listen for passage selection from BiblePicker
     document.addEventListener('biblePassageSelected', (e) => {
@@ -205,6 +210,77 @@ const BibleReader = {
   },
 
   /**
+   * Load last selected verse pointer (book/chapter/verse) from localStorage.
+   */
+  loadLastSelectedVerse() {
+    try {
+      const raw = localStorage.getItem(this.storageKeys.lastSelectedVerse);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      this.lastSelectedVerse = this.normalizeVersePointer(parsed);
+      return this.lastSelectedVerse;
+    } catch (e) {
+      this.lastSelectedVerse = null;
+      return null;
+    }
+  },
+
+  /**
+   * Validate and normalize verse pointer payload.
+   */
+  normalizeVersePointer(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    const book = String(payload.book || '').trim().toUpperCase();
+    const chapter = parseInt(payload.chapter, 10);
+    const verse = parseInt(payload.verse, 10);
+
+    if (!book || !Number.isFinite(chapter) || chapter < 1 || !Number.isFinite(verse) || verse < 1) {
+      return null;
+    }
+
+    return {
+      book,
+      chapter,
+      verse,
+      savedAt: Number(payload.savedAt) || Date.now()
+    };
+  },
+
+  /**
+   * Return the cached last-selected verse pointer.
+   */
+  getLastSelectedVerse() {
+    if (!this.lastSelectedVerse) {
+      this.loadLastSelectedVerse();
+    }
+    return this.normalizeVersePointer(this.lastSelectedVerse);
+  },
+
+  /**
+   * Persist the verse user just tapped (without persisting highlights).
+   */
+  rememberLastSelectedVerse(verseNum) {
+    const verse = parseInt(verseNum, 10);
+    if (!Number.isFinite(verse) || verse < 1 || !this.currentBook || !this.currentChapter) return;
+
+    const pointer = this.normalizeVersePointer({
+      book: this.currentBook,
+      chapter: this.currentChapter,
+      verse,
+      savedAt: Date.now()
+    });
+
+    if (!pointer) return;
+
+    this.lastSelectedVerse = pointer;
+    try {
+      localStorage.setItem(this.storageKeys.lastSelectedVerse, JSON.stringify(pointer));
+    } catch (e) {
+      // Ignore storage write errors and keep in-memory pointer.
+    }
+  },
+
+  /**
    * Load reading preferences from localStorage
    */
   loadPreferences() {
@@ -309,14 +385,90 @@ const BibleReader = {
   /**
    * Open Bible from bottom nav and resume where reader left off.
    */
-  async openFromNav() {
+  async openFromNav(options = {}) {
     if (document.getElementById('bibleFullscreenOverlay')) return;
+
+    const preferLastVerse = options.preferLastVerse !== false;
+    if (preferLastVerse) {
+      const resumed = await this.openAtLastSelectedVerse({ ensureFullscreen: true });
+      if (resumed) return;
+    }
 
     if (!this.chapterData) {
       await this.loadChapter(this.currentBook || 'JHN', this.currentChapter || 3);
     }
 
     this.enterFullscreen();
+  },
+
+  /**
+   * Open Bible to the user's last tapped verse and scroll to it.
+   */
+  async openAtLastSelectedVerse(options = {}) {
+    const pointer = this.getLastSelectedVerse();
+    if (!pointer) return false;
+
+    const ensureFullscreen = options.ensureFullscreen !== false;
+    const shouldLoadChapter = !this.chapterData
+      || this.currentBook !== pointer.book
+      || this.currentChapter !== pointer.chapter;
+
+    if (shouldLoadChapter) {
+      await this.loadChapter(pointer.book, pointer.chapter);
+    }
+
+    if (ensureFullscreen && !document.getElementById('bibleFullscreenOverlay')) {
+      this.enterFullscreen();
+    }
+
+    this.scrollToVerse(pointer.verse, { behavior: 'smooth' });
+    return true;
+  },
+
+  /**
+   * Scroll current Bible container (fullscreen or preview) to a specific verse.
+   */
+  scrollToVerse(verseNum, options = {}) {
+    const verse = parseInt(verseNum, 10);
+    if (!Number.isFinite(verse) || verse < 1) return false;
+
+    const behavior = options.behavior || 'smooth';
+    const attempt = Number(options.attempt) || 0;
+    const maxAttempts = Number(options.maxAttempts) || 10;
+    const selector = `.verse[data-verse="${verse}"]`;
+    const fullscreenContainer = document.getElementById('fullscreenBibleText');
+    const previewContainer = this.elements.bibleText || document.getElementById('bibleText');
+
+    let container = null;
+    let verseEl = null;
+
+    if (fullscreenContainer) {
+      verseEl = fullscreenContainer.querySelector(selector);
+      if (verseEl) container = fullscreenContainer;
+    }
+
+    if (!verseEl && previewContainer) {
+      verseEl = previewContainer.querySelector(selector);
+      if (verseEl) container = previewContainer;
+    }
+
+    if (!verseEl) {
+      if (attempt < maxAttempts) {
+        requestAnimationFrame(() => {
+          this.scrollToVerse(verse, { behavior, attempt: attempt + 1, maxAttempts });
+        });
+      }
+      return false;
+    }
+
+    if (container && typeof container.scrollTo === 'function') {
+      const targetTop = Math.max(0, verseEl.offsetTop - Math.round((container.clientHeight || 0) * 0.35));
+      container.scrollTo({ top: targetTop, behavior });
+    } else {
+      verseEl.scrollIntoView({ behavior, block: 'center' });
+    }
+
+    return true;
   },
 
   /**
@@ -1846,6 +1998,8 @@ const BibleReader = {
    * Toggle verse highlight - each verse stores its own color
    */
   async toggleHighlight(verseNum) {
+    this.rememberLastSelectedVerse(verseNum);
+
     const existingIndex = this.highlightedVerses.findIndex(h => h.verse === verseNum);
     
     if (existingIndex > -1) {
