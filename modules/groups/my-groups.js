@@ -17,6 +17,8 @@ const MyGroups = {
     isCreatingGroup: false,
     currentMemberProfile: null,
     activeGroupDetailContext: null,
+    groupCardMediaState: {},
+    groupCardTouchState: {},
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
     INTEGRITY_LOGS_COLLECTION: 'goMission_integrityLogs',
     GROUP_DASHBOARD_THRESHOLDS: {
@@ -1416,10 +1418,8 @@ const MyGroups = {
 
         statusListEl.innerHTML = uniqueGroups.map((group) => {
             const scheduleConfig = group.meetingSchedule || group.schedule || null;
-            const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
-            const meetingLock = this.getGroupMeetingLockState(group);
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
             const pendingDeleteRequest = (isLeaderOfGroup && group.role === 'downline')
                 ? this.pendingGroupDeletionRequestsById?.[group.id]
@@ -1427,51 +1427,66 @@ const MyGroups = {
             const hasPendingDelete = !!pendingDeleteRequest;
 
             const memberCount = this.normalizeCollectionEntries(group.members).length;
-            const previewLine = meetingLock.locked
-                ? 'Meeting is currently locked'
-                : (isMeetingNow
-                    ? 'Meeting room is live now'
-                    : (scheduleConfig?.day && scheduleConfig?.time
-                        ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
-                        : ''));
+            const previewLine = scheduleConfig?.day && scheduleConfig?.time
+                ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
+                : '';
             const menuBadge = pendingRequestsCount > 0
                 ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#9d0500] text-white text-[10px] font-black inline-flex items-center justify-center px-1 border border-white">${pendingRequestsCount}</span>`
                 : '';
-            const joinLabel = meetingLock.locked ? 'Meeting Locked' : 'Join Meeting';
+            const gallery = this.getGroupPhotoGallery(group);
+            const activePhotoIndex = this.getGroupCardPhotoIndex(group.id, gallery.length);
+            const activePhoto = gallery[activePhotoIndex] || '';
+            const hasGallery = gallery.length > 0;
 
             return `
                 <div class="mission-groups-status-item p-4 sm:p-5">
-                    <div class="flex items-start gap-4">
-                        <div class="shrink-0">
-                            ${this.renderGroupAvatar(group)}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-[1.18rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
-                                    ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
-                                    <p class="mt-1 text-[12px] uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
+                    <div class="rounded-[26px] border border-[#eadcd2] bg-[linear-gradient(180deg,rgba(255,251,246,0.98),rgba(255,255,255,0.96))] overflow-hidden">
+                        <div class="relative aspect-[1.48/1] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))]"
+                             ontouchstart="window.MyGroups.handleGroupCardTouchStart('${groupIdForJs}', event)"
+                             ontouchend="window.MyGroups.handleGroupCardTouchEnd('${groupIdForJs}', event)">
+                            ${hasGallery ? `
+                                <img src="${this.escapeHtml(activePhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="absolute inset-0 w-full h-full object-cover">
+                            ` : `
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="w-[96px] h-[96px] rounded-[28px] border border-[#eadcd2] bg-white/74 shadow-[0_14px_30px_rgba(91,49,26,0.08)] flex items-center justify-center">
+                                        <span class="text-[2.3rem] font-black text-[#6d0707]">${this.escapeHtml(this.getGroupDisplayIcon(group) || this.getGroupInitials(group.name || 'Mission Group'))}</span>
+                                    </div>
                                 </div>
-                                ${isLeaderOfGroup && group.role === 'downline' ? `
-                                    <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
-                                            class="relative shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#eadcd2] bg-white/84 text-[#8f7a6d] shadow-[0_8px_18px_rgba(91,49,26,0.06)] hover:border-[#d9bb6b] hover:text-[#c19200] transition-colors"
-                                            title="Group options"
-                                            aria-label="Group options">
-                                        <span class="text-xl leading-none">⋯</span>
-                                        ${menuBadge}
-                                    </button>
-                                ` : ''}
-                            </div>
-                            <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', ${isLeaderOfGroup ? 'true' : 'false'})"
-                                    class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-[18px] px-4 py-3 text-sm font-black transition-all shadow-[0_12px_24px_rgba(90,48,26,0.08)] ${meetingLock.locked
-                                        ? 'border border-[#f0c4c4] bg-[#fff1f1] text-[#b43a3a]'
-                                        : 'border border-[#e6c55c] bg-[linear-gradient(135deg,#f7cc00,#ffd84d)] text-[#3f1400] hover:translate-y-[-1px]'}">
-                                <span class="text-base leading-none">${meetingLock.locked ? '🔒' : '🎥'}</span>
-                                <span>${joinLabel}</span>
+                            `}
+                            <div class="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(42,17,10,0.22),rgba(42,17,10,0))]"></div>
+                            <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
+                                    class="absolute top-4 right-4 relative inline-flex items-center justify-center w-11 h-11 rounded-full border border-white/70 bg-white/86 text-[#8f7a6d] shadow-[0_8px_20px_rgba(91,49,26,0.12)] hover:text-[#c19200] transition-colors"
+                                    title="Group options"
+                                    aria-label="Group options">
+                                <span class="text-xl leading-none">⋯</span>
+                                ${menuBadge}
                             </button>
-                            ${hasPendingDelete ? `
-                                <p class="mt-3 text-[12px] text-[#b43a3a]">Delete request pending admin review.</p>
+                            ${gallery.length > 1 ? `
+                                <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', -1)"
+                                        class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/70 bg-white/82 text-[#6d0707] shadow-[0_8px_20px_rgba(91,49,26,0.12)] inline-flex items-center justify-center"
+                                        aria-label="Previous photo">
+                                    ‹
+                                </button>
+                                <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', 1)"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/70 bg-white/82 text-[#6d0707] shadow-[0_8px_20px_rgba(91,49,26,0.12)] inline-flex items-center justify-center"
+                                        aria-label="Next photo">
+                                    ›
+                                </button>
+                                <div class="absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+                                    ${gallery.map((_, index) => `
+                                        <button onclick="window.MyGroups.setGroupCardPhotoIndex('${groupIdForJs}', ${index})"
+                                                class="w-2.5 h-2.5 rounded-full border ${index === activePhotoIndex ? 'bg-white border-white' : 'bg-white/40 border-white/70'}"
+                                                aria-label="View photo ${index + 1}">
+                                        </button>
+                                    `).join('')}
+                                </div>
                             ` : ''}
+                        </div>
+                        <div class="p-4 sm:p-5">
+                            <p class="text-[1.24rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                            ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
+                            <p class="mt-2 text-[12px] uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
+                            ${hasPendingDelete ? `<p class="mt-3 text-[12px] text-[#b43a3a]">Delete request pending admin review.</p>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1522,6 +1537,76 @@ const MyGroups = {
 
     getGroupDisplayIcon(group = {}) {
         return group.groupIcon || group.icon || '';
+    },
+
+    getGroupPhotoGallery(group = {}) {
+        const unique = [];
+        const add = (value) => {
+            const url = String(value || '').trim();
+            if (!url || unique.includes(url)) return;
+            unique.push(url);
+        };
+
+        add(this.getGroupDisplayImage(group));
+        const galleries = [
+            group.groupPhotoGallery,
+            group.photoGallery,
+            group.photos
+        ];
+        galleries.forEach((gallery) => {
+            if (!Array.isArray(gallery)) return;
+            gallery.forEach(add);
+        });
+
+        return unique;
+    },
+
+    getGroupCardPhotoIndex(groupId, photoCount = 0) {
+        const current = Number(this.groupCardMediaState?.[groupId] || 0);
+        if (!photoCount) return 0;
+        if (current < 0) return 0;
+        if (current >= photoCount) return 0;
+        return current;
+    },
+
+    async setGroupCardPhotoIndex(groupId, nextIndex = 0) {
+        const group = this.getGroupById(groupId);
+        if (!group) return;
+        const gallery = this.getGroupPhotoGallery(group);
+        if (!gallery.length) return;
+        if (!this.groupCardMediaState) this.groupCardMediaState = {};
+        const normalized = ((Number(nextIndex) % gallery.length) + gallery.length) % gallery.length;
+        this.groupCardMediaState[groupId] = normalized;
+        if (this.isDashboardOpen) {
+            await this.renderDashboard();
+        }
+    },
+
+    async stepGroupCardPhoto(groupId, direction = 1) {
+        const group = this.getGroupById(groupId);
+        if (!group) return;
+        const gallery = this.getGroupPhotoGallery(group);
+        if (gallery.length <= 1) return;
+        const current = this.getGroupCardPhotoIndex(groupId, gallery.length);
+        await this.setGroupCardPhotoIndex(groupId, current + Number(direction || 1));
+    },
+
+    handleGroupCardTouchStart(groupId, event) {
+        const touch = event?.touches?.[0];
+        if (!touch) return;
+        this.groupCardTouchState[groupId] = { startX: touch.clientX, startY: touch.clientY };
+    },
+
+    async handleGroupCardTouchEnd(groupId, event) {
+        const touch = event?.changedTouches?.[0];
+        const state = this.groupCardTouchState[groupId];
+        delete this.groupCardTouchState[groupId];
+        if (!touch || !state) return;
+
+        const deltaX = touch.clientX - state.startX;
+        const deltaY = touch.clientY - state.startY;
+        if (Math.abs(deltaX) < 28 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+        await this.stepGroupCardPhoto(groupId, deltaX < 0 ? 1 : -1);
     },
 
     getGroupInitials(groupName = '') {
@@ -2545,6 +2630,8 @@ const MyGroups = {
                         <p class="text-sm leading-relaxed text-[#6b5b54] mt-2">Add prayer needs for your members.</p>
                     </div>
                 `;
+            const groupPhotoGallery = this.getGroupPhotoGallery(group);
+            const primaryGroupPhoto = this.getGroupDisplayImage(group) || groupPhotoGallery[0] || '';
 
             const focusBody = focusMember ? `
                 <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_12px_30px_rgba(89,49,22,0.05)]">
@@ -2685,14 +2772,68 @@ const MyGroups = {
                             </button>
                         </div>
                     </div>
+                    <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_10px_28px_rgba(89,49,22,0.04)]">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-black text-[#6d0707]">Group Photos</p>
+                                <p class="mt-1 text-xs leading-relaxed text-[#74655c]">Choose one primary photo for the card. Upload more photos so leaders can browse with arrows or swipe.</p>
+                            </div>
+                            <button onclick="window.MyGroups.triggerGroupImageUpload('${groupIdSafe}', 'settings')"
+                                    class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black bg-[#f7cc00] text-[#3f1400] shadow-sm">
+                                Upload Photos
+                            </button>
+                        </div>
+                        <div class="mt-4 rounded-[24px] overflow-hidden border border-[#eadcd2] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))] aspect-[1.6/1]">
+                            ${primaryGroupPhoto ? `
+                                <img src="${this.escapeHtml(primaryGroupPhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="w-full h-full object-cover">
+                            ` : `
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <span class="text-5xl font-black text-[#6d0707]">${this.escapeHtml(this.getGroupDisplayIcon(group) || this.getGroupInitials(group.name || 'Mission Group'))}</span>
+                                </div>
+                            `}
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button onclick="window.MyGroups.showGroupIconPicker('${groupIdSafe}', 'settings')"
+                                    class="px-4 py-2.5 rounded-full text-sm font-black border border-[#e7d6c9] bg-white text-[#6d0707]">
+                                Choose Icon
+                            </button>
+                            <button onclick="window.MyGroups.clearGroupVisual('${groupIdSafe}', 'settings')"
+                                    class="px-4 py-2.5 rounded-full text-sm font-black border border-[#e7d6c9] bg-white text-[#6d0707]">
+                                Use Initials
+                            </button>
+                        </div>
+                        ${groupPhotoGallery.length ? `
+                            <div class="mt-4 space-y-3">
+                                ${groupPhotoGallery.map((photoUrl, index) => `
+                                    <div class="flex items-center gap-3 rounded-[20px] border border-[#eadcd2] bg-[#fffdfa] p-3">
+                                        <img src="${this.escapeHtml(photoUrl)}" alt="Group photo ${index + 1}" class="w-16 h-16 rounded-[18px] object-cover border border-[#eadcd2]">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-black text-[#6d0707]">${photoUrl === primaryGroupPhoto ? 'Primary photo' : `Photo ${index + 1}`}</p>
+                                            <p class="mt-1 text-xs text-[#74655c]">${photoUrl === primaryGroupPhoto ? 'Shown first on the mission group card.' : 'Available in the card gallery.'}</p>
+                                        </div>
+                                        <div class="flex flex-col gap-2">
+                                            ${photoUrl !== primaryGroupPhoto ? `
+                                                <button onclick="window.MyGroups.setPrimaryGroupPhoto('${groupIdSafe}', '${this.escapeForJs(photoUrl)}', 'settings')"
+                                                        class="px-3 py-2 rounded-full text-xs font-black bg-[#f7cc00] text-[#3f1400]">
+                                                    Set Primary
+                                                </button>
+                                            ` : ''}
+                                            <button onclick="window.MyGroups.removeGroupPhoto('${groupIdSafe}', '${this.escapeForJs(photoUrl)}', 'settings')"
+                                                    class="px-3 py-2 rounded-full text-xs font-black border border-[#f0c4c4] bg-[#fff1f1] text-[#9d0500]">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <p class="mt-4 text-sm leading-relaxed text-[#6b5b54]">No group photos yet. Upload your first photo to give this group a clear visual identity.</p>
+                        `}
+                    </div>
                     <div class="flex flex-wrap gap-2">
                         <button onclick="window.MyGroups.editSchedule('${groupIdSafe}')"
                                 class="px-4 py-3 rounded-full text-sm font-black bg-[#f7cc00] text-[#3f1400] shadow-sm">
                             Edit Day & Time
-                        </button>
-                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
-                                class="px-4 py-3 rounded-full text-sm font-black shadow-sm ${meetingLock.locked ? 'bg-[#fff2f2] text-[#9d0500] border border-[#efc0ba]' : (meetingLive ? 'bg-[#35b16f] text-white' : 'bg-white text-[#6d0707] border border-[#e7d6c9]')}">
-                            ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting' : 'Join Meeting')}
                         </button>
                     </div>
                     ${meetingLock.locked ? `
@@ -4115,8 +4256,9 @@ const MyGroups = {
      * Show group menu
      */
     async showGroupMenu(groupId) {
-        const group = this.downlineGroups.find(g => g.id === groupId);
+        const group = this.getGroupById(groupId);
         if (!group) return;
+        const isLeader = group.leaderId === window.currentUser?.uid;
 
         const modal = document.getElementById('groupModal');
         const content = document.getElementById('groupModalContent');
@@ -4166,31 +4308,35 @@ const MyGroups = {
                 ` : ''}
 
                 <div class="space-y-3">
+                    <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', ${isLeader ? 'true' : 'false'})"
+                            class="w-full rounded-[22px] border border-[#f1d279] bg-[#fff8df] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Join Meeting</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Open the video meeting room for this group.</span>
+                    </button>
                     <button onclick="window.MyGroups.viewGroupDetails('${groupIdSafe}')"
                             class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
                         <span class="block text-sm font-black text-[#6d0707]">Open Dashboard</span>
                         <span class="block mt-1 text-xs text-[#7d6c64]">See this week’s focus, care lists, prayer, and members.</span>
                     </button>
+                    ${isLeader ? `
+                        <button onclick="window.MyGroups.openGroupEditSettings('${groupIdSafe}')"
+                                class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                            <span class="block text-sm font-black text-[#6d0707]">Edit Group</span>
+                            <span class="block mt-1 text-xs text-[#7d6c64]">Rename the group, update meeting time, and manage the photo gallery.</span>
+                        </button>
+                    ` : ''}
                     <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
                             class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
                         <span class="block text-sm font-black text-[#6d0707]">Group Chat</span>
                         <span class="block mt-1 text-xs text-[#7d6c64]">Open the shared conversation for this mission group.</span>
                     </button>
+                    ${isLeader ? `
                     <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
                             class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
                         <span class="block text-sm font-black text-[#6d0707]">Invite Members</span>
                         <span class="block mt-1 text-xs text-[#7d6c64]">Generate and share the invite code for this group.</span>
                     </button>
-                    <button onclick="window.MyGroups.triggerGroupImageUpload('${groupIdSafe}')"
-                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
-                        <span class="block text-sm font-black text-[#6d0707]">Upload Group Image</span>
-                        <span class="block mt-1 text-xs text-[#7d6c64]">Add a real photo so the card is easier to recognize.</span>
-                    </button>
-                    <button onclick="window.MyGroups.showGroupIconPicker('${groupIdSafe}')"
-                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
-                        <span class="block text-sm font-black text-[#6d0707]">Choose Group Icon</span>
-                        <span class="block mt-1 text-xs text-[#7d6c64]">Pick a clean icon style if you do not want to use a photo.</span>
-                    </button>
+                    ` : ''}
                     ${requestCount > 0 ? `
                         <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
                                 class="w-full rounded-[22px] border border-[#f0d06f] bg-[#fff8df] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
@@ -4198,11 +4344,13 @@ const MyGroups = {
                             <span class="block mt-1 text-xs text-[#7d6c64]">${requestCount} pending request${requestCount === 1 ? '' : 's'} waiting for review.</span>
                         </button>
                     ` : ''}
+                    ${isLeader ? `
                     <button onclick="window.MyGroups.showDeleteGroupRequestForm('${groupIdSafe}')"
                             class="w-full rounded-[22px] border border-[#f0c4c4] bg-[#fff1f1] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
                         <span class="block text-sm font-black text-[#9d0500]">Request Admin Delete Group</span>
                         <span class="block mt-1 text-xs text-[#a56d6d]">Use this only when the group should be removed permanently.</span>
                     </button>
+                    ` : ''}
                     <button onclick="window.MyGroups.closeModal()"
                             class="w-full border border-[#dfd0c6] text-[#7d6c64] py-3 rounded-full font-semibold">
                         Close
@@ -4449,37 +4597,44 @@ const MyGroups = {
         modal.classList.remove('hidden');
     },
 
-    triggerGroupImageUpload(groupId) {
-        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+    async openGroupEditSettings(groupId) {
+        await this.viewGroupDetails(groupId);
+        this.openGroupDashboardSection('group_settings');
+    },
+
+    triggerGroupImageUpload(groupId, returnTarget = 'menu') {
+        const group = this.getGroupById(groupId);
         if (!group) return;
 
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
+        input.multiple = true;
         input.className = 'hidden';
         input.addEventListener('change', async (event) => {
-            const file = event?.target?.files?.[0];
+            const files = Array.from(event?.target?.files || []);
             input.remove();
-            if (!file) return;
-            await this.uploadGroupImage(groupId, file);
+            if (!files.length) return;
+            await this.uploadGroupImages(groupId, files, returnTarget);
         }, { once: true });
         document.body.appendChild(input);
         input.click();
     },
 
-    async uploadGroupImage(groupId, file) {
-        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+    async uploadGroupImages(groupId, files = [], returnTarget = 'menu') {
+        const group = this.getGroupById(groupId);
         if (!group) return;
         if (!window.currentUser?.uid) {
             alert('Please sign in first.');
             return;
         }
-        if (!file?.type || !file.type.startsWith('image/')) {
-            alert('Please select an image file.');
+        const imageFiles = (files || []).filter((file) => file?.type && file.type.startsWith('image/'));
+        if (!imageFiles.length) {
+            alert('Please select image files.');
             return;
         }
-        if (file.size > this.GROUP_PHOTO_MAX_BYTES) {
-            alert('Image is too large. Please use a file smaller than 5MB.');
+        if (imageFiles.some((file) => file.size > this.GROUP_PHOTO_MAX_BYTES)) {
+            alert('One of the images is too large. Please use files smaller than 5MB.');
             return;
         }
         if (!window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
@@ -4491,27 +4646,43 @@ const MyGroups = {
             return;
         }
 
-        this.showToast('Uploading group image...');
+        this.showToast(imageFiles.length > 1 ? 'Uploading group photos...' : 'Uploading group photo...');
         try {
-            const safeName = String(file.name || 'group.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
-            const path = `group-photos/${groupId}/${Date.now()}_${safeName}`;
-            const ref = window.storageRef(window.storage, path);
-            const uploaded = await window.uploadBytes(ref, file, {
-                contentType: file.type || 'image/jpeg',
-                cacheControl: 'public,max-age=3600'
+            const uploadedUrls = [];
+            for (const file of imageFiles) {
+                const safeName = String(file.name || 'group.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+                const path = `group-photos/${groupId}/${Date.now()}_${safeName}`;
+                const ref = window.storageRef(window.storage, path);
+                const uploaded = await window.uploadBytes(ref, file, {
+                    contentType: file.type || 'image/jpeg',
+                    cacheControl: 'public,max-age=3600'
+                });
+                uploadedUrls.push(await window.getDownloadURL(uploaded.ref));
+            }
+
+            const currentGallery = this.getGroupPhotoGallery(group);
+            const nextGallery = Array.from(new Set([...currentGallery, ...uploadedUrls]));
+            const groupPhotoURL = this.getGroupDisplayImage(group) || uploadedUrls[0] || '';
+
+            await this.saveGroupVisual(groupId, {
+                groupPhotoURL,
+                groupPhotoGallery: nextGallery,
+                groupIcon: ''
             });
-            const groupPhotoURL = await window.getDownloadURL(uploaded.ref);
-            await this.saveGroupVisual(groupId, { groupPhotoURL, groupIcon: '' });
-            this.showToast('Group image updated.');
-            await this.showGroupMenu(groupId);
+            this.showToast(imageFiles.length > 1 ? 'Group photos updated.' : 'Group photo updated.');
+            if (returnTarget === 'settings') {
+                await this.openGroupEditSettings(groupId);
+            } else {
+                await this.showGroupMenu(groupId);
+            }
         } catch (error) {
-            console.error('[MyGroups] uploadGroupImage error:', error);
-            alert('Failed to upload group image.');
+            console.error('[MyGroups] uploadGroupImages error:', error);
+            alert('Failed to upload group photos.');
         }
     },
 
-    showGroupIconPicker(groupId) {
-        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+    showGroupIconPicker(groupId, returnTarget = 'menu') {
+        const group = this.getGroupById(groupId);
         if (!group) return;
 
         const modal = document.getElementById('groupModal');
@@ -4519,6 +4690,7 @@ const MyGroups = {
         if (!modal || !content) return;
 
         const groupIdSafe = this.escapeForJs(groupId);
+        const returnTargetSafe = this.escapeForJs(returnTarget);
         const selectedIcon = this.getGroupDisplayIcon(group);
 
         content.innerHTML = `
@@ -4532,7 +4704,7 @@ const MyGroups = {
                 </div>
                 <div class="grid grid-cols-3 gap-3">
                     ${this.PRESET_GROUP_ICONS.map((entry) => `
-                        <button onclick="window.MyGroups.selectGroupIcon('${groupIdSafe}', '${this.escapeForJs(entry.icon)}')"
+                        <button onclick="window.MyGroups.selectGroupIcon('${groupIdSafe}', '${this.escapeForJs(entry.icon)}', '${returnTargetSafe}')"
                                 class="rounded-[22px] border px-3 py-4 text-center transition-all ${selectedIcon === entry.icon ? 'border-[#d9bb6b] bg-[#fff8df] shadow-[0_10px_22px_rgba(89,49,22,0.08)]' : 'border-[#eadcd2] bg-white/84'}">
                             <span class="block text-3xl">${this.escapeHtml(entry.icon)}</span>
                             <span class="block mt-2 text-[11px] uppercase tracking-[0.14em] text-[#7d6c64]">${this.escapeHtml(entry.label)}</span>
@@ -4540,11 +4712,11 @@ const MyGroups = {
                     `).join('')}
                 </div>
                 <div class="mt-5 flex gap-3">
-                    <button onclick="window.MyGroups.showGroupMenu('${groupIdSafe}')"
+                    <button onclick="window.MyGroups.${returnTarget === 'settings' ? `openGroupEditSettings('${groupIdSafe}')` : `showGroupMenu('${groupIdSafe}')`}"
                             class="flex-1 border border-[#dfd0c6] text-[#7d6c64] py-3 rounded-full font-semibold">
                         Back
                     </button>
-                    <button onclick="window.MyGroups.clearGroupVisual('${groupIdSafe}')"
+                    <button onclick="window.MyGroups.clearGroupVisual('${groupIdSafe}', '${returnTargetSafe}')"
                             class="flex-1 border border-[#eadcd2] text-[#6d0707] py-3 rounded-full font-semibold">
                         Use Initials
                     </button>
@@ -4555,25 +4727,80 @@ const MyGroups = {
         modal.classList.remove('hidden');
     },
 
-    async selectGroupIcon(groupId, icon) {
+    async selectGroupIcon(groupId, icon, returnTarget = 'menu') {
         try {
-            await this.saveGroupVisual(groupId, { groupIcon: icon, groupPhotoURL: '' });
+            await this.saveGroupVisual(groupId, { groupIcon: icon, groupPhotoURL: '', groupPhotoGallery: [] });
             this.showToast('Group icon updated.');
-            await this.showGroupMenu(groupId);
+            if (returnTarget === 'settings') {
+                await this.openGroupEditSettings(groupId);
+            } else {
+                await this.showGroupMenu(groupId);
+            }
         } catch (error) {
             console.error('[MyGroups] selectGroupIcon error:', error);
             alert('Failed to update group icon.');
         }
     },
 
-    async clearGroupVisual(groupId) {
+    async clearGroupVisual(groupId, returnTarget = 'menu') {
         try {
-            await this.saveGroupVisual(groupId, { groupIcon: '', groupPhotoURL: '' });
+            await this.saveGroupVisual(groupId, { groupIcon: '', groupPhotoURL: '', groupPhotoGallery: [] });
             this.showToast('Group visual reset.');
-            await this.showGroupMenu(groupId);
+            if (returnTarget === 'settings') {
+                await this.openGroupEditSettings(groupId);
+            } else {
+                await this.showGroupMenu(groupId);
+            }
         } catch (error) {
             console.error('[MyGroups] clearGroupVisual error:', error);
             alert('Failed to reset group visual.');
+        }
+    },
+
+    async setPrimaryGroupPhoto(groupId, photoUrl, returnTarget = 'settings') {
+        const group = this.getGroupById(groupId);
+        if (!group || !photoUrl) return;
+
+        try {
+            const gallery = this.getGroupPhotoGallery(group);
+            const nextGallery = [photoUrl, ...gallery.filter((entry) => entry !== photoUrl)];
+            await this.saveGroupVisual(groupId, {
+                groupPhotoURL: photoUrl,
+                groupPhotoGallery: nextGallery,
+                groupIcon: ''
+            });
+            this.showToast('Primary group photo updated.');
+            if (returnTarget === 'settings') {
+                await this.openGroupEditSettings(groupId);
+            } else {
+                await this.showGroupMenu(groupId);
+            }
+        } catch (error) {
+            console.error('[MyGroups] setPrimaryGroupPhoto error:', error);
+            alert('Failed to update primary photo.');
+        }
+    },
+
+    async removeGroupPhoto(groupId, photoUrl, returnTarget = 'settings') {
+        const group = this.getGroupById(groupId);
+        if (!group || !photoUrl) return;
+
+        try {
+            const currentGallery = this.getGroupPhotoGallery(group).filter((entry) => entry !== photoUrl);
+            const nextPrimary = currentGallery[0] || '';
+            await this.saveGroupVisual(groupId, {
+                groupPhotoURL: nextPrimary,
+                groupPhotoGallery: currentGallery
+            });
+            this.showToast('Group photo removed.');
+            if (returnTarget === 'settings') {
+                await this.openGroupEditSettings(groupId);
+            } else {
+                await this.showGroupMenu(groupId);
+            }
+        } catch (error) {
+            console.error('[MyGroups] removeGroupPhoto error:', error);
+            alert('Failed to remove group photo.');
         }
     },
 
