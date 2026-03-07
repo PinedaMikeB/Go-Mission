@@ -4,16 +4,16 @@
  */
 
 const SpeechInput = {
-  STORAGE_KEY: 'goMission_speech_lang_mode',
   activeElement: null,
   previousActiveElement: null,
   dock: null,
   toggleBtn: null,
-  modeBtn: null,
   cleanBtn: null,
   recognition: null,
   isListening: false,
   manualStopRequested: false,
+  shouldKeepListening: false,
+  restartTimer: null,
   sessionBeforeText: '',
   sessionAfterText: '',
   finalTranscript: '',
@@ -43,13 +43,13 @@ const SpeechInput = {
         unavailable: 'Speech could not be recognized.'
       };
     }
-      return {
-        ready: 'I-tap ang mic para magsalita',
-        listening: 'Nakikinig...',
-        cleanup: 'Ayusin ang dictation',
-        unsupported: 'Hindi suportado ang speech input sa browser na ito.',
-        denied: 'Na-block ang microphone access.',
-        unavailable: 'Hindi malinaw ang speech input.'
+    return {
+      ready: 'I-tap ang mic para magsalita',
+      listening: 'Nakikinig...',
+      cleanup: 'Ayusin ang dictation',
+      unsupported: 'Hindi suportado ang speech input sa browser na ito.',
+      denied: 'Na-block ang microphone access.',
+      unavailable: 'Hindi malinaw ang speech input.'
     };
   },
 
@@ -60,9 +60,6 @@ const SpeechInput = {
     dock.id = 'speechInputDock';
     dock.className = 'hidden fixed z-[200]';
     dock.innerHTML = `
-      <button id="speechInputModeBtn" type="button" class="absolute -top-2 -left-2 h-6 min-w-[34px] rounded-full border border-amber-500/45 bg-[var(--card-bg-solid)] px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-500 shadow-lg transition-colors hover:bg-amber-500/10" aria-label="Change speech language" title="Change speech language">
-        PH
-      </button>
       <div class="flex items-center gap-2">
         <button id="speechInputCleanBtn" type="button" class="h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10" aria-label="Clean up dictation" title="Clean up dictation">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -79,18 +76,8 @@ const SpeechInput = {
     document.body.appendChild(dock);
 
     this.dock = dock;
-    this.modeBtn = dock.querySelector('#speechInputModeBtn');
     this.cleanBtn = dock.querySelector('#speechInputCleanBtn');
     this.toggleBtn = dock.querySelector('#speechInputToggleBtn');
-
-    if (this.modeBtn) {
-      this.modeBtn.addEventListener('mousedown', (event) => {
-        event.preventDefault();
-      });
-      this.modeBtn.addEventListener('click', () => {
-        this.cycleSpeechMode();
-      });
-    }
 
     if (this.cleanBtn) {
       this.cleanBtn.addEventListener('mousedown', (event) => {
@@ -128,6 +115,7 @@ const SpeechInput = {
     this.activeElement = target;
     this.previousActiveElement = target;
     this.reserveSpaceForMic(target);
+    this.clearRestartTimer();
     this.showDock();
     this.positionDock();
   },
@@ -148,6 +136,8 @@ const SpeechInput = {
         if (this.activeElement) {
           this.restoreTargetPadding(this.activeElement);
         }
+        this.shouldKeepListening = false;
+        this.clearRestartTimer();
         this.activeElement = null;
         this.hideDock();
       }
@@ -238,6 +228,8 @@ const SpeechInput = {
 
     const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!RecognitionCtor) return;
+    this.clearRestartTimer();
+    this.shouldKeepListening = true;
 
     if (!this.recognition) {
       this.recognition = new RecognitionCtor();
@@ -253,16 +245,22 @@ const SpeechInput = {
       this.recognition.onerror = (event) => {
         const errorCode = String(event?.error || '');
         if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
+          this.shouldKeepListening = false;
           alert(this.getLabels().denied);
+        } else if (errorCode === 'audio-capture') {
+          this.shouldKeepListening = false;
         } else if (errorCode && errorCode !== 'aborted') {
           console.warn('[SpeechInput] Recognition error:', errorCode);
         }
-        this.stopListening(true);
+        this.stopListening(false);
       };
       this.recognition.onend = () => {
         this.isListening = false;
         this.interimTranscript = '';
         this.updateDockUi();
+        if (this.shouldKeepListening && !this.manualStopRequested && this.activeElement && this.isEligibleTarget(this.activeElement)) {
+          this.scheduleRestartListening();
+        }
       };
     }
 
@@ -292,6 +290,10 @@ const SpeechInput = {
 
   stopListening(manual = false) {
     this.manualStopRequested = manual;
+    if (manual) {
+      this.shouldKeepListening = false;
+      this.clearRestartTimer();
+    }
     if (this.recognition && this.isListening) {
       try {
         this.recognition.stop();
@@ -302,6 +304,22 @@ const SpeechInput = {
       this.isListening = false;
       this.interimTranscript = '';
       this.updateDockUi();
+    }
+  },
+
+  scheduleRestartListening() {
+    this.clearRestartTimer();
+    this.restartTimer = window.setTimeout(() => {
+      this.restartTimer = null;
+      if (!this.shouldKeepListening || this.isListening || !this.activeElement || !this.isEligibleTarget(this.activeElement)) return;
+      this.startListening();
+    }, 250);
+  },
+
+  clearRestartTimer() {
+    if (this.restartTimer) {
+      window.clearTimeout(this.restartTimer);
+      this.restartTimer = null;
     }
   },
 
@@ -327,49 +345,8 @@ const SpeechInput = {
   },
 
   getRecognitionLanguage() {
-    const mode = this.getSpeechMode();
-    if (mode === 'en') return 'en-US';
-    if (mode === 'tl') return 'fil-PH';
-    return 'en-PH';
-  },
-
-  getSpeechMode() {
-    const saved = localStorage.getItem(this.STORAGE_KEY);
-    if (['ph', 'en', 'tl'].includes(saved)) return saved;
-    return this.isIOS() ? 'ph' : ((window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl') === 'en' ? 'en' : 'ph');
-  },
-
-  cycleSpeechMode() {
-    const order = ['ph', 'en', 'tl'];
-    const current = this.getSpeechMode();
-    const index = order.indexOf(current);
-    const next = order[(index + 1) % order.length];
-    localStorage.setItem(this.STORAGE_KEY, next);
-    this.updateDockUi();
-
-    if (this.isListening) {
-      this.stopListening(true);
-      setTimeout(() => {
-        if (this.activeElement) this.startListening();
-      }, 120);
-    }
-  },
-
-  getSpeechModeMeta() {
-    const mode = this.getSpeechMode();
-    if (mode === 'en') {
-      return { code: 'EN', label: 'English (US)' };
-    }
-    if (mode === 'tl') {
-      return { code: 'TL', label: 'Tagalog attempt' };
-    }
-    return { code: 'PH', label: 'Taglish / English (PH)' };
-  },
-
-  isIOS() {
-    const ua = navigator.userAgent || '';
-    const platform = navigator.platform || '';
-    return /iPad|iPhone|iPod/.test(ua) || (/Mac/.test(platform) && 'ontouchend' in document);
+    const lang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
+    return lang === 'en' ? 'en-US' : 'fil-PH';
   },
 
   handleRecognitionResult(event) {
@@ -424,18 +401,11 @@ const SpeechInput = {
 
     const labels = this.getLabels();
     const isLive = this.isListening;
-    const modeMeta = this.getSpeechModeMeta();
     this.toggleBtn.className = isLive
       ? 'h-11 w-11 rounded-full border border-red-400/60 bg-red-500 text-white flex items-center justify-center shadow-xl transition-colors hover:bg-red-400'
       : 'h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400';
     this.toggleBtn.setAttribute('aria-label', isLive ? labels.listening : labels.ready);
     this.toggleBtn.setAttribute('title', isLive ? labels.listening : labels.ready);
-
-    if (this.modeBtn) {
-      this.modeBtn.textContent = modeMeta.code;
-      this.modeBtn.setAttribute('title', `Speech mode: ${modeMeta.label}`);
-      this.modeBtn.setAttribute('aria-label', `Speech mode: ${modeMeta.label}`);
-    }
 
     if (this.cleanBtn) {
       const hasValue = !!String(this.activeElement?.value || '').trim();
