@@ -19,6 +19,8 @@ const MyGroups = {
     activeGroupDetailContext: null,
     groupCardMediaState: {},
     groupCardTouchState: {},
+    groupPhotoBackfillPromise: null,
+    lastGroupPhotoBackfillCheckAt: 0,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
     INTEGRITY_LOGS_COLLECTION: 'goMission_integrityLogs',
     GROUP_DASHBOARD_THRESHOLDS: {
@@ -30,6 +32,17 @@ const MyGroups = {
     GROUP_PHOTO_MAX_BYTES: 20 * 1024 * 1024,
     GROUP_PHOTO_MAX_DIMENSION: 1600,
     GROUP_PHOTO_QUALITY: 0.82,
+    GROUP_PHOTO_OPTIMIZATION_VERSION: 1,
+    GROUP_PHOTO_BACKFILL_CHECK_INTERVAL_MS: 5 * 60 * 1000,
+    GROUP_PHOTO_BACKFILL_UIDS: [
+        '9zVKHJ11zaXD0f4GI6P7LHD6re32',
+        'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1'
+    ],
+    GROUP_PHOTO_BACKFILL_EMAILS: [
+        'michael.marga@gmail.com',
+        'shannen.emerald04@gmail.com',
+        'vasquezperlie18@gmail.com'
+    ],
     PRESET_GROUP_ICONS: [
         { icon: '📖', label: 'Bible' },
         { icon: '🙏', label: 'Prayer' },
@@ -728,6 +741,9 @@ const MyGroups = {
                 guest: this.guestGroups.length
             });
             this.emitGroupsUpdated('loadGroups');
+            this.runGroupPhotoBackfill().catch((error) => {
+                console.warn('[MyGroups] Deferred group photo backfill failed:', error);
+            });
             
         } catch (error) {
             console.error('[MyGroups] Load error:', error);
@@ -1629,6 +1645,154 @@ const MyGroups = {
             type: 'image/jpeg',
             lastModified: Date.now()
         });
+    },
+
+    isGroupPhotoBackfillOperator() {
+        const uid = String(window.currentUser?.uid || '').trim();
+        const email = String(window.currentUser?.email || '').trim().toLowerCase();
+        return this.GROUP_PHOTO_BACKFILL_UIDS.includes(uid) || this.GROUP_PHOTO_BACKFILL_EMAILS.includes(email);
+    },
+
+    isGroupPhotoOptimized(group = {}) {
+        return Number(group?.groupPhotoOptimizationVersion || 0) >= this.GROUP_PHOTO_OPTIMIZATION_VERSION;
+    },
+
+    async fetchRemoteImageAsFile(url, fallbackName = 'group-photo') {
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) {
+            throw new Error(`Failed to download image (${response.status})`);
+        }
+
+        const blob = await response.blob();
+        const safeName = String(fallbackName || 'group-photo').replace(/[^a-zA-Z0-9._-]/g, '_') || 'group-photo';
+        const extension = blob.type?.includes('png') ? '.png' : (blob.type?.includes('webp') ? '.webp' : (blob.type?.includes('heic') ? '.heic' : '.jpg'));
+
+        return new File([blob], `${safeName}${extension}`, {
+            type: blob.type || 'image/jpeg',
+            lastModified: Date.now()
+        });
+    },
+
+    async optimizeLegacyGroupPhoto(group = {}, photoUrl = '', index = 0) {
+        const trimmedUrl = String(photoUrl || '').trim();
+        if (!trimmedUrl) return { nextUrl: trimmedUrl, changed: false };
+
+        const originalFile = await this.fetchRemoteImageAsFile(trimmedUrl, `${group.id || 'group'}_${index + 1}`);
+        const sourceImage = await this.loadImageElement(originalFile);
+        const longestSide = Math.max(sourceImage.naturalWidth || sourceImage.width || 0, sourceImage.naturalHeight || sourceImage.height || 0);
+        const isJpeg = /image\/jpeg/i.test(originalFile.type || '');
+        const shouldOptimize = longestSide > this.GROUP_PHOTO_MAX_DIMENSION || !isJpeg || originalFile.size > 450 * 1024;
+
+        if (!shouldOptimize) {
+            return { nextUrl: trimmedUrl, changed: false };
+        }
+
+        const optimizedFile = await this.compressGroupImage(originalFile);
+        if (optimizedFile.size >= originalFile.size * 0.97 && longestSide <= this.GROUP_PHOTO_MAX_DIMENSION && isJpeg) {
+            return { nextUrl: trimmedUrl, changed: false };
+        }
+
+        const safeName = String(optimizedFile.name || `group_${index + 1}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `group-photos/${group.id}/${Date.now()}_optimized_${index + 1}_${safeName}`;
+        const ref = window.storageRef(window.storage, path);
+        const uploaded = await window.uploadBytes(ref, optimizedFile, {
+            contentType: optimizedFile.type || 'image/jpeg',
+            cacheControl: 'public,max-age=3600'
+        });
+
+        return {
+            nextUrl: await window.getDownloadURL(uploaded.ref),
+            changed: true
+        };
+    },
+
+    async runGroupPhotoBackfill(options = {}) {
+        if (this.groupPhotoBackfillPromise) return this.groupPhotoBackfillPromise;
+        if (!this.isGroupPhotoBackfillOperator()) return { updatedGroups: 0, updatedPhotos: 0, skippedGroups: 0 };
+        if (!window.db || !window.getDocs || !window.collection || !window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+            return { updatedGroups: 0, updatedPhotos: 0, skippedGroups: 0 };
+        }
+
+        const force = options?.force === true;
+        const now = Date.now();
+        if (!force && now - this.lastGroupPhotoBackfillCheckAt < this.GROUP_PHOTO_BACKFILL_CHECK_INTERVAL_MS) {
+            return { updatedGroups: 0, updatedPhotos: 0, skippedGroups: 0 };
+        }
+
+        this.lastGroupPhotoBackfillCheckAt = now;
+        this.groupPhotoBackfillPromise = this.performGroupPhotoBackfill({ force })
+            .catch((error) => {
+                console.warn('[MyGroups] Group photo backfill failed:', error);
+                return { updatedGroups: 0, updatedPhotos: 0, skippedGroups: 0, error };
+            })
+            .finally(() => {
+                this.groupPhotoBackfillPromise = null;
+            });
+
+        return this.groupPhotoBackfillPromise;
+    },
+
+    async performGroupPhotoBackfill({ force = false } = {}) {
+        const groupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+        const allGroups = groupsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const candidates = allGroups.filter((group) => {
+            const gallery = this.getGroupPhotoGallery(group);
+            if (!gallery.length) return false;
+            return force || !this.isGroupPhotoOptimized(group);
+        });
+
+        if (!candidates.length) {
+            return { updatedGroups: 0, updatedPhotos: 0, skippedGroups: allGroups.length };
+        }
+
+        this.showToast(`Optimizing ${candidates.length} older mission group photo${candidates.length === 1 ? '' : 's'}...`, 4200);
+
+        let updatedGroups = 0;
+        let updatedPhotos = 0;
+
+        for (const group of candidates) {
+            try {
+                const originalGallery = this.getGroupPhotoGallery(group);
+                const nextGallery = [];
+                let groupChanged = false;
+
+                for (let index = 0; index < originalGallery.length; index += 1) {
+                    const result = await this.optimizeLegacyGroupPhoto(group, originalGallery[index], index);
+                    nextGallery.push(result.nextUrl || originalGallery[index]);
+                    if (result.changed) {
+                        groupChanged = true;
+                        updatedPhotos += 1;
+                    }
+                }
+
+                const dedupedGallery = Array.from(new Set(nextGallery.filter(Boolean)));
+                const currentPrimary = this.getGroupDisplayImage(group);
+                const originalPrimaryIndex = originalGallery.findIndex((url) => url === currentPrimary);
+                const nextPrimary = dedupedGallery[originalPrimaryIndex >= 0 ? originalPrimaryIndex : 0] || '';
+
+                await this.saveGroupVisual(group.id, {
+                    groupPhotoURL: nextPrimary,
+                    groupPhotoGallery: dedupedGallery,
+                    groupPhotoOptimizationVersion: this.GROUP_PHOTO_OPTIMIZATION_VERSION
+                });
+
+                if (groupChanged) {
+                    updatedGroups += 1;
+                }
+            } catch (error) {
+                console.warn(`[MyGroups] Skipping legacy group photo backfill for ${group.id}:`, error);
+            }
+        }
+
+        if (updatedPhotos > 0) {
+            this.showToast(`Optimized ${updatedPhotos} group photo${updatedPhotos === 1 ? '' : 's'} across ${updatedGroups} mission group${updatedGroups === 1 ? '' : 's'}.`, 5200);
+        }
+
+        return {
+            updatedGroups,
+            updatedPhotos,
+            skippedGroups: allGroups.length - candidates.length
+        };
     },
 
     getGroupCardPhotoIndex(groupId, photoCount = 0) {
@@ -4880,16 +5044,26 @@ const MyGroups = {
             throw new Error('Database is not ready');
         }
 
+        const normalizedPatch = { ...patch };
+        const touchesGroupVisual =
+            Object.prototype.hasOwnProperty.call(normalizedPatch, 'groupPhotoURL') ||
+            Object.prototype.hasOwnProperty.call(normalizedPatch, 'groupPhotoGallery') ||
+            Object.prototype.hasOwnProperty.call(normalizedPatch, 'groupIcon');
+
+        if (touchesGroupVisual && !Object.prototype.hasOwnProperty.call(normalizedPatch, 'groupPhotoOptimizationVersion')) {
+            normalizedPatch.groupPhotoOptimizationVersion = this.GROUP_PHOTO_OPTIMIZATION_VERSION;
+        }
+
         await window.setDoc(
             window.doc(window.db, 'goMission_groups', groupId),
             {
-                ...patch,
+                ...normalizedPatch,
                 updatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString()
             },
             { merge: true }
         );
 
-        this.syncGroupState(groupId, patch);
+        this.syncGroupState(groupId, normalizedPatch);
         if (this.isDashboardOpen) {
             await this.renderDashboard();
         } else if (this.isOpen) {
