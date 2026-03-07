@@ -1454,37 +1454,45 @@ const MyGroups = {
                                 </div>
                             `}
                             <div class="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(42,17,10,0.22),rgba(42,17,10,0))]"></div>
-                            <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
-                                    class="absolute top-4 right-4 relative inline-flex items-center justify-center w-11 h-11 rounded-full border border-white/70 bg-white/86 text-[#8f7a6d] shadow-[0_8px_20px_rgba(91,49,26,0.12)] hover:text-[#c19200] transition-colors"
-                                    title="Group options"
-                                    aria-label="Group options">
-                                <span class="text-xl leading-none">⋯</span>
-                                ${menuBadge}
-                            </button>
                             ${gallery.length > 1 ? `
                                 <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', -1)"
-                                        class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/70 bg-white/82 text-[#6d0707] shadow-[0_8px_20px_rgba(91,49,26,0.12)] inline-flex items-center justify-center"
+                                        class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-white/95 bg-transparent text-white shadow-[0_8px_18px_rgba(18,10,6,0.18)] inline-flex items-center justify-center backdrop-blur-[1px]"
                                         aria-label="Previous photo">
                                     ‹
                                 </button>
                                 <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', 1)"
-                                        class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/70 bg-white/82 text-[#6d0707] shadow-[0_8px_20px_rgba(91,49,26,0.12)] inline-flex items-center justify-center"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-white/95 bg-transparent text-white shadow-[0_8px_18px_rgba(18,10,6,0.18)] inline-flex items-center justify-center backdrop-blur-[1px]"
                                         aria-label="Next photo">
                                     ›
                                 </button>
-                                <div class="absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+                            ` : ''}
+                        </div>
+                        ${gallery.length > 1 ? `
+                            <div class="px-4 pt-3">
+                                <div class="rounded-full bg-[linear-gradient(180deg,rgba(255,250,246,0.92),rgba(255,245,238,0.98))] border border-[#eadcd2] px-3 py-2 flex items-center justify-center gap-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
                                     ${gallery.map((_, index) => `
                                         <button onclick="window.MyGroups.setGroupCardPhotoIndex('${groupIdForJs}', ${index})"
-                                                class="w-2.5 h-2.5 rounded-full border ${index === activePhotoIndex ? 'bg-white border-white' : 'bg-white/40 border-white/70'}"
+                                                class="w-2 h-2 rounded-full border ${index === activePhotoIndex ? 'bg-[#6d0707] border-[#6d0707]' : 'bg-transparent border-[#cdbdaf]'}"
                                                 aria-label="View photo ${index + 1}">
                                         </button>
                                     `).join('')}
                                 </div>
-                            ` : ''}
-                        </div>
+                            </div>
+                        ` : ''}
                         <div class="p-4 sm:p-5">
-                            <p class="text-[1.24rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
-                            ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-[1.24rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                                    ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
+                                </div>
+                                <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
+                                        class="relative shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#eadcd2] bg-white/90 text-[#8f7a6d] shadow-[0_8px_18px_rgba(91,49,26,0.08)] hover:border-[#d9bb6b] hover:text-[#c19200] transition-colors"
+                                        title="Group options"
+                                        aria-label="Group options">
+                                    <span class="text-xl leading-none">⋯</span>
+                                    ${menuBadge}
+                                </button>
+                            </div>
                             <p class="mt-2 text-[12px] uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
                             ${hasPendingDelete ? `<p class="mt-3 text-[12px] text-[#b43a3a]">Delete request pending admin review.</p>` : ''}
                         </div>
