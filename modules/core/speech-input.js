@@ -4,10 +4,12 @@
  */
 
 const SpeechInput = {
+  STORAGE_KEY: 'goMission_speech_lang_mode',
   activeElement: null,
   previousActiveElement: null,
   dock: null,
   toggleBtn: null,
+  modeBtn: null,
   recognition: null,
   isListening: false,
   manualStopRequested: false,
@@ -55,6 +57,9 @@ const SpeechInput = {
     dock.id = 'speechInputDock';
     dock.className = 'hidden fixed z-[200]';
     dock.innerHTML = `
+      <button id="speechInputModeBtn" type="button" class="absolute -top-2 -left-2 h-6 min-w-[34px] rounded-full border border-amber-500/45 bg-[var(--card-bg-solid)] px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-500 shadow-lg transition-colors hover:bg-amber-500/10" aria-label="Change speech language" title="Change speech language">
+        PH
+      </button>
       <button id="speechInputToggleBtn" type="button" class="h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400" aria-label="Start speech input" title="Start speech input">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.5a4.5 4.5 0 004.5-4.5V8a4.5 4.5 0 10-9 0v6a4.5 4.5 0 004.5 4.5zm0 0v3m-5-3a8 8 0 0010 0"></path>
@@ -64,7 +69,17 @@ const SpeechInput = {
     document.body.appendChild(dock);
 
     this.dock = dock;
+    this.modeBtn = dock.querySelector('#speechInputModeBtn');
     this.toggleBtn = dock.querySelector('#speechInputToggleBtn');
+
+    if (this.modeBtn) {
+      this.modeBtn.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+      });
+      this.modeBtn.addEventListener('click', () => {
+        this.cycleSpeechMode();
+      });
+    }
 
     if (this.toggleBtn) {
       this.toggleBtn.addEventListener('mousedown', (event) => {
@@ -292,8 +307,49 @@ const SpeechInput = {
   },
 
   getRecognitionLanguage() {
-    const lang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
-    return lang === 'en' ? 'en-US' : 'fil-PH';
+    const mode = this.getSpeechMode();
+    if (mode === 'en') return 'en-US';
+    if (mode === 'tl') return 'fil-PH';
+    return 'en-PH';
+  },
+
+  getSpeechMode() {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (['ph', 'en', 'tl'].includes(saved)) return saved;
+    return this.isIOS() ? 'ph' : ((window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl') === 'en' ? 'en' : 'ph');
+  },
+
+  cycleSpeechMode() {
+    const order = ['ph', 'en', 'tl'];
+    const current = this.getSpeechMode();
+    const index = order.indexOf(current);
+    const next = order[(index + 1) % order.length];
+    localStorage.setItem(this.STORAGE_KEY, next);
+    this.updateDockUi();
+
+    if (this.isListening) {
+      this.stopListening(true);
+      setTimeout(() => {
+        if (this.activeElement) this.startListening();
+      }, 120);
+    }
+  },
+
+  getSpeechModeMeta() {
+    const mode = this.getSpeechMode();
+    if (mode === 'en') {
+      return { code: 'EN', label: 'English (US)' };
+    }
+    if (mode === 'tl') {
+      return { code: 'TL', label: 'Tagalog attempt' };
+    }
+    return { code: 'PH', label: 'Taglish / English (PH)' };
+  },
+
+  isIOS() {
+    const ua = navigator.userAgent || '';
+    const platform = navigator.platform || '';
+    return /iPad|iPhone|iPod/.test(ua) || (/Mac/.test(platform) && 'ontouchend' in document);
   },
 
   handleRecognitionResult(event) {
@@ -347,11 +403,18 @@ const SpeechInput = {
 
     const labels = this.getLabels();
     const isLive = this.isListening;
+    const modeMeta = this.getSpeechModeMeta();
     this.toggleBtn.className = isLive
       ? 'h-11 w-11 rounded-full border border-red-400/60 bg-red-500 text-white flex items-center justify-center shadow-xl transition-colors hover:bg-red-400'
       : 'h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400';
     this.toggleBtn.setAttribute('aria-label', isLive ? labels.listening : labels.ready);
     this.toggleBtn.setAttribute('title', isLive ? labels.listening : labels.ready);
+
+    if (this.modeBtn) {
+      this.modeBtn.textContent = modeMeta.code;
+      this.modeBtn.setAttribute('title', `Speech mode: ${modeMeta.label}`);
+      this.modeBtn.setAttribute('aria-label', `Speech mode: ${modeMeta.label}`);
+    }
   }
 };
 
