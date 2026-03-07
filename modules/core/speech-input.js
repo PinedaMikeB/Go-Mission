@@ -10,6 +10,7 @@ const SpeechInput = {
   dock: null,
   toggleBtn: null,
   modeBtn: null,
+  cleanBtn: null,
   recognition: null,
   isListening: false,
   manualStopRequested: false,
@@ -36,17 +37,19 @@ const SpeechInput = {
       return {
         ready: 'Tap mic to dictate',
         listening: 'Listening...',
+        cleanup: 'Clean up dictation',
         unsupported: 'Speech input not supported on this browser.',
         denied: 'Microphone access was blocked.',
         unavailable: 'Speech could not be recognized.'
       };
     }
-    return {
-      ready: 'I-tap ang mic para magsalita',
-      listening: 'Nakikinig...',
-      unsupported: 'Hindi suportado ang speech input sa browser na ito.',
-      denied: 'Na-block ang microphone access.',
-      unavailable: 'Hindi malinaw ang speech input.'
+      return {
+        ready: 'I-tap ang mic para magsalita',
+        listening: 'Nakikinig...',
+        cleanup: 'Ayusin ang dictation',
+        unsupported: 'Hindi suportado ang speech input sa browser na ito.',
+        denied: 'Na-block ang microphone access.',
+        unavailable: 'Hindi malinaw ang speech input.'
     };
   },
 
@@ -60,16 +63,24 @@ const SpeechInput = {
       <button id="speechInputModeBtn" type="button" class="absolute -top-2 -left-2 h-6 min-w-[34px] rounded-full border border-amber-500/45 bg-[var(--card-bg-solid)] px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-500 shadow-lg transition-colors hover:bg-amber-500/10" aria-label="Change speech language" title="Change speech language">
         PH
       </button>
-      <button id="speechInputToggleBtn" type="button" class="h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400" aria-label="Start speech input" title="Start speech input">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.5a4.5 4.5 0 004.5-4.5V8a4.5 4.5 0 10-9 0v6a4.5 4.5 0 004.5 4.5zm0 0v3m-5-3a8 8 0 0010 0"></path>
-        </svg>
-      </button>
+      <div class="flex items-center gap-2">
+        <button id="speechInputCleanBtn" type="button" class="h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10" aria-label="Clean up dictation" title="Clean up dictation">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.7 3.7L17 8.4l-3 2.9.7 4.1-3.7-2-3.7 2 .7-4.1-3-2.9 3.3-1.7L12 3z"></path>
+          </svg>
+        </button>
+        <button id="speechInputToggleBtn" type="button" class="h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400" aria-label="Start speech input" title="Start speech input">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.5a4.5 4.5 0 004.5-4.5V8a4.5 4.5 0 10-9 0v6a4.5 4.5 0 004.5 4.5zm0 0v3m-5-3a8 8 0 0010 0"></path>
+          </svg>
+        </button>
+      </div>
     `;
     document.body.appendChild(dock);
 
     this.dock = dock;
     this.modeBtn = dock.querySelector('#speechInputModeBtn');
+    this.cleanBtn = dock.querySelector('#speechInputCleanBtn');
     this.toggleBtn = dock.querySelector('#speechInputToggleBtn');
 
     if (this.modeBtn) {
@@ -78,6 +89,15 @@ const SpeechInput = {
       });
       this.modeBtn.addEventListener('click', () => {
         this.cycleSpeechMode();
+      });
+    }
+
+    if (this.cleanBtn) {
+      this.cleanBtn.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+      });
+      this.cleanBtn.addEventListener('click', () => {
+        this.cleanActiveText();
       });
     }
 
@@ -396,6 +416,7 @@ const SpeechInput = {
 
     this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
     this.activeElement.focus();
+    this.updateDockUi();
   },
 
   updateDockUi() {
@@ -415,6 +436,120 @@ const SpeechInput = {
       this.modeBtn.setAttribute('title', `Speech mode: ${modeMeta.label}`);
       this.modeBtn.setAttribute('aria-label', `Speech mode: ${modeMeta.label}`);
     }
+
+    if (this.cleanBtn) {
+      const hasValue = !!String(this.activeElement?.value || '').trim();
+      this.cleanBtn.setAttribute('title', labels.cleanup);
+      this.cleanBtn.setAttribute('aria-label', labels.cleanup);
+      this.cleanBtn.className = hasValue
+        ? 'h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10'
+        : 'h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-[var(--text-muted)] flex items-center justify-center shadow-xl opacity-60 cursor-not-allowed';
+      if (hasValue) {
+        this.cleanBtn.removeAttribute('disabled');
+      } else {
+        this.cleanBtn.setAttribute('disabled', 'disabled');
+      }
+    }
+  },
+
+  cleanActiveText() {
+    if (!this.activeElement) return;
+    const value = String(this.activeElement.value || '');
+    if (!value.trim()) return;
+
+    const cleaned = this.cleanUpDictationText(value);
+    if (!cleaned || cleaned === value) return;
+
+    this.activeElement.value = cleaned;
+    const caret = cleaned.length;
+    if (typeof this.activeElement.setSelectionRange === 'function') {
+      this.activeElement.setSelectionRange(caret, caret);
+    }
+    this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+    this.activeElement.focus();
+    this.updateDockUi();
+  },
+
+  cleanUpDictationText(value) {
+    const raw = String(value || '').replace(/\r\n/g, '\n');
+    if (!raw.trim()) return '';
+
+    const paragraphChunks = raw
+      .split(/\n{2,}/)
+      .map((chunk) => this.cleanParagraph(chunk))
+      .filter(Boolean);
+
+    return paragraphChunks.join('\n\n');
+  },
+
+  cleanParagraph(chunk) {
+    let text = String(chunk || '')
+      .replace(/\s*\n\s*/g, ' ')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\s+([,.;:!?])/g, '$1')
+      .replace(/([,.;:!?])([^\s\n])/g, '$1 $2')
+      .trim();
+
+    if (!text) return '';
+
+    const sentenceStarters = [
+      'how about',
+      'what if',
+      'can you',
+      'could you',
+      'would you',
+      'please',
+      'puwede bang',
+      'pwede bang',
+      'maaari bang',
+      'paano kung',
+      'pero',
+      'tapos'
+    ];
+
+    sentenceStarters.forEach((starter) => {
+      const pattern = new RegExp(`([^.!?\\n]{28,})\\s+(${starter})\\b`, 'gi');
+      text = text.replace(pattern, (match, before, marker) => {
+        const trimmedBefore = String(before || '').trim();
+        if (trimmedBefore.length < 28) return `${before} ${marker}`;
+        const punctuation = this.looksLikeQuestion(trimmedBefore) ? '?' : '.';
+        return `${trimmedBefore}${punctuation} ${marker}`;
+      });
+    });
+
+    let parts = text
+      .split(/(?<=[.!?])\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 1) {
+      parts = this.splitLongUnpunctuatedText(parts[0]);
+    }
+
+    return parts
+      .map((part) => this.finalizeSentence(part))
+      .join('\n');
+  },
+
+  splitLongUnpunctuatedText(text) {
+    const clauses = String(text || '').split(/\s+(?=(?:pero|tapos|how about|can you|puwede bang|pwede bang|maaari bang)\b)/i);
+    if (clauses.length <= 1) return [text];
+    return clauses.map((item) => item.trim()).filter(Boolean);
+  },
+
+  finalizeSentence(text) {
+    let sentence = String(text || '').trim();
+    if (!sentence) return '';
+
+    if (!/[.!?]$/.test(sentence)) {
+      sentence += this.looksLikeQuestion(sentence) ? '?' : '.';
+    }
+
+    return sentence.replace(/^([a-zA-Z])/, (match, first) => first.toUpperCase());
+  },
+
+  looksLikeQuestion(text) {
+    return /\b(can you|could you|would you|how about|what if|puwede bang|pwede bang|maaari bang|paano kung|ok ba|tama ba)\b/i.test(String(text || ''));
   }
 };
 
