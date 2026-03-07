@@ -1383,43 +1383,9 @@ const MyGroups = {
         const groupIds = uniqueGroups.map((group) => group.id);
         const meetingData = await this.getDashboardMeetingData(groupIds);
 
-        const totalGroupsEl = document.getElementById('missionGroupsTotalGroups');
-        const attendanceRateEl = document.getElementById('missionGroupsAttendanceRate');
-        const meetingsMonthEl = document.getElementById('missionGroupsMeetingsMonth');
-        const lastMeetingEl = document.getElementById('missionGroupsLastMeeting');
-        const heroStreakEl = document.getElementById('missionGroupsHeroStreak');
-        const encouragementEl = document.getElementById('missionGroupsEncouragement');
         const statusListEl = document.getElementById('missionGroupsStatusList');
 
         await this.renderDashboardActions();
-
-        if (totalGroupsEl) totalGroupsEl.textContent = String(groupIds.length);
-        if (attendanceRateEl) attendanceRateEl.textContent = `${meetingData.attendanceRate}%`;
-        if (meetingsMonthEl) meetingsMonthEl.textContent = String(meetingData.attendedThisMonth);
-        if (heroStreakEl) heroStreakEl.textContent = String(meetingData.streak);
-
-        if (lastMeetingEl) {
-            if (!meetingData.lastMeeting) {
-                lastMeetingEl.textContent = 'No meeting yet';
-            } else {
-                const attendanceLabel = meetingData.lastMeeting.attended ? 'attended' : 'missed';
-                lastMeetingEl.textContent = `${this.formatMeetingDate(meetingData.lastMeeting.date)} (${attendanceLabel})`;
-            }
-        }
-
-        if (encouragementEl) {
-            let message = 'Join a mission group and take your next faithful step today.';
-            if (groupIds.length > 0) {
-                if (meetingData.streak >= 4) {
-                    message = 'Strong consistency. Keep helping others by showing up faithfully each meeting.';
-                } else if (meetingData.streak >= 1) {
-                    message = 'Good momentum. Protect your rhythm and attend the next meeting.';
-                } else {
-                    message = 'Fresh start this week. Attend your next meeting and build a new streak.';
-                }
-            }
-            encouragementEl.textContent = message;
-        }
 
         if (!statusListEl) return;
 
