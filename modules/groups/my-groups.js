@@ -1638,8 +1638,10 @@ const MyGroups = {
             alerts.push({
                 type: 'inactive',
                 priority: 3,
-                tone: 'bg-red-500/10 text-red-300 border-red-500/20',
-                label: `Inactive for ${stats.daysSinceActive} day${stats.daysSinceActive === 1 ? '' : 's'}`
+                tone: 'bg-[#fff2f2] text-[#c45b5b] border-[#f0c5c5]',
+                label: stats.daysSinceActive >= 999
+                    ? 'No app activity recorded'
+                    : `Inactive for ${stats.daysSinceActive} day${stats.daysSinceActive === 1 ? '' : 's'}`
             });
         }
 
@@ -1647,7 +1649,7 @@ const MyGroups = {
             alerts.push({
                 type: 'no_devotion',
                 priority: 2,
-                tone: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+                tone: 'bg-[#fff7e3] text-[#c19200] border-[#f1d79a]',
                 label: stats.daysSinceDevotion >= 999
                     ? 'No recent Bible reading found'
                     : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since reading`
@@ -1658,7 +1660,7 @@ const MyGroups = {
             alerts.push({
                 type: 'missed_meetings',
                 priority: 3,
-                tone: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
+                tone: 'bg-[#fff0ea] text-[#c76a61] border-[#efc0ba]',
                 label: `${stats.consecutiveMisses} missed meeting${stats.consecutiveMisses === 1 ? '' : 's'} in a row`
             });
         }
@@ -1667,7 +1669,7 @@ const MyGroups = {
             alerts.push({
                 type: 'new_member',
                 priority: 1,
-                tone: 'bg-sky-500/10 text-sky-300 border-sky-500/20',
+                tone: 'bg-[#eef7ff] text-[#5291b8] border-[#cbe1ee]',
                 label: 'New member needing follow-up'
             });
         }
@@ -1726,6 +1728,129 @@ const MyGroups = {
         return { encourageBible, attendanceFollowUp, affirmActive };
     },
 
+    formatGroupBibleStatus(stats = {}) {
+        const days = Number(stats.daysSinceDevotion || 0);
+        if (days >= 999) return 'No recent Bible reading';
+        if (days <= 0) return 'Read today';
+        if (days === 1) return 'Read yesterday';
+        return `Read ${days} days ago`;
+    },
+
+    formatGroupActivityStatus(stats = {}) {
+        const days = Number(stats.daysSinceActive || 0);
+        if (days >= 999) return 'No recent app activity';
+        if (days <= 0) return 'Active today';
+        if (days === 1) return 'Active yesterday';
+        return `Active ${days} days ago`;
+    },
+
+    formatGroupMeetingStatus(stats = {}) {
+        if (stats.lastAttendedAt) {
+            const formatted = this.resolveDate(stats.lastAttendedAt)?.toLocaleDateString();
+            return formatted ? `Last meeting ${formatted}` : 'Recent meeting attended';
+        }
+        if ((stats.consecutiveMisses || 0) > 0) {
+            return `${stats.consecutiveMisses} missed meeting${stats.consecutiveMisses === 1 ? '' : 's'} in a row`;
+        }
+        return 'No recorded meeting yet';
+    },
+
+    getGroupDashboardActionMeta(mode = 'encourage_bible') {
+        return {
+            encourage_bible: {
+                label: 'Encourage',
+                buttonClass: 'bg-[#f7cc00] text-[#3f1400]',
+                labelClass: 'text-[#c19200]'
+            },
+            check_attendance: {
+                label: 'Check In',
+                buttonClass: 'bg-[#9d0500] text-white',
+                labelClass: 'text-[#d27474]'
+            },
+            affirm_active: {
+                label: 'Affirm',
+                buttonClass: 'bg-[#35b16f] text-white',
+                labelClass: 'text-[#3aa76c]'
+            }
+        }[mode] || {
+            label: 'Message',
+            buttonClass: 'bg-white text-[#3f1400] border border-[#e7d6c9]',
+            labelClass: 'text-[#8a7a70]'
+        };
+    },
+
+    getGroupMemberActionMode(member) {
+        if (member?.stats?.isSpirituallyActive) return 'affirm_active';
+        if (member?.stats?.needsAttendanceFollowUp) return 'check_attendance';
+        return 'encourage_bible';
+    },
+
+    isGroupDashboardSectionExpanded(sectionId, defaultExpanded = false) {
+        const sectionState = this.activeGroupDetailContext?.sectionState || {};
+        if (typeof sectionState[sectionId] === 'boolean') {
+            return sectionState[sectionId];
+        }
+        return defaultExpanded;
+    },
+
+    toggleGroupDashboardSection(sectionId) {
+        const panel = document.querySelector(`[data-group-section-panel="${sectionId}"]`);
+        const icon = document.querySelector(`[data-group-section-icon="${sectionId}"]`);
+        if (!panel) return;
+
+        const isExpanded = !panel.classList.contains('hidden');
+        const nextExpanded = !isExpanded;
+        panel.classList.toggle('hidden', !nextExpanded);
+        if (icon) icon.textContent = nextExpanded ? '−' : '+';
+
+        if (!this.activeGroupDetailContext) this.activeGroupDetailContext = {};
+        if (!this.activeGroupDetailContext.sectionState) this.activeGroupDetailContext.sectionState = {};
+        this.activeGroupDetailContext.sectionState[sectionId] = nextExpanded;
+    },
+
+    openGroupDashboardSection(sectionId) {
+        const panel = document.querySelector(`[data-group-section-panel="${sectionId}"]`);
+        const section = document.querySelector(`[data-group-section-root="${sectionId}"]`);
+        if (panel?.classList.contains('hidden')) {
+            this.toggleGroupDashboardSection(sectionId);
+        }
+        section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    renderGroupDashboardSection(sectionId, {
+        title = 'Section',
+        count = '',
+        summary = '',
+        shellClass = 'border-[var(--card-border)] bg-[var(--card-bg)]',
+        titleClass = 'text-[var(--mission-gold)]',
+        countClass = 'bg-white text-[#6f5d54]',
+        defaultExpanded = false,
+        body = ''
+    } = {}) {
+        const expanded = this.isGroupDashboardSectionExpanded(sectionId, defaultExpanded);
+        return `
+            <section data-group-section-root="${sectionId}" class="rounded-[28px] border ${shellClass} shadow-[0_16px_40px_rgba(90,48,26,0.05)] overflow-hidden">
+                <button type="button"
+                        onclick="window.MyGroups.toggleGroupDashboardSection('${this.escapeForJs(sectionId)}')"
+                        class="w-full p-4 sm:p-5 text-left flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[11px] uppercase tracking-[0.18em] ${titleClass}">${this.escapeHtml(title)}</p>
+                        ${summary ? `<p class="mt-2 text-sm leading-relaxed text-[#6b5b54]">${this.escapeHtml(summary)}</p>` : ''}
+                    </div>
+                    <div class="shrink-0 flex items-center gap-2">
+                        ${count !== '' ? `<span class="min-w-[34px] h-[34px] rounded-full px-3 inline-flex items-center justify-center text-sm font-black ${countClass}">${this.escapeHtml(count)}</span>` : ''}
+                        <span data-group-section-icon="${sectionId}" class="w-8 h-8 rounded-full border border-black/8 bg-white/75 text-[#6b5b54] inline-flex items-center justify-center text-lg font-semibold">
+                            ${expanded ? '−' : '+'}
+                        </span>
+                    </div>
+                </button>
+                <div data-group-section-panel="${sectionId}" class="${expanded ? '' : 'hidden'} px-4 sm:px-5 pb-5">
+                    ${body}
+                </div>
+            </section>
+        `;
+    },
+
     buildGroupCareRow(groupId, member, mode = 'encourage_bible') {
         const stats = member?.stats || {};
         const config = {
@@ -1750,28 +1875,35 @@ const MyGroups = {
                 accent: 'text-green-300'
             }
         }[mode];
+        const actionMeta = this.getGroupDashboardActionMeta(mode);
+        const secondaryLine = mode === 'affirm_active'
+            ? `${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'} • ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}`
+            : `${this.formatGroupBibleStatus(stats)} • ${this.formatGroupMeetingStatus(stats)}`;
 
         return `
-            <div class="rounded-[24px] border border-[var(--card-border)] bg-[var(--input-bg)]/55 p-4">
+            <div class="rounded-[24px] border border-white/80 bg-white/80 p-4 shadow-[0_10px_28px_rgba(89,49,22,0.06)]">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-start gap-3 min-w-0">
-                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm">
                         <div class="min-w-0">
-                            <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
-                            <p class="text-[11px] uppercase tracking-[0.16em] ${config.accent} mt-0.5">${this.escapeHtml(config.title)}</p>
-                            <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(config.description)}</p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-base font-black text-[#6d0707] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                                <span class="text-[11px] uppercase tracking-[0.16em] ${actionMeta.labelClass}">${this.escapeHtml(config.title)}</span>
+                            </div>
+                            <p class="mt-1 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(config.description)}</p>
+                            <p class="mt-1 text-[13px] text-[#84736a]">${this.escapeHtml(secondaryLine)}</p>
                         </div>
                     </div>
                     <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${mode}')"
-                            class="shrink-0 px-3 py-2 rounded-2xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-[11px] font-bold">
-                        ${this.escapeHtml(config.button)}
+                            class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
+                        ${this.escapeHtml(actionMeta.label)}
                     </button>
                 </div>
                 <div class="mt-3 flex flex-wrap gap-2">
-                    ${stats.devotionStreak >= 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/20">7-day streak</span>' : ''}
-                    ${stats.devotionStreak >= 3 && stats.devotionStreak < 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20">3-day streak</span>' : ''}
-                    ${stats.prayedForOthers > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/20">Praying for ${stats.prayedForOthers}</span>` : ''}
-                    ${stats.attendedRecent > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+                    ${stats.devotionStreak >= 7 ? '<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#ffe8a3] text-[#8f5c00] border border-[#f1d279]">7-day streak</span>' : ''}
+                    ${stats.devotionStreak >= 3 && stats.devotionStreak < 7 ? '<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#dcf9e6] text-[#18804f] border border-[#bfe5cc]">3-day streak</span>' : ''}
+                    ${stats.prayedForOthers > 0 ? `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#e1f2ff] text-[#3c93c7] border border-[#b9ddf2]">Praying for ${stats.prayedForOthers}</span>` : ''}
+                    ${stats.attendedRecent > 0 ? `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#ddf7ef] text-[#24936f] border border-[#b5e0d2]">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
                 </div>
                 ${this.renderGroupDetailStreakGraphic(stats)}
             </div>
@@ -1781,17 +1913,21 @@ const MyGroups = {
     buildGroupAttentionRow(groupId, member) {
         const alerts = this.getGroupAttentionAlerts(member);
         const primaryAction = member?.stats?.needsAttendanceFollowUp ? 'check_attendance' : 'encourage_bible';
+        const actionMeta = this.getGroupDashboardActionMeta(primaryAction);
+        const stats = member?.stats || {};
+        const summaryLine = `${this.formatGroupActivityStatus(stats)} • ${this.formatGroupMeetingStatus(stats)}`;
 
         return `
-            <div class="rounded-[24px] border border-[var(--mission-red-bright)]/18 bg-[var(--mission-red-bright)]/6 p-4">
+            <div class="rounded-[24px] border border-[#efc3c3] bg-white/82 p-4 shadow-[0_10px_28px_rgba(123,44,44,0.05)]">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-start gap-3 min-w-0">
-                        <img src="${this.getMemberPhoto(member)}" class="w-11 h-11 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                        <img src="${this.getMemberPhoto(member)}" class="w-11 h-11 rounded-full border-2 border-white object-cover shadow-sm">
                         <div class="min-w-0">
-                            <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <p class="text-base font-black text-[#6d0707] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <p class="mt-1 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(summaryLine)}</p>
                             <div class="mt-2 flex flex-wrap gap-2">
                                 ${alerts.map((alert) => `
-                                    <span class="px-2 py-1 rounded-full border text-[10px] font-semibold ${alert.tone}">
+                                    <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
                                         ${this.escapeHtml(alert.label)}
                                     </span>
                                 `).join('')}
@@ -1799,10 +1935,53 @@ const MyGroups = {
                         </div>
                     </div>
                     <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${primaryAction}')"
-                            class="shrink-0 px-3 py-2 rounded-2xl bg-white/90 text-[var(--mission-red-deep)] text-[11px] font-bold">
-                        Message
+                            class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
+                        ${this.escapeHtml(primaryAction === 'check_attendance' ? 'Check In' : 'Message')}
                     </button>
                 </div>
+            </div>
+        `;
+    },
+
+    buildCompactGroupMemberRow(groupId, member) {
+        const stats = member?.stats || {};
+        const actionMode = this.getGroupMemberActionMode(member);
+        const actionMeta = this.getGroupDashboardActionMeta(actionMode);
+        const summaryBits = [
+            this.formatGroupBibleStatus(stats),
+            this.formatGroupMeetingStatus(stats)
+        ].filter(Boolean);
+
+        return `
+            <div class="rounded-[24px] border ${member.isLeader ? 'border-[#f0dba3] bg-[#fff7dc]' : 'border-[#eadcd2] bg-white/82'} p-4 shadow-[0_10px_28px_rgba(89,49,22,0.04)]">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-base font-black text-[#6d0707] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                                <span class="text-[11px] uppercase tracking-[0.14em] ${member.isLeader ? 'text-[#c19200]' : 'text-[#96867d]'}">${member.isLeader ? 'Leader' : 'Member'}</span>
+                            </div>
+                            <p class="mt-1 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(summaryBits.join(' • '))}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <span class="text-[11px] text-[#84736a]">🙏 ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}</span>
+                                <span class="text-[11px] text-[#84736a]">💬 ${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${!member.isLeader ? `
+                        <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${actionMode}')"
+                                class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
+                            Message
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${stats.prayedForOthers > 0 ? `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#e1f2ff] text-[#3c93c7] border border-[#b9ddf2]">Praying for ${stats.prayedForOthers}</span>` : ''}
+                    ${stats.attendedRecent > 0 ? `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#ddf7ef] text-[#24936f] border border-[#b5e0d2]">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+                    ${stats.needsAttendanceFollowUp ? '<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#ffe4e4] text-[#d27474] border border-[#f2c4c4]">Needs attendance follow-up</span>' : ''}
+                </div>
+                ${this.renderGroupDetailStreakGraphic(stats)}
             </div>
         `;
     },
@@ -2166,69 +2345,36 @@ const MyGroups = {
             const groupIdSafe = this.escapeForJs(groupId);
             const dashboardData = await this.loadGroupDetailDashboardData(group);
 
+            const previousSectionState = this.activeGroupDetailContext?.groupId === groupId
+                ? (this.activeGroupDetailContext?.sectionState || {})
+                : {};
             this.activeGroupDetailContext = {
                 groupId,
                 members: dashboardData.members,
-                prayerList: dashboardData.prayerList
+                prayerList: dashboardData.prayerList,
+                sectionState: { ...previousSectionState }
             };
 
             const focus = dashboardData.weeklyFocus;
             const focusMember = focus?.member || null;
-            const focusButton = focus
-                ? (focus.mode === 'affirm_active' ? 'Affirm' : (focus.mode === 'check_attendance' ? 'Check In' : 'Encourage'))
-                : 'Open Chat';
+            const focusActionMeta = this.getGroupDashboardActionMeta(focus?.mode || 'encourage_bible');
+            const attentionMembers = dashboardData.careMembers.filter((member) => this.getGroupAttentionAlerts(member).length > 0);
+            const attentionCount = attentionMembers.length;
+            const encourageCount = dashboardData.careSegments.encourageBible.length;
+            const attendanceCount = dashboardData.careSegments.attendanceFollowUp.length;
+            const affirmCount = dashboardData.careSegments.affirmActive.length;
+            const summaryIntro = attentionCount > 0
+                ? `${attentionCount} member${attentionCount === 1 ? '' : 's'} need follow-up right now.`
+                : (focusMember ? `${this.getFirstName(focusMember)} is the best person to shepherd next.` : 'Your group is steady right now.');
 
-            const needsAttentionHtml = dashboardData.careMembers
-                .filter((member) => this.getGroupAttentionAlerts(member).length > 0)
+            const needsAttentionHtml = attentionMembers
                 .slice(0, 6)
                 .map((member) => this.buildGroupAttentionRow(groupId, member))
                 .join('');
 
-            const membersHtml = dashboardData.members.map((member) => {
-                const stats = member.stats || {};
-                const email = this.escapeHtml(member.email || 'Not set');
-                const mobile = this.escapeHtml(member.mobile || member.phone || 'Not set');
-                const lastReadLabel = stats.daysSinceDevotion >= 999
-                    ? 'No recent Bible reading'
-                    : `Read ${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} ago`;
-                const meetingLabel = stats.lastAttendedAt
-                    ? `Last meeting ${this.resolveDate(stats.lastAttendedAt)?.toLocaleDateString() || 'recorded'}`
-                    : 'No recorded meeting yet';
-
-                return `
-                    <div class="rounded-[24px] border ${member.isLeader ? 'border-[var(--mission-gold)]/35 bg-[var(--mission-gold)]/8' : 'border-[var(--card-border)] bg-[var(--card-bg)]'} p-4">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-start gap-3 min-w-0">
-                                <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border border-[var(--mission-gold)]/30 object-cover">
-                                <div class="min-w-0">
-                                    <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
-                                    <p class="text-[10px] uppercase tracking-[0.16em] ${member.isLeader ? 'text-[var(--mission-gold)]' : 'text-[var(--text-muted)]'}">${member.isLeader ? 'Leader' : 'Member'}</p>
-                                    <p class="text-[11px] text-[var(--text-muted)] mt-2">${lastReadLabel}</p>
-                                    <p class="text-[11px] text-[var(--text-muted)]">${meetingLabel}</p>
-                                </div>
-                            </div>
-                            ${!member.isLeader ? `
-                                <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(member.id)}', '${member.stats?.isSpirituallyActive ? 'affirm_active' : (member.stats?.needsAttendanceFollowUp ? 'check_attendance' : 'encourage_bible')}')"
-                                        class="shrink-0 px-3 py-2 rounded-2xl border border-[var(--mission-gold)]/30 text-[11px] font-bold text-[var(--mission-gold)]">
-                                    Message
-                                </button>
-                            ` : ''}
-                        </div>
-                        <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--text-muted)]">
-                            <p>📧 ${email}</p>
-                            <p>📱 ${mobile}</p>
-                            <p>🙏 ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}</p>
-                            <p>💬 ${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'}</p>
-                        </div>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            ${stats.prayedForOthers > 0 ? `<span class="px-2 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/20 text-[10px] font-semibold">Praying for ${stats.prayedForOthers}</span>` : ''}
-                            ${stats.attendedRecent > 0 ? `<span class="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
-                            ${stats.needsAttendanceFollowUp ? '<span class="px-2 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/20 text-[10px] font-semibold">Needs attendance follow-up</span>' : ''}
-                        </div>
-                        ${this.renderGroupDetailStreakGraphic(stats)}
-                    </div>
-                `;
-            }).join('');
+            const membersHtml = dashboardData.members
+                .map((member) => this.buildCompactGroupMemberRow(groupId, member))
+                .join('');
 
             const prayerMemberOptions = dashboardData.members.map((member) => `
                 <option value="${this.escapeHtml(member.id)}">${this.escapeHtml(member.fullName || 'Unknown')}${member.isLeader ? ' (Leader)' : ''}</option>
@@ -2239,18 +2385,18 @@ const MyGroups = {
                     const createdAt = this.resolveDate(item.createdAt || item.updatedAt);
                     const answered = !!(item.answered || item.answeredAt);
                     return `
-                        <div class="rounded-[22px] border ${answered ? 'border-emerald-500/20 bg-emerald-500/8' : 'border-[var(--card-border)] bg-[var(--card-bg)]'} p-4">
+                        <div class="rounded-[22px] border ${answered ? 'border-[#bfe5cc] bg-[#effbf3]' : 'border-[#eadcd2] bg-white/82'} p-4 shadow-[0_10px_28px_rgba(89,49,22,0.04)]">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-sm font-bold text-[var(--text-color)]">${this.escapeHtml(item.memberName || 'Member')}</p>
-                                    <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(item.request || 'No details')}</p>
-                                    <p class="text-[10px] uppercase tracking-[0.16em] mt-2 ${answered ? 'text-emerald-300' : 'text-[var(--mission-gold)]'}">
+                                    <p class="text-base font-black text-[#6d0707]">${this.escapeHtml(item.memberName || 'Member')}</p>
+                                    <p class="mt-2 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(item.request || 'No details')}</p>
+                                    <p class="mt-2 text-[12px] ${answered ? 'text-[#2b8d5f]' : 'text-[#8f6e00]'}">
                                         ${answered ? 'Answered' : 'Open'}${createdAt ? ` • ${createdAt.toLocaleDateString()}` : ''}
                                     </p>
                                 </div>
                                 ${!answered ? `
                                     <button onclick="window.MyGroups.markGroupPrayerAnswered('${groupIdSafe}', '${this.escapeForJs(item.id)}')"
-                                            class="shrink-0 px-3 py-2 rounded-2xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 text-[11px] font-bold">
+                                            class="shrink-0 px-4 py-2.5 rounded-full bg-[#35b16f] text-white text-sm font-black shadow-sm">
                                         Mark Answered
                                     </button>
                                 ` : ''}
@@ -2259,266 +2405,346 @@ const MyGroups = {
                     `;
                 }).join('')
                 : `
-                    <div class="rounded-[22px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/45 p-5 text-center">
-                        <p class="text-[var(--text-color)] font-semibold">No prayer requests yet</p>
-                        <p class="text-sm text-[var(--text-muted)] mt-1">Add prayer needs for your members.</p>
+                    <div class="rounded-[22px] border border-dashed border-[#eadcd2] bg-white/70 p-5 text-center">
+                        <p class="text-lg font-black text-[#6d0707]">No prayer requests yet</p>
+                        <p class="text-sm leading-relaxed text-[#6b5b54] mt-2">Add prayer needs for your members.</p>
                     </div>
                 `;
 
-            content.innerHTML = `
-                <div class="p-5 sm:p-6">
-                    <div class="flex items-start justify-between gap-3 mb-5">
-                        <div class="min-w-0">
-                            <p class="text-[11px] uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Dashboard</p>
-                            <h3 class="text-xl font-black text-[var(--text-color)] leading-tight mt-1">${this.escapeHtml(group.name || 'Mission Group')}</h3>
-                            <div class="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-[var(--text-muted)]">
-                                <span>${dashboardData.health.memberCount || 0} members</span>
-                                <span>${meetingLive ? 'Meeting live now' : 'Meeting waiting'}</span>
-                                <span>${this.escapeHtml(scheduleLabel)}</span>
+            const focusBody = focusMember ? `
+                <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_12px_30px_rgba(89,49,22,0.05)]">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <img src="${this.getMemberPhoto(focusMember)}" class="w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-lg font-black text-[#6d0707]">${this.escapeHtml(focusMember.fullName || 'Unknown')}</p>
+                                    <span class="text-[11px] uppercase tracking-[0.16em] ${focusActionMeta.labelClass}">${this.escapeHtml(focus.mode.replace('_', ' '))}</span>
+                                </div>
+                                <p class="mt-2 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(focus.description || '')}</p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    ${this.getGroupAttentionAlerts(focusMember).slice(0, 2).map((alert) => `
+                                        <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
+                                            ${this.escapeHtml(alert.label)}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                                ${this.renderGroupDetailStreakGraphic(focusMember.stats || {})}
                             </div>
                         </div>
-                        <button onclick="window.MyGroups.closeModal()" class="shrink-0 text-[var(--text-muted)] text-xl leading-none">✕</button>
+                        <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(focusMember.id)}', '${focus.mode}')"
+                                class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${focusActionMeta.buttonClass}">
+                            ${this.escapeHtml(focusActionMeta.label)}
+                        </button>
+                    </div>
+                </div>
+            ` : `
+                <div class="rounded-[22px] border border-dashed border-[#eadcd2] bg-white/70 p-5 text-center">
+                    <p class="text-lg font-black text-[#6d0707]">No urgent focus right now</p>
+                    <p class="text-sm leading-relaxed text-[#6b5b54] mt-2">Use this week to affirm members who are building consistency with God.</p>
+                </div>
+            `;
+
+            const actionSummaryCard = `
+                <div class="rounded-[28px] border border-[#ead8c7] bg-[linear-gradient(145deg,rgba(255,214,108,0.16),rgba(255,255,255,0.96))] p-4 shadow-[0_18px_40px_rgba(109,56,18,0.08)]">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Action Summary</p>
+                            <p class="mt-2 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(summaryIntro)}</p>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <p class="text-[10px] uppercase tracking-[0.16em] text-[#8f7a6d]">Focus</p>
+                            <p class="mt-1 text-sm font-black text-[#6d0707]">${this.escapeHtml(focusMember ? this.getFirstName(focusMember) : 'Steady')}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-3">
+                        <button onclick="window.MyGroups.openGroupDashboardSection('needs_attention')" class="rounded-[22px] border border-[#f0c5c5] bg-[#fff2f2] p-3 text-left">
+                            <p class="text-[10px] uppercase tracking-[0.16em] text-[#b43a3a]">Needs Attention</p>
+                            <p class="mt-1 text-2xl font-black text-[#8f0c0c]">${attentionCount}</p>
+                        </button>
+                        <button onclick="window.MyGroups.openGroupDashboardSection('encourage_bible')" class="rounded-[22px] border border-[#f1d279] bg-[#fff8e2] p-3 text-left">
+                            <p class="text-[10px] uppercase tracking-[0.16em] text-[#c19200]">Bible Nudges</p>
+                            <p class="mt-1 text-2xl font-black text-[#8f5c00]">${encourageCount}</p>
+                        </button>
+                        <button onclick="window.MyGroups.openGroupDashboardSection('check_attendance')" class="rounded-[22px] border border-[#efc0ba] bg-[#fff1ec] p-3 text-left">
+                            <p class="text-[10px] uppercase tracking-[0.16em] text-[#b1564f]">Attendance</p>
+                            <p class="mt-1 text-2xl font-black text-[#9d0500]">${attendanceCount}</p>
+                        </button>
+                        <button onclick="window.MyGroups.openGroupDashboardSection('affirm_active')" class="rounded-[22px] border border-[#bfe5cc] bg-[#effbf3] p-3 text-left">
+                            <p class="text-[10px] uppercase tracking-[0.16em] text-[#2b8d5f]">Affirm</p>
+                            <p class="mt-1 text-2xl font-black text-[#1e8d61]">${affirmCount}</p>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const groupHealthBody = `
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#8f0c0c]">${dashboardData.health.memberCount || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Members</p>
+                    </div>
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#2ba968]">${dashboardData.health.active7d || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Active 7d</p>
+                    </div>
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#d19b00]">${dashboardData.health.readingBible || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Reading Bible</p>
+                    </div>
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#2798c9]">${dashboardData.health.activeWithGod || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Active With God</p>
+                    </div>
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#c19200]">${dashboardData.health.openPrayerCount || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Open Prayers</p>
+                    </div>
+                    <div class="rounded-[22px] border border-white/80 bg-white/75 p-4 text-center">
+                        <p class="text-3xl font-black text-[#a691eb]">${dashboardData.health.prayingForOthers || 0}</p>
+                        <p class="text-sm text-[#74655c] mt-1">Praying For Others</p>
+                    </div>
+                </div>
+            `;
+
+            const prayerFormBody = `
+                <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_10px_28px_rgba(89,49,22,0.04)]">
+                    <div class="grid grid-cols-1 gap-3">
+                        <select id="groupPrayerMemberId" class="w-full bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base text-[#6d0707]">
+                            <option value="">Select member</option>
+                            ${prayerMemberOptions}
+                        </select>
+                        <textarea id="groupPrayerRequest" rows="3" maxlength="300"
+                                  placeholder="Add a prayer need for this member"
+                                  class="w-full bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base text-[#4d3c37]"></textarea>
+                        <button onclick="window.MyGroups.submitGroupPrayerRequest('${groupIdSafe}')"
+                                class="w-full sm:w-auto px-4 py-3 rounded-full bg-[#9d0500] text-white text-base font-black shadow-sm">
+                            Add Prayer Request
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-4 space-y-3">
+                    ${prayerListHtml}
+                </div>
+            `;
+
+            const groupSettingsBody = `
+                <div class="space-y-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-lg font-black text-[#6d0707]">${this.escapeHtml(scheduleLabel)}</p>
+                            <p class="mt-1 text-sm text-[#74655c]">${meetingLive ? 'Meeting live now' : 'Meeting waiting'}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[11px] uppercase tracking-[0.16em] ${meetingLive ? 'bg-[#ddf7ef] text-[#24936f]' : 'bg-white/75 text-[#8a7a70]'}">
+                            ${meetingLive ? 'Live' : 'Waiting'}
+                        </span>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[#74655c] mb-2">Group Name</label>
+                        <div class="flex items-center gap-2">
+                            <input id="groupNameInput" type="text" value="${this.escapeHtml(group.name || 'Mission Group')}" maxlength="80"
+                                   class="flex-1 bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base text-[#6d0707]">
+                            <button onclick="window.MyGroups.saveGroupName('${groupIdSafe}')"
+                                    class="px-4 py-3 rounded-[20px] text-sm font-black bg-[#9d0500] text-white whitespace-nowrap">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="window.MyGroups.editSchedule('${groupIdSafe}')"
+                                class="px-4 py-3 rounded-full text-sm font-black bg-[#f7cc00] text-[#3f1400] shadow-sm">
+                            Edit Day & Time
+                        </button>
+                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
+                                class="px-4 py-3 rounded-full text-sm font-black shadow-sm ${meetingLock.locked ? 'bg-[#fff2f2] text-[#9d0500] border border-[#efc0ba]' : (meetingLive ? 'bg-[#35b16f] text-white' : 'bg-white text-[#6d0707] border border-[#e7d6c9]')}">
+                            ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting' : 'Join Meeting')}
+                        </button>
+                    </div>
+                    ${meetingLock.locked ? `
+                        <p class="text-sm text-[#b43a3a]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
+                    ` : ''}
+                </div>
+            `;
+
+            const reminderBody = `
+                <div class="space-y-3">
+                    <label class="flex items-center justify-between text-base text-[#6d0707]">
+                        <span>Enable reminder</span>
+                        <input id="meetingReminderEnabled" type="checkbox" class="accent-[#f7cc00]" ${reminderEnabled ? 'checked' : ''}>
+                    </label>
+                    <div>
+                        <label class="block text-sm text-[#74655c] mb-2">Notify me before meeting</label>
+                        <select id="meetingReminderMinutes" class="w-full bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base text-[#6d0707]">
+                            <option value="10" ${reminderMinutes === 10 ? 'selected' : ''}>10 minutes</option>
+                            <option value="30" ${reminderMinutes === 30 ? 'selected' : ''}>30 minutes</option>
+                            <option value="60" ${reminderMinutes === 60 ? 'selected' : ''}>1 hour</option>
+                            <option value="1440" ${reminderMinutes === 1440 ? 'selected' : ''}>1 day</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center justify-between text-base text-[#6d0707]">
+                        <span>In-app notification</span>
+                        <input id="meetingReminderPush" type="checkbox" class="accent-[#f7cc00]" ${pushEnabled ? 'checked' : ''}>
+                    </label>
+                    <label class="flex items-center justify-between text-base text-[#6d0707]">
+                        <span>Alarm-style alert</span>
+                        <input id="meetingReminderAlarm" type="checkbox" class="accent-[#f7cc00]" ${alarmEnabled ? 'checked' : ''}>
+                    </label>
+                    <button onclick="window.MyGroups.saveMeetingReminder('${groupIdSafe}')"
+                            class="w-full py-3 rounded-full text-base font-black bg-[#9d0500] text-white shadow-sm">
+                        Save Reminder Settings
+                    </button>
+                </div>
+            `;
+
+            content.innerHTML = `
+                <div class="max-h-[84vh] overflow-hidden rounded-[30px] bg-[#fffaf6]">
+                    <div class="sticky top-0 z-20 border-b border-[#eadcd2] bg-[linear-gradient(180deg,rgba(255,250,246,0.98),rgba(255,250,246,0.93))] backdrop-blur px-5 py-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Group Dashboard</p>
+                                <h3 class="mt-1 text-[clamp(1.45rem,5vw,2rem)] font-black leading-none text-[#6d0707]">${this.escapeHtml(group.name || 'Mission Group')}</h3>
+                                <p class="mt-3 text-sm tracking-[0.14em] text-[#7d6d64]">${dashboardData.health.memberCount || 0} members • ${meetingLive ? 'Meeting live now' : 'Meeting waiting'}</p>
+                                <p class="mt-1 text-sm tracking-[0.14em] text-[#7d6d64]">${this.escapeHtml(scheduleLabel)}</p>
+                            </div>
+                            <button onclick="window.MyGroups.closeModal()" class="shrink-0 w-10 h-10 rounded-full border border-[#dfd0c6] bg-white/80 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">
+                                ×
+                            </button>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
+                                    class="px-4 py-2.5 rounded-full bg-[#f7cc00] text-[#3f1400] text-sm font-black shadow-sm">
+                                Invite
+                            </button>
+                            <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
+                                    class="px-4 py-2.5 rounded-full border border-[#e7d6c9] bg-white/82 text-[#6d0707] text-sm font-black">
+                                Chat
+                            </button>
+                            <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
+                                    class="px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${meetingLock.locked ? 'bg-[#fff2f2] text-[#9d0500] border border-[#efc0ba]' : (meetingLive ? 'bg-[#35b16f] text-white' : 'bg-white text-[#6d0707] border border-[#e7d6c9]')}">
+                                ${meetingLock.locked ? 'Meeting Locked' : 'Join Meeting'}
+                            </button>
+                            ${pendingRequestsCount > 0 ? `
+                                <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
+                                        class="px-4 py-2.5 rounded-full bg-[#9d0500] text-white text-sm font-black shadow-sm">
+                                    ${pendingRequestsCount} Pending
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
 
-                    <div class="space-y-4 max-h-[76vh] overflow-y-auto pr-1">
-                        ${pendingRequestsCount > 0 ? `
-                            <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
-                                    class="w-full rounded-[24px] border border-[var(--mission-gold)]/35 bg-[var(--card-bg)] px-4 py-3 text-sm font-bold text-[var(--mission-gold)] flex items-center justify-between">
-                                <span>🔔 Pending Requests</span>
-                                <span class="bg-red-500 text-white text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2 border border-white/80">${pendingRequestsCount}</span>
-                            </button>
-                        ` : ''}
+                    <div class="max-h-[72vh] overflow-y-auto px-4 pb-5 pt-4 space-y-4 bg-[radial-gradient(circle_at_top,rgba(255,214,108,0.08),transparent_28%)]">
+                        ${actionSummaryCard}
 
-                        <div class="rounded-[28px] border border-[var(--mission-gold)]/22 bg-[linear-gradient(145deg,rgba(255,193,7,0.12),rgba(120,0,0,0.03))] p-4">
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
-                                        class="px-4 py-2 rounded-2xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold">
-                                    Invite
-                                </button>
-                                <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
-                                        class="px-4 py-2 rounded-2xl border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold">
-                                    Chat
-                                </button>
-                                <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
-                                        class="px-4 py-2 rounded-2xl text-sm font-bold border ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] border-[var(--mission-red-bright)]/30' : (meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--card-bg)] text-[var(--text-color)] border-[var(--card-border)]')}">
-                                    ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting (Live)' : 'Join Meeting')}
-                                </button>
-                            </div>
-                            ${meetingLock.locked ? `
-                                <p class="mt-3 text-xs text-[var(--mission-red-bright)]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
-                            ` : ''}
-                        </div>
+                        ${this.renderGroupDashboardSection('this_week_focus', {
+                            title: 'This Week’s Focus',
+                            summary: focusMember
+                                ? `${this.getFirstName(focusMember)} is the most important person to follow up first.`
+                                : 'No urgent focus right now.',
+                            shellClass: 'border-[#f1d79a] bg-[linear-gradient(180deg,rgba(255,248,225,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: focusMember ? '1' : '0',
+                            countClass: 'bg-[#fff6d8] text-[#8f5c00] border border-[#f1d279]',
+                            defaultExpanded: true,
+                            body: focusBody
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">This Week’s Focus</p>
-                                    <h4 class="text-lg font-black text-[var(--text-color)] mt-1">${this.escapeHtml(focus?.title || 'Strengthen one member this week')}</h4>
-                                </div>
-                                ${focusMember ? `<span class="text-[10px] uppercase tracking-[0.16em] text-[var(--text-muted)]">${this.escapeHtml(focus.mode.replace('_', ' '))}</span>` : ''}
-                            </div>
-                            ${focusMember ? `
-                                <div class="mt-4 flex items-start gap-3">
-                                    <img src="${this.getMemberPhoto(focusMember)}" class="w-14 h-14 rounded-full border border-[var(--mission-gold)]/30 object-cover">
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-base font-bold text-[var(--text-color)]">${this.escapeHtml(focusMember.fullName || 'Unknown')}</p>
-                                        <p class="text-sm text-[var(--text-muted)] mt-1">${this.escapeHtml(focus.description || '')}</p>
-                                        <div class="mt-3 flex flex-wrap gap-2">
-                                            ${this.getGroupAttentionAlerts(focusMember).slice(0, 2).map((alert) => `
-                                                <span class="px-2 py-1 rounded-full border text-[10px] font-semibold ${alert.tone}">
-                                                    ${this.escapeHtml(alert.label)}
-                                                </span>
-                                            `).join('')}
-                                            ${focusMember.stats?.devotionStreak >= 7 ? '<span class="px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/20 text-[10px] font-semibold">7-day streak</span>' : ''}
-                                            ${focusMember.stats?.devotionStreak >= 3 && focusMember.stats?.devotionStreak < 7 ? '<span class="px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20 text-[10px] font-semibold">3-day streak</span>' : ''}
-                                        </div>
-                                        ${this.renderGroupDetailStreakGraphic(focusMember.stats || {})}
-                                    </div>
-                                    <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(focusMember.id)}', '${focus.mode}')"
-                                            class="shrink-0 px-4 py-2 rounded-2xl bg-[var(--mission-red-bright)] text-white text-sm font-bold">
-                                        ${focusButton}
-                                    </button>
-                                </div>
-                            ` : `
-                                <div class="mt-4 rounded-[22px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/45 p-5 text-center">
-                                    <p class="text-[var(--text-color)] font-semibold">No urgent focus right now</p>
-                                    <p class="text-sm text-[var(--text-muted)] mt-1">Use this week to affirm members who are building consistency with God.</p>
-                                </div>
-                            `}
-                        </section>
+                        ${this.renderGroupDashboardSection('needs_attention', {
+                            title: 'Needs Attention',
+                            summary: attentionCount > 0 ? 'Members who may be drifting or missing connection.' : 'No immediate care alerts right now.',
+                            shellClass: 'border-[#f0c2c2] bg-[linear-gradient(180deg,rgba(255,240,240,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#b43a3a]',
+                            count: String(attentionCount),
+                            countClass: 'bg-[#fff2f2] text-[#b43a3a] border border-[#f0c5c5]',
+                            defaultExpanded: attentionCount > 0,
+                            body: needsAttentionHtml || '<p class="text-sm leading-relaxed text-[#6b5b54]">No members need immediate follow-up.</p>'
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--mission-red-bright)]/20 bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-red-bright)]">Needs Attention</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careMembers.filter((member) => this.getGroupAttentionAlerts(member).length > 0).length}</span>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${needsAttentionHtml || '<p class="text-sm text-[var(--text-muted)]">No members need immediate follow-up.</p>'}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('encourage_bible', {
+                            title: 'Encourage Bible Reading',
+                            summary: encourageCount > 0 ? 'Nudge members back into a gentle reading rhythm.' : 'Everyone has recent Bible activity.',
+                            shellClass: 'border-[#f1d79a] bg-[linear-gradient(180deg,rgba(255,248,225,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: String(encourageCount),
+                            countClass: 'bg-[#fff6d8] text-[#8f5c00] border border-[#f1d279]',
+                            defaultExpanded: false,
+                            body: dashboardData.careSegments.encourageBible.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'encourage_bible')).join('') || '<p class="text-sm leading-relaxed text-[#6b5b54]">Nobody needs a Bible nudge right now.</p>'
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Encourage Bible Reading</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.encourageBible.length}</span>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${dashboardData.careSegments.encourageBible.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'encourage_bible')).join('') || '<p class="text-sm text-[var(--text-muted)]">Everyone has recent Bible activity.</p>'}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('check_attendance', {
+                            title: 'Check Attendance',
+                            summary: attendanceCount > 0 ? 'Follow up with members missing meetings.' : 'No attendance follow-up needed from recent meetings.',
+                            shellClass: 'border-[#efc0ba] bg-[linear-gradient(180deg,rgba(255,242,237,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#b1564f]',
+                            count: String(attendanceCount),
+                            countClass: 'bg-[#fff0ea] text-[#9d0500] border border-[#efc0ba]',
+                            defaultExpanded: false,
+                            body: dashboardData.careSegments.attendanceFollowUp.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'check_attendance')).join('') || '<p class="text-sm leading-relaxed text-[#6b5b54]">No attendance follow-up needed from recent meetings.</p>'
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Check Attendance</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.attendanceFollowUp.length}</span>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${dashboardData.careSegments.attendanceFollowUp.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'check_attendance')).join('') || '<p class="text-sm text-[var(--text-muted)]">No members are currently missing meetings in a row.</p>'}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('affirm_active', {
+                            title: 'Affirm Active Members',
+                            summary: affirmCount > 0 ? 'Celebrate people building momentum with God.' : 'No active members to affirm yet.',
+                            shellClass: 'border-[#bfe5cc] bg-[linear-gradient(180deg,rgba(239,251,243,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#2b8d5f]',
+                            count: String(affirmCount),
+                            countClass: 'bg-[#effbf3] text-[#2b8d5f] border border-[#bfe5cc]',
+                            defaultExpanded: false,
+                            body: dashboardData.careSegments.affirmActive.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'affirm_active')).join('') || '<p class="text-sm leading-relaxed text-[#6b5b54]">No active members to affirm yet.</p>'
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Affirm Active Members</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.affirmActive.length}</span>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${dashboardData.careSegments.affirmActive.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'affirm_active')).join('') || '<p class="text-sm text-[var(--text-muted)]">No active members to affirm yet.</p>'}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('group_health', {
+                            title: 'Group Health',
+                            summary: dashboardData.health.lastMeetingAt
+                                ? `Latest meeting ${this.resolveDate(dashboardData.health.lastMeetingAt)?.toLocaleDateString() || ''}`
+                                : 'No recorded meeting yet.',
+                            shellClass: 'border-[#ddd2ca] bg-[linear-gradient(180deg,rgba(250,245,241,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#8c5d0d]',
+                            count: '',
+                            defaultExpanded: false,
+                            body: groupHealthBody
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Health</p>
-                                <span class="text-[11px] text-[var(--text-muted)]">${dashboardData.health.lastMeetingAt ? `Latest meeting ${this.resolveDate(dashboardData.health.lastMeetingAt)?.toLocaleDateString() || ''}` : 'No recorded meeting yet'}</span>
-                            </div>
-                            <div class="mt-4 grid grid-cols-2 gap-3">
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-[var(--mission-red-bright)]">${dashboardData.health.memberCount || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Members</p>
-                                </div>
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-emerald-400">${dashboardData.health.active7d || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Active 7d</p>
-                                </div>
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-amber-400">${dashboardData.health.readingBible || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Reading Bible</p>
-                                </div>
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-sky-400">${dashboardData.health.activeWithGod || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Active With God</p>
-                                </div>
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-[var(--mission-gold)]">${dashboardData.health.openPrayerCount || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Open Prayers</p>
-                                </div>
-                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
-                                    <p class="text-3xl font-black text-violet-300">${dashboardData.health.prayingForOthers || 0}</p>
-                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Praying For Others</p>
-                                </div>
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('prayer_list', {
+                            title: 'Prayer List',
+                            summary: dashboardData.prayerList.length > 0 ? `${dashboardData.prayerList.length} prayer request${dashboardData.prayerList.length === 1 ? '' : 's'} in this group.` : 'Add prayer needs for your members.',
+                            shellClass: 'border-[#ddd2ca] bg-[linear-gradient(180deg,rgba(252,247,240,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: String(dashboardData.prayerList.length),
+                            countClass: 'bg-[#fff5df] text-[#8f5c00] border border-[#f1d79a]',
+                            defaultExpanded: false,
+                            body: prayerFormBody
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Prayer List</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.prayerList.length}</span>
-                            </div>
-                            <div class="mt-4 rounded-[24px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4">
-                                <div class="grid grid-cols-1 gap-3">
-                                    <select id="groupPrayerMemberId" class="w-full bg-[var(--card-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
-                                        <option value="">Select member</option>
-                                        ${prayerMemberOptions}
-                                    </select>
-                                    <textarea id="groupPrayerRequest" rows="3" maxlength="300"
-                                              placeholder="Add a prayer need for this member"
-                                              class="w-full bg-[var(--card-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]"></textarea>
-                                    <button onclick="window.MyGroups.submitGroupPrayerRequest('${groupIdSafe}')"
-                                            class="w-full sm:w-auto px-4 py-3 rounded-2xl bg-[var(--mission-red-bright)] text-white text-sm font-bold">
-                                        Add Prayer Request
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${prayerListHtml}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('all_members', {
+                            title: 'All Members',
+                            summary: `${dashboardData.members.length} people in this group.`,
+                            shellClass: 'border-[#ddd2ca] bg-[linear-gradient(180deg,rgba(252,250,248,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: String(dashboardData.members.length),
+                            countClass: 'bg-white text-[#6f5d54] border border-[#e7d6c9]',
+                            defaultExpanded: false,
+                            body: membersHtml || '<p class="text-sm leading-relaxed text-[#6b5b54]">No members found.</p>'
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">All Members</p>
-                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.members.length} total</span>
-                            </div>
-                            <div class="mt-4 space-y-3">
-                                ${membersHtml || '<p class="text-sm text-[var(--text-muted)]">No members found.</p>'}
-                            </div>
-                        </section>
+                        ${this.renderGroupDashboardSection('group_settings', {
+                            title: 'Group Settings',
+                            summary: scheduleLabel,
+                            shellClass: 'border-[#ddd2ca] bg-[linear-gradient(180deg,rgba(252,247,240,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: '',
+                            defaultExpanded: false,
+                            body: groupSettingsBody
+                        })}
 
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Settings</p>
-                                    <p class="text-sm font-semibold text-[var(--text-color)] mt-1">${this.escapeHtml(scheduleLabel)}</p>
-                                </div>
-                                <span class="text-[10px] uppercase tracking-[0.16em] ${meetingLive ? 'text-green-400' : 'text-[var(--text-muted)]'}">${meetingLive ? 'Live now' : 'Waiting'}</span>
-                            </div>
-                            <div class="mt-4">
-                                <label class="block text-xs text-[var(--text-muted)] mb-1">Group Name</label>
-                                <div class="flex items-center gap-2">
-                                    <input id="groupNameInput" type="text" value="${this.escapeHtml(group.name || 'Mission Group')}" maxlength="80"
-                                           class="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
-                                    <button onclick="window.MyGroups.saveGroupName('${groupIdSafe}')"
-                                            class="px-4 py-3 rounded-2xl text-xs font-bold bg-[var(--mission-red-bright)] text-white whitespace-nowrap">
-                                        Save Name
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <button onclick="window.MyGroups.editSchedule('${groupIdSafe}')"
-                                        class="px-4 py-3 rounded-2xl text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
-                                    Edit Day & Time
-                                </button>
-                                <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
-                                        class="px-4 py-3 rounded-2xl text-xs font-bold border ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] border-[var(--mission-red-bright)]/30' : (meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]')}">
-                                    ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting (Live)' : 'Join Meeting')}
-                                </button>
-                            </div>
-                            ${meetingLock.locked ? `
-                                <p class="mt-3 text-xs text-[var(--mission-red-bright)]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
-                            ` : ''}
-                        </section>
-
-                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
-                            <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)] mb-3">My Meeting Reminder</p>
-                            <label class="flex items-center justify-between text-sm text-[var(--text-color)]">
-                                <span>Enable reminder</span>
-                                <input id="meetingReminderEnabled" type="checkbox" class="accent-[var(--mission-gold)]" ${reminderEnabled ? 'checked' : ''}>
-                            </label>
-                            <div class="mt-3">
-                                <label class="block text-xs text-[var(--text-muted)] mb-1">Notify me before meeting</label>
-                                <select id="meetingReminderMinutes" class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
-                                    <option value="10" ${reminderMinutes === 10 ? 'selected' : ''}>10 minutes</option>
-                                    <option value="30" ${reminderMinutes === 30 ? 'selected' : ''}>30 minutes</option>
-                                    <option value="60" ${reminderMinutes === 60 ? 'selected' : ''}>1 hour</option>
-                                    <option value="1440" ${reminderMinutes === 1440 ? 'selected' : ''}>1 day</option>
-                                </select>
-                            </div>
-                            <div class="mt-3 grid grid-cols-1 gap-2 text-sm text-[var(--text-color)]">
-                                <label class="flex items-center justify-between">
-                                    <span>In-app notification</span>
-                                    <input id="meetingReminderPush" type="checkbox" class="accent-[var(--mission-gold)]" ${pushEnabled ? 'checked' : ''}>
-                                </label>
-                                <label class="flex items-center justify-between">
-                                    <span>Alarm-style alert</span>
-                                    <input id="meetingReminderAlarm" type="checkbox" class="accent-[var(--mission-gold)]" ${alarmEnabled ? 'checked' : ''}>
-                                </label>
-                            </div>
-                            <button onclick="window.MyGroups.saveMeetingReminder('${groupIdSafe}')"
-                                    class="mt-4 w-full py-3 rounded-2xl text-sm font-bold bg-[var(--mission-red-bright)] text-white">
-                                Save Reminder Settings
-                            </button>
-                        </section>
+                        ${this.renderGroupDashboardSection('meeting_reminder', {
+                            title: 'My Meeting Reminder',
+                            summary: reminderEnabled ? `${reminderMinutes} minutes before meeting` : 'Reminder currently disabled.',
+                            shellClass: 'border-[#ddd2ca] bg-[linear-gradient(180deg,rgba(252,247,240,0.96),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: '',
+                            defaultExpanded: false,
+                            body: reminderBody
+                        })}
                     </div>
                 </div>
             `;
