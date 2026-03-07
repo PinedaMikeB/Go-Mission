@@ -1456,12 +1456,12 @@ const MyGroups = {
                             <div class="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(42,17,10,0.22),rgba(42,17,10,0))]"></div>
                             ${gallery.length > 1 ? `
                                 <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', -1)"
-                                        class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-white/95 bg-transparent text-white shadow-[0_8px_18px_rgba(18,10,6,0.18)] inline-flex items-center justify-center backdrop-blur-[1px]"
+                                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-white text-[2rem] font-light leading-none [text-shadow:0_2px_10px_rgba(18,10,6,0.5)]"
                                         aria-label="Previous photo">
                                     ‹
                                 </button>
                                 <button onclick="event.stopPropagation(); window.MyGroups.stepGroupCardPhoto('${groupIdForJs}', 1)"
-                                        class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-white/95 bg-transparent text-white shadow-[0_8px_18px_rgba(18,10,6,0.18)] inline-flex items-center justify-center backdrop-blur-[1px]"
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white text-[2rem] font-light leading-none [text-shadow:0_2px_10px_rgba(18,10,6,0.5)]"
                                         aria-label="Next photo">
                                     ›
                                 </button>
@@ -1469,10 +1469,10 @@ const MyGroups = {
                         </div>
                         ${gallery.length > 1 ? `
                             <div class="px-4 pt-3">
-                                <div class="rounded-full bg-[linear-gradient(180deg,rgba(255,250,246,0.92),rgba(255,245,238,0.98))] border border-[#eadcd2] px-3 py-2 flex items-center justify-center gap-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                                <div class="mx-auto w-fit rounded-full bg-[linear-gradient(180deg,rgba(255,250,246,0.82),rgba(255,245,238,0.9))] border border-[#efe3d8] px-2.5 py-1.5 flex items-center justify-center gap-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
                                     ${gallery.map((_, index) => `
                                         <button onclick="window.MyGroups.setGroupCardPhotoIndex('${groupIdForJs}', ${index})"
-                                                class="w-2 h-2 rounded-full border ${index === activePhotoIndex ? 'bg-[#6d0707] border-[#6d0707]' : 'bg-transparent border-[#cdbdaf]'}"
+                                                class="w-1.5 h-1.5 rounded-full border ${index === activePhotoIndex ? 'bg-[#6d0707] border-[#6d0707]' : 'bg-transparent border-[#d6c7bb]'}"
                                                 aria-label="View photo ${index + 1}">
                                         </button>
                                     `).join('')}
