@@ -359,9 +359,9 @@ const SpeechInput = {
       if (!transcript) continue;
 
       if (result.isFinal) {
-        this.finalTranscript = this.appendTranscriptSegment(this.finalTranscript, transcript);
+        this.finalTranscript = this.appendTranscriptSegment(this.finalTranscript, transcript, this.sessionBeforeText);
       } else {
-        interim = this.appendTranscriptSegment('', transcript);
+        interim = this.appendTranscriptSegment('', transcript, `${this.sessionBeforeText} ${this.finalTranscript}`.trim());
       }
     }
 
@@ -369,14 +369,50 @@ const SpeechInput = {
     this.syncTranscriptToField();
   },
 
-  appendTranscriptSegment(current, next) {
+  appendTranscriptSegment(current, next, baseline = '') {
     const existing = String(current || '');
     const incoming = String(next || '').trim();
     if (!incoming) return existing;
-    if (!existing) return incoming;
 
-    const needsSpace = /[A-Za-z0-9)]$/.test(existing) && /^[A-Za-z0-9(]/.test(incoming);
-    return `${existing}${needsSpace ? ' ' : ''}${incoming}`;
+    const baselineText = String(baseline || '').trim();
+    const sourceText = existing || baselineText;
+    const overlapWords = this.getSpeechOverlapWordCount(sourceText, incoming);
+
+    if (!existing && overlapWords <= 0) return incoming;
+
+    const incomingWords = incoming.split(/\s+/).filter(Boolean);
+    if (overlapWords >= incomingWords.length) {
+      return existing;
+    }
+
+    const suffixWords = incomingWords.slice(Math.max(0, overlapWords));
+    const suffix = suffixWords.join(' ').trim();
+    if (!suffix) return existing;
+    if (!existing) return suffix;
+
+    const needsSpace = /[A-Za-z0-9)]$/.test(existing) && /^[A-Za-z0-9(]/.test(suffix);
+    return `${existing}${needsSpace ? ' ' : ''}${suffix}`;
+  },
+
+  getSpeechOverlapWordCount(leftText, rightText) {
+    const leftWords = this.normalizeSpeechWords(leftText);
+    const rightWords = this.normalizeSpeechWords(rightText);
+    if (!leftWords.length || !rightWords.length) return 0;
+
+    const maxOverlap = Math.min(leftWords.length, rightWords.length);
+    for (let size = maxOverlap; size > 0; size -= 1) {
+      const leftSlice = leftWords.slice(leftWords.length - size).join(' ');
+      const rightSlice = rightWords.slice(0, size).join(' ');
+      if (leftSlice === rightSlice) return size;
+    }
+    return 0;
+  },
+
+  normalizeSpeechWords(text) {
+    return String(text || '')
+      .split(/\s+/)
+      .map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}@'-]+/gu, ''))
+      .filter(Boolean);
   },
 
   syncTranscriptToField() {
