@@ -5,9 +5,9 @@
 
 const SpeechInput = {
   activeElement: null,
+  previousActiveElement: null,
   dock: null,
   toggleBtn: null,
-  statusEl: null,
   recognition: null,
   isListening: false,
   manualStopRequested: false,
@@ -53,23 +53,18 @@ const SpeechInput = {
 
     const dock = document.createElement('div');
     dock.id = 'speechInputDock';
-    dock.className = 'hidden fixed z-[200] flex items-center gap-2 rounded-full border border-amber-500/35 bg-[var(--card-bg-solid)]/95 px-3 py-2 shadow-2xl backdrop-blur';
+    dock.className = 'hidden fixed z-[200]';
     dock.innerHTML = `
-      <button id="speechInputToggleBtn" type="button" class="h-10 w-10 rounded-full bg-amber-500 text-[#2a0505] flex items-center justify-center transition-colors hover:bg-amber-400" aria-label="Start speech input" title="Start speech input">
+      <button id="speechInputToggleBtn" type="button" class="h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400" aria-label="Start speech input" title="Start speech input">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.5a4.5 4.5 0 004.5-4.5V8a4.5 4.5 0 10-9 0v6a4.5 4.5 0 004.5 4.5zm0 0v3m-5-3a8 8 0 0010 0"></path>
         </svg>
       </button>
-      <div class="min-w-0">
-        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-500">Voice Input</p>
-        <p id="speechInputStatus" class="text-[11px] text-[var(--text-color)] whitespace-nowrap"></p>
-      </div>
     `;
     document.body.appendChild(dock);
 
     this.dock = dock;
     this.toggleBtn = dock.querySelector('#speechInputToggleBtn');
-    this.statusEl = dock.querySelector('#speechInputStatus');
 
     if (this.toggleBtn) {
       this.toggleBtn.addEventListener('mousedown', (event) => {
@@ -91,7 +86,13 @@ const SpeechInput = {
       this.stopListening(true);
     }
 
+    if (this.previousActiveElement && this.previousActiveElement !== target) {
+      this.restoreTargetPadding(this.previousActiveElement);
+    }
+
     this.activeElement = target;
+    this.previousActiveElement = target;
+    this.reserveSpaceForMic(target);
     this.showDock();
     this.positionDock();
   },
@@ -101,12 +102,18 @@ const SpeechInput = {
       const focused = document.activeElement;
       if (this.isEligibleTarget(focused)) {
         this.activeElement = focused;
+        this.previousActiveElement = focused;
+        this.reserveSpaceForMic(focused);
         this.showDock();
         this.positionDock();
         return;
       }
 
       if (!this.isListening) {
+        if (this.activeElement) {
+          this.restoreTargetPadding(this.activeElement);
+        }
+        this.activeElement = null;
         this.hideDock();
       }
     }, 0);
@@ -159,15 +166,18 @@ const SpeechInput = {
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
 
-    let top = rect.bottom + 8;
-    let left = rect.right - dockRect.width;
+    const isTallField = rect.height > 54 || String(this.activeElement.tagName || '').toLowerCase() === 'textarea';
+    let top = isTallField
+      ? rect.bottom - dockRect.height - 8
+      : rect.top + ((rect.height - dockRect.height) / 2);
+    let left = rect.right - dockRect.width - 8;
 
-    if (top + dockRect.height > viewportHeight - 12) {
-      top = rect.top - dockRect.height - 8;
-    }
     if (left < 12) left = 12;
     if (left + dockRect.width > viewportWidth - 12) {
       left = viewportWidth - dockRect.width - 12;
+    }
+    if (top + dockRect.height > viewportHeight - 12) {
+      top = viewportHeight - dockRect.height - 12;
     }
     if (top < 12) top = 12;
 
@@ -260,6 +270,27 @@ const SpeechInput = {
     }
   },
 
+  reserveSpaceForMic(target) {
+    if (!target || target.dataset?.speechPaddingApplied === 'true') return;
+    const computed = window.getComputedStyle(target);
+    const currentPaddingRight = parseFloat(computed.paddingRight || '0') || 0;
+    target.dataset.speechOriginalPaddingRight = String(currentPaddingRight);
+    target.style.paddingRight = `${Math.max(currentPaddingRight, 16) + 52}px`;
+    target.dataset.speechPaddingApplied = 'true';
+  },
+
+  restoreTargetPadding(target) {
+    if (!target || target.dataset?.speechPaddingApplied !== 'true') return;
+    const original = parseFloat(target.dataset.speechOriginalPaddingRight || '');
+    if (Number.isFinite(original)) {
+      target.style.paddingRight = `${original}px`;
+    } else {
+      target.style.removeProperty('padding-right');
+    }
+    delete target.dataset.speechOriginalPaddingRight;
+    delete target.dataset.speechPaddingApplied;
+  },
+
   getRecognitionLanguage() {
     const lang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
     return lang === 'en' ? 'en-US' : 'fil-PH';
@@ -312,14 +343,13 @@ const SpeechInput = {
   },
 
   updateDockUi() {
-    if (!this.toggleBtn || !this.statusEl) return;
+    if (!this.toggleBtn) return;
 
     const labels = this.getLabels();
     const isLive = this.isListening;
-    this.statusEl.textContent = isLive ? labels.listening : labels.ready;
     this.toggleBtn.className = isLive
-      ? 'h-10 w-10 rounded-full bg-red-500 text-white flex items-center justify-center transition-colors hover:bg-red-400'
-      : 'h-10 w-10 rounded-full bg-amber-500 text-[#2a0505] flex items-center justify-center transition-colors hover:bg-amber-400';
+      ? 'h-11 w-11 rounded-full border border-red-400/60 bg-red-500 text-white flex items-center justify-center shadow-xl transition-colors hover:bg-red-400'
+      : 'h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400';
     this.toggleBtn.setAttribute('aria-label', isLive ? labels.listening : labels.ready);
     this.toggleBtn.setAttribute('title', isLive ? labels.listening : labels.ready);
   }
