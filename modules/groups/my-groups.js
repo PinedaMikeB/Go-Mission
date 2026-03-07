@@ -27,7 +27,9 @@ const MyGroups = {
         MISSED_MEETINGS: 2,
         NEW_MEMBER_DAYS: 14
     },
-    GROUP_PHOTO_MAX_BYTES: 5 * 1024 * 1024,
+    GROUP_PHOTO_MAX_BYTES: 20 * 1024 * 1024,
+    GROUP_PHOTO_MAX_DIMENSION: 1600,
+    GROUP_PHOTO_QUALITY: 0.82,
     PRESET_GROUP_ICONS: [
         { icon: '📖', label: 'Bible' },
         { icon: '🙏', label: 'Prayer' },
@@ -1445,7 +1447,7 @@ const MyGroups = {
                              ontouchstart="window.MyGroups.handleGroupCardTouchStart('${groupIdForJs}', event)"
                              ontouchend="window.MyGroups.handleGroupCardTouchEnd('${groupIdForJs}', event)">
                             ${hasGallery ? `
-                                <img src="${this.escapeHtml(activePhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="absolute inset-0 w-full h-full object-cover">
+                                <img src="${this.escapeHtml(activePhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover">
                             ` : `
                                 <div class="absolute inset-0 flex items-center justify-center">
                                     <div class="w-[96px] h-[96px] rounded-[28px] border border-[#eadcd2] bg-white/74 shadow-[0_14px_30px_rgba(91,49,26,0.08)] flex items-center justify-center">
@@ -1569,6 +1571,66 @@ const MyGroups = {
         return unique;
     },
 
+    loadImageElement(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(image);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Failed to read image.'));
+            };
+            image.src = url;
+        });
+    },
+
+    canvasToBlob(canvas, type = 'image/jpeg', quality = this.GROUP_PHOTO_QUALITY) {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    resolve(blob);
+                    return;
+                }
+                reject(new Error('Failed to compress image.'));
+            }, type, quality);
+        });
+    },
+
+    async compressGroupImage(file) {
+        if (!(file instanceof File) || !file.type?.startsWith('image/')) return file;
+        if (typeof document === 'undefined') return file;
+
+        const sourceImage = await this.loadImageElement(file);
+        const maxDimension = Number(this.GROUP_PHOTO_MAX_DIMENSION || 1600);
+        const longestSide = Math.max(sourceImage.naturalWidth || sourceImage.width || 0, sourceImage.naturalHeight || sourceImage.height || 0);
+        const scale = longestSide > maxDimension ? maxDimension / longestSide : 1;
+        const width = Math.max(1, Math.round((sourceImage.naturalWidth || sourceImage.width || 1) * scale));
+        const height = Math.max(1, Math.round((sourceImage.naturalHeight || sourceImage.height || 1) * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { alpha: false });
+        if (!context) return file;
+
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(sourceImage, 0, 0, width, height);
+
+        const blob = await this.canvasToBlob(canvas, 'image/jpeg', this.GROUP_PHOTO_QUALITY);
+        const compressedName = String(file.name || 'group-photo')
+            .replace(/\.[a-z0-9]+$/i, '')
+            .replace(/[^a-zA-Z0-9._-]/g, '_') || 'group-photo';
+
+        return new File([blob], `${compressedName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+        });
+    },
+
     getGroupCardPhotoIndex(groupId, photoCount = 0) {
         const current = Number(this.groupCardMediaState?.[groupId] || 0);
         if (!photoCount) return 0;
@@ -1635,7 +1697,7 @@ const MyGroups = {
         const initials = this.getGroupInitials(group.name || 'Mission Group');
 
         if (imageUrl) {
-            return `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="${sizeClass} rounded-[24px] object-cover border border-[#eadcd2] shadow-[0_12px_28px_rgba(90,48,26,0.1)]">`;
+            return `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" loading="lazy" decoding="async" class="${sizeClass} rounded-[24px] object-cover border border-[#eadcd2] shadow-[0_12px_28px_rgba(90,48,26,0.1)]">`;
         }
 
         return `
@@ -2793,7 +2855,7 @@ const MyGroups = {
                         </div>
                         <div class="mt-4 rounded-[24px] overflow-hidden border border-[#eadcd2] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))] aspect-[1.6/1]">
                             ${primaryGroupPhoto ? `
-                                <img src="${this.escapeHtml(primaryGroupPhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="w-full h-full object-cover">
+                                <img src="${this.escapeHtml(primaryGroupPhoto)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" loading="lazy" decoding="async" class="w-full h-full object-cover">
                             ` : `
                                 <div class="w-full h-full flex items-center justify-center">
                                     <span class="text-5xl font-black text-[#6d0707]">${this.escapeHtml(this.getGroupDisplayIcon(group) || this.getGroupInitials(group.name || 'Mission Group'))}</span>
@@ -2814,7 +2876,7 @@ const MyGroups = {
                             <div class="mt-4 space-y-3">
                                 ${groupPhotoGallery.map((photoUrl, index) => `
                                     <div class="flex items-center gap-3 rounded-[20px] border border-[#eadcd2] bg-[#fffdfa] p-3">
-                                        <img src="${this.escapeHtml(photoUrl)}" alt="Group photo ${index + 1}" class="w-16 h-16 rounded-[18px] object-cover border border-[#eadcd2]">
+                                        <img src="${this.escapeHtml(photoUrl)}" alt="Group photo ${index + 1}" loading="lazy" decoding="async" class="w-16 h-16 rounded-[18px] object-cover border border-[#eadcd2]">
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm font-black text-[#6d0707]">${photoUrl === primaryGroupPhoto ? 'Primary photo' : `Photo ${index + 1}`}</p>
                                             <p class="mt-1 text-xs text-[#74655c]">${photoUrl === primaryGroupPhoto ? 'Shown first on the mission group card.' : 'Available in the card gallery.'}</p>
@@ -4642,7 +4704,7 @@ const MyGroups = {
             return;
         }
         if (imageFiles.some((file) => file.size > this.GROUP_PHOTO_MAX_BYTES)) {
-            alert('One of the images is too large. Please use files smaller than 5MB.');
+            alert('One of the images is too large. Please use files smaller than 20MB.');
             return;
         }
         if (!window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
@@ -4658,11 +4720,12 @@ const MyGroups = {
         try {
             const uploadedUrls = [];
             for (const file of imageFiles) {
-                const safeName = String(file.name || 'group.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+                const preparedFile = await this.compressGroupImage(file);
+                const safeName = String(preparedFile.name || file.name || 'group.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
                 const path = `group-photos/${groupId}/${Date.now()}_${safeName}`;
                 const ref = window.storageRef(window.storage, path);
-                const uploaded = await window.uploadBytes(ref, file, {
-                    contentType: file.type || 'image/jpeg',
+                const uploaded = await window.uploadBytes(ref, preparedFile, {
+                    contentType: preparedFile.type || 'image/jpeg',
                     cacheControl: 'public,max-age=3600'
                 });
                 uploadedUrls.push(await window.getDownloadURL(uploaded.ref));
