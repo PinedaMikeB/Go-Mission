@@ -2599,7 +2599,7 @@
                     <button id="dmBoldBtn" onclick="window.ChatApp && window.ChatApp.wrapDmSelectionWithBold && window.ChatApp.wrapDmSelectionWithBold()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text" aria-label="Bold selected text">
                         B
                     </button>
-                    <textarea id="dmChatInput" rows="1" placeholder="Type a message..." onkeydown="window.ChatApp && window.ChatApp.handleDmKeyDown && window.ChatApp.handleDmKeyDown(event)" oninput="window.ChatApp && window.ChatApp.handleDmInput && window.ChatApp.handleDmInput(event)" onfocus="window.ChatApp && window.ChatApp.closeDmEmojiPicker && window.ChatApp.closeDmEmojiPicker()"
+                    <textarea id="dmChatInput" rows="1" placeholder="Type a message..." onkeydown="window.ChatApp && window.ChatApp.handleDmKeyDown && window.ChatApp.handleDmKeyDown(event)" oninput="window.ChatApp && window.ChatApp.handleDmInput && window.ChatApp.handleDmInput(event)" onfocus="window.ChatApp && window.ChatApp.handleDmComposerInputFocus && window.ChatApp.handleDmComposerInputFocus(event)"
                            class="flex-1 min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none overflow-y-auto"></textarea>
                     <button id="dmChatSendBtn" onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
                         <span id="dmChatSendIconWrap" class="inline-flex items-center justify-center">
@@ -2608,6 +2608,50 @@
                     </svg>
                         </span>
                 </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dmFullscreenComposer" class="fixed inset-0 z-[140] hidden bg-[var(--bg-color)]/95 backdrop-blur-sm">
+            <div class="h-full flex flex-col">
+                <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] px-4 py-3 flex items-center justify-between gap-2">
+                    <button onclick="window.ChatApp && window.ChatApp.closeDmFullscreenComposer && window.ChatApp.closeDmFullscreenComposer(false)" class="px-3 py-2 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-color)] text-sm font-semibold">
+                        Cancel
+                    </button>
+                    <p class="text-sm font-bold text-[var(--text-color)]">Compose Message</p>
+                    <button onclick="window.ChatApp && window.ChatApp.closeDmFullscreenComposer && window.ChatApp.closeDmFullscreenComposer(true)" class="px-3 py-2 rounded-lg bg-amber-500 text-[#2a0505] text-sm font-bold hover:bg-amber-400">
+                        Done
+                    </button>
+                </div>
+                <div class="p-4 flex-1 flex flex-col gap-3">
+                    <div class="rounded-xl border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-xs text-[var(--text-muted)]">
+                        Write the message here with room to think. Tap <span class="text-amber-500 font-bold">Done</span> to return, or send from below.
+                    </div>
+                    <textarea id="dmFullscreenInput"
+                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
+                              placeholder="Type a message..."
+                              oninput="window.ChatApp && window.ChatApp.handleDmFullscreenComposerInput && window.ChatApp.handleDmFullscreenComposerInput(event)"
+                              onkeydown="window.ChatApp && window.ChatApp.handleDmFullscreenComposerKeyDown && window.ChatApp.handleDmFullscreenComposerKeyDown(event)"></textarea>
+                    <div id="dmFullscreenEmojiPicker" class="hidden rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-xl overflow-hidden">
+                        <div class="px-3 py-2 border-b border-[var(--card-border)] text-[11px] text-[var(--text-muted)]">Add emoji</div>
+                        <div id="dmFullscreenEmojiGrid" class="p-3 grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
+                            <p class="col-span-8 text-xs text-[var(--text-muted)] text-center py-4">Loading emojis...</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="dmFullscreenEmojiToggleBtn" onclick="window.ChatApp && window.ChatApp.toggleDmFullscreenEmojiPicker && window.ChatApp.toggleDmFullscreenEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji" aria-label="Add emoji">
+                            😊
+                        </button>
+                        <button id="dmFullscreenBoldBtn" onclick="window.ChatApp && window.ChatApp.wrapDmSelectionWithBold && window.ChatApp.wrapDmSelectionWithBold('dmFullscreenInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
+                            B
+                        </button>
+                        <button id="dmFullscreenSendBtn" onclick="window.ChatApp && window.ChatApp.sendFromDmFullscreenComposer && window.ChatApp.sendFromDmFullscreenComposer()" class="flex-1 h-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                            <span id="dmFullscreenSendLabel">Send</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

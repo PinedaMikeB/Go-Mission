@@ -31,6 +31,9 @@ const ChatApp = {
   activeDmHeartbeatTimer: null,
   dmIsSending: false,
   dmEmojiPickerOpen: false,
+  dmFullscreenEmojiPickerOpen: false,
+  isDmFullscreenComposerOpen: false,
+  suppressNextDmComposerFocusOverlay: false,
   dmEmojiOptions: ['🙏','😊','❤️','👍','🔥','🙌','🥹','😢','😮','😂','🎉','💯','✨','🤝','👏','🤍','💛','💙','📖','✝️','🕊️','🙂','😇','💪'],
 
   /**
@@ -83,6 +86,7 @@ const ChatApp = {
     this.close();
     this.closeDirectChat();
     this.closePeopleFinder();
+    this.closeDmFullscreenComposer(false, true);
     if (this.dmNotificationUnsubscribe) {
       this.dmNotificationUnsubscribe();
       this.dmNotificationUnsubscribe = null;
@@ -615,19 +619,27 @@ const ChatApp = {
     const pendingDraft = this.consumePendingDirectDraft(friendId);
     if (input) {
       input.value = pendingDraft || '';
-      requestAnimationFrame(() => {
-        input.focus();
-        input.setSelectionRange?.(input.value.length, input.value.length);
-      });
+      if (!this.shouldUseDmFullscreenComposer()) {
+        requestAnimationFrame(() => {
+          input.focus();
+          input.setSelectionRange?.(input.value.length, input.value.length);
+        });
+      }
     }
     this.autoResizeDmInput(input);
     this.closeDmEmojiPicker();
+    this.closeDmFullscreenEmojiPicker();
     this.dmIsSending = false;
     this.setDmComposerSendingState(false);
     this.renderDmEmojiPicker();
+    this.renderDmFullscreenEmojiPicker();
 
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.remove('hidden');
+
+    if (this.shouldUseDmFullscreenComposer() && pendingDraft) {
+      requestAnimationFrame(() => this.openDmFullscreenComposer());
+    }
 
     await this.setActiveDmThread(this.activeDmThreadId);
     this.startActiveDmHeartbeat(this.activeDmThreadId);
@@ -643,10 +655,12 @@ const ChatApp = {
     const previousThreadId = this.activeDmThreadId;
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.add('hidden');
+    this.closeDmFullscreenComposer(false, true);
     this.activeDmThreadId = null;
     this.activeDmPeerId = null;
     this.dmMessages = [];
     this.closeDmEmojiPicker();
+    this.closeDmFullscreenEmojiPicker();
     this.dmIsSending = false;
     this.setDmComposerSendingState(false);
     this.stopDmPolling();
@@ -675,6 +689,116 @@ const ChatApp = {
     const text = this.pendingDirectDraft.text || '';
     this.pendingDirectDraft = null;
     return text;
+  },
+
+  /**
+   * Use fullscreen composer for mobile DM writing.
+   */
+  shouldUseDmFullscreenComposer() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  },
+
+  /**
+   * Open fullscreen composer when the compact DM textarea receives focus on mobile.
+   */
+  handleDmComposerInputFocus(event) {
+    this.closeDmEmojiPicker();
+    if (!this.shouldUseDmFullscreenComposer()) return;
+    if (this.suppressNextDmComposerFocusOverlay) {
+      this.suppressNextDmComposerFocusOverlay = false;
+      return;
+    }
+    event?.preventDefault?.();
+    event?.target?.blur?.();
+    this.openDmFullscreenComposer();
+  },
+
+  /**
+   * Open fullscreen DM composer and sync from the compact field.
+   */
+  openDmFullscreenComposer() {
+    const overlay = document.getElementById('dmFullscreenComposer');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!overlay || !fullscreenInput || !input) return;
+
+    fullscreenInput.value = input.value || '';
+    overlay.classList.remove('hidden');
+    this.isDmFullscreenComposerOpen = true;
+    this.closeDmEmojiPicker();
+    this.renderDmFullscreenEmojiPicker();
+    this.setDmComposerSendingState(!!this.dmIsSending);
+    requestAnimationFrame(() => {
+      fullscreenInput.focus();
+      fullscreenInput.setSelectionRange?.(fullscreenInput.value.length, fullscreenInput.value.length);
+    });
+  },
+
+  /**
+   * Close fullscreen DM composer.
+   */
+  closeDmFullscreenComposer(syncBack = true, preserveFocus = false) {
+    const overlay = document.getElementById('dmFullscreenComposer');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!overlay) return;
+
+    if (syncBack && fullscreenInput && input) {
+      input.value = fullscreenInput.value || '';
+      this.autoResizeDmInput(input);
+    }
+
+    overlay.classList.add('hidden');
+    this.isDmFullscreenComposerOpen = false;
+    this.closeDmFullscreenEmojiPicker();
+
+    if (!preserveFocus && input && this.shouldUseDmFullscreenComposer()) {
+      this.suppressNextDmComposerFocusOverlay = true;
+      setTimeout(() => input.focus(), 0);
+    }
+  },
+
+  /**
+   * Keep the hidden compact DM input in sync while writing fullscreen.
+   */
+  handleDmFullscreenComposerInput(event) {
+    const fullscreenInput = event?.target || document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Sync fullscreen composer text back into the compact DM input.
+   */
+  syncDmFullscreenComposerToMainInput() {
+    if (!this.isDmFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Mirror compact DM input into fullscreen when it is open.
+   */
+  syncMainDmInputToFullscreenComposer() {
+    if (!this.isDmFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    fullscreenInput.value = input.value || '';
+  },
+
+  /**
+   * Send a DM from fullscreen composer.
+   */
+  async sendFromDmFullscreenComposer() {
+    this.syncDmFullscreenComposerToMainInput();
+    this.closeDmFullscreenComposer(true, true);
+    await this.sendDirectMessage();
   },
 
   /**
@@ -767,6 +891,7 @@ const ChatApp = {
   async sendDirectMessage() {
     const input = document.getElementById('dmChatInput');
     if (!input) return;
+    this.syncDmFullscreenComposerToMainInput();
     const text = (input.value || '').trim();
     if (!text) return;
     if (!this.activeDmThreadId || !this.activeDmPeerId) return;
@@ -810,6 +935,7 @@ const ChatApp = {
 
       input.value = '';
       this.autoResizeDmInput(input);
+      this.syncMainDmInputToFullscreenComposer();
       await this.loadDirectMessages(true);
       await this.buildDirectThreads();
       this.renderDirect();
@@ -837,6 +963,7 @@ const ChatApp = {
    */
   handleDmInput(event) {
     this.autoResizeDmInput(event?.target || null);
+    this.syncMainDmInputToFullscreenComposer();
   },
 
   /**
@@ -845,7 +972,7 @@ const ChatApp = {
   autoResizeDmInput(inputEl = null) {
     const input = inputEl || document.getElementById('dmChatInput');
     if (!input) return;
-    const maxHeight = 176;
+    const maxHeight = input.id === 'dmFullscreenInput' ? 9999 : 176;
     input.style.height = 'auto';
     const nextHeight = Math.min(maxHeight, Math.max(48, input.scrollHeight || 48));
     input.style.height = `${nextHeight}px`;
@@ -857,6 +984,7 @@ const ChatApp = {
    */
   toggleDmEmojiPicker() {
     this.dmEmojiPickerOpen = !this.dmEmojiPickerOpen;
+    this.closeDmFullscreenEmojiPicker();
     if (this.dmEmojiPickerOpen) {
       this.renderDmEmojiPicker();
     }
@@ -878,6 +1006,32 @@ const ChatApp = {
   },
 
   /**
+   * Toggle emoji tray inside the fullscreen DM composer.
+   */
+  toggleDmFullscreenEmojiPicker() {
+    this.dmFullscreenEmojiPickerOpen = !this.dmFullscreenEmojiPickerOpen;
+    this.closeDmEmojiPicker();
+    if (this.dmFullscreenEmojiPickerOpen) {
+      this.renderDmFullscreenEmojiPicker();
+    }
+    const picker = document.getElementById('dmFullscreenEmojiPicker');
+    const toggleBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    if (picker) picker.classList.toggle('hidden', !this.dmFullscreenEmojiPickerOpen);
+    if (toggleBtn) toggleBtn.classList.toggle('bg-amber-500/20', this.dmFullscreenEmojiPickerOpen);
+  },
+
+  /**
+   * Close the fullscreen DM emoji tray.
+   */
+  closeDmFullscreenEmojiPicker() {
+    this.dmFullscreenEmojiPickerOpen = false;
+    const picker = document.getElementById('dmFullscreenEmojiPicker');
+    const toggleBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    if (picker) picker.classList.add('hidden');
+    if (toggleBtn) toggleBtn.classList.remove('bg-amber-500/20');
+  },
+
+  /**
    * Render lightweight emoji choices for DM composer.
    */
   renderDmEmojiPicker() {
@@ -886,7 +1040,24 @@ const ChatApp = {
     const emojis = Array.isArray(this.dmEmojiOptions) ? this.dmEmojiOptions : [];
     grid.innerHTML = emojis.map((emoji) => `
       <button type="button"
-              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}')"
+              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}', 'dmChatInput')"
+              class="h-9 w-9 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center justify-center text-lg"
+              title="${this.escapeHtml(emoji)}">
+        <span aria-hidden="true">${emoji}</span>
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Render emoji tray for the fullscreen DM composer.
+   */
+  renderDmFullscreenEmojiPicker() {
+    const grid = document.getElementById('dmFullscreenEmojiGrid');
+    if (!grid) return;
+    const emojis = Array.isArray(this.dmEmojiOptions) ? this.dmEmojiOptions : [];
+    grid.innerHTML = emojis.map((emoji) => `
+      <button type="button"
+              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}', 'dmFullscreenInput')"
               class="h-9 w-9 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center justify-center text-lg"
               title="${this.escapeHtml(emoji)}">
         <span aria-hidden="true">${emoji}</span>
@@ -897,8 +1068,8 @@ const ChatApp = {
   /**
    * Insert selected emoji into DM input at the cursor position.
    */
-  insertDmEmoji(emoji) {
-    const input = document.getElementById('dmChatInput');
+  insertDmEmoji(emoji, inputId = 'dmChatInput') {
+    const input = document.getElementById(inputId);
     if (!input || !emoji) return;
 
     const value = input.value || '';
@@ -912,13 +1083,18 @@ const ChatApp = {
     }
     input.focus();
     this.autoResizeDmInput(input);
+    if (inputId === 'dmFullscreenInput') {
+      this.handleDmFullscreenComposerInput({ target: input });
+    } else {
+      this.syncMainDmInputToFullscreenComposer();
+    }
   },
 
   /**
    * Wrap selected text in **bold** markers in DM composer.
    */
-  wrapDmSelectionWithBold() {
-    const input = document.getElementById('dmChatInput');
+  wrapDmSelectionWithBold(inputId = 'dmChatInput') {
+    const input = document.getElementById(inputId);
     if (!input) return;
 
     const value = input.value || '';
@@ -936,6 +1112,11 @@ const ChatApp = {
     }
     input.focus();
     this.autoResizeDmInput(input);
+    if (inputId === 'dmFullscreenInput') {
+      this.handleDmFullscreenComposerInput({ target: input });
+    } else {
+      this.syncMainDmInputToFullscreenComposer();
+    }
   },
 
   /**
@@ -956,8 +1137,12 @@ const ChatApp = {
     const sendBtn = document.getElementById('dmChatSendBtn');
     const emojiBtn = document.getElementById('dmEmojiToggleBtn');
     const boldBtn = document.getElementById('dmBoldBtn');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const fullscreenSendBtn = document.getElementById('dmFullscreenSendBtn');
+    const fullscreenEmojiBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    const fullscreenBoldBtn = document.getElementById('dmFullscreenBoldBtn');
 
-    [input, sendBtn, emojiBtn, boldBtn].filter(Boolean).forEach((el) => {
+    [input, sendBtn, emojiBtn, boldBtn, fullscreenInput, fullscreenSendBtn, fullscreenEmojiBtn, fullscreenBoldBtn].filter(Boolean).forEach((el) => {
       if (isSending) {
         el.setAttribute('disabled', 'disabled');
         el.classList.add('opacity-60', 'cursor-not-allowed');
@@ -971,11 +1156,27 @@ const ChatApp = {
       sendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
       sendBtn.title = isSending ? 'Sending...' : 'Send message';
     }
+    if (fullscreenSendBtn) {
+      fullscreenSendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      const fullscreenLabel = document.getElementById('dmFullscreenSendLabel');
+      if (fullscreenLabel) fullscreenLabel.textContent = isSending ? 'Sending...' : 'Send';
+    }
     const iconWrap = document.getElementById('dmChatSendIconWrap');
     if (iconWrap) {
       iconWrap.innerHTML = isSending
         ? '<span class="text-xs font-bold">...</span>'
         : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
+    }
+  },
+
+  /**
+   * Ctrl/Cmd+Enter sends from the fullscreen DM composer.
+   */
+  handleDmFullscreenComposerKeyDown(event) {
+    if (!event) return;
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.sendFromDmFullscreenComposer();
     }
   },
 
