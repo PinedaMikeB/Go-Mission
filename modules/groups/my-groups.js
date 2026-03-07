@@ -28,17 +28,14 @@ const MyGroups = {
     GROUP_CARE_TEMPLATES: {
         encourage_bible: {
             title: 'Bible Reading Encouragement',
-            toast: 'Encouragement sent',
             buildMessage: (member) => `${MyGroups.getFirstName(member)}! Open the Bible today, listen to what God is saying, and write one simple insight in the app.`
         },
         check_attendance: {
-            title: 'Mission Group Check-In',
-            toast: 'Check-in sent',
+            title: 'Mission Group Follow-Up',
             buildMessage: (member) => `${MyGroups.getFirstName(member)}! We missed you in the mission group. I’m checking in and praying for you. Let me know how you are doing.`
         },
         affirm_active: {
             title: 'Keep Going With God',
-            toast: 'Affirmation sent',
             buildMessage: (member) => `${MyGroups.getFirstName(member)}! Thank you for reading the Bible and staying active with God. Keep building on this holy rhythm.`
         }
     },
@@ -1758,22 +1755,22 @@ const MyGroups = {
     getGroupDashboardActionMeta(mode = 'encourage_bible') {
         return {
             encourage_bible: {
-                label: 'Encourage',
+                label: 'Send Message',
                 buttonClass: 'bg-[#f7cc00] text-[#3f1400]',
                 labelClass: 'text-[#c19200]'
             },
             check_attendance: {
-                label: 'Check In',
+                label: 'Send Message',
                 buttonClass: 'bg-[#9d0500] text-white',
                 labelClass: 'text-[#d27474]'
             },
             affirm_active: {
-                label: 'Affirm',
+                label: 'Send Message',
                 buttonClass: 'bg-[#35b16f] text-white',
                 labelClass: 'text-[#3aa76c]'
             }
         }[mode] || {
-            label: 'Message',
+            label: 'Send Message',
             buttonClass: 'bg-white text-[#3f1400] border border-[#e7d6c9]',
             labelClass: 'text-[#8a7a70]'
         };
@@ -1783,6 +1780,66 @@ const MyGroups = {
         if (member?.stats?.isSpirituallyActive) return 'affirm_active';
         if (member?.stats?.needsAttendanceFollowUp) return 'check_attendance';
         return 'encourage_bible';
+    },
+
+    getGroupCareTips(member, mode = 'encourage_bible') {
+        const firstName = this.getFirstName(member);
+        const template = this.GROUP_CARE_TEMPLATES[mode];
+        const preview = template?.buildMessage(member) || `${firstName}, I am praying for you today.`;
+
+        return {
+            encourage_bible: {
+                title: `Encourage ${firstName} back to the Bible`,
+                intro: 'Keep the tone gentle and specific so the message feels like an invitation, not pressure.',
+                accentClass: 'border-[#f2d277] bg-[linear-gradient(155deg,rgba(255,243,199,0.98),rgba(255,255,255,0.98))]',
+                badgeClass: 'bg-[#fff4c2] text-[#a36a00] border border-[#f0d06f]',
+                buttonClass: 'bg-[#f7cc00] text-[#3f1400]',
+                tips: [
+                    'Mention one simple next step, like reading one chapter today.',
+                    'Speak with warmth so they feel invited back to God, not judged.',
+                    'Point them toward a fresh start today instead of reminding them of failure.'
+                ],
+                preview
+            },
+            check_attendance: {
+                title: `Follow up with ${firstName}`,
+                intro: 'Lead with care first. The goal is to help them feel seen before you ask about attendance.',
+                accentClass: 'border-[#f0c4c4] bg-[linear-gradient(155deg,rgba(255,243,243,0.98),rgba(255,255,255,0.98))]',
+                badgeClass: 'bg-[#ffe7e7] text-[#b44242] border border-[#f0c4c4]',
+                buttonClass: 'bg-[#9d0500] text-white',
+                tips: [
+                    'Let them know they were missed in the group.',
+                    'Ask how they are doing before talking about meetings.',
+                    'Keep the first message light, warm, and easy to reply to.'
+                ],
+                preview
+            },
+            affirm_active: {
+                title: `Affirm ${firstName} in chat`,
+                intro: 'Be specific about the growth you are seeing so the encouragement strengthens the habit.',
+                accentClass: 'border-[#bfe4cc] bg-[linear-gradient(155deg,rgba(241,252,246,0.98),rgba(255,255,255,0.98))]',
+                badgeClass: 'bg-[#ddf7e7] text-[#22895d] border border-[#bfe4cc]',
+                buttonClass: 'bg-[#35b16f] text-white',
+                tips: [
+                    'Affirm one concrete sign of growth you have noticed.',
+                    'Celebrate consistency more than performance.',
+                    'Encourage them to keep sharing what God is doing in their life.'
+                ],
+                preview
+            }
+        }[mode] || {
+            title: `Message ${firstName}`,
+            intro: 'Open with warmth and make the next step easy.',
+            accentClass: 'border-[#eadcd2] bg-white',
+            badgeClass: 'bg-[#f7f1ea] text-[#7b695f] border border-[#eadcd2]',
+            buttonClass: 'bg-[#6d0707] text-white',
+            tips: [
+                'Lead with care.',
+                'Keep the message simple.',
+                'Make it easy for them to reply.'
+            ],
+            preview
+        };
     },
 
     isGroupDashboardSectionExpanded(sectionId, defaultExpanded = false) {
@@ -1859,19 +1916,16 @@ const MyGroups = {
                 description: stats.daysSinceDevotion >= 999
                     ? 'No recent Bible reading found'
                     : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since last reading`,
-                button: 'Encourage',
                 accent: 'text-amber-300'
             },
             check_attendance: {
                 title: 'Check Attendance',
                 description: `${stats.consecutiveMisses || 0} missed meeting${(stats.consecutiveMisses || 0) === 1 ? '' : 's'} in a row`,
-                button: 'Check In',
                 accent: 'text-rose-300'
             },
             affirm_active: {
                 title: 'Affirm Active Member',
                 description: `${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'} • ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}`,
-                button: 'Affirm',
                 accent: 'text-green-300'
             }
         }[mode];
@@ -1937,7 +1991,7 @@ const MyGroups = {
                     <div class="flex justify-start sm:justify-end">
                         <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${primaryAction}')"
                                 class="w-full sm:w-auto px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
-                            ${this.escapeHtml(primaryAction === 'check_attendance' ? 'Check In' : 'Message')}
+                            ${this.escapeHtml(actionMeta.label)}
                         </button>
                     </div>
                 </div>
@@ -1974,7 +2028,7 @@ const MyGroups = {
                     ${!member.isLeader ? `
                         <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${actionMode}')"
                                 class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
-                            Message
+                            Send Message
                         </button>
                     ` : ''}
                 </div>
@@ -2223,29 +2277,104 @@ const MyGroups = {
         const template = this.GROUP_CARE_TEMPLATES[mode];
         if (!member || !template) return;
 
-        const message = template.buildMessage(member);
-        let sent = false;
-
-        try {
-            if (typeof window.sendCustomNotificationCallable === 'function') {
-                await window.sendCustomNotificationCallable({
-                    targetType: 'user',
-                    targetId: memberId,
-                    title: template.title,
-                    body: message,
-                    notificationType: 'leader_care'
-                });
-                sent = true;
+        this.closeGroupCareTipsModal();
+        const tips = this.getGroupCareTips(member, mode);
+        const modal = document.createElement('div');
+        modal.id = 'groupCareTipsModal';
+        modal.className = 'fixed inset-0 z-[180] bg-[rgba(33,24,18,0.58)] backdrop-blur-[3px] px-4 py-6 flex items-center justify-center';
+        modal.innerHTML = `
+            <div class="w-full max-w-md rounded-[30px] border ${tips.accentClass} shadow-[0_24px_80px_rgba(51,29,18,0.24)] overflow-hidden">
+                <div class="p-5 sm:p-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-[#c19200]">Send Message</p>
+                            <h3 class="mt-2 text-[1.45rem] leading-tight font-black text-[#6d0707]">${this.escapeHtml(tips.title)}</h3>
+                        </div>
+                        <button type="button"
+                                onclick="window.MyGroups.closeGroupCareTipsModal()"
+                                class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">
+                            ×
+                        </button>
+                    </div>
+                    <div class="mt-4 rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(89,49,22,0.06)]">
+                        <div class="flex items-center gap-3">
+                            <img src="${this.getMemberPhoto(member)}" alt="${this.escapeHtml(member.fullName || 'Member')}" class="w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm">
+                            <div class="min-w-0">
+                                <p class="text-[1.05rem] leading-tight font-black text-[#6d0707] break-words">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                                <p class="mt-1 text-sm leading-relaxed text-[#675a54]">${this.escapeHtml(tips.intro)}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-2.5">
+                            ${tips.tips.map((tip) => `
+                                <div class="flex items-start gap-2.5">
+                                    <span class="mt-1 inline-flex w-6 h-6 shrink-0 rounded-full ${tips.badgeClass} items-center justify-center text-[11px] font-black">✓</span>
+                                    <p class="text-[14px] leading-6 text-[#655751]">${this.escapeHtml(tip)}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-4 rounded-[24px] border border-[#eadcd2] bg-white/84 p-4">
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-[#8f7a6d]">Suggested opener</p>
+                        <p class="mt-2 text-[15px] leading-7 text-[#655751]">${this.escapeHtml(tips.preview)}</p>
+                    </div>
+                    <div class="mt-5 flex flex-col-reverse sm:flex-row gap-3">
+                        <button type="button"
+                                onclick="window.MyGroups.closeGroupCareTipsModal()"
+                                class="flex-1 px-4 py-3 rounded-full border border-[#dfd0c6] bg-white/75 text-[#6f5d54] text-sm font-black">
+                            Back
+                        </button>
+                        <button type="button"
+                                onclick="window.MyGroups.proceedGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(memberId)}', '${this.escapeForJs(mode)}')"
+                                class="flex-1 px-4 py-3 rounded-full text-sm font-black shadow-[0_12px_24px_rgba(87,49,23,0.16)] ${tips.buttonClass}">
+                            Proceed to Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                this.closeGroupCareTipsModal();
             }
-        } catch (error) {
-            console.warn('[MyGroups] Failed sending group care notification:', error);
-        }
+        });
+        document.body.appendChild(modal);
+    },
+
+    closeGroupCareTipsModal() {
+        document.getElementById('groupCareTipsModal')?.remove();
+    },
+
+    async proceedGroupCareMessage(groupId, memberId, mode = 'encourage_bible') {
+        const context = this.activeGroupDetailContext;
+        const member = context?.members?.find((entry) => entry.id === memberId);
+        const template = this.GROUP_CARE_TEMPLATES[mode];
+        if (!member || !template) return;
+
+        const message = template.buildMessage(member);
+        this.closeGroupCareTipsModal();
 
         try {
             await navigator.clipboard?.writeText(message);
         } catch (_) {}
 
-        this.showToast(sent ? `${template.toast}. Message copied.` : 'Message copied. Paste it in chat if needed.');
+        if (!window.ChatApp || typeof window.ChatApp.open !== 'function' || typeof window.ChatApp.openDirectChat !== 'function') {
+            this.showToast('Message copied. Open direct chat and paste it.');
+            return;
+        }
+
+        try {
+            if (typeof window.ChatApp.setPendingDirectDraft === 'function') {
+                window.ChatApp.setPendingDirectDraft(memberId, message);
+            }
+            await window.ChatApp.open();
+            window.ChatApp.setTab?.('direct');
+            await window.ChatApp.openDirectChat(memberId);
+            this.closeModal();
+            this.showToast('Direct message ready. Suggested opener added.');
+        } catch (error) {
+            console.error('[MyGroups] proceedGroupCareMessage error:', error);
+            this.showToast('Message copied. Open direct chat and paste it.');
+        }
     },
 
     async submitGroupPrayerRequest(groupId) {

@@ -16,6 +16,7 @@ const ChatApp = {
   incomingRequests: [],
   outgoingRequests: [],
   memberCache: new Map(),
+  pendingDirectDraft: null,
 
   peopleSearchPool: [],
   findMeEnabled: true,
@@ -293,6 +294,21 @@ const ChatApp = {
         .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
         .filter((request) => request.status === 'pending');
 
+      const missionContactIds = this.getMissionContactIds();
+      const existingFriendIds = new Set(
+        this.friendships
+          .map((friendship) => (friendship.users || []).find((id) => id !== uid))
+          .filter(Boolean)
+      );
+      const missingMissionContacts = missionContactIds.filter((id) => !existingFriendIds.has(id));
+      if (missingMissionContacts.length) {
+        await Promise.all(missingMissionContacts.map((contactId) => this.ensureMissionDirectFriendship(contactId, { silent: true })));
+      }
+
+      const missionContactSet = new Set(missionContactIds);
+      this.incomingRequests = this.incomingRequests.filter((request) => !missionContactSet.has(request.fromId));
+      this.outgoingRequests = this.outgoingRequests.filter((request) => !missionContactSet.has(request.toId));
+
       const friendIds = this.friendships
         .map((friendship) => (friendship.users || []).find((id) => id !== uid))
         .filter(Boolean);
@@ -300,7 +316,7 @@ const ChatApp = {
         ...this.incomingRequests.map((request) => request.fromId),
         ...this.outgoingRequests.map((request) => request.toId)
       ];
-      await this.ensureMembersLoaded([...friendIds, ...requestUserIds, uid]);
+      await this.ensureMembersLoaded([...friendIds, ...requestUserIds, ...missionContactIds, uid]);
       await this.loadCurrentFindMeSetting();
       await this.buildDirectThreads();
     } catch (error) {
@@ -438,7 +454,7 @@ const ChatApp = {
       container.innerHTML = `
         <div class="text-center py-10">
           <p class="text-sm text-[var(--text-muted)]">No direct chats yet.</p>
-          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">Tap "Find People" to add friends and start messaging.</p>
+          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">Mission-group contacts appear here automatically when you share a group.</p>
         </div>
       `;
       return;
@@ -572,7 +588,16 @@ const ChatApp = {
     const uid = window.currentUser?.uid;
     if (!uid || !friendId) return;
 
-    const thread = this.directThreads.find((item) => item.friendId === friendId);
+    let thread = this.directThreads.find((item) => item.friendId === friendId);
+    if (!thread) {
+      const ensured = await this.ensureMissionDirectFriendship(friendId, { silent: true });
+      if (ensured) {
+        await this.ensureMembersLoaded([friendId, uid]);
+        await this.buildDirectThreads();
+        this.renderDirect();
+        thread = this.directThreads.find((item) => item.friendId === friendId);
+      }
+    }
     if (!thread) {
       alert('You can only message accepted friends.');
       return;
@@ -587,7 +612,14 @@ const ChatApp = {
     const input = document.getElementById('dmChatInput');
     if (photo) photo.src = this.getMemberPhoto(peer);
     if (name) name.textContent = this.getMemberDisplayName(peer) || 'Direct Message';
-    if (input) input.value = '';
+    const pendingDraft = this.consumePendingDirectDraft(friendId);
+    if (input) {
+      input.value = pendingDraft || '';
+      requestAnimationFrame(() => {
+        input.focus();
+        input.setSelectionRange?.(input.value.length, input.value.length);
+      });
+    }
     this.autoResizeDmInput(input);
     this.closeDmEmojiPicker();
     this.dmIsSending = false;
@@ -622,6 +654,27 @@ const ChatApp = {
     if (previousThreadId) {
       this.setActiveDmThread(null);
     }
+  },
+
+  /**
+   * Save a draft so guided flows can land inside DM with a suggested opener.
+   */
+  setPendingDirectDraft(friendId, text = '') {
+    if (!friendId) return;
+    this.pendingDirectDraft = {
+      friendId,
+      text: String(text || '')
+    };
+  },
+
+  /**
+   * Consume a pending draft for one DM peer.
+   */
+  consumePendingDirectDraft(friendId) {
+    if (!this.pendingDirectDraft || this.pendingDirectDraft.friendId !== friendId) return '';
+    const text = this.pendingDirectDraft.text || '';
+    this.pendingDirectDraft = null;
+    return text;
   },
 
   /**
@@ -1272,6 +1325,112 @@ const ChatApp = {
   },
 
   /**
+   * Group-connected members should be reachable in DM immediately.
+   */
+  getMissionContactIds() {
+    const uid = window.currentUser?.uid;
+    if (!uid) return [];
+
+    const ids = new Set();
+    const addId = (value) => {
+      const id = this.resolveEntityId(value);
+      if (id && id !== uid) ids.add(id);
+    };
+    const addCollection = (value) => {
+      if (!value) return;
+      if (typeof MyGroups !== 'undefined' && typeof MyGroups.extractIdList === 'function') {
+        MyGroups.extractIdList(value).forEach(addId);
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(addId);
+        return;
+      }
+      if (typeof value === 'object') {
+        Object.entries(value).forEach(([key, entry]) => addId(entry && typeof entry === 'object' ? entry : key));
+        return;
+      }
+      addId(value);
+    };
+
+    (this.groups || []).forEach((group) => {
+      if (!group) return;
+      addId(group.leaderId);
+      addCollection(group.members);
+      addCollection(group.guests);
+    });
+
+    return Array.from(ids);
+  },
+
+  /**
+   * Ensure a friendship exists for mission contacts so DM opens without friend requests.
+   */
+  async ensureMissionDirectFriendship(friendId, { silent = false } = {}) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !friendId || friendId === uid || !window.db) return false;
+
+    const missionContactIds = this.getMissionContactIds();
+    if (!missionContactIds.includes(friendId)) return false;
+
+    const friendshipId = this.pairKey(uid, friendId);
+    const users = [uid, friendId].sort();
+    const friendshipRef = window.doc(window.db, 'goMission_friendships', friendshipId);
+    const requestRef = window.doc(window.db, 'goMission_friendRequests', friendshipId);
+
+    try {
+      const existingDoc = await window.getDoc(friendshipRef);
+      const payload = {
+        pairKey: friendshipId,
+        users,
+        source: 'mission_group',
+        autoAccepted: true,
+        status: 'accepted',
+        updatedAt: window.serverTimestamp()
+      };
+      if (!existingDoc.exists()) {
+        payload.createdAt = window.serverTimestamp();
+      }
+
+      await window.setDoc(friendshipRef, payload, { merge: true });
+
+      const requestDoc = await window.getDoc(requestRef);
+      if (requestDoc.exists() && requestDoc.data()?.status === 'pending') {
+        await window.setDoc(requestRef, {
+          status: 'accepted',
+          acceptedAt: window.serverTimestamp(),
+          acceptedBy: 'mission_group',
+          updatedAt: window.serverTimestamp()
+        }, { merge: true });
+      }
+
+      const localEntry = {
+        id: friendshipId,
+        pairKey: friendshipId,
+        users,
+        source: 'mission_group',
+        autoAccepted: true,
+        status: 'accepted',
+        updatedAt: new Date().toISOString(),
+        createdAt: existingDoc.exists() ? (existingDoc.data()?.createdAt || new Date().toISOString()) : new Date().toISOString()
+      };
+      const index = this.friendships.findIndex((friendship) => friendship.id === friendshipId);
+      if (index >= 0) {
+        this.friendships[index] = { ...this.friendships[index], ...localEntry };
+      } else {
+        this.friendships.push(localEntry);
+      }
+
+      return true;
+    } catch (error) {
+      if (!silent) {
+        console.error('[ChatApp] Failed ensuring mission direct friendship:', error);
+      }
+      return false;
+    }
+  },
+
+  /**
    * Decline incoming request
    */
   async declineFriendRequest(requestId) {
@@ -1419,6 +1578,15 @@ const ChatApp = {
    */
   pairKey(a, b) {
     return [a, b].sort().join('__');
+  },
+
+  /**
+   * Resolve ids across the member/group schemas used in the app.
+   */
+  resolveEntityId(entity) {
+    if (!entity) return null;
+    if (typeof entity === 'string') return entity;
+    return entity.odId || entity.uid || entity.id || entity.userId || entity.memberId || entity.profileId || entity._key || null;
   },
 
   /**
