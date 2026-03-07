@@ -6706,26 +6706,8 @@
 	            toggleDevotionMenu();
 	        };
 
-	        // Bottom nav "Groups": leaders go to Leader Dashboard, everyone else goes to Mission Groups.
+	        // Bottom nav "Groups" always opens My Mission Groups.
 	        window.openGroupsNav = async function() {
-	            try {
-	                if (window.LeaderDashboard?.init) {
-	                    // If the leader card is visible, user should have leader access. Still re-init to ensure data is loaded.
-	                    const card = document.getElementById('leaderDashboardCard');
-	                    const leaderCardVisible = !!(card && !card.classList.contains('hidden'));
-	                    
-	                    if (leaderCardVisible || window.currentUser) {
-	                        await window.LeaderDashboard.init();
-	                        if ((window.LeaderDashboard.myGroups || []).length > 0) {
-	                            window.LeaderDashboard.open();
-	                            return;
-	                        }
-	                    }
-	                }
-	            } catch (e) {
-	                console.warn('[Nav] openGroupsNav failed; falling back to Mission Groups dashboard', e);
-	            }
-	            
 	            if (window.MyGroups?.openDashboard) {
 	                window.MyGroups.openDashboard();
 	            }
