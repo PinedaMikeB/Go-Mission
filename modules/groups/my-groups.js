@@ -25,6 +25,21 @@ const MyGroups = {
         MISSED_MEETINGS: 2,
         NEW_MEMBER_DAYS: 14
     },
+    GROUP_PHOTO_MAX_BYTES: 5 * 1024 * 1024,
+    PRESET_GROUP_ICONS: [
+        { icon: '📖', label: 'Bible' },
+        { icon: '🙏', label: 'Prayer' },
+        { icon: '🕊️', label: 'Spirit' },
+        { icon: '❤️', label: 'Care' },
+        { icon: '🤝', label: 'Unity' },
+        { icon: '🌱', label: 'Growth' },
+        { icon: '🔥', label: 'Revival' },
+        { icon: '✨', label: 'Light' },
+        { icon: '🏠', label: 'Home' },
+        { icon: '👨‍👩‍👧‍👦', label: 'Family' },
+        { icon: '🌍', label: 'Mission' },
+        { icon: '🎯', label: 'Focus' }
+    ],
     GROUP_CARE_TEMPLATES: {
         encourage_bible: {
             title: 'Bible Reading Encouragement',
@@ -1400,17 +1415,7 @@ const MyGroups = {
         }
 
         statusListEl.innerHTML = uniqueGroups.map((group) => {
-            const roleLabel = group.role === 'upline'
-                ? 'Upline'
-                : (group.role === 'downline' ? 'Downline' : 'Guest');
-            const roleColor = group.role === 'upline'
-                ? 'text-[var(--mission-gold)]'
-                : (group.role === 'downline' ? 'text-green-500' : 'text-blue-400');
-
             const scheduleConfig = group.meetingSchedule || group.schedule || null;
-            const schedule = scheduleConfig?.day && scheduleConfig?.time
-                ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
-                : 'No meeting schedule yet';
             const isMeetingNow = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const groupIdForJs = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isLeaderOfGroup = group.leaderId === window.currentUser?.uid;
@@ -1421,106 +1426,54 @@ const MyGroups = {
                 : null;
             const hasPendingDelete = !!pendingDeleteRequest;
 
-            const last = meetingData.perGroupLastMeeting[group.id];
-            const lastLine = last
-                ? `${this.formatMeetingDate(last.date)} • ${last.attended ? 'You attended' : 'You missed'}`
-                : 'No recorded meeting yet';
-
             const memberCount = this.normalizeCollectionEntries(group.members).length;
+            const previewLine = meetingLock.locked
+                ? 'Meeting is currently locked'
+                : (isMeetingNow
+                    ? 'Meeting room is live now'
+                    : (scheduleConfig?.day && scheduleConfig?.time
+                        ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
+                        : ''));
+            const menuBadge = pendingRequestsCount > 0
+                ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#9d0500] text-white text-[10px] font-black inline-flex items-center justify-center px-1 border border-white">${pendingRequestsCount}</span>`
+                : '';
+            const joinLabel = meetingLock.locked ? 'Meeting Locked' : 'Join Meeting';
 
             return `
-                <div class="mission-groups-status-item p-4">
-                    <div class="flex items-start justify-between gap-2">
-                        <div>
-                            <p class="font-bold text-[var(--text-color)]">${this.escapeHtml(group.name || 'Mission Group')}</p>
-                            <p class="text-xs ${roleColor} uppercase tracking-wider mt-1">${roleLabel}</p>
+                <div class="mission-groups-status-item p-4 sm:p-5">
+                    <div class="flex items-start gap-4">
+                        <div class="shrink-0">
+                            ${this.renderGroupAvatar(group)}
                         </div>
-                        <div class="flex items-start gap-2">
-                            ${isLeaderOfGroup && group.role === 'downline' ? `
-                                <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
-                                        class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:border-[var(--mission-gold)]/40 hover:text-[var(--mission-gold)] transition-colors"
-                                        title="Group options"
-                                        aria-label="Group options">
-                                    •••
-                                </button>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-[1.18rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                                    ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
+                                    <p class="mt-1 text-[12px] uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
+                                </div>
+                                ${isLeaderOfGroup && group.role === 'downline' ? `
+                                    <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
+                                            class="relative shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#eadcd2] bg-white/84 text-[#8f7a6d] shadow-[0_8px_18px_rgba(91,49,26,0.06)] hover:border-[#d9bb6b] hover:text-[#c19200] transition-colors"
+                                            title="Group options"
+                                            aria-label="Group options">
+                                        <span class="text-xl leading-none">⋯</span>
+                                        ${menuBadge}
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', ${isLeaderOfGroup ? 'true' : 'false'})"
+                                    class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-[18px] px-4 py-3 text-sm font-black transition-all shadow-[0_12px_24px_rgba(90,48,26,0.08)] ${meetingLock.locked
+                                        ? 'border border-[#f0c4c4] bg-[#fff1f1] text-[#b43a3a]'
+                                        : 'border border-[#e6c55c] bg-[linear-gradient(135deg,#f7cc00,#ffd84d)] text-[#3f1400] hover:translate-y-[-1px]'}">
+                                <span class="text-base leading-none">${meetingLock.locked ? '🔒' : '🎥'}</span>
+                                <span>${joinLabel}</span>
+                            </button>
+                            ${hasPendingDelete ? `
+                                <p class="mt-3 text-[12px] text-[#b43a3a]">Delete request pending admin review.</p>
                             ` : ''}
-                            <span class="text-xs text-[var(--text-muted)] whitespace-nowrap">${memberCount}/12 members</span>
                         </div>
                     </div>
-                    <div class="mt-3 text-xs text-[var(--text-muted)] space-y-1.5">
-                        <p>📅 ${this.escapeHtml(schedule)}</p>
-                        <p>✅ ${this.escapeHtml(lastLine)}</p>
-                        ${isLeaderOfGroup && pendingRequestsCount > 0 ? `
-                            <p class="text-[var(--mission-gold)] font-semibold">🔔 ${pendingRequestsCount} request${pendingRequestsCount === 1 ? '' : 's'} pending</p>
-                        ` : ''}
-                        ${hasPendingDelete ? `
-                            <p class="text-[var(--mission-red-bright)] font-semibold">🗑️ Delete request pending admin approval</p>
-                        ` : ''}
-                        ${meetingLock.locked ? `
-                            <p class="text-[var(--mission-red-bright)] font-semibold">🚫 Meeting locked: ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first')}</p>
-                        ` : ''}
-                    </div>
-                    ${isLeaderOfGroup ? `
-                    <div class="mt-4 grid grid-cols-4 gap-2">
-                        <button onclick="window.MyGroups.showInviteCode('${groupIdForJs}')"
-                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors"
-                                title="Generate Invite Code"
-                                aria-label="Generate Invite Code">
-                            <span class="text-base leading-none">🔑</span>
-                            <span>Invite</span>
-                        </button>
-                        <button onclick="window.MyGroups.openGroupChat('${groupIdForJs}')"
-                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors"
-                                title="Chat"
-                                aria-label="Chat">
-                            <span class="text-base leading-none">💬</span>
-                            <span>Chat</span>
-                        </button>
-                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
-                                class="relative flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors"
-                                title="View & Approve"
-                                aria-label="View & Approve">
-                            <span class="text-base leading-none">👁</span>
-                            <span>View</span>
-                            ${pendingRequestsCount > 0 ? `
-                                <span class="absolute -top-1 -right-1 z-10 bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 border border-white/80">
-                                    ${pendingRequestsCount}
-                                </span>
-                            ` : ''}
-                        </button>
-                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', true)"
-                                class="flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg text-[10px] font-bold border transition-colors ${isMeetingNow
-                                    ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
-                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}"
-                                title="${meetingLock.locked ? 'Meeting locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}"
-                                aria-label="${meetingLock.locked ? 'Meeting locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}">
-                            <span class="text-base leading-none">🎥</span>
-                            <span>${meetingLock.locked ? 'Locked' : (isMeetingNow ? 'Live' : 'Join')}</span>
-                        </button>
-                    </div>
-                    ` : `
-                    <div class="mt-4 grid ${group.role === 'upline' ? 'grid-cols-3' : 'grid-cols-2'} gap-2">
-                        <button onclick="window.MyGroups.handleMeetingAction('${groupIdForJs}', false)"
-                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${isMeetingNow
-                                    ? 'bg-green-600 text-white border-green-500 shadow-[0_0_16px_rgba(34,197,94,0.35)]'
-                                    : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}">
-                            <span>🎥</span>
-                            <span>${meetingLock.locked ? 'Meeting Locked' : (isMeetingNow ? 'Join Meeting (Live)' : 'Join Meeting')}</span>
-                        </button>
-                        <button onclick="window.MyGroups.openGroupChat('${groupIdForJs}')"
-                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--mission-gold)] border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/10 transition-colors">
-                            <span>💬</span>
-                            <span>Chat</span>
-                        </button>
-                        ${group.role === 'upline' ? `
-                        <button onclick="window.MyGroups.viewGroupDetails('${groupIdForJs}')"
-                                class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                            <span>👁</span>
-                            <span>View</span>
-                        </button>
-                        ` : ''}
-                    </div>
-                    `}
                 </div>
             `;
         }).join('');
@@ -1561,6 +1514,57 @@ const MyGroups = {
     getMemberPhoto(member = {}) {
         const name = this.getMemberDisplayName(member);
         return member.photoURL || member.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4a0404&color=fbbf24`;
+    },
+
+    getGroupDisplayImage(group = {}) {
+        return group.groupPhotoURL || group.photoURL || group.photo || group.imageUrl || group.imageURL || '';
+    },
+
+    getGroupDisplayIcon(group = {}) {
+        return group.groupIcon || group.icon || '';
+    },
+
+    getGroupInitials(groupName = '') {
+        const words = String(groupName || '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2);
+        if (!words.length) return 'MG';
+        return words.map((word) => word[0]?.toUpperCase() || '').join('');
+    },
+
+    renderGroupAvatar(group = {}, options = {}) {
+        const sizeClass = options.sizeClass || 'w-[74px] h-[74px]';
+        const textClass = options.textClass || 'text-2xl';
+        const imageUrl = this.getGroupDisplayImage(group);
+        const icon = this.getGroupDisplayIcon(group);
+        const initials = this.getGroupInitials(group.name || 'Mission Group');
+
+        if (imageUrl) {
+            return `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(group.name || 'Mission Group')}" class="${sizeClass} rounded-[24px] object-cover border border-[#eadcd2] shadow-[0_12px_28px_rgba(90,48,26,0.1)]">`;
+        }
+
+        return `
+            <div class="${sizeClass} rounded-[24px] border border-[#eadcd2] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))] shadow-[0_12px_28px_rgba(90,48,26,0.08)] flex items-center justify-center">
+                <span class="${textClass} font-black text-[#6d0707]">${this.escapeHtml(icon || initials)}</span>
+            </div>
+        `;
+    },
+
+    syncGroupState(groupId, patch = {}) {
+        if (!groupId || !patch || typeof patch !== 'object') return;
+        const applyPatch = (group) => (group?.id === groupId ? { ...group, ...patch } : group);
+
+        if (this.uplineGroup?.id === groupId) {
+            this.uplineGroup = { ...this.uplineGroup, ...patch };
+        }
+        this.downlineGroups = (this.downlineGroups || []).map(applyPatch);
+        this.guestGroups = (this.guestGroups || []).map(applyPatch);
+
+        if (typeof Groups !== 'undefined' && Groups.currentGroup?.id === groupId) {
+            Groups.currentGroup = { ...Groups.currentGroup, ...patch };
+        }
     },
 
     showToast(message, duration = 2600) {
@@ -4135,30 +4139,72 @@ const MyGroups = {
 
         const memberCount = this.normalizeCollectionEntries(group.members).length;
         const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const requestCount = this.getUnifiedJoinRequests(group).length;
+        const groupIdSafe = String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
         content.innerHTML = `
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-[var(--text-color)]">Group Options</h3>
-                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+            <div class="p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4 mb-5">
+                    <div class="flex items-start gap-4 min-w-0">
+                        <div class="shrink-0">
+                            ${this.renderGroupAvatar(group, { sizeClass: 'w-[68px] h-[68px]', textClass: 'text-xl' })}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Group Menu</p>
+                            <h3 class="mt-2 text-[1.25rem] leading-tight font-black text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</h3>
+                            <p class="mt-2 text-sm text-[#7d6c64]">${memberCount}/${group.capacity || 12} members${guestCount ? ` • ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}</p>
+                        </div>
+                    </div>
+                    <button onclick="window.MyGroups.closeModal()" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
                 </div>
-                <p class="text-sm text-[var(--text-muted)] mb-1">${group.name}</p>
-                <p class="text-xs text-[var(--text-muted)] mb-4">${memberCount}/${group.capacity || 12} members${guestCount ? ` • ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}</p>
 
                 ${pendingDeleteRequest ? `
-                    <div class="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
+                    <div class="mb-4 rounded-[22px] border border-amber-400/30 bg-amber-400/10 p-4">
                         <p class="text-sm font-semibold text-[var(--mission-gold)]">Delete request pending admin review</p>
-                        <p class="text-xs text-[var(--text-muted)] mt-1">Reason: ${String(pendingDeleteRequest.reason || 'No reason provided').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                        <p class="text-xs text-[#7d6c64] mt-1">Reason: ${String(pendingDeleteRequest.reason || 'No reason provided').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
                     </div>
                 ` : ''}
 
                 <div class="space-y-3">
-                    <button onclick="window.MyGroups.showDeleteGroupRequestForm('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-                            class="w-full bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 text-[var(--mission-red-bright)] font-bold py-3 rounded-lg">
-                        🗑️ Request Admin Delete Group
+                    <button onclick="window.MyGroups.viewGroupDetails('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Open Dashboard</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">See this week’s focus, care lists, prayer, and members.</span>
+                    </button>
+                    <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Group Chat</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Open the shared conversation for this mission group.</span>
+                    </button>
+                    <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Invite Members</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Generate and share the invite code for this group.</span>
+                    </button>
+                    <button onclick="window.MyGroups.triggerGroupImageUpload('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Upload Group Image</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Add a real photo so the card is easier to recognize.</span>
+                    </button>
+                    <button onclick="window.MyGroups.showGroupIconPicker('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Choose Group Icon</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Pick a clean icon style if you do not want to use a photo.</span>
+                    </button>
+                    ${requestCount > 0 ? `
+                        <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
+                                class="w-full rounded-[22px] border border-[#f0d06f] bg-[#fff8df] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                            <span class="block text-sm font-black text-[#6d0707]">Review Join Requests</span>
+                            <span class="block mt-1 text-xs text-[#7d6c64]">${requestCount} pending request${requestCount === 1 ? '' : 's'} waiting for review.</span>
+                        </button>
+                    ` : ''}
+                    <button onclick="window.MyGroups.showDeleteGroupRequestForm('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#f0c4c4] bg-[#fff1f1] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#9d0500]">Request Admin Delete Group</span>
+                        <span class="block mt-1 text-xs text-[#a56d6d]">Use this only when the group should be removed permanently.</span>
                     </button>
                     <button onclick="window.MyGroups.closeModal()"
-                            class="w-full border border-[var(--card-border)] text-[var(--text-muted)] py-3 rounded-lg">
+                            class="w-full border border-[#dfd0c6] text-[#7d6c64] py-3 rounded-full font-semibold">
                         Close
                     </button>
                 </div>
@@ -4401,6 +4447,156 @@ const MyGroups = {
         `;
         
         modal.classList.remove('hidden');
+    },
+
+    triggerGroupImageUpload(groupId) {
+        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+        if (!group) return;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.className = 'hidden';
+        input.addEventListener('change', async (event) => {
+            const file = event?.target?.files?.[0];
+            input.remove();
+            if (!file) return;
+            await this.uploadGroupImage(groupId, file);
+        }, { once: true });
+        document.body.appendChild(input);
+        input.click();
+    },
+
+    async uploadGroupImage(groupId, file) {
+        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+        if (!group) return;
+        if (!window.currentUser?.uid) {
+            alert('Please sign in first.');
+            return;
+        }
+        if (!file?.type || !file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+        if (file.size > this.GROUP_PHOTO_MAX_BYTES) {
+            alert('Image is too large. Please use a file smaller than 5MB.');
+            return;
+        }
+        if (!window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+            alert('Storage is not ready. Please try again.');
+            return;
+        }
+        if (!window.db || !window.setDoc || !window.doc) {
+            alert('Database is not ready. Please try again.');
+            return;
+        }
+
+        this.showToast('Uploading group image...');
+        try {
+            const safeName = String(file.name || 'group.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `group-photos/${groupId}/${Date.now()}_${safeName}`;
+            const ref = window.storageRef(window.storage, path);
+            const uploaded = await window.uploadBytes(ref, file, {
+                contentType: file.type || 'image/jpeg',
+                cacheControl: 'public,max-age=3600'
+            });
+            const groupPhotoURL = await window.getDownloadURL(uploaded.ref);
+            await this.saveGroupVisual(groupId, { groupPhotoURL, groupIcon: '' });
+            this.showToast('Group image updated.');
+            await this.showGroupMenu(groupId);
+        } catch (error) {
+            console.error('[MyGroups] uploadGroupImage error:', error);
+            alert('Failed to upload group image.');
+        }
+    },
+
+    showGroupIconPicker(groupId) {
+        const group = this.downlineGroups.find((entry) => entry.id === groupId);
+        if (!group) return;
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        const groupIdSafe = this.escapeForJs(groupId);
+        const selectedIcon = this.getGroupDisplayIcon(group);
+
+        content.innerHTML = `
+            <div class="p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Group Icon</p>
+                        <h3 class="mt-2 text-[1.25rem] leading-tight font-black text-[#6d0707]">Choose an icon for ${this.escapeHtml(group.name || 'this group')}</h3>
+                    </div>
+                    <button onclick="window.MyGroups.showGroupMenu('${groupIdSafe}')" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    ${this.PRESET_GROUP_ICONS.map((entry) => `
+                        <button onclick="window.MyGroups.selectGroupIcon('${groupIdSafe}', '${this.escapeForJs(entry.icon)}')"
+                                class="rounded-[22px] border px-3 py-4 text-center transition-all ${selectedIcon === entry.icon ? 'border-[#d9bb6b] bg-[#fff8df] shadow-[0_10px_22px_rgba(89,49,22,0.08)]' : 'border-[#eadcd2] bg-white/84'}">
+                            <span class="block text-3xl">${this.escapeHtml(entry.icon)}</span>
+                            <span class="block mt-2 text-[11px] uppercase tracking-[0.14em] text-[#7d6c64]">${this.escapeHtml(entry.label)}</span>
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="mt-5 flex gap-3">
+                    <button onclick="window.MyGroups.showGroupMenu('${groupIdSafe}')"
+                            class="flex-1 border border-[#dfd0c6] text-[#7d6c64] py-3 rounded-full font-semibold">
+                        Back
+                    </button>
+                    <button onclick="window.MyGroups.clearGroupVisual('${groupIdSafe}')"
+                            class="flex-1 border border-[#eadcd2] text-[#6d0707] py-3 rounded-full font-semibold">
+                        Use Initials
+                    </button>
+                </div>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+    },
+
+    async selectGroupIcon(groupId, icon) {
+        try {
+            await this.saveGroupVisual(groupId, { groupIcon: icon, groupPhotoURL: '' });
+            this.showToast('Group icon updated.');
+            await this.showGroupMenu(groupId);
+        } catch (error) {
+            console.error('[MyGroups] selectGroupIcon error:', error);
+            alert('Failed to update group icon.');
+        }
+    },
+
+    async clearGroupVisual(groupId) {
+        try {
+            await this.saveGroupVisual(groupId, { groupIcon: '', groupPhotoURL: '' });
+            this.showToast('Group visual reset.');
+            await this.showGroupMenu(groupId);
+        } catch (error) {
+            console.error('[MyGroups] clearGroupVisual error:', error);
+            alert('Failed to reset group visual.');
+        }
+    },
+
+    async saveGroupVisual(groupId, patch = {}) {
+        if (!groupId || !window.db || !window.setDoc || !window.doc) {
+            throw new Error('Database is not ready');
+        }
+
+        await window.setDoc(
+            window.doc(window.db, 'goMission_groups', groupId),
+            {
+                ...patch,
+                updatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString()
+            },
+            { merge: true }
+        );
+
+        this.syncGroupState(groupId, patch);
+        if (this.isDashboardOpen) {
+            await this.renderDashboard();
+        } else if (this.isOpen) {
+            this.render();
+        }
     },
     
     /**
