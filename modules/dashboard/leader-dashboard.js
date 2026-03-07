@@ -25,6 +25,9 @@ const LeaderDashboard = {
   members: [],            // Members of selected group
   memberStats: {},        // Cached member statistics
   prayerList: [],         // Prayer requests
+  groupMeetings: [],      // Recent meetings for selected group
+  memberMeetingStats: {}, // Attendance metrics derived from meetings
+  memberActivitySignals: {}, // Shared devotions / prayer support activity
   
   // User roles
   ROLES: {
@@ -40,6 +43,24 @@ const LeaderDashboard = {
     MISSED_MEETINGS: 2,         // Consecutive missed meetings
     NO_DEVOTION_DAYS: 7,        // Days without devotion
     NEW_MEMBER_DAYS: 14         // Days to consider someone "new"
+  },
+
+  CARE_TEMPLATES: {
+    encourage_bible: {
+      toast: 'Bible encouragement sent',
+      title: 'Spend time with God today',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! Open the Bible today, listen to what God is saying, and write one simple insight in the app.`
+    },
+    check_attendance: {
+      toast: 'Attendance check-in sent',
+      title: 'We miss you in mission group',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! We missed you in the mission group. I’m checking in and praying for you. Let me know how you are doing.`
+    },
+    affirm_active: {
+      toast: 'Affirmation sent',
+      title: 'Keep your rhythm with God',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! Thank you for reading the Bible and staying active with God. Keep building on this holy rhythm.`
+    }
   },
 
   /**
@@ -476,8 +497,22 @@ const LeaderDashboard = {
   async loadGroupMembers() {
     if (!this.selectedGroup || !window.db) return;
     
-    const memberIds = this.selectedGroup.members || [];
+    const memberIds = (Array.isArray(this.selectedGroup.members) ? this.selectedGroup.members : [])
+      .map((entry) => (
+        typeof entry === 'string'
+          ? entry
+          : (entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+      ))
+      .filter(Boolean);
     this.members = [];
+    this.groupMeetings = [];
+    this.memberMeetingStats = {};
+    this.memberActivitySignals = {};
+
+    await Promise.all([
+      this.loadSelectedGroupMeetingHistory(memberIds),
+      this.loadSelectedGroupSharedActivity(memberIds)
+    ]);
     
     for (const memberId of memberIds) {
       try {
@@ -507,8 +542,126 @@ const LeaderDashboard = {
       if (aNeeds !== bNeeds) return bNeeds - aNeeds;
       return (a.fullName || '').localeCompare(b.fullName || '');
     });
-    
+
     console.log(`[LeaderDashboard] Loaded ${this.members.length} members`);
+  },
+
+  async loadSelectedGroupMeetingHistory(memberIds = []) {
+    if (!this.selectedGroup?.id || !window.db) return;
+
+    const normalizedMemberIds = [...new Set((memberIds || []).filter(Boolean))];
+    const statsByMember = {};
+    normalizedMemberIds.forEach((memberId) => {
+      statsByMember[memberId] = {
+        attendedRecent: 0,
+        missedRecent: 0,
+        consecutiveMisses: 0,
+        lastAttendedAt: null
+      };
+    });
+
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_meetings'),
+        window.where('groupId', '==', this.selectedGroup.id),
+        window.limit(20)
+      );
+      const snapshot = await window.getDocs(q);
+      const meetings = snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .sort((a, b) => {
+          const aTime = this.resolveDate(a?.startedAt || a?.createdAt || a?.updatedAt || a?.date)?.getTime() || 0;
+          const bTime = this.resolveDate(b?.startedAt || b?.createdAt || b?.updatedAt || b?.date)?.getTime() || 0;
+          return bTime - aTime;
+        });
+
+      this.groupMeetings = meetings;
+      const recentMeetings = meetings.slice(0, 4);
+
+      normalizedMemberIds.forEach((memberId) => {
+        let missChain = 0;
+        let chainBroken = false;
+
+        recentMeetings.forEach((meeting) => {
+          const attendeeIds = new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+            .map((entry) => entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+            .filter(Boolean));
+          const meetingDate = this.resolveDate(meeting?.startedAt || meeting?.createdAt || meeting?.updatedAt || meeting?.date);
+          if (attendeeIds.has(memberId)) {
+            statsByMember[memberId].attendedRecent += 1;
+            if (!statsByMember[memberId].lastAttendedAt && meetingDate) {
+              statsByMember[memberId].lastAttendedAt = meetingDate;
+            }
+            chainBroken = true;
+          } else {
+            statsByMember[memberId].missedRecent += 1;
+            if (!chainBroken) missChain += 1;
+          }
+        });
+
+        statsByMember[memberId].consecutiveMisses = missChain;
+      });
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not load group meeting history:', error);
+    }
+
+    this.memberMeetingStats = statsByMember;
+  },
+
+  async loadSelectedGroupSharedActivity(memberIds = []) {
+    if (!this.selectedGroup?.id || !window.db) return;
+
+    const signals = {};
+    [...new Set((memberIds || []).filter(Boolean))].forEach((memberId) => {
+      signals[memberId] = {
+        sharedDevotions: 0,
+        sharedInsights: 0,
+        prayerRequestsShared: 0,
+        prayedForOthers: 0
+      };
+    });
+
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_chats'),
+        window.where('groupId', '==', this.selectedGroup.id),
+        window.limit(120)
+      );
+      const snapshot = await window.getDocs(q);
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        if (String(data.type || '') !== 'devotion') return;
+        const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
+        const senderId = String(data.senderId || devotion.uid || '').trim();
+        if (senderId && signals[senderId]) {
+          signals[senderId].sharedDevotions += 1;
+          const understanding = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
+          const action = String(devotion.actionText || devotion.commitment || '').trim();
+          if (understanding || action) signals[senderId].sharedInsights += 1;
+          const prayerRequests = Array.isArray(devotion.prayerRequests)
+            ? devotion.prayerRequests.filter((item) => String(item?.text || '').trim())
+            : [];
+          signals[senderId].prayerRequestsShared += prayerRequests.length;
+        }
+
+        const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
+          ? devotion.prayerSupports
+          : {};
+        Object.values(supportMap).forEach((supportList) => {
+          if (!Array.isArray(supportList)) return;
+          supportList.forEach((entry) => {
+            const uid = String(entry?.uid || entry?.userId || '').trim();
+            if (uid && signals[uid]) {
+              signals[uid].prayedForOthers += 1;
+            }
+          });
+        });
+      });
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not load shared group activity:', error);
+    }
+
+    this.memberActivitySignals = signals;
   },
 
   /**
@@ -531,10 +684,9 @@ const LeaderDashboard = {
       ? Math.floor((now - lastDevotion) / dayMs)
       : 999;
     
-    // Meeting attendance (last 4 meetings)
-    const attendance = memberData.meetingAttendance || [];
-    const recentAttendance = attendance.slice(-4);
-    const missedMeetings = recentAttendance.filter(a => a.status === 'absent').length;
+    const meetingStats = this.memberMeetingStats?.[memberId] || {};
+    const activitySignals = this.memberActivitySignals?.[memberId] || {};
+    const missedMeetings = Number(meetingStats.consecutiveMisses || meetingStats.missedRecent || 0);
     
     // Days since joined
     const joinedAt = memberData.joinedAt?.toDate?.() || memberData.joinedAt || memberData.createdAt;
@@ -553,11 +705,27 @@ const LeaderDashboard = {
       devotionStreak,
       daysSinceDevotion,
       missedMeetings,
+      attendedRecent: Number(meetingStats.attendedRecent || 0),
+      consecutiveMisses: Number(meetingStats.consecutiveMisses || 0),
+      lastAttendedAt: meetingStats.lastAttendedAt || null,
       daysSinceJoined,
       daysSinceCheckIn,
       isNew: daysSinceJoined <= this.THRESHOLDS.NEW_MEMBER_DAYS,
       gospelShared: memberData.gospelSharedCount || 0,
-      journeyPhase: memberData.currentPhase || 'unknown'
+      journeyPhase: memberData.currentPhase || 'unknown',
+      sharedDevotions: Number(activitySignals.sharedDevotions || 0),
+      sharedInsights: Number(activitySignals.sharedInsights || 0),
+      prayerRequestsShared: Number(activitySignals.prayerRequestsShared || 0),
+      prayedForOthers: Number(activitySignals.prayedForOthers || 0),
+      streakTier: devotionStreak >= 7 ? 'seven' : (devotionStreak >= 3 ? 'three' : (devotionStreak > 0 ? 'building' : 'none')),
+      needsBibleNudge: daysSinceDevotion >= 3,
+      needsAttendanceFollowUp: Number(meetingStats.consecutiveMisses || 0) >= this.THRESHOLDS.MISSED_MEETINGS,
+      isSpirituallyActive: daysSinceDevotion <= 2 && (
+        devotionStreak >= 3 ||
+        Number(activitySignals.sharedInsights || 0) > 0 ||
+        Number(activitySignals.prayerRequestsShared || 0) > 0 ||
+        Number(activitySignals.prayedForOthers || 0) > 0
+      )
     };
   },
 
@@ -586,10 +754,10 @@ const LeaderDashboard = {
       });
     }
     
-    if (stats.missedMeetings >= this.THRESHOLDS.MISSED_MEETINGS) {
+    if ((stats.consecutiveMisses || stats.missedMeetings || 0) >= this.THRESHOLDS.MISSED_MEETINGS) {
       alerts.push({
         type: 'missed_meetings',
-        message: `Missed ${stats.missedMeetings} meetings`,
+        message: `Missed ${stats.consecutiveMisses || stats.missedMeetings} meeting${(stats.consecutiveMisses || stats.missedMeetings) === 1 ? '' : 's'}`,
         priority: 'high',
         icon: '📅'
       });
@@ -843,6 +1011,154 @@ const LeaderDashboard = {
     if (needsAttentionEl) needsAttentionEl.textContent = needsAttention || '0';
   },
 
+  resolveDate(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value?.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    if (typeof value === 'object' && typeof value.seconds === 'number') {
+      const date = new Date(value.seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  },
+
+  getFirstName(member) {
+    const name = String(member?.fullName || member?.displayName || member?.email || '').trim();
+    return name.split(/\s+/)[0] || 'kapatid';
+  },
+
+  getStreakLabel(stats = {}) {
+    if (stats.devotionStreak >= 7) return '7-day rhythm';
+    if (stats.devotionStreak >= 3) return '3-day rhythm';
+    if (stats.devotionStreak > 0) return 'Building rhythm';
+    return 'Start today';
+  },
+
+  renderStreakGraphic(stats = {}) {
+    const streak = Math.max(0, Number(stats.devotionStreak || 0));
+    const filled = Math.min(7, streak);
+    const accent = streak >= 7 ? 'bg-amber-400' : (streak >= 3 ? 'bg-green-400' : 'bg-[var(--card-border)]');
+    const label = this.getStreakLabel(stats);
+    return `
+      <div class="mt-2">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Bible rhythm</span>
+          <span class="text-[10px] font-bold ${streak >= 7 ? 'text-amber-400' : (streak >= 3 ? 'text-green-400' : 'text-[var(--text-muted)]')}">${this.escapeHtml(label)}</span>
+        </div>
+        <div class="mt-1 grid grid-cols-7 gap-1">
+          ${Array.from({ length: 7 }).map((_, index) => `
+            <span class="h-2 rounded-full ${index < filled ? accent : 'bg-[var(--input-bg)]'}"></span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  getCareSegments() {
+    const encourageBible = this.members
+      .filter((member) => member.stats?.needsBibleNudge)
+      .sort((a, b) => (b.stats?.daysSinceDevotion || 0) - (a.stats?.daysSinceDevotion || 0));
+
+    const attendanceFollowUp = this.members
+      .filter((member) => member.stats?.needsAttendanceFollowUp)
+      .sort((a, b) => (b.stats?.consecutiveMisses || 0) - (a.stats?.consecutiveMisses || 0));
+
+    const affirmActive = this.members
+      .filter((member) => member.stats?.isSpirituallyActive)
+      .sort((a, b) => {
+        if ((b.stats?.devotionStreak || 0) !== (a.stats?.devotionStreak || 0)) {
+          return (b.stats?.devotionStreak || 0) - (a.stats?.devotionStreak || 0);
+        }
+        return (b.stats?.prayedForOthers || 0) - (a.stats?.prayedForOthers || 0);
+      });
+
+    return { encourageBible, attendanceFollowUp, affirmActive };
+  },
+
+  buildCareRow(member, mode) {
+    const stats = member.stats || {};
+    const photo = member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`;
+    const config = {
+      encourage_bible: {
+        title: 'Encourage Bible time',
+        description: stats.daysSinceDevotion >= 999
+          ? 'No recent Bible reading found'
+          : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since last reading`,
+        button: 'Encourage'
+      },
+      check_attendance: {
+        title: 'Check attendance',
+        description: `${stats.consecutiveMisses || stats.missedMeetings || 0} missed meeting${(stats.consecutiveMisses || stats.missedMeetings || 0) === 1 ? '' : 's'} in a row`,
+        button: 'Check in'
+      },
+      affirm_active: {
+        title: 'Affirm momentum',
+        description: `${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'} • ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}`,
+        button: 'Affirm'
+      }
+    }[mode];
+
+    return `
+      <div class="p-3 rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/55">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3 min-w-0">
+            <img src="${photo}" class="w-11 h-11 rounded-full border border-[var(--card-border)]">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">${this.escapeHtml(config.title)}</p>
+              <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(config.description)}</p>
+            </div>
+          </div>
+          <button onclick="window.LeaderDashboard.sendCareMessage('${this.escapeForJs(member.id)}', '${mode}')"
+                  class="shrink-0 px-3 py-2 rounded-xl bg-amber-500/20 text-amber-400 text-[11px] font-bold">
+            ${this.escapeHtml(config.button)}
+          </button>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          ${stats.devotionStreak >= 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-amber-500/20 text-amber-300">7-day streak</span>' : ''}
+          ${stats.devotionStreak >= 3 && stats.devotionStreak < 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-300">3-day streak</span>' : ''}
+          ${stats.prayedForOthers > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-blue-500/20 text-blue-300">🙏 praying for ${stats.prayedForOthers}</span>` : ''}
+          ${stats.attendedRecent > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-300">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+        </div>
+        ${this.renderStreakGraphic(stats)}
+      </div>
+    `;
+  },
+
+  async sendCareMessage(memberId, mode = 'encourage_bible') {
+    const member = this.members.find((entry) => entry.id === memberId);
+    const template = this.CARE_TEMPLATES[mode];
+    if (!member || !template) return;
+
+    const message = template.buildMessage(member);
+    let sent = false;
+
+    try {
+      if (typeof window.sendCustomNotificationCallable === 'function') {
+        await window.sendCustomNotificationCallable({
+          targetType: 'user',
+          targetId: memberId,
+          title: template.title,
+          body: message,
+          notificationType: 'leader_care'
+        });
+        sent = true;
+      }
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not send care notification:', error);
+    }
+
+    try {
+      await navigator.clipboard?.writeText(message);
+    } catch (_) {}
+
+    this.showToast(sent ? `${template.toast}. Message copied.` : 'Message copied. Paste it in chat if needed.');
+  },
+
   /**
    * Open full dashboard modal
    */
@@ -905,6 +1221,8 @@ const LeaderDashboard = {
     const thisWeekAccountability = this.getThisWeeksAccountability();
     const groupStats = this.calculateGroupStats();
     const isDownlineView = this.dashboardTab === 'downline';
+    const careSegments = this.getCareSegments();
+    const recentGroupMeeting = this.groupMeetings[0] || null;
     
     modal.innerHTML = `
       <div class="absolute inset-0 bg-[var(--bg-color)]">
@@ -1003,46 +1321,24 @@ const LeaderDashboard = {
             </div>
           </div>
 
-          <!-- Needs Attention -->
-          ${needsAttentionMembers.length > 0 ? `
-          <div class="bg-[var(--card-bg)] rounded-2xl border border-red-500/30 overflow-hidden">
-            <div class="p-4 border-b border-red-500/20 bg-red-500/10">
-              <h2 class="font-bold text-red-400 flex items-center gap-2">
-                <span>🚨</span> Needs Attention (${needsAttentionMembers.length})
-              </h2>
+          <!-- Shepherding Summary -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-2xl border border-red-500/25 bg-red-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-red-300">Encourage</p>
+              <p class="mt-2 text-3xl font-black text-red-200">${careSegments.encourageBible.length}</p>
+              <p class="text-[11px] text-red-100/80 mt-2">Members who need a Bible nudge and time with God.</p>
             </div>
-            <div class="divide-y divide-[var(--card-border)]">
-              ${needsAttentionMembers.slice(0, 5).map(member => {
-                const alerts = this.needsAttention(member);
-                return `
-                <div class="p-4">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                      <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`}" 
-                           class="w-10 h-10 rounded-full">
-                      <div>
-                        <p class="font-medium text-[var(--text-color)]">${member.fullName || 'Unknown'}</p>
-                        <div class="flex flex-wrap gap-1 mt-1">
-                          ${alerts.map(a => `
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
-                              ${a.icon} ${a.message}
-                            </span>
-                          `).join('')}
-                        </div>
-                      </div>
-                    </div>
-                    <div class="flex gap-1">
-                      <button onclick="window.LeaderDashboard.sendEncouragement('${member.id}')"
-                              class="p-2 rounded-full bg-amber-500/20 text-amber-500 text-sm">
-                        💬
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              `}).join('')}
+            <div class="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-amber-300">Check In</p>
+              <p class="mt-2 text-3xl font-black text-amber-200">${careSegments.attendanceFollowUp.length}</p>
+              <p class="text-[11px] text-amber-100/80 mt-2">Members missing meetings who need pastoral follow-up.</p>
+            </div>
+            <div class="rounded-2xl border border-green-500/25 bg-green-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-green-300">Affirm</p>
+              <p class="mt-2 text-3xl font-black text-green-200">${careSegments.affirmActive.length}</p>
+              <p class="text-[11px] text-green-100/80 mt-2">Members showing Bible rhythm, insights, prayer, or care for others.</p>
             </div>
           </div>
-          ` : ''}
 
           <!-- Group Stats -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
@@ -1069,37 +1365,98 @@ const LeaderDashboard = {
                 <p class="text-xs text-[var(--text-muted)]">New Members</p>
               </div>
             </div>
+            <div class="px-4 pb-4">
+              <div class="rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-3">
+                <p class="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Meeting Signal</p>
+                <p class="text-sm text-[var(--text-color)] mt-2">
+                  ${recentGroupMeeting
+                    ? `Latest recorded meeting: ${this.resolveDate(recentGroupMeeting.startedAt || recentGroupMeeting.createdAt || recentGroupMeeting.updatedAt || recentGroupMeeting.date)?.toLocaleDateString() || 'recently'}`
+                    : 'No meeting history recorded yet for this group.'}
+                </p>
+                <p class="text-[11px] text-[var(--text-muted)] mt-1">
+                  ${this.groupMeetings.length ? `${this.groupMeetings.length} recorded meeting${this.groupMeetings.length === 1 ? '' : 's'} available for attendance coaching.` : 'Start or record a meeting to help leaders follow up attendance.'}
+                </p>
+              </div>
+            </div>
           </div>
           ` : ''}
 
           ${isDownlineView ? `
-          <!-- All Members -->
+          <!-- Shepherding Lists -->
+          <div class="space-y-4">
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-red-500/25 overflow-hidden">
+              <div class="p-4 border-b border-red-500/20 bg-red-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-red-300 flex items-center gap-2">
+                  <span>📖</span> Encourage Bible Reading
+                </h2>
+                <span class="text-[11px] text-red-100/70">${careSegments.encourageBible.length} member${careSegments.encourageBible.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.encourageBible.length
+                  ? careSegments.encourageBible.slice(0, 6).map((member) => this.buildCareRow(member, 'encourage_bible')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">Nobody needs a Bible nudge right now.</div>'}
+              </div>
+            </div>
+
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-amber-500/25 overflow-hidden">
+              <div class="p-4 border-b border-amber-500/20 bg-amber-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-amber-300 flex items-center gap-2">
+                  <span>📅</span> Members Not Attending
+                </h2>
+                <span class="text-[11px] text-amber-100/70">${careSegments.attendanceFollowUp.length} member${careSegments.attendanceFollowUp.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.attendanceFollowUp.length
+                  ? careSegments.attendanceFollowUp.slice(0, 6).map((member) => this.buildCareRow(member, 'check_attendance')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">No attendance follow-up needed from recent meetings.</div>'}
+              </div>
+            </div>
+
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-green-500/25 overflow-hidden">
+              <div class="p-4 border-b border-green-500/20 bg-green-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-green-300 flex items-center gap-2">
+                  <span>🙌</span> Active and Spending Time With God
+                </h2>
+                <span class="text-[11px] text-green-100/70">${careSegments.affirmActive.length} member${careSegments.affirmActive.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.affirmActive.length
+                  ? careSegments.affirmActive.slice(0, 6).map((member) => this.buildCareRow(member, 'affirm_active')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">No affirmation candidates yet. Encourage members to share insights and prayer in the app.</div>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Member Roster -->
           <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
             <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
               <h2 class="font-bold text-amber-500 flex items-center gap-2">
-                <span>👥</span> All Members
+                <span>👥</span> Member Rhythm
               </h2>
               <span class="text-xs text-[var(--text-muted)]">${this.members.length} total</span>
             </div>
-            <div class="divide-y divide-[var(--card-border)] max-h-80 overflow-y-auto">
+            <div class="p-3 space-y-3 max-h-[32rem] overflow-y-auto">
               ${this.members.map(member => `
-                <div class="p-3 flex items-center justify-between hover:bg-[var(--input-bg)]">
-                  <div class="flex items-center gap-3">
-                    <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`}" 
-                         class="w-8 h-8 rounded-full">
-                    <div>
-                      <p class="text-sm font-medium text-[var(--text-color)]">${member.fullName || 'Unknown'}</p>
-                      <p class="text-[10px] text-[var(--text-muted)]">
-                        ${member.stats?.devotionStreak > 0 
-                          ? `🔥 ${member.stats.devotionStreak}-day streak` 
-                          : '📖 No recent devotion'}
-                      </p>
+                <div class="rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`}" 
+                           class="w-10 h-10 rounded-full">
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-1">
+                          ${member.stats?.sharedInsights ? `${member.stats.sharedInsights} shared insight${member.stats.sharedInsights === 1 ? '' : 's'}` : 'No shared insight yet'} • ${member.stats?.prayedForOthers ? `prayed for ${member.stats.prayedForOthers}` : 'keep building'}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      ${member.stats?.isNew ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">NEW</span>' : ''}
+                      ${member.stats?.streakTier === 'seven' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">7-day</span>' : ''}
+                      ${member.stats?.streakTier === 'three' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">3-day</span>' : ''}
+                      ${this.needsAttention(member).length > 0 ? '<span class="w-2 h-2 rounded-full bg-red-500"></span>' : ''}
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    ${member.stats?.isNew ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">NEW</span>' : ''}
-                    ${this.needsAttention(member).length > 0 ? '<span class="w-2 h-2 rounded-full bg-red-500"></span>' : ''}
-                  </div>
+                  ${this.renderStreakGraphic(member.stats || {})}
                 </div>
               `).join('')}
             </div>

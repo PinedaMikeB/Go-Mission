@@ -537,10 +537,230 @@
       line-height: 1.4;
     }
 
+    .care-summary-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .care-summary-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(245, 189, 89, 0.08), rgba(0, 0, 0, 0.18));
+      min-height: 96px;
+    }
+
+    .care-summary-card .eyebrow {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .care-summary-card .value {
+      margin-top: 10px;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+      color: var(--gold-strong);
+    }
+
+    .care-summary-card .foot {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
+    .care-group-strip {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .care-group-card {
+      border: 1px solid rgba(245, 189, 89, 0.18);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .care-group-card::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      bottom: -40px;
+      width: 120px;
+      height: 120px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(245, 189, 89, 0.18), transparent 70%);
+      pointer-events: none;
+    }
+
+    .care-group-card h3 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--gold-strong);
+    }
+
+    .care-group-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .care-group-note {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .care-board-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .care-board-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.22);
+      overflow: hidden;
+      min-height: 240px;
+    }
+
+    .care-board-head {
+      padding: 14px;
+      border-bottom: 1px solid rgba(245, 189, 89, 0.12);
+      background: linear-gradient(180deg, rgba(245, 189, 89, 0.08), rgba(0, 0, 0, 0));
+    }
+
+    .care-board-head h3 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--gold-strong);
+    }
+
+    .care-board-head p {
+      margin: 6px 0 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
+    .care-board-count {
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(245, 189, 89, 0.18);
+      background: rgba(245, 189, 89, 0.08);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gold-strong);
+      font-weight: 800;
+    }
+
+    .care-board-list {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .care-person-card {
+      border: 1px solid rgba(245, 189, 89, 0.14);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.22);
+      padding: 12px;
+    }
+
+    .care-person-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .care-person-top b {
+      display: block;
+      color: var(--gold-strong);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .care-person-top .meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .care-badge-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .care-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid rgba(245, 189, 89, 0.16);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+    }
+
+    .care-badge.gold { background: rgba(245, 189, 89, 0.14); color: #ffecbf; border-color: rgba(245, 189, 89, 0.32); }
+    .care-badge.green { background: rgba(115, 192, 151, 0.16); color: #d9f3e5; border-color: rgba(115, 192, 151, 0.32); }
+    .care-badge.red { background: rgba(217, 95, 74, 0.16); color: #ffd4cd; border-color: rgba(217, 95, 74, 0.32); }
+    .care-badge.blue { background: rgba(109, 168, 207, 0.16); color: #d6e8f4; border-color: rgba(109, 168, 207, 0.32); }
+
+    .care-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .care-actions button {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    .care-empty {
+      padding: 18px 14px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
     @media (max-width: 1100px) {
       .col-8, .col-6, .col-4 { grid-column: span 12; }
       .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .publish-map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .care-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .care-group-strip { grid-template-columns: 1fr; }
+      .care-board-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 680px) {
@@ -548,6 +768,7 @@
       .hero { padding: 20px; }
       .metrics-grid { grid-template-columns: 1fr; }
       .publish-map { grid-template-columns: 1fr; }
+      .care-summary-grid { grid-template-columns: 1fr 1fr; }
       .row { grid-template-columns: 1fr; }
       .actions { flex-direction: column; }
       .role-grid { grid-template-columns: 1fr; }
@@ -596,6 +817,33 @@
           <div class="actions" style="margin-top:12px;">
             <button id="refreshHealthBtn" class="secondary">Refresh Health Data</button>
           </div>
+        </div>
+
+        <div class="col-12 panel">
+          <div class="split" style="margin-top:0;align-items:flex-start;">
+            <div>
+              <h2>Mission Care Board</h2>
+              <p class="sub">Who to activate, who to invite, and who to affirm across leaders, members, readers, and intercessors.</p>
+            </div>
+            <button id="refreshMissionCareBtn" class="secondary" style="width:auto;padding:8px 12px;">Refresh Care Board</button>
+          </div>
+          <div id="missionCareSummary" class="care-summary-grid"></div>
+          <div id="missionCareGroups" class="care-group-strip"></div>
+          <div id="missionCareBoard" class="care-board-grid"></div>
+          <div id="missionCareStatus" class="small"></div>
+        </div>
+
+        <div class="col-12 panel">
+          <div class="split" style="margin-top:0;align-items:flex-start;">
+            <div>
+              <h2>Activity Feed</h2>
+              <p class="sub">Live ministry activity for admins: growth, meetings, publishing, answered prayer, and major app movement.</p>
+            </div>
+            <button id="reloadAdminNotificationsBtn" class="secondary" style="width:auto;padding:8px 12px;">Reload Feed</button>
+          </div>
+          <div id="adminNotificationsSummary" class="small" style="margin-top:8px;"></div>
+          <div id="adminNotificationsList" class="list" style="margin-top:10px;"></div>
+          <div id="adminNotificationsStatus" class="small"></div>
         </div>
 
         <div class="col-12 panel">
@@ -1307,7 +1555,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       setDoc,
       addDoc,
       deleteDoc,
-      serverTimestamp
+      serverTimestamp,
+      onSnapshot
     } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
     import { getFunctions, httpsCallable, httpsCallableFromURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
     import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
@@ -1343,10 +1592,12 @@ match /goMission/watch-series-covers/{allPaths=**} {
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     let cachedGroups = [];
+    let adminNotificationsUnsubscribe = null;
     let cachedWatchSeries = [];
     let cachedWatchEpisodes = [];
     let currentRoleUser = null;
     let latestMissionHealth = null;
+    let latestMissionCareBoard = null;
     let activeMetricKey = null;
     let activeGroupRoleResolver = null;
     let latestGroupIntegrityState = null;
@@ -1387,6 +1638,39 @@ match /goMission/watch-series-covers/{allPaths=**} {
       active_groups: {
         title: 'Active Groups',
         description: 'Groups with status empty, active, or multiplying.'
+      }
+    };
+
+    const CARE_NOTIFICATION_TEMPLATES = {
+      activate_leader: {
+        actionLabel: 'Notify leader',
+        title: 'Mission group check-in',
+        body: (item) => `${item.firstName}, your mission group needs your leadership this week. Open Go Mission, read the Bible, and schedule your next meeting.`
+      },
+      celebrate_leader: {
+        actionLabel: 'Encourage leader',
+        title: 'Thank you for leading faithfully',
+        body: (item) => `${item.firstName}, thank you for using the app to lead ${item.primaryGroupName || 'your mission group'}. Keep strengthening your members this week.`
+      },
+      invite_group: {
+        actionLabel: 'Notify user',
+        title: 'Join a mission group',
+        body: (item) => `${item.firstName}, take your next step and connect with a mission group this week. Growing with others will help you stay strong in Jesus.`
+      },
+      encourage_bible: {
+        actionLabel: 'Encourage',
+        title: 'Spend time with God today',
+        body: (item) => `${item.firstName}, open the Bible today, write one insight, and bring one prayer request to God. Small daily faithfulness matters.`
+      },
+      affirm_spiritual: {
+        actionLabel: 'Affirm',
+        title: 'Keep your rhythm with God',
+        body: (item) => `${item.firstName}, thank you for reading the Bible, writing insights, and bringing your prayers to God. Keep building on this holy rhythm.`
+      },
+      affirm_intercessor: {
+        actionLabel: 'Affirm prayer',
+        title: 'Thank you for praying for others',
+        body: (item) => `${item.firstName}, thank you for praying for others. Your intercession strengthens the mission group and points people back to Jesus.`
       }
     };
 
@@ -1899,6 +2183,19 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized)}</span>`;
     }
 
+    function getAdminNotificationTypeChip(value, palette = 'default') {
+      const normalized = String(value || 'activity').toLowerCase();
+      const palettes = {
+        growth: ['rgba(115, 192, 151, 0.18)', 'rgba(115, 192, 151, 0.34)', '#d9f3e5'],
+        content: ['rgba(109, 168, 207, 0.18)', 'rgba(109, 168, 207, 0.34)', '#d6e8f4'],
+        activity: ['rgba(245, 189, 89, 0.15)', 'rgba(245, 189, 89, 0.36)', '#ffecbf'],
+        discipleship: ['rgba(217, 95, 74, 0.16)', 'rgba(217, 95, 74, 0.34)', '#ffd4cd'],
+        default: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.16)', '#f6efe3']
+      };
+      const [color, border, text] = palettes[palette] || palettes.default;
+      return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:${color};border:1px solid ${border};color:${text};">${escapeHtml(normalized.replace(/_/g, ' '))}</span>`;
+    }
+
     function normalizeIntegrityLogStatus(status) {
       const normalized = String(status || '').toLowerCase();
       if (['resolved', 'done', 'closed'].includes(normalized)) return 'resolved';
@@ -2146,6 +2443,93 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }
     }
 
+    function unsubscribeAdminNotifications() {
+      if (!adminNotificationsUnsubscribe) return;
+      try {
+        adminNotificationsUnsubscribe();
+      } catch (_) {}
+      adminNotificationsUnsubscribe = null;
+    }
+
+    function renderAdminNotifications(items = []) {
+      const listEl = document.getElementById('adminNotificationsList');
+      const summaryEl = document.getElementById('adminNotificationsSummary');
+      if (!listEl || !summaryEl) return;
+
+      const growthCount = items.filter((item) => String(item.category || '').includes('growth')).length;
+      const activityCount = items.filter((item) => String(item.category || '').includes('activity')).length;
+      const contentCount = items.filter((item) => String(item.category || '').includes('content')).length;
+      summaryEl.textContent = `Recent: ${items.length} • Growth: ${growthCount} • Activity: ${activityCount} • Content: ${contentCount}`;
+
+      if (!items.length) {
+        listEl.innerHTML = '<div class="list-item">No activity yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = items.map((item) => {
+        const category = String(item.category || 'activity').toLowerCase();
+        const palette = category.includes('growth')
+          ? 'growth'
+          : category.includes('content')
+            ? 'content'
+            : category.includes('discipleship')
+              ? 'discipleship'
+              : 'activity';
+        const detailMeta = [];
+        if (item.data?.groupId) detailMeta.push(`group: ${escapeHtml(item.data.groupId)}`);
+        if (item.data?.announcementId) detailMeta.push(`announcement: ${escapeHtml(item.data.announcementId)}`);
+        if (item.data?.episodeId) detailMeta.push(`episode: ${escapeHtml(item.data.episodeId)}`);
+        if (item.data?.meetingDate) detailMeta.push(`date: ${escapeHtml(item.data.meetingDate)}`);
+        return `
+          <div style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,0.18);">
+            <div class="split" style="margin-top:0;align-items:flex-start;">
+              <div style="min-width:0;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <div style="font-weight:800;color:var(--gold-strong);">${escapeHtml(item.title || 'Activity')}</div>
+                  ${getAdminNotificationTypeChip(item.category || 'activity', palette)}
+                  ${item.sourceEvent ? getAdminNotificationTypeChip(item.sourceEvent, 'default') : ''}
+                </div>
+                <div class="small" style="margin-top:6px;">${escapeHtml(item.body || 'No details')}</div>
+                <div class="small" style="margin-top:6px;">${formatDateTime(item.createdAt)}${detailMeta.length ? ` • ${detailMeta.join(' • ')}` : ''}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadAdminNotifications({ force = false } = {}) {
+      const listEl = document.getElementById('adminNotificationsList');
+      if (!listEl) return;
+
+      if (force) {
+        unsubscribeAdminNotifications();
+      }
+
+      setInlineStatus('adminNotificationsStatus', 'Loading activity feed...', 'info');
+
+      if (adminNotificationsUnsubscribe) {
+        setInlineStatus('adminNotificationsStatus', 'Activity feed is live.', 'success');
+        return;
+      }
+
+      const q = query(
+        collection(db, 'goMission_adminNotifications'),
+        orderBy('createdAt', 'desc'),
+        limit(80)
+      );
+
+      adminNotificationsUnsubscribe = onSnapshot(q, (snap) => {
+        const items = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+        renderAdminNotifications(items);
+        setInlineStatus('adminNotificationsStatus', `Activity feed live. Showing ${items.length} item(s).`, 'success');
+      }, (error) => {
+        console.error('[Admin] loadAdminNotifications snapshot error:', error);
+        listEl.innerHTML = '';
+        setInlineStatus('adminNotificationsStatus', `Failed loading activity feed: ${error.message}`, 'error');
+      });
+    }
+
     async function updateAdminInboxStatus(inboxId, status) {
       if (!inboxId || !status) return;
       const nextStatus = String(status).toLowerCase();
@@ -2307,6 +2691,523 @@ match /goMission/watch-series-covers/{allPaths=**} {
       });
 
       return entries.sort((a, b) => getMemberDisplayName(a.member).localeCompare(getMemberDisplayName(b.member)));
+    }
+
+    function getFirstName(memberOrName) {
+      const raw = typeof memberOrName === 'string'
+        ? memberOrName
+        : getMemberDisplayName(memberOrName);
+      const first = String(raw || '').trim().split(/\s+/)[0];
+      return first || 'Friend';
+    }
+
+    function daysSince(value, fallback = 999) {
+      const date = pickDate(value);
+      if (!date) return fallback;
+      return Math.max(0, Math.floor((Date.now() - date.getTime()) / DAY_MS));
+    }
+
+    function getBibleReadDate(member) {
+      return pickDate(member?.bibleProgress?.lastReadAt);
+    }
+
+    function getMeetingRecordedAt(meeting = {}) {
+      return pickDate(meeting?.startedAt, meeting?.createdAt, meeting?.updatedAt, meeting?.date);
+    }
+
+    function getDevotionRecordedAt(entry = {}) {
+      return pickDate(entry?.savedAt, entry?.devotionAt, entry?.updatedAt, entry?.createdAt, entry?.date);
+    }
+
+    function normalizePrayerRequestEntries(prayerRequests) {
+      return Array.isArray(prayerRequests)
+        ? prayerRequests.filter((item) => String(item?.text || item || '').trim())
+        : [];
+    }
+
+    function getDevotionInsightCount(entry = {}) {
+      const understanding = String(entry?.understandingText || entry?.reflectionText || entry?.reflection || '').trim();
+      const action = String(entry?.actionText || entry?.commitment || '').trim();
+      return Number(Boolean(understanding)) + Number(Boolean(action));
+    }
+
+    function getMeetingAttendeeIds(meeting = {}) {
+      return [...new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+        .map((entry) => entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+        .filter(Boolean))];
+    }
+
+    function compareByNewestDate(a, b) {
+      const aTime = pickDate(a)?.getTime?.() || 0;
+      const bTime = pickDate(b)?.getTime?.() || 0;
+      return bTime - aTime;
+    }
+
+    function buildMissionCareBoard({
+      members = [],
+      groups = [],
+      meetings = [],
+      devotionDocs = [],
+      devotionChats = []
+    }) {
+      const membersById = new Map(members.map((member) => [member.id, member]));
+      const groupsById = new Map(groups.map((group) => [group.id, group]));
+      const leaderGroupMap = new Map();
+      const leaderIds = new Set();
+      const monthAgo = Date.now() - (30 * DAY_MS);
+      const weekAgo = Date.now() - (7 * DAY_MS);
+
+      groups.forEach((group) => {
+        const leaderId = String(group?.leaderId || '').trim();
+        if (!leaderId) return;
+        leaderIds.add(leaderId);
+        if (!leaderGroupMap.has(leaderId)) leaderGroupMap.set(leaderId, []);
+        leaderGroupMap.get(leaderId).push(group);
+      });
+
+      const devotionSignalsByUser = new Map();
+      const ensureDevotionSignals = (uid) => {
+        if (!uid) return null;
+        if (!devotionSignalsByUser.has(uid)) {
+          devotionSignalsByUser.set(uid, {
+            uid,
+            lastDevotionAt: null,
+            recentDevotions7: 0,
+            recentDevotions30: 0,
+            insightCount30: 0,
+            prayerRequestCount30: 0
+          });
+        }
+        return devotionSignalsByUser.get(uid);
+      };
+
+      devotionDocs.forEach((entry) => {
+        const uid = String(entry?.uid || '').trim() || String(entry?.id || '').split('_')[0];
+        if (!uid) return;
+        const recordedAt = getDevotionRecordedAt(entry);
+        const recordedTime = recordedAt?.getTime?.() || 0;
+        const signals = ensureDevotionSignals(uid);
+        if (!signals) return;
+        if (!signals.lastDevotionAt || recordedTime > signals.lastDevotionAt.getTime()) {
+          signals.lastDevotionAt = recordedAt;
+        }
+        if (recordedTime >= weekAgo) signals.recentDevotions7 += 1;
+        if (recordedTime >= monthAgo) {
+          signals.recentDevotions30 += 1;
+          signals.insightCount30 += getDevotionInsightCount(entry);
+          signals.prayerRequestCount30 += normalizePrayerRequestEntries(entry?.prayerRequests).length;
+        }
+      });
+
+      const meetingsByGroup = new Map();
+      meetings.forEach((meeting) => {
+        const groupId = String(meeting?.groupId || '').trim();
+        if (!groupId) return;
+        if (!meetingsByGroup.has(groupId)) meetingsByGroup.set(groupId, []);
+        meetingsByGroup.get(groupId).push(meeting);
+      });
+      meetingsByGroup.forEach((items) => {
+        items.sort((a, b) => compareByNewestDate(getMeetingRecordedAt(a), getMeetingRecordedAt(b)));
+      });
+
+      const prayerSupportByUser = new Map();
+      const incrementPrayerSupport = (uid) => {
+        if (!uid) return;
+        prayerSupportByUser.set(uid, Number(prayerSupportByUser.get(uid) || 0) + 1);
+      };
+
+      devotionChats.forEach((chat) => {
+        const supportMap = (chat?.devotion && typeof chat.devotion === 'object' && chat.devotion.prayerSupports && typeof chat.devotion.prayerSupports === 'object')
+          ? chat.devotion.prayerSupports
+          : {};
+        Object.values(supportMap).forEach((supportList) => {
+          if (!Array.isArray(supportList)) return;
+          supportList.forEach((entry) => {
+            incrementPrayerSupport(entry?.uid || entry?.userId || null);
+          });
+        });
+      });
+
+      const getUserCareContext = (member = {}) => {
+        const devotionSignals = devotionSignalsByUser.get(member.id) || {};
+        const groupIds = extractMemberGroupIds(member);
+        const groupNames = getGroupNamesByIds(groupIds, groupsById);
+        const lastBibleReadAt = getBibleReadDate(member);
+        const lastDevotionAt = devotionSignals.lastDevotionAt || lastBibleReadAt;
+        const lastActiveAt = pickDate(member?.lastActiveDate, member?.lastActive, member?.lastSeenAt, member?.updatedAt);
+        const daysSinceRead = daysSince(lastBibleReadAt || lastDevotionAt);
+        const daysSinceActive = daysSince(lastActiveAt);
+        const streak = Number(member?.bibleProgress?.currentStreak || 0);
+
+        return {
+          userId: member.id,
+          member,
+          name: getMemberDisplayName(member),
+          firstName: getFirstName(member),
+          email: String(member?.email || '').trim(),
+          groupIds,
+          groupNames,
+          primaryGroupName: groupNames[0] || '',
+          lastBibleReadAt,
+          lastDevotionAt,
+          lastActiveAt,
+          daysSinceRead,
+          daysSinceActive,
+          streak,
+          recentDevotions7: Number(devotionSignals.recentDevotions7 || 0),
+          recentDevotions30: Number(devotionSignals.recentDevotions30 || 0),
+          insightCount30: Number(devotionSignals.insightCount30 || 0),
+          prayerRequestCount30: Number(devotionSignals.prayerRequestCount30 || 0),
+          prayerSupportCount: Number(prayerSupportByUser.get(member.id) || 0)
+        };
+      };
+
+      const careContexts = members.map(getUserCareContext);
+
+      const leaderContexts = [...leaderIds]
+        .map((leaderId) => {
+          const member = membersById.get(leaderId) || { id: leaderId, name: leaderId };
+          const context = getUserCareContext(member);
+          const ledGroups = leaderGroupMap.get(leaderId) || [];
+          const recentMeetingCount30 = ledGroups.reduce((total, group) => {
+            const latestMeeting = (meetingsByGroup.get(group.id) || [])
+              .find((meeting) => {
+                const meetingAt = getMeetingRecordedAt(meeting);
+                return meetingAt && meetingAt.getTime() >= monthAgo;
+              });
+            return total + Number(Boolean(latestMeeting));
+          }, 0);
+
+          return {
+            ...context,
+            ledGroups,
+            groupsLed: ledGroups.length,
+            primaryGroupName: ledGroups[0]?.name || context.primaryGroupName || '',
+            recentMeetingCount30
+          };
+        });
+
+      const statusGroups = groups
+        .map((group) => {
+          const memberIds = getNormalizedGroupMemberUids(group);
+          const latestMeeting = (meetingsByGroup.get(group.id) || [])
+            .map((meeting) => ({ meeting, meetingAt: getMeetingRecordedAt(meeting) }))
+            .filter((entry) => entry.meetingAt)
+            .sort((a, b) => compareByNewestDate(a.meetingAt, b.meetingAt))[0] || null;
+          const activeReaders = memberIds.filter((memberId) => {
+            const member = membersById.get(memberId);
+            const lastReadAt = getBibleReadDate(member) || devotionSignalsByUser.get(memberId)?.lastDevotionAt || null;
+            return lastReadAt && lastReadAt.getTime() >= weekAgo;
+          }).length;
+          const prayerfulMembers = memberIds.filter((memberId) => Number((devotionSignalsByUser.get(memberId) || {}).prayerRequestCount30 || 0) > 0).length;
+          const tone = latestMeeting && activeReaders >= Math.max(1, Math.ceil(memberIds.length * 0.4))
+            ? 'green'
+            : (latestMeeting || activeReaders > 0 ? 'gold' : 'red');
+          return {
+            id: group.id,
+            name: getGroupDisplayName(group),
+            leaderName: getGroupLeaderName(group?.leaderId || '', membersById),
+            memberCount: memberIds.length,
+            activeReaders,
+            prayerfulMembers,
+            latestMeetingAt: latestMeeting?.meetingAt || null,
+            tone
+          };
+        })
+        .sort((a, b) => {
+          const aTime = a.latestMeetingAt?.getTime?.() || 0;
+          const bTime = b.latestMeetingAt?.getTime?.() || 0;
+          if (aTime !== bTime) return bTime - aTime;
+          return a.name.localeCompare(b.name);
+        });
+
+      const leadersNeedingActivation = leaderContexts
+        .filter((context) => context.groupsLed > 0)
+        .filter((context) => context.recentMeetingCount30 === 0 && context.daysSinceRead > 7 && context.daysSinceActive > 7)
+        .sort((a, b) => {
+          if (b.daysSinceActive !== a.daysSinceActive) return b.daysSinceActive - a.daysSinceActive;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'red', label: `${context.groupsLed} group${context.groupsLed === 1 ? '' : 's'} led` },
+            { tone: 'red', label: `${context.daysSinceActive}d inactive` },
+            { tone: 'gold', label: `No recent meeting` }
+          ],
+          meta: `${context.primaryGroupName || 'Mission group'} | last read: ${context.daysSinceRead >= 999 ? 'not found' : `${context.daysSinceRead}d ago`}`
+        }));
+
+      const leadersUsingApp = leaderContexts
+        .filter((context) => context.groupsLed > 0)
+        .filter((context) => context.recentMeetingCount30 > 0 || context.daysSinceRead <= 7)
+        .sort((a, b) => {
+          if (b.recentMeetingCount30 !== a.recentMeetingCount30) return b.recentMeetingCount30 - a.recentMeetingCount30;
+          if (b.streak !== a.streak) return b.streak - a.streak;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'green', label: `${context.recentMeetingCount30} recent meeting${context.recentMeetingCount30 === 1 ? '' : 's'}` },
+            { tone: 'green', label: `${Math.max(context.streak, context.recentDevotions7)} faith rhythm` },
+            { tone: 'blue', label: context.primaryGroupName || 'Leader' }
+          ],
+          meta: `${context.primaryGroupName || 'Mission group'} | Bible streak: ${context.streak} day${context.streak === 1 ? '' : 's'}`
+        }));
+
+      const usersNotInGroup = careContexts
+        .filter((context) => !hasGroupMembership(context.member))
+        .filter((context) => isActiveMember(context.member))
+        .sort((a, b) => {
+          if (b.recentDevotions7 !== a.recentDevotions7) return b.recentDevotions7 - a.recentDevotions7;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'gold', label: 'No mission group yet' },
+            { tone: context.recentDevotions7 > 0 ? 'green' : 'blue', label: context.recentDevotions7 > 0 ? 'Still engaging spiritually' : 'Needs connection' }
+          ],
+          meta: `${context.email || 'No email'} | active ${context.daysSinceActive}d ago`
+        }));
+
+      const usersNotReadingBible = careContexts
+        .filter((context) => isMissionMember(context.member) || hasGroupMembership(context.member))
+        .filter((context) => context.daysSinceRead > 7)
+        .sort((a, b) => {
+          if (b.daysSinceRead !== a.daysSinceRead) return b.daysSinceRead - a.daysSinceRead;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'red', label: `${context.daysSinceRead >= 999 ? 'No recent' : `${context.daysSinceRead}d`} Bible reading` },
+            { tone: 'gold', label: context.groupNames[0] || 'No named group' }
+          ],
+          meta: `${context.groupNames.join(', ') || 'No group'} | streak: ${context.streak} day${context.streak === 1 ? '' : 's'}`
+        }));
+
+      const activeWithGod = careContexts
+        .filter((context) => context.daysSinceRead <= 7)
+        .filter((context) => context.insightCount30 > 0)
+        .filter((context) => context.prayerRequestCount30 > 0)
+        .sort((a, b) => {
+          if (b.streak !== a.streak) return b.streak - a.streak;
+          if (b.prayerRequestCount30 !== a.prayerRequestCount30) return b.prayerRequestCount30 - a.prayerRequestCount30;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'green', label: `${context.streak}d streak` },
+            { tone: 'green', label: `${context.insightCount30} insight${context.insightCount30 === 1 ? '' : 's'}` },
+            { tone: 'blue', label: `${context.prayerRequestCount30} prayer request${context.prayerRequestCount30 === 1 ? '' : 's'}` }
+          ],
+          meta: `${context.groupNames.join(', ') || 'Personal rhythm'} | read within ${context.daysSinceRead} day${context.daysSinceRead === 1 ? '' : 's'}`
+        }));
+
+      const intercessors = careContexts
+        .filter((context) => context.prayerSupportCount > 0)
+        .sort((a, b) => {
+          if (b.prayerSupportCount !== a.prayerSupportCount) return b.prayerSupportCount - a.prayerSupportCount;
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 12)
+        .map((context) => ({
+          ...context,
+          badges: [
+            { tone: 'green', label: `${context.prayerSupportCount} prayer support${context.prayerSupportCount === 1 ? '' : 's'}` },
+            { tone: context.daysSinceRead <= 7 ? 'blue' : 'gold', label: context.daysSinceRead <= 7 ? 'Reading too' : 'Prayer encourager' }
+          ],
+          meta: `${context.groupNames.join(', ') || 'Across shared devotions'} | faith streak: ${context.streak} day${context.streak === 1 ? '' : 's'}`
+        }));
+
+      return {
+        summary: {
+          groupsHealthy: statusGroups.filter((group) => group.tone === 'green').length,
+          leadersNeedingActivation: leadersNeedingActivation.length,
+          leadersUsingApp: leadersUsingApp.length,
+          usersNotInGroup: usersNotInGroup.length,
+          usersNotReadingBible: usersNotReadingBible.length,
+          activeWithGod: activeWithGod.length,
+          intercessors: intercessors.length
+        },
+        groups: statusGroups.slice(0, 6),
+        sections: [
+          {
+            key: 'leadersNeedingActivation',
+            title: 'Leaders Needing Activation',
+            description: 'Mission group leaders with no recent meeting and no recent Bible rhythm.',
+            action: 'activate_leader',
+            items: leadersNeedingActivation
+          },
+          {
+            key: 'leadersUsingApp',
+            title: 'Leaders Using the App',
+            description: 'Leaders already meeting or building healthy Bible momentum in the app.',
+            action: 'celebrate_leader',
+            items: leadersUsingApp
+          },
+          {
+            key: 'usersNotInGroup',
+            title: 'Users Not in a Mission Group',
+            description: 'Active users who still need an invitation into discipleship community.',
+            action: 'invite_group',
+            items: usersNotInGroup
+          },
+          {
+            key: 'usersNotReadingBible',
+            title: 'Users Not Reading the Bible',
+            description: 'Members whose recent Bible rhythm has gone cold and need encouragement.',
+            action: 'encourage_bible',
+            items: usersNotReadingBible
+          },
+          {
+            key: 'activeWithGod',
+            title: 'Active With God',
+            description: 'Reading, writing insights, and bringing prayer requests into the app.',
+            action: 'affirm_spiritual',
+            items: activeWithGod
+          },
+          {
+            key: 'intercessors',
+            title: 'Praying for Others',
+            description: 'People visibly supporting others through shared prayer in mission groups.',
+            action: 'affirm_intercessor',
+            items: intercessors
+          }
+        ]
+      };
+    }
+
+    function renderMissionCareBoard(board) {
+      const summaryEl = document.getElementById('missionCareSummary');
+      const groupsEl = document.getElementById('missionCareGroups');
+      const boardEl = document.getElementById('missionCareBoard');
+      if (!summaryEl || !groupsEl || !boardEl) return;
+
+      if (!board) {
+        summaryEl.innerHTML = '';
+        groupsEl.innerHTML = '';
+        boardEl.innerHTML = '';
+        return;
+      }
+
+      summaryEl.innerHTML = [
+        { label: 'Healthy Groups', value: board.summary.groupsHealthy, foot: 'Groups with recent meeting and active readers' },
+        { label: 'Leaders to Activate', value: board.summary.leadersNeedingActivation, foot: 'No recent meeting + no recent Bible rhythm' },
+        { label: 'Leaders Engaged', value: board.summary.leadersUsingApp, foot: 'Meeting or reading actively through the app' },
+        { label: 'Invite to Group', value: board.summary.usersNotInGroup, foot: 'Active users still outside mission groups' },
+        { label: 'Need Bible Nudge', value: board.summary.usersNotReadingBible, foot: 'Members whose reading rhythm went quiet' },
+        { label: 'Active + Praying', value: board.summary.activeWithGod + board.summary.intercessors, foot: 'People to affirm for spiritual momentum' }
+      ].map((item) => `
+        <article class="care-summary-card">
+          <div class="eyebrow">${escapeHtml(item.label)}</div>
+          <div class="value">${escapeHtml(item.value)}</div>
+          <div class="foot">${escapeHtml(item.foot)}</div>
+        </article>
+      `).join('');
+
+      groupsEl.innerHTML = board.groups.length
+        ? board.groups.map((group) => `
+          <article class="care-group-card">
+            <h3>${escapeHtml(group.name)}</h3>
+            <div class="care-group-meta">
+              <span class="care-badge ${group.tone}">${escapeHtml(group.tone === 'green' ? 'Healthy rhythm' : (group.tone === 'gold' ? 'Mixed movement' : 'Needs activation'))}</span>
+              <span class="care-badge blue">${escapeHtml(`${group.memberCount} member${group.memberCount === 1 ? '' : 's'}`)}</span>
+            </div>
+            <div class="care-group-note">
+              Leader: ${escapeHtml(group.leaderName)}<br>
+              Readers this week: ${escapeHtml(group.activeReaders)}<br>
+              Prayer-active members: ${escapeHtml(group.prayerfulMembers)}<br>
+              Last meeting: ${escapeHtml(group.latestMeetingAt ? formatCompactDate(group.latestMeetingAt) : 'none recorded')}
+            </div>
+          </article>
+        `).join('')
+        : '<div class="care-empty">No mission group status could be built from current records.</div>';
+
+      boardEl.innerHTML = board.sections.map((section) => {
+        const template = CARE_NOTIFICATION_TEMPLATES[section.action] || {};
+        return `
+          <article class="care-board-card">
+            <div class="care-board-head">
+              <h3>${escapeHtml(section.title)}</h3>
+              <p>${escapeHtml(section.description)}</p>
+              <span class="care-board-count">${escapeHtml(section.items.length)} people</span>
+            </div>
+            <div class="care-board-list">
+              ${section.items.length ? section.items.map((item) => `
+                <div class="care-person-card">
+                  <div class="care-person-top">
+                    <div>
+                      <b>${escapeHtml(item.name)}</b>
+                      <div class="meta">${escapeHtml(item.meta || item.email || 'No additional details')}</div>
+                    </div>
+                    <span class="care-badge blue">${escapeHtml(item.streak ? `${item.streak}d streak` : 'Needs follow-up')}</span>
+                  </div>
+                  <div class="care-badge-row">
+                    ${(Array.isArray(item.badges) ? item.badges : []).map((badge) => `
+                      <span class="care-badge ${escapeHtml(badge.tone || 'gold')}">${escapeHtml(badge.label)}</span>
+                    `).join('')}
+                  </div>
+                  <div class="care-actions">
+                    <button
+                      class="secondary"
+                      data-care-notify="1"
+                      data-user-id="${escapeHtml(item.userId || '')}"
+                      data-template-key="${escapeHtml(section.action)}"
+                      data-item-name="${escapeHtml(item.name || '')}"
+                      data-primary-group="${escapeHtml(item.primaryGroupName || '')}">
+                      ${escapeHtml(template.actionLabel || 'Send')}
+                    </button>
+                  </div>
+                </div>
+              `).join('') : `<div class="care-empty">No people in this care segment right now.</div>`}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function sendMissionCareNotification(button) {
+      const userId = String(button?.getAttribute('data-user-id') || '').trim();
+      const templateKey = String(button?.getAttribute('data-template-key') || '').trim();
+      if (!userId || !templateKey) return;
+
+      const template = CARE_NOTIFICATION_TEMPLATES[templateKey];
+      if (!template) return;
+
+      const name = String(button.getAttribute('data-item-name') || '').trim();
+      const primaryGroupName = String(button.getAttribute('data-primary-group') || '').trim();
+      const payloadContext = {
+        name,
+        firstName: getFirstName(name),
+        primaryGroupName
+      };
+
+      try {
+        button.disabled = true;
+        setInlineStatus('missionCareStatus', 'Sending notification...', 'info');
+        await callCustomNotification({
+          targetType: 'user',
+          targetId: userId,
+          title: template.title,
+          body: typeof template.body === 'function' ? template.body(payloadContext) : String(template.body || ''),
+          notificationType: 'mission_care'
+        });
+        setInlineStatus('missionCareStatus', `Notification sent to ${name || userId}.`, 'success');
+      } catch (error) {
+        console.error('[Admin] sendMissionCareNotification error:', error);
+        setInlineStatus('missionCareStatus', `Could not send notification: ${error.message}`, 'error');
+      } finally {
+        button.disabled = false;
+      }
     }
 
     function normalizeGroupEntityEntries(value) {
@@ -3703,16 +4604,20 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const weekKey = formatDateKey(weekStart);
       const monthKey = formatDateKey(monthStart);
 
-      const [membersSnap, groupsSnap, weekDevotionsSnap, monthDevotionsSnap, debriefSnap] = await Promise.all([
+      const [membersSnap, groupsSnap, weekDevotionsSnap, monthDevotionsSnap, debriefSnap, meetingsSnap, devotionChatsSnap] = await Promise.all([
         safeGetDocs(collection(db, 'goMission_members')),
         safeGetDocs(collection(db, 'goMission_groups')),
         safeGetDocs(query(collection(db, 'goMission_devotions'), where('date', '>=', weekKey))),
         safeGetDocs(query(collection(db, 'goMission_devotions'), where('date', '>=', monthKey))),
-        safeGetDocs(query(collection(db, 'goMission_debriefs'), where('submittedAt', '>=', monthStart)))
+        safeGetDocs(query(collection(db, 'goMission_debriefs'), where('submittedAt', '>=', monthStart))),
+        safeGetDocs(query(collection(db, 'goMission_meetings'), limit(250))),
+        safeGetDocs(query(collection(db, 'goMission_chats'), where('type', '==', 'devotion'), limit(300)))
       ]);
 
       const members = membersSnap ? membersSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
       const groups = groupsSnap ? groupsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
+      const meetings = meetingsSnap ? meetingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
+      const devotionChats = devotionChatsSnap ? devotionChatsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [];
 
       cachedGroups = groups;
 
@@ -3785,6 +4690,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       latestMissionHealth = {
         members,
         groups,
+        meetings,
+        devotionChats,
         groupsById: new Map(groups.map((group) => [group.id, group])),
         active_usersMembers: activeUsersMembers,
         mission_membersMembers: missionMembersMembers,
@@ -3795,6 +4702,14 @@ match /goMission/watch-series-covers/{allPaths=**} {
         in_groupsMembers: inGroupsMembers,
         activeGroupsList
       };
+
+      latestMissionCareBoard = buildMissionCareBoard({
+        members,
+        groups,
+        meetings,
+        devotionDocs: monthDevotionsSnap ? monthDevotionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) : [],
+        devotionChats
+      });
 
       const cardsHtml = [
         buildMetricCard('active_users', 'Active Users', activeUsers, 'Last 7 days'),
@@ -3812,6 +4727,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       if (activeMetricKey) {
         renderMetricDetails(activeMetricKey);
       }
+      renderMissionCareBoard(latestMissionCareBoard);
       document.getElementById('lastRefreshText').textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
 
       const statusBreakdown = Object.entries(groupStatuses)
@@ -3822,6 +4738,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         `Health data refreshed. Users: ${totalUsers}, Active users: ${activeUsers}, Groups: ${groups.length}${statusBreakdown ? ` (${statusBreakdown})` : ''}.`,
         'success'
       );
+      setInlineStatus('missionCareStatus', 'Mission care board refreshed.', 'info');
 
       populateGroupSelect();
       populateAnnouncementMemberOptions();
@@ -4692,7 +5609,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           updatedAt: serverTimestamp()
         };
 
-        const sendPushNow = async () => {
+        const sendPushNow = async (savedAnnouncementId = '') => {
           const target = mapAudienceToNotificationTarget(audience, groupId, memberTarget?.uid || null);
 
           const response = await callCustomNotification({
@@ -4701,7 +5618,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
             targetFilter: target.targetFilter,
             title,
             body,
-            notificationType: 'announcement'
+            notificationType: 'announcement',
+            announcementId: savedAnnouncementId || '',
+            notificationId: savedAnnouncementId ? `announcement_${savedAnnouncementId}` : ''
           });
 
           let summary = 'Push request completed.';
@@ -4751,7 +5670,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
         } else {
           savedRef = await addDoc(collection(db, 'goMission_announcements'), announcementDoc);
           if (pushNow) {
-            pushSummary = await sendPushNow();
+            pushSummary = await sendPushNow(savedRef?.id || '');
           }
           await trackTemplateUsage('admin_send');
         }
@@ -5970,6 +6889,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('sundayDate').value = nextSundayDate();
       await Promise.all([
         loadMissionHealth(),
+        loadAdminNotifications({ force: true }),
         loadGroupDeletionRequests(),
         loadAdminInbox(),
         loadGroupIntegrityFailureLogs({ silent: true }),
@@ -5987,6 +6907,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
     function wireEvents() {
       document.getElementById('refreshHealthBtn').addEventListener('click', loadMissionHealth);
+      document.getElementById('refreshMissionCareBtn').addEventListener('click', loadMissionHealth);
       document.getElementById('closeMetricDetailsBtn').addEventListener('click', closeMetricDetails);
       document.getElementById('runGroupIntegrityAuditBtn').addEventListener('click', runGroupIntegrityAudit);
       document.getElementById('refreshGroupIntegrityLogsBtn').addEventListener('click', () => loadGroupIntegrityFailureLogs({ silent: false }));
@@ -5999,6 +6920,11 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('closeGroupRoleResolverBtn').addEventListener('click', closeGroupRoleResolver);
       document.getElementById('closeGroupDuplicateInspectorBtn').addEventListener('click', closeGroupDuplicateInspector);
       document.getElementById('applyGroupRoleResolverBtn').addEventListener('click', applyGroupRoleResolverChanges);
+      document.getElementById('missionCareBoard').addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-care-notify="1"][data-user-id][data-template-key]');
+        if (!button) return;
+        await sendMissionCareNotification(button);
+      });
       document.getElementById('groupRoleResolverRows').addEventListener('change', (event) => {
         const select = event.target.closest('select[data-action="resolver-role-change"][data-group-id]');
         if (!select) return;
@@ -6186,6 +7112,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       });
 
       document.getElementById('reloadAdminInboxBtn').addEventListener('click', loadAdminInbox);
+      document.getElementById('reloadAdminNotificationsBtn').addEventListener('click', () => loadAdminNotifications({ force: true }));
       document.getElementById('adminInboxList').addEventListener('click', async (event) => {
         const btn = event.target.closest('button[data-action][data-inbox-id]');
         if (!btn) return;
@@ -6216,6 +7143,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        unsubscribeAdminNotifications();
         authText.textContent = 'Not signed in. Sign in at gomission.netlify.app first, then reopen this page.';
         showStatus('Authentication required.', 'warn', true);
         return;

@@ -16,8 +16,32 @@ const MyGroups = {
     pendingGroupDeletionRequestsById: {},
     isCreatingGroup: false,
     currentMemberProfile: null,
+    activeGroupDetailContext: null,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
     INTEGRITY_LOGS_COLLECTION: 'goMission_integrityLogs',
+    GROUP_DASHBOARD_THRESHOLDS: {
+        INACTIVE_DAYS: 7,
+        NO_DEVOTION_DAYS: 3,
+        MISSED_MEETINGS: 2,
+        NEW_MEMBER_DAYS: 14
+    },
+    GROUP_CARE_TEMPLATES: {
+        encourage_bible: {
+            title: 'Bible Reading Encouragement',
+            toast: 'Encouragement sent',
+            buildMessage: (member) => `${MyGroups.getFirstName(member)}! Open the Bible today, listen to what God is saying, and write one simple insight in the app.`
+        },
+        check_attendance: {
+            title: 'Mission Group Check-In',
+            toast: 'Check-in sent',
+            buildMessage: (member) => `${MyGroups.getFirstName(member)}! We missed you in the mission group. I’m checking in and praying for you. Let me know how you are doing.`
+        },
+        affirm_active: {
+            title: 'Keep Going With God',
+            toast: 'Affirmation sent',
+            buildMessage: (member) => `${MyGroups.getFirstName(member)}! Thank you for reading the Bible and staying active with God. Keep building on this holy rhythm.`
+        }
+    },
     NO_UPLINE_CREATION_EXEMPT_UIDS: [
         '9zVKHJ11zaXD0f4GI6P7LHD6re32', // Founder
         'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1' // Co-founder (Irene)
@@ -1539,8 +1563,601 @@ const MyGroups = {
         }).join('');
     },
 
+    resolveDate(value) {
+        if (!value) return null;
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+        if (typeof value?.toDate === 'function') {
+            const date = value.toDate();
+            return Number.isNaN(date?.getTime?.()) ? null : date;
+        }
+        if (typeof value === 'object' && typeof value.seconds === 'number') {
+            const date = new Date(value.seconds * 1000);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    },
+
+    escapeForJs(value) {
+        return String(value ?? '')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\r/g, '')
+            .replace(/\n/g, '\\n');
+    },
+
+    getFirstName(member) {
+        const name = String(member?.fullName || member?.displayName || member?.name || member?.email || '').trim();
+        return name.split(/\s+/)[0] || 'kapatid';
+    },
+
+    getMemberDisplayName(memberData = {}) {
+        return memberData.displayName || memberData.fullName || memberData.name || memberData.email?.split('@')[0] || 'Unknown';
+    },
+
+    getMemberPhoto(member = {}) {
+        const name = this.getMemberDisplayName(member);
+        return member.photoURL || member.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4a0404&color=fbbf24`;
+    },
+
+    showToast(message, duration = 2600) {
+        if (!message) return;
+        if (typeof Notifications !== 'undefined' && typeof Notifications.showToast === 'function') {
+            Notifications.showToast({
+                title: 'Mission Group',
+                body: message,
+                icon: 'info',
+                duration
+            });
+            return;
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-3 rounded-full bg-[var(--mission-red-bright)] text-white text-sm font-semibold z-[120] shadow-lg';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), duration);
+    },
+
+    getGroupDashboardMemberStats(memberId, memberData = {}, meetingStatsByMember = {}, activitySignals = {}) {
+        const thresholds = this.GROUP_DASHBOARD_THRESHOLDS;
+        const now = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        const lastActiveDate = this.resolveDate(memberData.lastActive);
+        const lastDevotionDate = this.resolveDate(memberData?.bibleProgress?.lastReadAt);
+        const joinedAtDate = this.resolveDate(memberData.joinedAt || memberData.createdAt);
+        const lastCheckIn = Array.isArray(memberData.leaderCheckIns) ? memberData.leaderCheckIns[memberData.leaderCheckIns.length - 1] : null;
+        const lastCheckInDate = this.resolveDate(lastCheckIn?.date);
+        const devotionStreak = Math.max(0, Number(memberData?.bibleProgress?.currentStreak || 0));
+        const meetingStats = meetingStatsByMember?.[memberId] || {};
+        const sharedSignals = activitySignals?.[memberId] || {};
+
+        const daysSinceActive = lastActiveDate ? Math.floor((now - lastActiveDate.getTime()) / dayMs) : 999;
+        const daysSinceDevotion = lastDevotionDate ? Math.floor((now - lastDevotionDate.getTime()) / dayMs) : 999;
+        const daysSinceJoined = joinedAtDate ? Math.floor((now - joinedAtDate.getTime()) / dayMs) : 0;
+        const daysSinceCheckIn = lastCheckInDate ? Math.floor((now - lastCheckInDate.getTime()) / dayMs) : 999;
+
+        return {
+            daysSinceActive,
+            devotionStreak,
+            daysSinceDevotion,
+            attendedRecent: Number(meetingStats.attendedRecent || 0),
+            missedRecent: Number(meetingStats.missedRecent || 0),
+            consecutiveMisses: Number(meetingStats.consecutiveMisses || 0),
+            lastAttendedAt: meetingStats.lastAttendedAt || null,
+            daysSinceJoined,
+            daysSinceCheckIn,
+            isNew: daysSinceJoined <= thresholds.NEW_MEMBER_DAYS,
+            sharedDevotions: Number(sharedSignals.sharedDevotions || 0),
+            sharedInsights: Number(sharedSignals.sharedInsights || 0),
+            prayerRequestsShared: Number(sharedSignals.prayerRequestsShared || 0),
+            prayedForOthers: Number(sharedSignals.prayedForOthers || 0),
+            needsBibleNudge: daysSinceDevotion >= thresholds.NO_DEVOTION_DAYS,
+            needsAttendanceFollowUp: Number(meetingStats.consecutiveMisses || 0) >= thresholds.MISSED_MEETINGS,
+            isSpirituallyActive: daysSinceDevotion <= 2 && (
+                devotionStreak >= 3 ||
+                Number(sharedSignals.sharedInsights || 0) > 0 ||
+                Number(sharedSignals.prayerRequestsShared || 0) > 0 ||
+                Number(sharedSignals.prayedForOthers || 0) > 0
+            )
+        };
+    },
+
+    getGroupAttentionAlerts(member) {
+        const thresholds = this.GROUP_DASHBOARD_THRESHOLDS;
+        const stats = member?.stats || {};
+        const alerts = [];
+
+        if (stats.daysSinceActive >= thresholds.INACTIVE_DAYS) {
+            alerts.push({
+                type: 'inactive',
+                priority: 3,
+                tone: 'bg-red-500/10 text-red-300 border-red-500/20',
+                label: `Inactive for ${stats.daysSinceActive} day${stats.daysSinceActive === 1 ? '' : 's'}`
+            });
+        }
+
+        if (stats.daysSinceDevotion >= thresholds.NO_DEVOTION_DAYS) {
+            alerts.push({
+                type: 'no_devotion',
+                priority: 2,
+                tone: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+                label: stats.daysSinceDevotion >= 999
+                    ? 'No recent Bible reading found'
+                    : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since reading`
+            });
+        }
+
+        if ((stats.consecutiveMisses || 0) >= thresholds.MISSED_MEETINGS) {
+            alerts.push({
+                type: 'missed_meetings',
+                priority: 3,
+                tone: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
+                label: `${stats.consecutiveMisses} missed meeting${stats.consecutiveMisses === 1 ? '' : 's'} in a row`
+            });
+        }
+
+        if (stats.isNew) {
+            alerts.push({
+                type: 'new_member',
+                priority: 1,
+                tone: 'bg-sky-500/10 text-sky-300 border-sky-500/20',
+                label: 'New member needing follow-up'
+            });
+        }
+
+        return alerts.sort((a, b) => b.priority - a.priority);
+    },
+
+    getGroupDetailStreakLabel(stats = {}) {
+        if (stats.devotionStreak >= 7) return '7-day rhythm';
+        if (stats.devotionStreak >= 3) return '3-day rhythm';
+        if (stats.devotionStreak > 0) return 'Building rhythm';
+        return 'Start today';
+    },
+
+    renderGroupDetailStreakGraphic(stats = {}) {
+        const streak = Math.max(0, Number(stats.devotionStreak || 0));
+        const filled = Math.min(7, streak);
+        const filledClass = streak >= 7
+            ? 'bg-amber-400'
+            : (streak >= 3 ? 'bg-green-400' : 'bg-[var(--mission-gold)]/40');
+        const label = this.getGroupDetailStreakLabel(stats);
+
+        return `
+            <div class="mt-2">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[10px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Bible rhythm</span>
+                    <span class="text-[10px] font-bold ${streak >= 7 ? 'text-amber-300' : (streak >= 3 ? 'text-green-300' : 'text-[var(--mission-gold)]')}">${this.escapeHtml(label)}</span>
+                </div>
+                <div class="mt-1 grid grid-cols-7 gap-1">
+                    ${Array.from({ length: 7 }).map((_, index) => `
+                        <span class="h-2 rounded-full ${index < filled ? filledClass : 'bg-[var(--input-bg)] border border-[var(--card-border)]/60'}"></span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    getGroupCareSegments(members = []) {
+        const encourageBible = members
+            .filter((member) => member.stats?.needsBibleNudge)
+            .sort((a, b) => (b.stats?.daysSinceDevotion || 0) - (a.stats?.daysSinceDevotion || 0));
+
+        const attendanceFollowUp = members
+            .filter((member) => member.stats?.needsAttendanceFollowUp)
+            .sort((a, b) => (b.stats?.consecutiveMisses || 0) - (a.stats?.consecutiveMisses || 0));
+
+        const affirmActive = members
+            .filter((member) => member.stats?.isSpirituallyActive)
+            .sort((a, b) => {
+                if ((b.stats?.devotionStreak || 0) !== (a.stats?.devotionStreak || 0)) {
+                    return (b.stats?.devotionStreak || 0) - (a.stats?.devotionStreak || 0);
+                }
+                return (b.stats?.prayedForOthers || 0) - (a.stats?.prayedForOthers || 0);
+            });
+
+        return { encourageBible, attendanceFollowUp, affirmActive };
+    },
+
+    buildGroupCareRow(groupId, member, mode = 'encourage_bible') {
+        const stats = member?.stats || {};
+        const config = {
+            encourage_bible: {
+                title: 'Encourage Bible Reading',
+                description: stats.daysSinceDevotion >= 999
+                    ? 'No recent Bible reading found'
+                    : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since last reading`,
+                button: 'Encourage',
+                accent: 'text-amber-300'
+            },
+            check_attendance: {
+                title: 'Check Attendance',
+                description: `${stats.consecutiveMisses || 0} missed meeting${(stats.consecutiveMisses || 0) === 1 ? '' : 's'} in a row`,
+                button: 'Check In',
+                accent: 'text-rose-300'
+            },
+            affirm_active: {
+                title: 'Affirm Active Member',
+                description: `${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'} • ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}`,
+                button: 'Affirm',
+                accent: 'text-green-300'
+            }
+        }[mode];
+
+        return `
+            <div class="rounded-[24px] border border-[var(--card-border)] bg-[var(--input-bg)]/55 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <p class="text-[11px] uppercase tracking-[0.16em] ${config.accent} mt-0.5">${this.escapeHtml(config.title)}</p>
+                            <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(config.description)}</p>
+                        </div>
+                    </div>
+                    <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${mode}')"
+                            class="shrink-0 px-3 py-2 rounded-2xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-[11px] font-bold">
+                        ${this.escapeHtml(config.button)}
+                    </button>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${stats.devotionStreak >= 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/20">7-day streak</span>' : ''}
+                    ${stats.devotionStreak >= 3 && stats.devotionStreak < 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20">3-day streak</span>' : ''}
+                    ${stats.prayedForOthers > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/20">Praying for ${stats.prayedForOthers}</span>` : ''}
+                    ${stats.attendedRecent > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+                </div>
+                ${this.renderGroupDetailStreakGraphic(stats)}
+            </div>
+        `;
+    },
+
+    buildGroupAttentionRow(groupId, member) {
+        const alerts = this.getGroupAttentionAlerts(member);
+        const primaryAction = member?.stats?.needsAttendanceFollowUp ? 'check_attendance' : 'encourage_bible';
+
+        return `
+            <div class="rounded-[24px] border border-[var(--mission-red-bright)]/18 bg-[var(--mission-red-bright)]/6 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <img src="${this.getMemberPhoto(member)}" class="w-11 h-11 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                ${alerts.map((alert) => `
+                                    <span class="px-2 py-1 rounded-full border text-[10px] font-semibold ${alert.tone}">
+                                        ${this.escapeHtml(alert.label)}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${primaryAction}')"
+                            class="shrink-0 px-3 py-2 rounded-2xl bg-white/90 text-[var(--mission-red-deep)] text-[11px] font-bold">
+                        Message
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    getThisWeeksFocus(careSegments = {}) {
+        if (careSegments.attendanceFollowUp?.length) {
+            return {
+                mode: 'check_attendance',
+                title: 'Check on attendance first',
+                description: 'Start with the member who is missing meetings so they feel seen before they drift farther.',
+                member: careSegments.attendanceFollowUp[0]
+            };
+        }
+
+        if (careSegments.encourageBible?.length) {
+            return {
+                mode: 'encourage_bible',
+                title: 'Restart Bible rhythm',
+                description: 'One simple encouragement can help this member open the Bible again this week.',
+                member: careSegments.encourageBible[0]
+            };
+        }
+
+        if (careSegments.affirmActive?.length) {
+            return {
+                mode: 'affirm_active',
+                title: 'Affirm spiritual momentum',
+                description: 'Encourage the member who is already responding to God so the habit becomes stronger.',
+                member: careSegments.affirmActive[0]
+            };
+        }
+
+        return null;
+    },
+
+    async loadGroupDetailDashboardData(group) {
+        if (!group?.id || !window.db) {
+            return {
+                members: [],
+                careMembers: [],
+                careSegments: { encourageBible: [], attendanceFollowUp: [], affirmActive: [] },
+                prayerList: [],
+                meetings: [],
+                health: {},
+                weeklyFocus: null
+            };
+        }
+
+        const normalizedMemberIds = this.normalizeCollectionEntries(group.members)
+            .map((entry) => this.getEntityUserId(entry))
+            .filter(Boolean);
+        if (group.leaderId && !normalizedMemberIds.includes(group.leaderId)) {
+            normalizedMemberIds.unshift(group.leaderId);
+        }
+        const uniqueMemberIds = [...new Set(normalizedMemberIds)];
+
+        const [memberProfiles, meetingsSnapshot, chatsSnapshot, prayerSnapshot] = await Promise.all([
+            Promise.all(uniqueMemberIds.map(async (memberId) => {
+                try {
+                    const snap = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+                    return { id: memberId, data: snap.exists() ? (snap.data() || {}) : {} };
+                } catch (error) {
+                    console.warn('[MyGroups] Failed loading member profile:', memberId, error);
+                    return { id: memberId, data: {} };
+                }
+            })),
+            window.getDocs(window.query(
+                window.collection(window.db, 'goMission_meetings'),
+                window.where('groupId', '==', group.id),
+                window.limit(24)
+            )).catch((error) => {
+                console.warn('[MyGroups] Failed loading meetings:', group.id, error);
+                return { docs: [] };
+            }),
+            window.getDocs(window.query(
+                window.collection(window.db, 'goMission_chats'),
+                window.where('groupId', '==', group.id),
+                window.limit(160)
+            )).catch((error) => {
+                console.warn('[MyGroups] Failed loading chat activity:', group.id, error);
+                return { docs: [] };
+            }),
+            window.getDocs(window.query(
+                window.collection(window.db, 'goMission_groups', group.id, 'prayerRequests'),
+                window.limit(40)
+            )).catch((error) => {
+                console.warn('[MyGroups] Failed loading prayer requests:', group.id, error);
+                return { docs: [] };
+            })
+        ]);
+
+        const meetings = (meetingsSnapshot?.docs || [])
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .sort((a, b) => {
+                const aTime = this.resolveDate(a?.startedAt || a?.createdAt || a?.updatedAt || a?.date)?.getTime() || 0;
+                const bTime = this.resolveDate(b?.startedAt || b?.createdAt || b?.updatedAt || b?.date)?.getTime() || 0;
+                return bTime - aTime;
+            });
+
+        const meetingStatsByMember = {};
+        uniqueMemberIds.forEach((memberId) => {
+            meetingStatsByMember[memberId] = {
+                attendedRecent: 0,
+                missedRecent: 0,
+                consecutiveMisses: 0,
+                lastAttendedAt: null
+            };
+        });
+
+        const recentMeetings = meetings.slice(0, 4);
+        uniqueMemberIds.forEach((memberId) => {
+            let missChain = 0;
+            let chainBroken = false;
+
+            recentMeetings.forEach((meeting) => {
+                const attendeeIds = new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+                    .map((entry) => this.getEntityUserId(entry))
+                    .filter(Boolean));
+                const meetingDate = this.resolveDate(meeting?.startedAt || meeting?.createdAt || meeting?.updatedAt || meeting?.date);
+
+                if (attendeeIds.has(memberId)) {
+                    meetingStatsByMember[memberId].attendedRecent += 1;
+                    if (!meetingStatsByMember[memberId].lastAttendedAt && meetingDate) {
+                        meetingStatsByMember[memberId].lastAttendedAt = meetingDate;
+                    }
+                    chainBroken = true;
+                } else {
+                    meetingStatsByMember[memberId].missedRecent += 1;
+                    if (!chainBroken) missChain += 1;
+                }
+            });
+
+            meetingStatsByMember[memberId].consecutiveMisses = missChain;
+        });
+
+        const activitySignals = {};
+        uniqueMemberIds.forEach((memberId) => {
+            activitySignals[memberId] = {
+                sharedDevotions: 0,
+                sharedInsights: 0,
+                prayerRequestsShared: 0,
+                prayedForOthers: 0
+            };
+        });
+
+        (chatsSnapshot?.docs || []).forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            if (String(data.type || '') !== 'devotion') return;
+
+            const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
+            const senderId = String(data.senderId || devotion.uid || data.userId || '').trim();
+            if (senderId && activitySignals[senderId]) {
+                activitySignals[senderId].sharedDevotions += 1;
+                const understanding = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
+                const action = String(devotion.actionText || devotion.commitment || '').trim();
+                if (understanding || action) activitySignals[senderId].sharedInsights += 1;
+
+                const prayerRequests = Array.isArray(devotion.prayerRequests)
+                    ? devotion.prayerRequests.filter((item) => String(item?.text || item || '').trim())
+                    : [];
+                activitySignals[senderId].prayerRequestsShared += prayerRequests.length;
+            }
+
+            const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
+                ? devotion.prayerSupports
+                : {};
+            Object.values(supportMap).forEach((supportEntries) => {
+                if (!Array.isArray(supportEntries)) return;
+                supportEntries.forEach((entry) => {
+                    const uid = String(entry?.uid || entry?.userId || entry?.id || '').trim();
+                    if (uid && activitySignals[uid]) {
+                        activitySignals[uid].prayedForOthers += 1;
+                    }
+                });
+            });
+        });
+
+        const members = memberProfiles.map(({ id, data }) => {
+            const stats = this.getGroupDashboardMemberStats(id, data, meetingStatsByMember, activitySignals);
+            return {
+                id,
+                ...data,
+                fullName: this.getMemberDisplayName(data),
+                isLeader: id === group.leaderId,
+                stats
+            };
+        }).sort((a, b) => {
+            const aAlerts = this.getGroupAttentionAlerts(a).length;
+            const bAlerts = this.getGroupAttentionAlerts(b).length;
+            if (aAlerts !== bAlerts) return bAlerts - aAlerts;
+            return String(a.fullName || '').localeCompare(String(b.fullName || ''));
+        });
+
+        const careMembers = members.filter((member) => !member.isLeader);
+        const careSegments = this.getGroupCareSegments(careMembers);
+        const weeklyFocus = this.getThisWeeksFocus(careSegments);
+        const prayerList = (prayerSnapshot?.docs || [])
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .sort((a, b) => {
+                const aTime = this.resolveDate(a?.createdAt || a?.updatedAt)?.getTime() || 0;
+                const bTime = this.resolveDate(b?.createdAt || b?.updatedAt)?.getTime() || 0;
+                return bTime - aTime;
+            });
+
+        const active7d = members.filter((member) => {
+            const stats = member.stats || {};
+            return stats.daysSinceActive <= 7 || stats.daysSinceDevotion <= 7 || stats.attendedRecent > 0;
+        }).length;
+        const readingBible = members.filter((member) => (member.stats?.daysSinceDevotion || 999) <= 2).length;
+        const activeWithGod = members.filter((member) => member.stats?.isSpirituallyActive).length;
+        const prayingForOthers = members.filter((member) => (member.stats?.prayedForOthers || 0) > 0).length;
+        const openPrayerCount = prayerList.filter((item) => !item.answered && !item.answeredAt).length;
+
+        return {
+            members,
+            careMembers,
+            careSegments,
+            weeklyFocus,
+            prayerList,
+            meetings,
+            health: {
+                memberCount: members.length,
+                active7d,
+                readingBible,
+                activeWithGod,
+                prayingForOthers,
+                openPrayerCount,
+                recentMeetingCount: recentMeetings.length,
+                lastMeetingAt: meetings[0]?.startedAt || meetings[0]?.createdAt || meetings[0]?.updatedAt || meetings[0]?.date || null
+            }
+        };
+    },
+
+    async sendGroupCareMessage(groupId, memberId, mode = 'encourage_bible') {
+        const context = this.activeGroupDetailContext;
+        const member = context?.members?.find((entry) => entry.id === memberId);
+        const template = this.GROUP_CARE_TEMPLATES[mode];
+        if (!member || !template) return;
+
+        const message = template.buildMessage(member);
+        let sent = false;
+
+        try {
+            if (typeof window.sendCustomNotificationCallable === 'function') {
+                await window.sendCustomNotificationCallable({
+                    targetType: 'user',
+                    targetId: memberId,
+                    title: template.title,
+                    body: message,
+                    notificationType: 'leader_care'
+                });
+                sent = true;
+            }
+        } catch (error) {
+            console.warn('[MyGroups] Failed sending group care notification:', error);
+        }
+
+        try {
+            await navigator.clipboard?.writeText(message);
+        } catch (_) {}
+
+        this.showToast(sent ? `${template.toast}. Message copied.` : 'Message copied. Paste it in chat if needed.');
+    },
+
+    async submitGroupPrayerRequest(groupId) {
+        if (!window.currentUser?.uid || !window.db) return;
+
+        const memberId = String(document.getElementById('groupPrayerMemberId')?.value || '').trim();
+        const request = String(document.getElementById('groupPrayerRequest')?.value || '').trim();
+        const member = this.activeGroupDetailContext?.members?.find((entry) => entry.id === memberId);
+
+        if (!memberId || !request) {
+            this.showToast('Select a member and write the prayer request');
+            return;
+        }
+
+        try {
+            await window.addDoc(
+                window.collection(window.db, 'goMission_groups', groupId, 'prayerRequests'),
+                {
+                    memberId,
+                    memberName: member?.fullName || 'Unknown',
+                    request,
+                    createdAt: new Date().toISOString(),
+                    createdBy: window.currentUser.uid,
+                    answered: false
+                }
+            );
+
+            await this.viewGroupDetails(groupId);
+            this.showToast('Prayer request added');
+        } catch (error) {
+            console.error('[MyGroups] submitGroupPrayerRequest error:', error);
+            this.showToast('Could not add prayer request');
+        }
+    },
+
+    async markGroupPrayerAnswered(groupId, requestId) {
+        if (!window.currentUser?.uid || !window.db) return;
+
+        try {
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groups', groupId, 'prayerRequests', requestId),
+                {
+                    answered: true,
+                    answeredAt: new Date().toISOString(),
+                    answeredBy: window.currentUser.uid
+                },
+                { merge: true }
+            );
+
+            await this.viewGroupDetails(groupId);
+            this.showToast('Prayer marked as answered');
+        } catch (error) {
+            console.error('[MyGroups] markGroupPrayerAnswered error:', error);
+            this.showToast('Could not update prayer request');
+        }
+    },
+
     /**
-     * Open detailed group settings/member view from mission dashboard (leader-focused)
+     * Open detailed group dashboard view from mission dashboard (leader-focused)
      */
     async viewGroupDetails(groupId) {
         const group = this.getGroupById(groupId);
@@ -1551,7 +2168,6 @@ const MyGroups = {
 
         const isLeader = group.leaderId === window.currentUser?.uid;
         if (!isLeader) {
-            // Keep member flow simple: no advanced settings view.
             this.showGroupMembers(groupId);
             return;
         }
@@ -1562,7 +2178,7 @@ const MyGroups = {
 
         content.innerHTML = `
             <div class="p-6 text-center">
-                <p class="text-[var(--text-muted)]">Loading group details...</p>
+                <p class="text-[var(--text-muted)]">Loading group dashboard...</p>
             </div>
         `;
         modal.classList.remove('hidden');
@@ -1574,103 +2190,151 @@ const MyGroups = {
             const reminderMinutes = Number(reminderConfig.minutesBefore || 30);
             const alarmEnabled = reminderConfig.alarmEnabled !== false;
             const pushEnabled = reminderConfig.pushEnabled !== false;
-
-            const memberIds = Array.isArray(group.members) ? group.members : [];
-            const uniqueMemberIds = [...new Set(memberIds)];
-            const memberProfiles = await Promise.all(uniqueMemberIds.map(async (memberId) => {
-                try {
-                    const snap = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
-                    return {
-                        id: memberId,
-                        data: snap.exists() ? snap.data() : {}
-                    };
-                } catch (error) {
-                    console.warn('[MyGroups] Failed loading member profile:', memberId, error);
-                    return { id: memberId, data: {} };
-                }
-            }));
-
             const scheduleConfig = group.meetingSchedule || group.schedule || null;
             const scheduleLabel = scheduleConfig?.day && scheduleConfig?.time
                 ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
                 : 'No meeting schedule set';
             const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const meetingLock = this.getGroupMeetingLockState(group);
-            const groupNameSafe = this.escapeHtml(group.name || 'Mission Group');
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
-            const groupIdForJs = String(groupId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const groupIdSafe = this.escapeForJs(groupId);
+            const dashboardData = await this.loadGroupDetailDashboardData(group);
 
-            const membersHtml = memberProfiles.map(({ id, data }) => {
-                const displayName = this.escapeHtml(data.displayName || data.name || data.email?.split('@')[0] || 'Member');
-                const email = this.escapeHtml(data.email || 'Not set');
-                const mobile = this.escapeHtml(data.mobile || data.phone || 'Not set');
-                const birthday = this.escapeHtml(data.birthday || data.birthDate || 'Not set');
-                const spouse = this.escapeHtml(data.spouseName || data.spouse?.name || data.family?.spouseName || 'Not set');
-                const childrenRaw = data.childrenNames || data.children || data.family?.childrenNames || data.family?.children;
-                const children = Array.isArray(childrenRaw)
-                    ? childrenRaw.join(', ')
-                    : (childrenRaw || 'Not set');
+            this.activeGroupDetailContext = {
+                groupId,
+                members: dashboardData.members,
+                prayerList: dashboardData.prayerList
+            };
+
+            const focus = dashboardData.weeklyFocus;
+            const focusMember = focus?.member || null;
+            const focusButton = focus
+                ? (focus.mode === 'affirm_active' ? 'Affirm' : (focus.mode === 'check_attendance' ? 'Check In' : 'Encourage'))
+                : 'Open Chat';
+
+            const needsAttentionHtml = dashboardData.careMembers
+                .filter((member) => this.getGroupAttentionAlerts(member).length > 0)
+                .slice(0, 6)
+                .map((member) => this.buildGroupAttentionRow(groupId, member))
+                .join('');
+
+            const membersHtml = dashboardData.members.map((member) => {
+                const stats = member.stats || {};
+                const email = this.escapeHtml(member.email || 'Not set');
+                const mobile = this.escapeHtml(member.mobile || member.phone || 'Not set');
+                const lastReadLabel = stats.daysSinceDevotion >= 999
+                    ? 'No recent Bible reading'
+                    : `Read ${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} ago`;
+                const meetingLabel = stats.lastAttendedAt
+                    ? `Last meeting ${this.resolveDate(stats.lastAttendedAt)?.toLocaleDateString() || 'recorded'}`
+                    : 'No recorded meeting yet';
 
                 return `
-                    <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="font-bold text-[var(--text-color)]">${displayName}</p>
-                            <span class="text-[10px] uppercase tracking-wider ${id === group.leaderId ? 'text-[var(--mission-gold)]' : 'text-[var(--text-muted)]'}">${id === group.leaderId ? 'Leader' : 'Member'}</span>
+                    <div class="rounded-[24px] border ${member.isLeader ? 'border-[var(--mission-gold)]/35 bg-[var(--mission-gold)]/8' : 'border-[var(--card-border)] bg-[var(--card-bg)]'} p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-start gap-3 min-w-0">
+                                <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                                    <p class="text-[10px] uppercase tracking-[0.16em] ${member.isLeader ? 'text-[var(--mission-gold)]' : 'text-[var(--text-muted)]'}">${member.isLeader ? 'Leader' : 'Member'}</p>
+                                    <p class="text-[11px] text-[var(--text-muted)] mt-2">${lastReadLabel}</p>
+                                    <p class="text-[11px] text-[var(--text-muted)]">${meetingLabel}</p>
+                                </div>
+                            </div>
+                            ${!member.isLeader ? `
+                                <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(member.id)}', '${member.stats?.isSpirituallyActive ? 'affirm_active' : (member.stats?.needsAttendanceFollowUp ? 'check_attendance' : 'encourage_bible')}')"
+                                        class="shrink-0 px-3 py-2 rounded-2xl border border-[var(--mission-gold)]/30 text-[11px] font-bold text-[var(--mission-gold)]">
+                                    Message
+                                </button>
+                            ` : ''}
                         </div>
-                        <div class="mt-3 grid grid-cols-1 gap-1.5 text-xs text-[var(--text-muted)]">
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--text-muted)]">
                             <p>📧 ${email}</p>
                             <p>📱 ${mobile}</p>
-                            <p>🎂 ${birthday}</p>
-                            <p>💍 ${spouse}</p>
-                            <p>👶 ${this.escapeHtml(children)}</p>
+                            <p>🙏 ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}</p>
+                            <p>💬 ${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'}</p>
                         </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            ${stats.prayedForOthers > 0 ? `<span class="px-2 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/20 text-[10px] font-semibold">Praying for ${stats.prayedForOthers}</span>` : ''}
+                            ${stats.attendedRecent > 0 ? `<span class="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+                            ${stats.needsAttendanceFollowUp ? '<span class="px-2 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/20 text-[10px] font-semibold">Needs attendance follow-up</span>' : ''}
+                        </div>
+                        ${this.renderGroupDetailStreakGraphic(stats)}
                     </div>
                 `;
             }).join('');
 
+            const prayerMemberOptions = dashboardData.members.map((member) => `
+                <option value="${this.escapeHtml(member.id)}">${this.escapeHtml(member.fullName || 'Unknown')}${member.isLeader ? ' (Leader)' : ''}</option>
+            `).join('');
+
+            const prayerListHtml = dashboardData.prayerList.length
+                ? dashboardData.prayerList.slice(0, 8).map((item) => {
+                    const createdAt = this.resolveDate(item.createdAt || item.updatedAt);
+                    const answered = !!(item.answered || item.answeredAt);
+                    return `
+                        <div class="rounded-[22px] border ${answered ? 'border-emerald-500/20 bg-emerald-500/8' : 'border-[var(--card-border)] bg-[var(--card-bg)]'} p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-[var(--text-color)]">${this.escapeHtml(item.memberName || 'Member')}</p>
+                                    <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(item.request || 'No details')}</p>
+                                    <p class="text-[10px] uppercase tracking-[0.16em] mt-2 ${answered ? 'text-emerald-300' : 'text-[var(--mission-gold)]'}">
+                                        ${answered ? 'Answered' : 'Open'}${createdAt ? ` • ${createdAt.toLocaleDateString()}` : ''}
+                                    </p>
+                                </div>
+                                ${!answered ? `
+                                    <button onclick="window.MyGroups.markGroupPrayerAnswered('${groupIdSafe}', '${this.escapeForJs(item.id)}')"
+                                            class="shrink-0 px-3 py-2 rounded-2xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 text-[11px] font-bold">
+                                        Mark Answered
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('')
+                : `
+                    <div class="rounded-[22px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/45 p-5 text-center">
+                        <p class="text-[var(--text-color)] font-semibold">No prayer requests yet</p>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Add prayer needs for your members.</p>
+                    </div>
+                `;
+
             content.innerHTML = `
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${groupNameSafe}</h3>
-                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                <div class="p-5 sm:p-6">
+                    <div class="flex items-start justify-between gap-3 mb-5">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Dashboard</p>
+                            <h3 class="text-xl font-black text-[var(--text-color)] leading-tight mt-1">${this.escapeHtml(group.name || 'Mission Group')}</h3>
+                            <div class="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                                <span>${dashboardData.health.memberCount || 0} members</span>
+                                <span>${meetingLive ? 'Meeting live now' : 'Meeting waiting'}</span>
+                                <span>${this.escapeHtml(scheduleLabel)}</span>
+                            </div>
+                        </div>
+                        <button onclick="window.MyGroups.closeModal()" class="shrink-0 text-[var(--text-muted)] text-xl leading-none">✕</button>
                     </div>
 
-	                    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-	                        ${pendingRequestsCount > 0 ? `
-	                        <button onclick="window.MyGroups.showJoinRequests('${groupIdForJs}')"
-	                                class="w-full rounded-xl border border-[var(--mission-gold)]/35 bg-[var(--card-bg)] px-4 py-3 text-sm font-bold text-[var(--mission-gold)] flex items-center justify-between">
-	                            <span>🔔 Pending Requests</span>
-	                            <span class="bg-red-500 text-white text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2 border border-white/80">${pendingRequestsCount}</span>
-	                        </button>
-	                        ` : ''}
-	                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
-	                            <div class="flex items-center justify-between gap-2">
-	                                <div>
-	                                    <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Group Settings</p>
-                                    <p class="font-semibold text-[var(--text-color)] mt-1">📅 ${this.escapeHtml(scheduleLabel)}</p>
-                                </div>
-                                <span class="text-[10px] uppercase tracking-wider ${meetingLive ? 'text-green-500' : 'text-[var(--text-muted)]'}">
-                                    ${meetingLive ? 'Live now' : 'Waiting'}
-                                </span>
-                            </div>
-                            <div class="mt-3">
-                                <label class="block text-xs text-[var(--text-muted)] mb-1">Group Name</label>
-                                <div class="flex items-center gap-2">
-                                    <input id="groupNameInput" type="text" value="${groupNameSafe}" maxlength="80"
-                                           class="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-color)]">
-                                    <button onclick="window.MyGroups.saveGroupName('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-                                            class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-red-bright)] text-white whitespace-nowrap">
-                                        Save Name
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-3 flex items-center gap-2">
-                                <button onclick="window.MyGroups.editSchedule('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-                                        class="px-3 py-2 rounded-lg text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
-                                    Edit Day & Time
+                    <div class="space-y-4 max-h-[76vh] overflow-y-auto pr-1">
+                        ${pendingRequestsCount > 0 ? `
+                            <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
+                                    class="w-full rounded-[24px] border border-[var(--mission-gold)]/35 bg-[var(--card-bg)] px-4 py-3 text-sm font-bold text-[var(--mission-gold)] flex items-center justify-between">
+                                <span>🔔 Pending Requests</span>
+                                <span class="bg-red-500 text-white text-xs font-black rounded-full min-w-[24px] h-6 flex items-center justify-center px-2 border border-white/80">${pendingRequestsCount}</span>
+                            </button>
+                        ` : ''}
+
+                        <div class="rounded-[28px] border border-[var(--mission-gold)]/22 bg-[linear-gradient(145deg,rgba(255,193,7,0.12),rgba(120,0,0,0.03))] p-4">
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
+                                        class="px-4 py-2 rounded-2xl bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-sm font-bold">
+                                    Invite
                                 </button>
-                                <button onclick="window.MyGroups.handleMeetingAction('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', true)"
-                                        class="px-3 py-2 rounded-lg text-xs font-bold border ${meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]'} ${meetingLock.locked ? '!bg-[var(--mission-red-bright)]/15 !text-[var(--mission-red-bright)] !border-[var(--mission-red-bright)]/40' : ''}">
+                                <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
+                                        class="px-4 py-2 rounded-2xl border border-[var(--card-border)] text-[var(--text-color)] text-sm font-bold">
+                                    Chat
+                                </button>
+                                <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
+                                        class="px-4 py-2 rounded-2xl text-sm font-bold border ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] border-[var(--mission-red-bright)]/30' : (meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--card-bg)] text-[var(--text-color)] border-[var(--card-border)]')}">
                                     ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting (Live)' : 'Join Meeting')}
                                 </button>
                             </div>
@@ -1679,15 +2343,195 @@ const MyGroups = {
                             ` : ''}
                         </div>
 
-                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
-                            <p class="text-xs uppercase tracking-wider text-[var(--text-muted)] mb-3">My Meeting Reminder</p>
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">This Week’s Focus</p>
+                                    <h4 class="text-lg font-black text-[var(--text-color)] mt-1">${this.escapeHtml(focus?.title || 'Strengthen one member this week')}</h4>
+                                </div>
+                                ${focusMember ? `<span class="text-[10px] uppercase tracking-[0.16em] text-[var(--text-muted)]">${this.escapeHtml(focus.mode.replace('_', ' '))}</span>` : ''}
+                            </div>
+                            ${focusMember ? `
+                                <div class="mt-4 flex items-start gap-3">
+                                    <img src="${this.getMemberPhoto(focusMember)}" class="w-14 h-14 rounded-full border border-[var(--mission-gold)]/30 object-cover">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-base font-bold text-[var(--text-color)]">${this.escapeHtml(focusMember.fullName || 'Unknown')}</p>
+                                        <p class="text-sm text-[var(--text-muted)] mt-1">${this.escapeHtml(focus.description || '')}</p>
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                            ${this.getGroupAttentionAlerts(focusMember).slice(0, 2).map((alert) => `
+                                                <span class="px-2 py-1 rounded-full border text-[10px] font-semibold ${alert.tone}">
+                                                    ${this.escapeHtml(alert.label)}
+                                                </span>
+                                            `).join('')}
+                                            ${focusMember.stats?.devotionStreak >= 7 ? '<span class="px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/20 text-[10px] font-semibold">7-day streak</span>' : ''}
+                                            ${focusMember.stats?.devotionStreak >= 3 && focusMember.stats?.devotionStreak < 7 ? '<span class="px-2 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-500/20 text-[10px] font-semibold">3-day streak</span>' : ''}
+                                        </div>
+                                        ${this.renderGroupDetailStreakGraphic(focusMember.stats || {})}
+                                    </div>
+                                    <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(focusMember.id)}', '${focus.mode}')"
+                                            class="shrink-0 px-4 py-2 rounded-2xl bg-[var(--mission-red-bright)] text-white text-sm font-bold">
+                                        ${focusButton}
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="mt-4 rounded-[22px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/45 p-5 text-center">
+                                    <p class="text-[var(--text-color)] font-semibold">No urgent focus right now</p>
+                                    <p class="text-sm text-[var(--text-muted)] mt-1">Use this week to affirm members who are building consistency with God.</p>
+                                </div>
+                            `}
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--mission-red-bright)]/20 bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-red-bright)]">Needs Attention</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careMembers.filter((member) => this.getGroupAttentionAlerts(member).length > 0).length}</span>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${needsAttentionHtml || '<p class="text-sm text-[var(--text-muted)]">No members need immediate follow-up.</p>'}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Encourage Bible Reading</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.encourageBible.length}</span>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${dashboardData.careSegments.encourageBible.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'encourage_bible')).join('') || '<p class="text-sm text-[var(--text-muted)]">Everyone has recent Bible activity.</p>'}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Check Attendance</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.attendanceFollowUp.length}</span>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${dashboardData.careSegments.attendanceFollowUp.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'check_attendance')).join('') || '<p class="text-sm text-[var(--text-muted)]">No members are currently missing meetings in a row.</p>'}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Affirm Active Members</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.careSegments.affirmActive.length}</span>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${dashboardData.careSegments.affirmActive.slice(0, 6).map((member) => this.buildGroupCareRow(groupId, member, 'affirm_active')).join('') || '<p class="text-sm text-[var(--text-muted)]">No active members to affirm yet.</p>'}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Health</p>
+                                <span class="text-[11px] text-[var(--text-muted)]">${dashboardData.health.lastMeetingAt ? `Latest meeting ${this.resolveDate(dashboardData.health.lastMeetingAt)?.toLocaleDateString() || ''}` : 'No recorded meeting yet'}</span>
+                            </div>
+                            <div class="mt-4 grid grid-cols-2 gap-3">
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-[var(--mission-red-bright)]">${dashboardData.health.memberCount || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Members</p>
+                                </div>
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-emerald-400">${dashboardData.health.active7d || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Active 7d</p>
+                                </div>
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-amber-400">${dashboardData.health.readingBible || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Reading Bible</p>
+                                </div>
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-sky-400">${dashboardData.health.activeWithGod || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Active With God</p>
+                                </div>
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-[var(--mission-gold)]">${dashboardData.health.openPrayerCount || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Open Prayers</p>
+                                </div>
+                                <div class="rounded-[22px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4 text-center">
+                                    <p class="text-3xl font-black text-violet-300">${dashboardData.health.prayingForOthers || 0}</p>
+                                    <p class="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)] mt-1">Praying For Others</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Prayer List</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.prayerList.length}</span>
+                            </div>
+                            <div class="mt-4 rounded-[24px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4">
+                                <div class="grid grid-cols-1 gap-3">
+                                    <select id="groupPrayerMemberId" class="w-full bg-[var(--card-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
+                                        <option value="">Select member</option>
+                                        ${prayerMemberOptions}
+                                    </select>
+                                    <textarea id="groupPrayerRequest" rows="3" maxlength="300"
+                                              placeholder="Add a prayer need for this member"
+                                              class="w-full bg-[var(--card-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]"></textarea>
+                                    <button onclick="window.MyGroups.submitGroupPrayerRequest('${groupIdSafe}')"
+                                            class="w-full sm:w-auto px-4 py-3 rounded-2xl bg-[var(--mission-red-bright)] text-white text-sm font-bold">
+                                        Add Prayer Request
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${prayerListHtml}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">All Members</p>
+                                <span class="text-sm font-semibold text-[var(--text-muted)]">${dashboardData.members.length} total</span>
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                ${membersHtml || '<p class="text-sm text-[var(--text-muted)]">No members found.</p>'}
+                            </div>
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)]">Group Settings</p>
+                                    <p class="text-sm font-semibold text-[var(--text-color)] mt-1">${this.escapeHtml(scheduleLabel)}</p>
+                                </div>
+                                <span class="text-[10px] uppercase tracking-[0.16em] ${meetingLive ? 'text-green-400' : 'text-[var(--text-muted)]'}">${meetingLive ? 'Live now' : 'Waiting'}</span>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-xs text-[var(--text-muted)] mb-1">Group Name</label>
+                                <div class="flex items-center gap-2">
+                                    <input id="groupNameInput" type="text" value="${this.escapeHtml(group.name || 'Mission Group')}" maxlength="80"
+                                           class="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
+                                    <button onclick="window.MyGroups.saveGroupName('${groupIdSafe}')"
+                                            class="px-4 py-3 rounded-2xl text-xs font-bold bg-[var(--mission-red-bright)] text-white whitespace-nowrap">
+                                        Save Name
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <button onclick="window.MyGroups.editSchedule('${groupIdSafe}')"
+                                        class="px-4 py-3 rounded-2xl text-xs font-bold bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
+                                    Edit Day & Time
+                                </button>
+                                <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
+                                        class="px-4 py-3 rounded-2xl text-xs font-bold border ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] border-[var(--mission-red-bright)]/30' : (meetingLive ? 'bg-green-600 text-white border-green-500' : 'bg-[var(--input-bg)] text-[var(--text-color)] border-[var(--card-border)]')}">
+                                    ${meetingLock.locked ? 'Meeting Locked' : (meetingLive ? 'Join Meeting (Live)' : 'Join Meeting')}
+                                </button>
+                            </div>
+                            ${meetingLock.locked ? `
+                                <p class="mt-3 text-xs text-[var(--mission-red-bright)]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
+                            ` : ''}
+                        </section>
+
+                        <section class="rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+                            <p class="text-xs uppercase tracking-[0.18em] text-[var(--mission-gold)] mb-3">My Meeting Reminder</p>
                             <label class="flex items-center justify-between text-sm text-[var(--text-color)]">
                                 <span>Enable reminder</span>
                                 <input id="meetingReminderEnabled" type="checkbox" class="accent-[var(--mission-gold)]" ${reminderEnabled ? 'checked' : ''}>
                             </label>
                             <div class="mt-3">
                                 <label class="block text-xs text-[var(--text-muted)] mb-1">Notify me before meeting</label>
-                                <select id="meetingReminderMinutes" class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-color)]">
+                                <select id="meetingReminderMinutes" class="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-color)]">
                                     <option value="10" ${reminderMinutes === 10 ? 'selected' : ''}>10 minutes</option>
                                     <option value="30" ${reminderMinutes === 30 ? 'selected' : ''}>30 minutes</option>
                                     <option value="60" ${reminderMinutes === 60 ? 'selected' : ''}>1 hour</option>
@@ -1704,29 +2548,20 @@ const MyGroups = {
                                     <input id="meetingReminderAlarm" type="checkbox" class="accent-[var(--mission-gold)]" ${alarmEnabled ? 'checked' : ''}>
                                 </label>
                             </div>
-                            <button onclick="window.MyGroups.saveMeetingReminder('${String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-                                    class="mt-4 w-full py-2.5 rounded-lg text-sm font-bold bg-[var(--mission-red-bright)] text-white">
+                            <button onclick="window.MyGroups.saveMeetingReminder('${groupIdSafe}')"
+                                    class="mt-4 w-full py-3 rounded-2xl text-sm font-bold bg-[var(--mission-red-bright)] text-white">
                                 Save Reminder Settings
                             </button>
-                        </div>
-
-                        <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <p class="text-xs uppercase tracking-wider text-[var(--text-muted)]">Members</p>
-                                <span class="text-xs text-[var(--mission-gold)] font-semibold">${memberProfiles.length} total</span>
-                            </div>
-                            <div class="space-y-3">
-                                ${membersHtml || '<p class="text-sm text-[var(--text-muted)]">No members found.</p>'}
-                            </div>
-                        </div>
+                        </section>
                     </div>
                 </div>
             `;
         } catch (error) {
             console.error('[MyGroups] viewGroupDetails error:', error);
+            this.activeGroupDetailContext = null;
             content.innerHTML = `
                 <div class="p-6 text-center">
-                    <p class="text-[var(--mission-red-bright)] mb-3">Failed to load group details.</p>
+                    <p class="text-[var(--mission-red-bright)] mb-3">Failed to load group dashboard.</p>
                     <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)]">Close</button>
                 </div>
             `;
@@ -2113,6 +2948,7 @@ const MyGroups = {
      * Close modal
      */
     closeModal() {
+        this.activeGroupDetailContext = null;
         document.getElementById('groupModal')?.classList.add('hidden');
     },
     
