@@ -1882,22 +1882,22 @@ const MyGroups = {
 
         return `
             <div class="rounded-[24px] border border-white/80 bg-white/80 p-4 shadow-[0_10px_28px_rgba(89,49,22,0.06)]">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex flex-col gap-3">
                     <div class="flex items-start gap-3 min-w-0">
-                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <p class="text-base font-black text-[#6d0707] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
-                                <span class="text-[11px] uppercase tracking-[0.16em] ${actionMeta.labelClass}">${this.escapeHtml(config.title)}</span>
-                            </div>
-                            <p class="mt-1 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(config.description)}</p>
-                            <p class="mt-1 text-[13px] text-[#84736a]">${this.escapeHtml(secondaryLine)}</p>
+                        <img src="${this.getMemberPhoto(member)}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm shrink-0">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[1.08rem] font-black text-[#6d0707] leading-tight break-words">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <p class="mt-1 text-[11px] uppercase tracking-[0.16em] ${actionMeta.labelClass}">${this.escapeHtml(config.title)}</p>
+                            <p class="mt-2 text-[15px] leading-6 text-[#655751] break-words">${this.escapeHtml(config.description)}</p>
+                            <p class="mt-1 text-[13px] leading-5 text-[#84736a] break-words">${this.escapeHtml(secondaryLine)}</p>
                         </div>
                     </div>
-                    <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${mode}')"
-                            class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
-                        ${this.escapeHtml(actionMeta.label)}
-                    </button>
+                    <div class="flex justify-start sm:justify-end">
+                        <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${mode}')"
+                                class="w-full sm:w-auto px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
+                            ${this.escapeHtml(actionMeta.label)}
+                        </button>
+                    </div>
                 </div>
                 <div class="mt-3 flex flex-wrap gap-2">
                     ${stats.devotionStreak >= 7 ? '<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#ffe8a3] text-[#8f5c00] border border-[#f1d279]">7-day streak</span>' : ''}
@@ -1919,25 +1919,27 @@ const MyGroups = {
 
         return `
             <div class="rounded-[24px] border border-[#efc3c3] bg-white/82 p-4 shadow-[0_10px_28px_rgba(123,44,44,0.05)]">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex flex-col gap-3">
                     <div class="flex items-start gap-3 min-w-0">
-                        <img src="${this.getMemberPhoto(member)}" class="w-11 h-11 rounded-full border-2 border-white object-cover shadow-sm">
-                        <div class="min-w-0">
-                            <p class="text-base font-black text-[#6d0707] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
-                            <p class="mt-1 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(summaryLine)}</p>
-                            <div class="mt-2 flex flex-wrap gap-2">
-                                ${alerts.map((alert) => `
-                                    <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
-                                        ${this.escapeHtml(alert.label)}
-                                    </span>
-                                `).join('')}
-                            </div>
+                        <img src="${this.getMemberPhoto(member)}" class="w-11 h-11 rounded-full border-2 border-white object-cover shadow-sm shrink-0">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[1.05rem] font-black text-[#6d0707] leading-tight break-words">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                            <p class="mt-2 text-[15px] leading-6 text-[#655751] break-words">${this.escapeHtml(summaryLine)}</p>
                         </div>
                     </div>
-                    <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${primaryAction}')"
-                            class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
-                        ${this.escapeHtml(primaryAction === 'check_attendance' ? 'Check In' : 'Message')}
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                        ${alerts.map((alert) => `
+                            <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
+                                ${this.escapeHtml(alert.label)}
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div class="flex justify-start sm:justify-end">
+                        <button onclick="window.MyGroups.sendGroupCareMessage('${this.escapeForJs(groupId)}', '${this.escapeForJs(member.id)}', '${primaryAction}')"
+                                class="w-full sm:w-auto px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${actionMeta.buttonClass}">
+                            ${this.escapeHtml(primaryAction === 'check_attendance' ? 'Check In' : 'Message')}
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -2413,29 +2415,29 @@ const MyGroups = {
 
             const focusBody = focusMember ? `
                 <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_12px_30px_rgba(89,49,22,0.05)]">
-                    <div class="flex items-start justify-between gap-3">
+                    <div class="flex flex-col gap-4">
                         <div class="flex items-start gap-3 min-w-0">
-                            <img src="${this.getMemberPhoto(focusMember)}" class="w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm">
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <p class="text-lg font-black text-[#6d0707]">${this.escapeHtml(focusMember.fullName || 'Unknown')}</p>
-                                    <span class="text-[11px] uppercase tracking-[0.16em] ${focusActionMeta.labelClass}">${this.escapeHtml(focus.mode.replace('_', ' '))}</span>
-                                </div>
-                                <p class="mt-2 text-sm leading-relaxed text-[#655751]">${this.escapeHtml(focus.description || '')}</p>
-                                <div class="mt-3 flex flex-wrap gap-2">
-                                    ${this.getGroupAttentionAlerts(focusMember).slice(0, 2).map((alert) => `
-                                        <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
-                                            ${this.escapeHtml(alert.label)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                                ${this.renderGroupDetailStreakGraphic(focusMember.stats || {})}
+                            <img src="${this.getMemberPhoto(focusMember)}" class="w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm shrink-0">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[1.35rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(focusMember.fullName || 'Unknown')}</p>
+                                <p class="mt-1 text-[11px] uppercase tracking-[0.16em] ${focusActionMeta.labelClass}">${this.escapeHtml(focus.mode.replace('_', ' '))}</p>
+                                <p class="mt-3 text-[15px] leading-7 text-[#655751] break-words">${this.escapeHtml(focus.description || '')}</p>
                             </div>
                         </div>
-                        <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(focusMember.id)}', '${focus.mode}')"
-                                class="shrink-0 px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${focusActionMeta.buttonClass}">
-                            ${this.escapeHtml(focusActionMeta.label)}
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            ${this.getGroupAttentionAlerts(focusMember).slice(0, 2).map((alert) => `
+                                <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${alert.tone}">
+                                    ${this.escapeHtml(alert.label)}
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div class="flex justify-start sm:justify-end">
+                            <button onclick="window.MyGroups.sendGroupCareMessage('${groupIdSafe}', '${this.escapeForJs(focusMember.id)}', '${focus.mode}')"
+                                    class="w-full sm:w-auto px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${focusActionMeta.buttonClass}">
+                                ${this.escapeHtml(focusActionMeta.label)}
+                            </button>
+                        </div>
+                        ${this.renderGroupDetailStreakGraphic(focusMember.stats || {})}
                     </div>
                 </div>
             ` : `
