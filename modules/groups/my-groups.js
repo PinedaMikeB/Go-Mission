@@ -4153,8 +4153,9 @@ const MyGroups = {
             const codeDoc = await window.getDoc(codeRef);
             const codeData = codeDoc.exists() ? (codeDoc.data() || {}) : {};
             const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+            const hasGroupConflict = await this.hasInviteCodeConflict(groupId, inviteCode);
 
-            if (!codeDoc.exists() || !linkedGroupId || linkedGroupId === groupId) {
+            if ((!codeDoc.exists() || !linkedGroupId || linkedGroupId === groupId) && !hasGroupConflict) {
                 return inviteCode;
             }
         }
@@ -4179,6 +4180,27 @@ const MyGroups = {
             return groupsSnapshot.docs.some((docSnap) => docSnap.id !== groupId);
         } catch (error) {
             console.warn('[MyGroups] Could not verify invite code conflicts:', error);
+            return false;
+        }
+    },
+
+    async hasInviteCodeDocMismatch(groupId = '', inviteCode = '') {
+        const normalizedCode = this.normalizeInviteCode(inviteCode);
+        if (!normalizedCode || !window.db || !window.doc || !window.getDoc) {
+            return false;
+        }
+
+        try {
+            const codeDoc = await window.getDoc(
+                window.doc(window.db, 'goMission_groupInviteCodes', normalizedCode)
+            );
+            if (!codeDoc.exists()) return false;
+
+            const codeData = codeDoc.data() || {};
+            const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+            return !!linkedGroupId && linkedGroupId !== groupId;
+        } catch (error) {
+            console.warn('[MyGroups] Could not verify invite code doc mapping:', error);
             return false;
         }
     },
@@ -4245,16 +4267,17 @@ const MyGroups = {
             let inviteCodeExpiresAt = group.inviteCodeExpiresAt;
             const isExpired = inviteCodeExpiresAt && new Date(inviteCodeExpiresAt) < new Date();
             const hasDuplicateGroupCode = inviteCode ? await this.hasInviteCodeConflict(groupId, inviteCode) : false;
+            const hasCodeDocMismatch = inviteCode ? await this.hasInviteCodeDocMismatch(groupId, inviteCode) : false;
             
-            console.log('[MyGroups] Current invite code:', inviteCode, 'Expires:', inviteCodeExpiresAt, 'Expired:', isExpired, 'Duplicate:', hasDuplicateGroupCode);
+            console.log('[MyGroups] Current invite code:', inviteCode, 'Expires:', inviteCodeExpiresAt, 'Expired:', isExpired, 'Duplicate:', hasDuplicateGroupCode, 'DocMismatch:', hasCodeDocMismatch);
             
-            if (!inviteCode || isExpired || hasDuplicateGroupCode) {
+            if (!inviteCode || isExpired || hasDuplicateGroupCode || hasCodeDocMismatch) {
                 console.log('[MyGroups] No invite code or expired, generating new one...');
                 
                 // Show loading state
                 content.innerHTML = `
                     <div class="p-6 text-center">
-                        <p class="text-[var(--text-muted)]">${hasDuplicateGroupCode ? 'Refreshing invite code...' : (isExpired ? 'Code expired. Generating new code...' : 'Generating invite code...')}</p>
+                        <p class="text-[var(--text-muted)]">${(hasDuplicateGroupCode || hasCodeDocMismatch) ? 'Refreshing invite code...' : (isExpired ? 'Code expired. Generating new code...' : 'Generating invite code...')}</p>
                     </div>
                 `;
                 modal.classList.remove('hidden');
