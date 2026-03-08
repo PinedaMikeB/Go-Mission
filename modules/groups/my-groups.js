@@ -3835,11 +3835,15 @@ const MyGroups = {
                 existingGroupName: this.uplineGroup?.name || null,
                 existingLeaderName: this.uplineGroup?.leaderName || null
             };
+
+            const existingJoinRequests = Array.isArray(groupData?.joinRequests)
+                ? groupData.joinRequests.filter((request) => request && typeof request === 'object')
+                : [];
             
-            // Add join request to group
+            // Legacy-safe append: older groups may not have a proper joinRequests array yet.
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupDoc.id),
-                { joinRequests: window.arrayUnion(joinRequest) },
+                { joinRequests: [...existingJoinRequests, joinRequest] },
                 { merge: true }
             );
             
