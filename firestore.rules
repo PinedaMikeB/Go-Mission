@@ -104,13 +104,11 @@ service cloud.firestore {
 
     function canSelfAppendOwnJoinRequest() {
       let changed = request.resource.data.diff(resource.data).changedKeys();
-      let existing = resource.data.joinRequests is list ? resource.data.joinRequests : [];
       let incoming = request.resource.data.joinRequests is list ? request.resource.data.joinRequests : [];
-      let newIndex = existing.size();
-      let newEntry = incoming[newIndex];
+      let newIndex = incoming.size() - 1;
+      let newEntry = newIndex >= 0 ? incoming[newIndex] : null;
       return isSignedIn() &&
         changed.hasOnly(['joinRequests']) &&
-        incoming.size() == newIndex + 1 &&
         newEntry is map &&
         (
           newEntry.odId == request.auth.uid ||
@@ -120,13 +118,11 @@ service cloud.firestore {
 
     function canSelfAppendOwnPendingRequest() {
       let changed = request.resource.data.diff(resource.data).changedKeys();
-      let existing = resource.data.pendingRequests is list ? resource.data.pendingRequests : [];
       let incoming = request.resource.data.pendingRequests is list ? request.resource.data.pendingRequests : [];
-      let newIndex = existing.size();
-      let newEntry = incoming[newIndex];
+      let newIndex = incoming.size() - 1;
+      let newEntry = newIndex >= 0 ? incoming[newIndex] : null;
       return isSignedIn() &&
         changed.hasOnly(['pendingRequests']) &&
-        incoming.size() == newIndex + 1 &&
         newEntry is map &&
         (
           newEntry.uid == request.auth.uid ||
