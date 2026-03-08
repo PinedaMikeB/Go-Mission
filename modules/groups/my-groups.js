@@ -3779,6 +3779,11 @@ const MyGroups = {
 
                 if (groupDoc?.exists()) {
                     groupData = groupDoc.data();
+                    const groupInviteCode = this.normalizeInviteCode(groupData?.inviteCode);
+                    if (groupInviteCode && groupInviteCode !== code) {
+                        groupDoc = null;
+                        groupData = null;
+                    }
                 }
             }
 
@@ -4120,6 +4125,26 @@ const MyGroups = {
         }
         return code;
     },
+
+    async generateUniqueInviteCode(groupId = '') {
+        if (!window.db || !window.doc || !window.getDoc) {
+            return this.generateInviteCode();
+        }
+
+        for (let attempt = 0; attempt < 12; attempt += 1) {
+            const inviteCode = this.generateInviteCode();
+            const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', inviteCode);
+            const codeDoc = await window.getDoc(codeRef);
+            const codeData = codeDoc.exists() ? (codeDoc.data() || {}) : {};
+            const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+
+            if (!codeDoc.exists() || !linkedGroupId || linkedGroupId === groupId) {
+                return inviteCode;
+            }
+        }
+
+        return this.generateInviteCode();
+    },
     
     /**
      * Generate expiration date (7 days from now)
@@ -4197,7 +4222,7 @@ const MyGroups = {
                 modal.classList.remove('hidden');
                 
                 // Generate and save new invite code with 7-day expiration
-                inviteCode = this.generateInviteCode();
+                inviteCode = await this.generateUniqueInviteCode(groupId);
                 inviteCodeExpiresAt = this.generateExpirationDate();
                 console.log('[MyGroups] Generated code:', inviteCode, 'Expires:', inviteCodeExpiresAt);
                 
@@ -4232,23 +4257,41 @@ const MyGroups = {
                 group.inviteCodeExpiresAt = inviteCodeExpiresAt;
                 console.log('[MyGroups] Invite code saved to Firestore');
             } else {
-                // Ensure a matching invite code doc exists (non-destructive).
+                // Repair stale invite-code docs and keep the code doc in sync with the visible group code.
                 try {
                     const codeRef = window.doc(window.db, 'goMission_groupInviteCodes', inviteCode);
                     const codeDoc = await window.getDoc(codeRef);
-                    if (!codeDoc.exists()) {
-                        await window.setDoc(codeRef, {
-                            code: inviteCode,
-                            groupId: groupId,
-                            groupName: group.name || '',
-                            createdBy: window.currentUser?.uid || '',
-                            createdByName: window.currentUser?.displayName || window.currentUser?.email || '',
-                            createdAt: new Date().toISOString(),
-                            expiresAt: inviteCodeExpiresAt,
-                            maxUses: null,
-                            usedCount: 0
-                        }, { merge: true });
+                    const codeData = codeDoc.exists() ? (codeDoc.data() || {}) : {};
+                    const linkedGroupId = String(codeData.groupId || codeData.group || codeData.groupID || '').trim();
+
+                    if (codeDoc.exists() && linkedGroupId && linkedGroupId !== groupId) {
+                        inviteCode = await this.generateUniqueInviteCode(groupId);
+                        inviteCodeExpiresAt = this.generateExpirationDate();
+
+                        await window.setDoc(
+                            window.doc(window.db, 'goMission_groups', groupId),
+                            {
+                                inviteCode,
+                                inviteCodeExpiresAt
+                            },
+                            { merge: true }
+                        );
+
+                        group.inviteCode = inviteCode;
+                        group.inviteCodeExpiresAt = inviteCodeExpiresAt;
                     }
+
+                    await window.setDoc(window.doc(window.db, 'goMission_groupInviteCodes', inviteCode), {
+                        code: inviteCode,
+                        groupId: groupId,
+                        groupName: group.name || '',
+                        createdBy: window.currentUser?.uid || '',
+                        createdByName: window.currentUser?.displayName || window.currentUser?.email || '',
+                        createdAt: codeData.createdAt || new Date().toISOString(),
+                        expiresAt: inviteCodeExpiresAt,
+                        maxUses: codeData.maxUses ?? null,
+                        usedCount: codeData.usedCount || 0
+                    }, { merge: true });
                 } catch (e) {
                     console.warn('[MyGroups] Could not upsert goMission_groupInviteCodes doc:', e);
                 }
