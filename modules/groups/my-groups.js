@@ -4039,7 +4039,7 @@ const MyGroups = {
             }
 
             // Generate 6-character invite code with 7-day expiration
-            const inviteCode = this.generateInviteCode();
+            const inviteCode = await this.generateUniqueInviteCode();
             const inviteCodeExpiresAt = this.generateExpirationDate();
             
             // Create group
@@ -4057,6 +4057,22 @@ const MyGroups = {
                     createdAt: window.serverTimestamp(),
                     meetingSchedule: null
                 }
+            );
+
+            await window.setDoc(
+                window.doc(window.db, 'goMission_groupInviteCodes', inviteCode),
+                {
+                    code: inviteCode,
+                    groupId: groupRef.id,
+                    groupName: name,
+                    createdBy: window.currentUser?.uid || '',
+                    createdByName: window.currentUser?.displayName || window.currentUser?.email || '',
+                    createdAt: new Date().toISOString(),
+                    expiresAt: inviteCodeExpiresAt,
+                    maxUses: null,
+                    usedCount: 0
+                },
+                { merge: true }
             );
             
             console.log('[MyGroups] Created group:', groupRef.id);
@@ -4145,6 +4161,27 @@ const MyGroups = {
 
         return this.generateInviteCode();
     },
+
+    async hasInviteCodeConflict(groupId = '', inviteCode = '') {
+        const normalizedCode = this.normalizeInviteCode(inviteCode);
+        if (!normalizedCode || !window.db || !window.collection || !window.query || !window.where || !window.getDocs) {
+            return false;
+        }
+
+        try {
+            const groupsSnapshot = await window.getDocs(
+                window.query(
+                    window.collection(window.db, 'goMission_groups'),
+                    window.where('inviteCode', '==', normalizedCode)
+                )
+            );
+
+            return groupsSnapshot.docs.some((docSnap) => docSnap.id !== groupId);
+        } catch (error) {
+            console.warn('[MyGroups] Could not verify invite code conflicts:', error);
+            return false;
+        }
+    },
     
     /**
      * Generate expiration date (7 days from now)
@@ -4207,16 +4244,17 @@ const MyGroups = {
             let inviteCode = group.inviteCode;
             let inviteCodeExpiresAt = group.inviteCodeExpiresAt;
             const isExpired = inviteCodeExpiresAt && new Date(inviteCodeExpiresAt) < new Date();
+            const hasDuplicateGroupCode = inviteCode ? await this.hasInviteCodeConflict(groupId, inviteCode) : false;
             
-            console.log('[MyGroups] Current invite code:', inviteCode, 'Expires:', inviteCodeExpiresAt, 'Expired:', isExpired);
+            console.log('[MyGroups] Current invite code:', inviteCode, 'Expires:', inviteCodeExpiresAt, 'Expired:', isExpired, 'Duplicate:', hasDuplicateGroupCode);
             
-            if (!inviteCode || isExpired) {
+            if (!inviteCode || isExpired || hasDuplicateGroupCode) {
                 console.log('[MyGroups] No invite code or expired, generating new one...');
                 
                 // Show loading state
                 content.innerHTML = `
                     <div class="p-6 text-center">
-                        <p class="text-[var(--text-muted)]">${isExpired ? 'Code expired. Generating new code...' : 'Generating invite code...'}</p>
+                        <p class="text-[var(--text-muted)]">${hasDuplicateGroupCode ? 'Refreshing invite code...' : (isExpired ? 'Code expired. Generating new code...' : 'Generating invite code...')}</p>
                     </div>
                 `;
                 modal.classList.remove('hidden');
