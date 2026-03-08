@@ -3580,6 +3580,35 @@ const MyGroups = {
             .slice(0, 6);
     },
 
+    async appendJoinRequestToGroup(groupId, groupData = {}, joinRequest = {}) {
+        const groupRef = window.doc(window.db, 'goMission_groups', groupId);
+        const normalizedJoinRequests = Array.isArray(groupData?.joinRequests)
+            ? groupData.joinRequests.filter((request) => request && typeof request === 'object')
+            : [];
+
+        try {
+            await window.setDoc(
+                groupRef,
+                { joinRequests: [...normalizedJoinRequests, joinRequest] },
+                { merge: true }
+            );
+            return 'joinRequests';
+        } catch (joinRequestsError) {
+            console.warn('[MyGroups] joinRequests write failed, retrying with pendingRequests:', joinRequestsError);
+
+            const normalizedPendingRequests = Array.isArray(groupData?.pendingRequests)
+                ? groupData.pendingRequests.filter((request) => request && typeof request === 'object')
+                : [];
+
+            await window.setDoc(
+                groupRef,
+                { pendingRequests: [...normalizedPendingRequests, joinRequest] },
+                { merge: true }
+            );
+            return 'pendingRequests';
+        }
+    },
+
     /**
      * Canonical group-name key for duplicate checks
      */
@@ -3836,24 +3865,19 @@ const MyGroups = {
                 existingLeaderName: this.uplineGroup?.leaderName || null
             };
 
-            const existingJoinRequests = Array.isArray(groupData?.joinRequests)
-                ? groupData.joinRequests.filter((request) => request && typeof request === 'object')
-                : [];
-            
-            // Legacy-safe append: older groups may not have a proper joinRequests array yet.
-            await window.setDoc(
-                window.doc(window.db, 'goMission_groups', groupDoc.id),
-                { joinRequests: [...existingJoinRequests, joinRequest] },
-                { merge: true }
-            );
+            await this.appendJoinRequestToGroup(groupDoc.id, groupData, joinRequest);
             
             // Update code usage count if using new system
             if (codeDoc && codeDoc.exists()) {
-                await window.setDoc(codeRef, {
-                    usedCount: (codeDoc.data().usedCount || 0) + 1,
-                    lastUsedAt: new Date().toISOString(),
-                    lastUsedBy: window.currentUser.uid
-                }, { merge: true });
+                try {
+                    await window.setDoc(codeRef, {
+                        usedCount: (codeDoc.data().usedCount || 0) + 1,
+                        lastUsedAt: new Date().toISOString(),
+                        lastUsedBy: window.currentUser.uid
+                    }, { merge: true });
+                } catch (codeUsageError) {
+                    console.warn('[MyGroups] Invite code usage update failed after join request save:', codeUsageError);
+                }
             }
             
             // Note: Cloud Function (onMemberJoined) will automatically send push notification to leader
@@ -3866,7 +3890,10 @@ const MyGroups = {
         } catch (error) {
             console.error('[MyGroups] Join request error:', error);
             if (errorEl) {
-                errorEl.textContent = 'Failed to send request. Please try again.';
+                const message = String(error?.message || '');
+                errorEl.textContent = message.toLowerCase().includes('permission')
+                    ? 'Request blocked by permissions. Please refresh and try again.'
+                    : 'Failed to send request. Please try again.';
                 errorEl.classList.remove('hidden');
             }
         }
