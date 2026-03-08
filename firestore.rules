@@ -111,7 +111,6 @@ service cloud.firestore {
       return isSignedIn() &&
         changed.hasOnly(['joinRequests']) &&
         incoming.size() == newIndex + 1 &&
-        incoming.hasAll(existing) &&
         newEntry is map &&
         (
           newEntry.odId == request.auth.uid ||
@@ -128,7 +127,6 @@ service cloud.firestore {
       return isSignedIn() &&
         changed.hasOnly(['pendingRequests']) &&
         incoming.size() == newIndex + 1 &&
-        incoming.hasAll(existing) &&
         newEntry is map &&
         (
           newEntry.uid == request.auth.uid ||
@@ -258,6 +256,16 @@ service cloud.firestore {
       allow create: if isAdmin() || (isSelf(uid) && !hasProtectedMemberPrivileges(request.resource.data));
       allow update: if isAdmin() || (isSelf(uid) && !touchesProtectedMemberFields());
       allow delete: if isSelf(uid) || isAdmin();
+
+      match /notifications/{docId} {
+        allow read: if isAdmin() || isSelf(uid);
+        allow create, delete: if isAdmin();
+        allow update: if isAdmin() || isSelf(uid);
+      }
+    }
+
+    match /goMission_adminNotifications/{docId} {
+      allow read, write: if isAdmin();
     }
 
     // Core app data
