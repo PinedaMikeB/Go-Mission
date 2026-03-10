@@ -66,6 +66,14 @@ const BibleReader = {
     chapter: 3,
     booksProgress: {}
   },
+  speech: {
+    supported: typeof window !== 'undefined'
+      && 'speechSynthesis' in window
+      && 'SpeechSynthesisUtterance' in window,
+    voices: [],
+    isSpeaking: false,
+    currentUtterance: null
+  },
   lastSelectedVerse: null,
   storageKeys: {
     lastSelectedVerse: 'goMission_bibleLastSelectedVerse'
@@ -81,6 +89,7 @@ const BibleReader = {
     await this.loadProgress();
     this.loadPreferences();
     this.loadLastSelectedVerse();
+    this.initNarration();
     
     // Listen for passage selection from BiblePicker
     document.addEventListener('biblePassageSelected', (e) => {
@@ -130,10 +139,244 @@ const BibleReader = {
       bibleText: document.getElementById('bibleText'),
       commentaryContent: document.getElementById('commentaryContent'),
       commentaryBtn: document.getElementById('commentaryBtn'),
+      previewAudioBtn: document.getElementById('bibleAudioPreviewBtn'),
       progressIndicator: document.getElementById('chapterProgress'),
       prevBtn: document.getElementById('prevChapterBtn'),
       nextBtn: document.getElementById('nextChapterBtn')
     };
+  },
+
+  /**
+   * Initialize browser narration voices and keep button state in sync.
+   */
+  initNarration() {
+    if (!this.speech.supported) return;
+
+    this.loadNarrationVoices();
+    this.updateNarrationButtons();
+
+    if (typeof window.speechSynthesis?.addEventListener === 'function') {
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        this.loadNarrationVoices();
+        this.updateNarrationButtons();
+      });
+    }
+  },
+
+  /**
+   * Refresh voice list from browser.
+   */
+  loadNarrationVoices() {
+    if (!this.speech.supported) return [];
+    try {
+      this.speech.voices = window.speechSynthesis.getVoices() || [];
+    } catch (error) {
+      this.speech.voices = [];
+    }
+    return this.speech.voices;
+  },
+
+  /**
+   * Heuristic selection for a warm, male-leaning Filipino-friendly voice.
+   */
+  getPreferredNarrationVoice() {
+    if (!this.speech.supported) return null;
+
+    const voices = this.speech.voices?.length ? this.speech.voices : this.loadNarrationVoices();
+    if (!voices.length) return null;
+
+    const preferredLocales = this.bibleTranslation === 'tl'
+      ? ['fil-PH', 'tl-PH', 'fil', 'tl', 'en-PH', 'en-US']
+      : ['en-PH', 'en-US', 'en-GB', 'fil-PH', 'tl-PH'];
+    const maleHints = ['male', 'david', 'daniel', 'george', 'james', 'mark', 'paul', 'jose', 'juan', 'antonio', 'michael', 'thomas'];
+    const femaleHints = ['female', 'zira', 'hazel', 'aria', 'samantha', 'susan', 'jenny', 'linda', 'maria', 'anna', 'ava'];
+
+    const scored = voices.map((voice) => {
+      const voiceName = String(voice.name || '').toLowerCase();
+      const voiceLang = String(voice.lang || '').toLowerCase();
+      let score = 0;
+
+      preferredLocales.forEach((locale, index) => {
+        const normalized = locale.toLowerCase();
+        if (voiceLang === normalized) {
+          score += 30 - index;
+        } else if (voiceLang.startsWith(normalized.split('-')[0])) {
+          score += 18 - index;
+        }
+      });
+
+      if (voice.localService) score += 2;
+      if (maleHints.some((hint) => voiceName.includes(hint))) score += 8;
+      if (femaleHints.some((hint) => voiceName.includes(hint))) score -= 6;
+      if (voiceName.includes('filip')) score += 5;
+      if (voiceName.includes('tagalog')) score += 5;
+      if (voiceName.includes('english') && this.bibleTranslation === 'en') score += 2;
+
+      return { voice, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]?.voice || null;
+  },
+
+  /**
+   * Build chapter narration text with explicit verse markers for clear pacing.
+   */
+  buildNarrationText() {
+    if (!this.chapterData?.verses) return '';
+
+    const bookName = (typeof BibleLoader !== 'undefined')
+      ? BibleLoader.getBookName(this.currentBook, this.bibleTranslation)
+      : this.currentBook;
+    const intro = this.bibleTranslation === 'tl'
+      ? `${bookName} kabanata ${this.currentChapter}. Makinig tayo sa Salita ng Diyos.`
+      : `${bookName} chapter ${this.currentChapter}. Listen to God's Word.`;
+
+    const versesText = Object.entries(this.chapterData.verses)
+      .map(([verseNum, verseText]) => {
+        const cleanedText = String(verseText || '').replace(/\s+/g, ' ').trim();
+        const sentenceText = /[.!?]$/.test(cleanedText) ? cleanedText : `${cleanedText}.`;
+        return this.bibleTranslation === 'tl'
+          ? `Talata ${verseNum}. ${sentenceText}`
+          : `Verse ${verseNum}. ${sentenceText}`;
+      })
+      .join(' ');
+
+    return `${intro} ${versesText}`.trim();
+  },
+
+  /**
+   * Play or stop chapter narration.
+   */
+  toggleAudioNarration() {
+    if (this.speech.isSpeaking) {
+      this.stopAudioNarration();
+      return;
+    }
+
+    this.startAudioNarration();
+  },
+
+  /**
+   * Start browser TTS for the current chapter.
+   */
+  startAudioNarration() {
+    if (!this.speech.supported || !window.speechSynthesis) {
+      alert('Bible audio is not supported on this browser.');
+      return;
+    }
+
+    const narrationText = this.buildNarrationText();
+    if (!narrationText) {
+      alert('No Bible passage is loaded yet.');
+      return;
+    }
+
+    this.stopAudioNarration({ skipButtonRefresh: true });
+
+    const utterance = new SpeechSynthesisUtterance(narrationText);
+    const voice = this.getPreferredNarrationVoice();
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang || (this.bibleTranslation === 'tl' ? 'fil-PH' : 'en-PH');
+    } else {
+      utterance.lang = this.bibleTranslation === 'tl' ? 'fil-PH' : 'en-PH';
+    }
+
+    utterance.rate = this.bibleTranslation === 'tl' ? 0.84 : 0.88;
+    utterance.pitch = 0.92;
+    utterance.volume = 1;
+
+    utterance.onstart = () => {
+      this.speech.isSpeaking = true;
+      this.speech.currentUtterance = utterance;
+      this.updateNarrationButtons();
+    };
+
+    const clearSpeechState = () => {
+      if (this.speech.currentUtterance !== utterance) return;
+      this.speech.isSpeaking = false;
+      this.speech.currentUtterance = null;
+      this.updateNarrationButtons();
+    };
+
+    utterance.onend = clearSpeechState;
+    utterance.onerror = clearSpeechState;
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  },
+
+  /**
+   * Stop current narration if active.
+   */
+  stopAudioNarration(options = {}) {
+    if (this.speech.supported && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (error) {
+        console.warn('[BibleReader] Could not stop narration:', error);
+      }
+    }
+
+    this.speech.isSpeaking = false;
+    this.speech.currentUtterance = null;
+
+    if (!options.skipButtonRefresh) {
+      this.updateNarrationButtons();
+    }
+  },
+
+  /**
+   * Sync preview/fullscreen narration button labels and active state.
+   */
+  updateNarrationButtons() {
+    const previewBtn = document.getElementById('bibleAudioPreviewBtn');
+    const fullscreenBtn = document.getElementById('bibleAudioFullscreenBtn');
+    const lang = this.bibleTranslation === 'tl' ? 'tl' : 'en';
+    const isSpeaking = !!this.speech.isSpeaking;
+    const disabled = !this.speech.supported || !this.chapterData;
+    const label = lang === 'tl'
+      ? (isSpeaking ? 'Ihinto audio' : 'Pakinggan')
+      : (isSpeaking ? 'Stop audio' : 'Listen');
+    const title = this.speech.supported
+      ? label
+      : (lang === 'tl' ? 'Hindi suportado ang audio sa browser na ito' : 'Audio is not supported on this browser');
+    const icon = isSpeaking
+      ? `
+        <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6h4v12H6zM14 6h4v12h-4z"></path>
+        </svg>
+      `
+      : `
+        <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.5 6a8.5 8.5 0 0 1 0 12"></path>
+        </svg>
+      `;
+
+    if (previewBtn) {
+      previewBtn.disabled = disabled;
+      previewBtn.title = title;
+      previewBtn.setAttribute('aria-label', title);
+      previewBtn.innerHTML = icon;
+      previewBtn.classList.toggle('opacity-40', disabled);
+      previewBtn.classList.toggle('cursor-not-allowed', disabled);
+      previewBtn.classList.toggle('text-[var(--mission-gold)]', isSpeaking && !disabled);
+      previewBtn.classList.toggle('bg-[var(--mission-gold)]/15', isSpeaking && !disabled);
+    }
+
+    if (fullscreenBtn) {
+      fullscreenBtn.disabled = disabled;
+      fullscreenBtn.title = title;
+      fullscreenBtn.setAttribute('aria-label', title);
+      fullscreenBtn.innerHTML = `${icon}<span class="hidden sm:inline">${label}</span>`;
+      fullscreenBtn.classList.toggle('opacity-40', disabled);
+      fullscreenBtn.classList.toggle('cursor-not-allowed', disabled);
+      fullscreenBtn.classList.toggle('bg-[var(--mission-gold)]/20', isSpeaking && !disabled);
+      fullscreenBtn.classList.toggle('text-[var(--mission-gold)]', !disabled);
+    }
   },
 
   /**
@@ -518,6 +761,17 @@ const BibleReader = {
         </div>
         
         <div class="flex items-center gap-1 md:gap-2">
+          <button id="bibleAudioFullscreenBtn"
+                  type="button"
+                  onclick="BibleReader.toggleAudioNarration()"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--input-bg)] text-[var(--text-color)] hover:bg-[var(--mission-gold)]/20 transition-colors">
+            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.5 6a8.5 8.5 0 0 1 0 12"></path>
+            </svg>
+            <span class="hidden sm:inline">${lang === 'tl' ? 'Pakinggan' : 'Listen'}</span>
+          </button>
           <!-- Font Size Controls -->
           <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-[var(--mission-gold)]/20">
             <span class="text-base md:text-lg font-bold">A-</span>
@@ -617,6 +871,7 @@ const BibleReader = {
     // Animate in
     requestAnimationFrame(() => {
       overlay.style.opacity = '1';
+      this.updateNarrationButtons();
     });
   },
 
@@ -645,6 +900,7 @@ const BibleReader = {
    */
   openJournalFromFullscreen() {
     try {
+      this.stopAudioNarration();
       if (typeof window.openJournal === 'function') {
         window.openJournal();
         return;
@@ -1607,6 +1863,7 @@ const BibleReader = {
    */
   exitFullscreen() {
     this.preferences.isFullscreen = false;
+    this.stopAudioNarration();
     this.closeInlineFieldEditor();
     this.closeInlineSharePreview();
     
@@ -1679,6 +1936,8 @@ const BibleReader = {
         commentaryCount.textContent = `(${this.highlightedVerses.length})`;
         commentaryCount.classList.toggle('hidden', !hasHighlights);
       }
+
+      this.updateNarrationButtons();
       
     }, 200);
   },
@@ -1740,6 +1999,7 @@ const BibleReader = {
   async loadChapter(bookId, chapter) {
     console.log(`[BibleReader] Loading ${bookId} ${chapter}`);
     
+    this.stopAudioNarration();
     this.currentBook = bookId;
     this.currentChapter = chapter;
     this.highlightedVerses = [];
@@ -1762,6 +2022,7 @@ const BibleReader = {
     this.renderVerses();
     this.renderProgress();
     this.updateNavButtons();
+    this.updateNarrationButtons();
     
     // Clear commentary
     this.clearCommentary();
@@ -1826,6 +2087,7 @@ const BibleReader = {
     if (lang === this.bibleTranslation) return;
     
     console.log(`[BibleReader] Switching Bible translation to ${lang}`);
+    this.stopAudioNarration();
     this.bibleTranslation = lang;
     
     // Save preference
@@ -1849,6 +2111,7 @@ const BibleReader = {
     // Update UI
     this.renderPassageTitle();
     this.renderVerses();
+    this.updateNarrationButtons();
 
     // Refresh insights in the selected Bible translation
     if (this.highlightedVerses.length > 0) {
