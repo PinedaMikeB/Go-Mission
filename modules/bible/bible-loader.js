@@ -334,6 +334,28 @@ const BibleLoader = {
     const l = lang || (typeof i18n !== 'undefined' ? i18n.getLang() : 'en');
     return this.bookNames[l]?.[bookId] || this.bookNames.en[bookId] || bookId;
   },
+
+  /**
+   * Detect placeholder/empty book payloads so broken inline bundles do not win over real JSON.
+   */
+  hasUsableBookContent(book) {
+    if (!book || typeof book !== 'object' || !book.chapters || typeof book.chapters !== 'object') {
+      return false;
+    }
+
+    for (const chapterData of Object.values(book.chapters)) {
+      const verses = chapterData?.verses || chapterData;
+      if (!verses || typeof verses !== 'object') continue;
+
+      for (const verseText of Object.values(verses)) {
+        if (String(verseText || '').trim()) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  },
   
   /**
    * Load Bible book data
@@ -358,9 +380,11 @@ const BibleLoader = {
     try {
       // Fast path: use preloaded inline bundle if present.
       const preloadedInline = window.GoMissionBibleInline?.[l]?.[bookId];
-      if (preloadedInline) {
+      if (this.hasUsableBookContent(preloadedInline)) {
         this.cache.bible[cacheKey] = preloadedInline;
         return preloadedInline;
+      } else if (preloadedInline) {
+        console.warn(`[BibleLoader] Ignoring empty inline bundle payload for ${bookId} (${l})`);
       }
 
       // File mode fallback: attempt inline bundle before fetch/XHR.
@@ -368,9 +392,11 @@ const BibleLoader = {
         const loadedInline = await this.loadInlineBibleBundle(l);
         if (loadedInline) {
           const inlineData = window.GoMissionBibleInline?.[l]?.[bookId] || null;
-          if (inlineData) {
+          if (this.hasUsableBookContent(inlineData)) {
             this.cache.bible[cacheKey] = inlineData;
             return inlineData;
+          } else if (inlineData) {
+            console.warn(`[BibleLoader] Loaded inline bundle for ${bookId} (${l}) but content was empty`);
           }
         }
       }
@@ -384,7 +410,8 @@ const BibleLoader = {
       if (!data) {
         const loadedInline = await this.loadInlineBibleBundle(l);
         if (loadedInline) {
-          data = window.GoMissionBibleInline?.[l]?.[bookId] || null;
+          const inlineData = window.GoMissionBibleInline?.[l]?.[bookId] || null;
+          data = this.hasUsableBookContent(inlineData) ? inlineData : null;
         }
       }
 
