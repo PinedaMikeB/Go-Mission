@@ -356,6 +356,18 @@ const BibleLoader = {
 
     return false;
   },
+
+  /**
+   * Detect whether a single chapter has at least one non-empty verse.
+   */
+  hasUsableChapterContent(chapterData) {
+    const verses = chapterData?.verses || chapterData;
+    if (!verses || typeof verses !== 'object') {
+      return false;
+    }
+
+    return Object.values(verses).some((verseText) => String(verseText || '').trim());
+  },
   
   /**
    * Load Bible book data
@@ -435,17 +447,33 @@ const BibleLoader = {
    * @returns {Promise<object>}
    */
   async getChapter(bookId, chapter, lang = null) {
-    const book = await this.loadBook(bookId, lang);
-    if (!book || !book.chapters) return null;
-    
-    const chapterData = book.chapters[chapter.toString()];
-    if (!chapterData) return null;
-    
+    const requestedLang = lang || (typeof i18n !== 'undefined' ? i18n.getLang() : 'en');
+    const chapterKey = chapter.toString();
+    const book = await this.loadBook(bookId, requestedLang);
+    let chapterData = book?.chapters?.[chapterKey] || null;
+    let contentLang = requestedLang;
+
+    if (!this.hasUsableChapterContent(chapterData)) {
+      const fallbackLang = requestedLang === 'en' ? 'tl' : 'en';
+      const fallbackBook = await this.loadBook(bookId, fallbackLang);
+      const fallbackChapterData = fallbackBook?.chapters?.[chapterKey] || null;
+
+      if (this.hasUsableChapterContent(fallbackChapterData)) {
+        chapterData = fallbackChapterData;
+        contentLang = fallbackLang;
+        console.warn(`[BibleLoader] Falling back to ${fallbackLang} content for ${bookId} ${chapter}`);
+      }
+    }
+
+    if (!this.hasUsableChapterContent(chapterData)) return null;
+
     return {
       book: bookId,
-      bookName: this.getBookName(bookId, lang),
+      bookName: this.getBookName(bookId, requestedLang),
       chapter: chapter,
-      verses: chapterData.verses || chapterData
+      verses: chapterData.verses || chapterData,
+      requestedLanguage: requestedLang,
+      contentLanguage: contentLang
     };
   },
   
