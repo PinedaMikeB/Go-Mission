@@ -5506,6 +5506,7 @@ const MyGroups = {
         );
 
         this.syncGroupState(groupId, normalizedPatch);
+        this.emitGroupsUpdated('groupVisualUpdated');
         if (this.isDashboardOpen) {
             await this.renderDashboard();
         } else if (this.isOpen) {

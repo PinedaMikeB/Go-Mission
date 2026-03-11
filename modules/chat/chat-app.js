@@ -17,6 +17,7 @@ const ChatApp = {
   outgoingRequests: [],
   memberCache: new Map(),
   pendingDirectDraft: null,
+  groupsSyncListenerBound: false,
 
   peopleSearchPool: [],
   findMeEnabled: true,
@@ -48,9 +49,26 @@ const ChatApp = {
       return;
     }
     this.initialized = true;
+    this.bindGroupsSyncListener();
     this.setTab('groups');
     await this.refresh();
     this.initDirectMessageNotifier();
+  },
+
+  bindGroupsSyncListener() {
+    if (this.groupsSyncListenerBound || typeof document === 'undefined') return;
+    document.addEventListener('myGroupsUpdated', async () => {
+      if (!this.initialized || !window.currentUser) return;
+      try {
+        await this.loadGroups();
+        if (this.isOpen || this.activeTab === 'groups') {
+          this.renderGroups();
+        }
+      } catch (error) {
+        console.warn('[ChatApp] Failed syncing group visuals after myGroupsUpdated:', error);
+      }
+    });
+    this.groupsSyncListenerBound = true;
   },
 
   /**
@@ -209,6 +227,8 @@ const ChatApp = {
         senderName: senderName || '',
         lastAt,
         type,
+        photoURL: this.getGroupDisplayImage(group),
+        icon: this.getGroupDisplayIcon(group),
         group
       };
     }));
@@ -221,6 +241,58 @@ const ChatApp = {
     });
 
     this.groupThreads = threads;
+  },
+
+  getGroupDisplayImage(group = {}) {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupDisplayImage === 'function') {
+      return MyGroups.getGroupDisplayImage(group);
+    }
+    return group.groupPhotoURL || group.photoURL || group.photo || group.imageUrl || group.imageURL || '';
+  },
+
+  getGroupDisplayIcon(group = {}) {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupDisplayIcon === 'function') {
+      return MyGroups.getGroupDisplayIcon(group);
+    }
+    return group.groupIcon || group.icon || '';
+  },
+
+  getGroupInitials(groupName = '') {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupInitials === 'function') {
+      return MyGroups.getGroupInitials(groupName);
+    }
+    const words = String(groupName || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+    if (!words.length) return 'MG';
+    return words.map((word) => word[0]?.toUpperCase() || '').join('');
+  },
+
+  renderGroupThreadAvatar(thread = {}) {
+    const group = thread.group || {};
+    const imageUrl = thread.photoURL || this.getGroupDisplayImage(group);
+    const icon = thread.icon || this.getGroupDisplayIcon(group);
+    const initials = this.getGroupInitials(thread.name || group.name || 'Mission Group');
+
+    if (imageUrl) {
+      return `
+        <img
+          src="${this.escapeHtml(imageUrl)}"
+          alt="${this.escapeHtml(thread.name || group.name || 'Mission Group')}"
+          loading="lazy"
+          decoding="async"
+          class="w-14 h-14 rounded-full object-cover border border-[var(--card-border)] shadow-[0_8px_18px_rgba(82,28,28,0.12)] shrink-0 bg-white"
+        >
+      `;
+    }
+
+    return `
+      <div class="w-14 h-14 rounded-full border border-[var(--card-border)] bg-[linear-gradient(145deg,rgba(255,244,214,0.96),rgba(255,255,255,0.98))] shadow-[0_8px_18px_rgba(82,28,28,0.08)] flex items-center justify-center shrink-0">
+        <span class="text-base font-black tracking-[0.08em] text-[var(--text-color)]">${this.escapeHtml(icon || initials)}</span>
+      </div>
+    `;
   },
 
   /**
@@ -429,14 +501,19 @@ const ChatApp = {
         : this.escapeHtml(thread.previewText);
       return `
         <button onclick="window.ChatApp.openGroupChat('${thread.id}')" class="w-full text-left mission-card rounded-2xl border border-[var(--card-border)] p-4 hover:border-[var(--mission-gold)]/45 transition-colors">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(thread.name)}</p>
-              <p class="text-[11px] text-[var(--text-muted)]">${thread.memberCount} members</p>
+          <div class="flex items-start gap-3">
+            ${this.renderGroupThreadAvatar(thread)}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(thread.name)}</p>
+                  <p class="text-[11px] text-[var(--text-muted)]">${thread.memberCount} members</p>
+                </div>
+                <p class="text-[10px] text-[var(--text-muted)] shrink-0">${this.formatTime(thread.lastAt)}</p>
+              </div>
+              <p class="text-sm text-[var(--text-color)]/90 truncate mt-2">${subtitle}</p>
             </div>
-            <p class="text-[10px] text-[var(--text-muted)] shrink-0">${this.formatTime(thread.lastAt)}</p>
           </div>
-          <p class="text-sm text-[var(--text-color)]/90 truncate mt-2">${subtitle}</p>
         </button>
       `;
     }).join('');
