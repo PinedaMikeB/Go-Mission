@@ -598,6 +598,94 @@
             transition: transform 0.3s ease-in-out;
         }
 
+        .desktop-primary-nav {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem;
+            border-radius: 999px;
+            border: 1px solid var(--nav-border);
+            background: rgba(24, 18, 18, 0.78);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 16px 42px rgba(15, 6, 6, 0.18);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .desktop-primary-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        body.light-mode .desktop-primary-nav {
+            background: rgba(255, 252, 247, 0.88);
+            box-shadow: 0 16px 40px rgba(84, 52, 24, 0.14);
+        }
+
+        .desktop-nav-item {
+            border: 0;
+            background: transparent;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.55rem;
+            min-width: 88px;
+            padding: 0.7rem 0.95rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .desktop-nav-item svg {
+            width: 1rem;
+            height: 1rem;
+            flex-shrink: 0;
+        }
+
+        .desktop-nav-item:hover,
+        .desktop-nav-item:focus-visible {
+            color: var(--text-color);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-1px);
+            outline: none;
+        }
+
+        body.light-mode .desktop-nav-item:hover,
+        body.light-mode .desktop-nav-item:focus-visible {
+            background: rgba(139, 69, 19, 0.08);
+        }
+
+        .desktop-nav-item[aria-current="page"] {
+            color: #fff8ef;
+            background: linear-gradient(135deg, #d65b00, #b33a00);
+            box-shadow: 0 10px 24px rgba(179, 58, 0, 0.28);
+        }
+
+        body.light-mode .desktop-nav-item[aria-current="page"] {
+            color: #fff7ef;
+        }
+
+        @media (max-width: 940px) {
+            .desktop-primary-nav {
+                gap: 0.2rem;
+                padding: 0.3rem;
+            }
+
+            .desktop-nav-item {
+                min-width: 76px;
+                padding: 0.65rem 0.8rem;
+                font-size: 0.66rem;
+                letter-spacing: 0.15em;
+            }
+        }
+
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 162, 158, 0.2); border-radius: 10px; }
@@ -1858,12 +1946,47 @@
         <!-- Header -->
         <!-- Header - Minimal Design -->
         <header id="appHeader" class="bg-[var(--nav-bg)]/80 border-b border-[var(--nav-border)] fixed top-0 left-0 right-0 z-40 transition-all duration-300 backdrop-blur-md">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="max-w-7xl mx-auto px-4 py-3 grid grid-cols-[auto_1fr] md:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 md:gap-4">
                 <div class="flex items-center gap-2">
                     <img src="Go%20Mission%20Logo.png" alt="Go Mission logo" class="w-4 h-4 object-contain shrink-0 opacity-95" loading="eager" decoding="async">
                     <span class="font-mission font-bold text-[var(--text-color)] tracking-widest text-lg">GO MISSION</span>
                 </div>
-                <div class="flex items-center gap-3">
+
+                <nav id="appDesktopNav" class="desktop-primary-nav hidden md:flex justify-self-center max-w-full" aria-label="Primary">
+                    <button type="button" class="desktop-nav-item" data-primary-nav="home" aria-current="page" onclick="window.openHomeNav && window.openHomeNav()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                        <span>Home</span>
+                    </button>
+                    <button type="button" class="desktop-nav-item" data-primary-nav="training" onclick="window.openTrainingNav && window.openTrainingNav()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Training</span>
+                    </button>
+                    <button type="button" class="desktop-nav-item" data-primary-nav="bible" onclick="window.openBibleNav && window.openBibleNav()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5 5.284 5 3.264 5.767 1.67 7.039A1 1 0 001 7.82V19a1 1 0 001.67.743C4.264 18.471 6.284 17.7 8.5 17.7c1.746 0 3.332.477 4.5 1.253m-1-12.7C13.168 5.477 14.754 5 16.5 5c2.216 0 4.236.767 5.83 2.039A1 1 0 0123 7.82V19a1 1 0 01-1.67.743C19.736 18.471 17.716 17.7 15.5 17.7c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <span>Bible</span>
+                    </button>
+                    <button type="button" class="desktop-nav-item" data-primary-nav="watch" onclick="window.openWatchNav && window.openWatchNav()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-4.586-2.65A1 1 0 008.666 9.4v5.2a1 1 0 001.5.866l4.586-2.65a1 1 0 000-1.732z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"></path>
+                        </svg>
+                        <span>Watch</span>
+                    </button>
+                    <button type="button" class="desktop-nav-item" data-primary-nav="groups" onclick="window.openGroupsNav && window.openGroupsNav()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Groups</span>
+                    </button>
+                </nav>
+
+                <div class="flex items-center justify-end gap-2 sm:gap-3">
                     <!-- Chat Icon -->
                     <button id="headerChatBadge" onclick="window.handleInboxIconClick && window.handleInboxIconClick();" class="relative text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Messages">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2331,28 +2454,28 @@
         <nav id="appBottomNav" class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] backdrop-blur-md border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
             <div class="flex justify-around items-center px-3 py-3">
                 <!-- Home/Journey - Active -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--accent-active)]">
+                <button type="button" class="flex flex-col items-center gap-1 flex-1 text-[var(--accent-active)]" data-primary-nav="home" aria-current="page" onclick="window.openHomeNav && window.openHomeNav()">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                     </svg>
                     <span class="text-[10px] font-bold uppercase tracking-tight">Home</span>
                 </button>
                 <!-- Training -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" onclick="(typeof Training !== 'undefined' && Training.openFullScreen) ? Training.openFullScreen() : (window.Training && window.Training.openFullScreen && window.Training.openFullScreen())">
+                <button type="button" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" data-primary-nav="training" onclick="window.openTrainingNav && window.openTrainingNav()">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span class="text-[10px] font-bold uppercase tracking-tight">Training</span>
                 </button>
                 <!-- Bible -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" onclick="window.BibleReader && window.BibleReader.openFromNav ? window.BibleReader.openFromNav() : (window.BibleReader && window.BibleReader.enterFullscreen && window.BibleReader.enterFullscreen())">
+                <button type="button" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" data-primary-nav="bible" onclick="window.openBibleNav && window.openBibleNav()">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5 5.284 5 3.264 5.767 1.67 7.039A1 1 0 001 7.82V19a1 1 0 001.67.743C4.264 18.471 6.284 17.7 8.5 17.7c1.746 0 3.332.477 4.5 1.253m-1-12.7C13.168 5.477 14.754 5 16.5 5c2.216 0 4.236.767 5.83 2.039A1 1 0 0123 7.82V19a1 1 0 01-1.67.743C19.736 18.471 17.716 17.7 15.5 17.7c-1.746 0-3.332.477-4.5 1.253"></path>
                     </svg>
                     <span class="text-[10px] font-bold uppercase tracking-tight">Bible</span>
                 </button>
                 <!-- Watch -->
-                <button id="bottomNavWatchBtn" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" onclick="window.location.href='/watch.html'">
+                <button id="bottomNavWatchBtn" type="button" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors" data-primary-nav="watch" onclick="window.openWatchNav && window.openWatchNav()">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-4.586-2.65A1 1 0 008.666 9.4v5.2a1 1 0 001.5.866l4.586-2.65a1 1 0 000-1.732z"></path>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"></path>
@@ -2360,7 +2483,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-tight">Watch</span>
                 </button>
                 <!-- Groups/Dash -->
-                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="window.openGroupsNav && window.openGroupsNav()">
+                <button type="button" class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" data-primary-nav="groups" onclick="window.openGroupsNav && window.openGroupsNav()">
                     <div class="relative">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -6769,6 +6892,7 @@
 
 	        // Bottom nav "Groups" always opens My Mission Groups.
 	        window.openGroupsNav = async function() {
+	            window.setPrimaryNavActive?.('groups');
 	            if (window.MyGroups?.openDashboard) {
 	                window.MyGroups.openDashboard();
 	            }
@@ -6941,6 +7065,46 @@
             }
         `;
         document.head.appendChild(toastStyles);
+
+        window.openHomeNav = function() {
+            window.ScrollHandler?.forceShow?.();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.setPrimaryNavActive?.('home');
+        };
+
+        window.openTrainingNav = function() {
+            window.setPrimaryNavActive?.('training');
+            return (typeof Training !== 'undefined' && Training.openFullScreen)
+                ? Training.openFullScreen()
+                : (window.Training && window.Training.openFullScreen && window.Training.openFullScreen());
+        };
+
+        window.openBibleNav = function() {
+            window.setPrimaryNavActive?.('bible');
+            return window.BibleReader && window.BibleReader.openFromNav
+                ? window.BibleReader.openFromNav()
+                : (window.BibleReader && window.BibleReader.enterFullscreen && window.BibleReader.enterFullscreen());
+        };
+
+        window.openWatchNav = function() {
+            window.setPrimaryNavActive?.('watch');
+            window.location.href = '/watch.html';
+        };
+
+        window.setPrimaryNavActive = function(navKey = 'home') {
+            document.querySelectorAll('[data-primary-nav]').forEach((item) => {
+                const isActive = item.dataset.primaryNav === navKey;
+                if (isActive) {
+                    item.setAttribute('aria-current', 'page');
+                } else {
+                    item.removeAttribute('aria-current');
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            window.setPrimaryNavActive?.('home');
+        });
     </script>
 
     <!-- Journey Modules -->

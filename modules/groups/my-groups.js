@@ -952,6 +952,7 @@ const MyGroups = {
             dashboard.classList.add('hidden');
         }
         this.isDashboardOpen = false;
+        window.setPrimaryNavActive?.('home');
     },
 
     /**
