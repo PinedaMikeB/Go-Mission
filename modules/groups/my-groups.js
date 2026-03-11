@@ -3427,29 +3427,11 @@ const MyGroups = {
                                 ×
                             </button>
                         </div>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <button onclick="window.MyGroups.showInviteCode('${groupIdSafe}')"
-                                    class="px-4 py-2.5 rounded-full bg-[#f7cc00] text-[#3f1400] text-sm font-black shadow-sm">
-                                Invite
-                            </button>
-                            <button onclick="window.MyGroups.openGroupChat('${groupIdSafe}')"
-                                    class="px-4 py-2.5 rounded-full border border-[#e7d6c9] bg-white/82 text-[#6d0707] text-sm font-black">
-                                Chat
-                            </button>
-                            <button onclick="window.MyGroups.handleMeetingAction('${groupIdSafe}', true)"
-                                    class="px-4 py-2.5 rounded-full text-sm font-black shadow-sm ${meetingLock.locked ? 'bg-[#fff2f2] text-[#9d0500] border border-[#efc0ba]' : (meetingLive ? 'bg-[#35b16f] text-white' : 'bg-white text-[#6d0707] border border-[#e7d6c9]')}">
-                                ${meetingLock.locked ? 'Meeting Locked' : 'Join Meeting'}
-                            </button>
-                            ${pendingRequestsCount > 0 ? `
-                                <button onclick="window.MyGroups.showJoinRequests('${groupIdSafe}')"
-                                        class="px-4 py-2.5 rounded-full bg-[#9d0500] text-white text-sm font-black shadow-sm">
-                                    ${pendingRequestsCount} Pending
-                                </button>
-                            ` : ''}
-                        </div>
                     </div>
 
                     <div class="max-h-[72vh] overflow-y-auto px-4 pb-5 pt-4 space-y-4 bg-[radial-gradient(circle_at_top,rgba(255,214,108,0.08),transparent_28%)]">
+                        ${actionSummaryCard}
+
                         ${this.renderGroupDashboardSection('prayer_pointers', {
                             title: 'Prayer Pointers',
                             summary: prayerPointerActiveCount > 0
@@ -3464,8 +3446,6 @@ const MyGroups = {
                             defaultExpanded: true,
                             body: prayerPointersBody
                         })}
-
-                        ${actionSummaryCard}
 
                         ${this.renderGroupDashboardSection('this_week_focus', {
                             title: 'This Week’s Focus',
