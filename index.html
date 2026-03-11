@@ -598,12 +598,42 @@
             transition: transform 0.3s ease-in-out;
         }
 
+        .header-shell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.85rem;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
+        .header-center-lane {
+            display: none;
+            min-width: 0;
+            justify-content: center;
+        }
+
+        .header-utility-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
         .desktop-primary-nav {
             position: relative;
-            display: flex;
+            display: none;
             align-items: center;
             gap: 0.35rem;
             padding: 0.35rem;
+            width: min(100%, 680px);
             border-radius: 999px;
             border: 1px solid var(--nav-border);
             background: rgba(24, 18, 18, 0.78);
@@ -672,6 +702,181 @@
             color: #fff7ef;
         }
 
+        .menu-panel {
+            width: min(24rem, calc(100vw - 2rem));
+            margin-top: 4.5rem;
+            margin-right: 0.25rem;
+            overflow: hidden;
+            border-radius: 28px;
+            border: 1px solid var(--card-border);
+            background:
+                radial-gradient(circle at top right, rgba(212, 160, 23, 0.14), transparent 42%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+                var(--card-bg-solid);
+            box-shadow: 0 28px 50px rgba(16, 8, 8, 0.32);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .menu-section {
+            padding: 0.9rem;
+        }
+
+        .menu-section + .menu-section {
+            border-top: 1px solid var(--card-border);
+        }
+
+        .menu-section-label {
+            margin: 0 0 0.75rem;
+            font-size: 0.66rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .menu-primary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.65rem;
+        }
+
+        .menu-primary-item {
+            border: 1px solid rgba(212, 160, 23, 0.12);
+            border-radius: 20px;
+            padding: 0.85rem 0.9rem;
+            min-height: 84px;
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-color);
+            text-align: left;
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .menu-primary-item:last-child {
+            grid-column: 1 / -1;
+        }
+
+        .menu-primary-item:hover,
+        .menu-primary-item:focus-visible,
+        .menu-list-item:hover,
+        .menu-list-item:focus-visible {
+            transform: translateY(-1px);
+            border-color: rgba(212, 160, 23, 0.32);
+            background: rgba(255, 255, 255, 0.06);
+            outline: none;
+        }
+
+        .menu-primary-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            margin-bottom: 0.55rem;
+            border-radius: 999px;
+            background: rgba(212, 160, 23, 0.12);
+            color: var(--mission-gold);
+        }
+
+        .menu-primary-title {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .menu-primary-copy {
+            display: block;
+            margin-top: 0.3rem;
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: var(--text-muted);
+        }
+
+        .menu-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
+
+        .menu-list-item {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            width: 100%;
+            border: 1px solid transparent;
+            border-radius: 18px;
+            padding: 0.8rem 0.9rem;
+            background: transparent;
+            color: var(--text-color);
+            text-align: left;
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .menu-list-item.danger {
+            color: #f87171;
+        }
+
+        .menu-list-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+        }
+
+        .menu-list-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .menu-list-title {
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .menu-list-copy {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .menu-meta {
+            margin-left: auto;
+            font-size: 0.64rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 1099px) {
+            .header-center-lane {
+                display: none !important;
+            }
+        }
+
+        @media (min-width: 1100px) {
+            .header-shell {
+                display: grid;
+                grid-template-columns: auto minmax(420px, 680px) auto;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .header-center-lane {
+                display: flex;
+            }
+
+            .desktop-primary-nav {
+                display: flex;
+            }
+        }
+
         @media (max-width: 940px) {
             .desktop-primary-nav {
                 gap: 0.2rem;
@@ -683,6 +888,14 @@
                 padding: 0.65rem 0.8rem;
                 font-size: 0.66rem;
                 letter-spacing: 0.15em;
+            }
+
+            .menu-primary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-primary-item:last-child {
+                grid-column: auto;
             }
         }
 
@@ -1946,13 +2159,14 @@
         <!-- Header -->
         <!-- Header - Minimal Design -->
         <header id="appHeader" class="bg-[var(--nav-bg)]/80 border-b border-[var(--nav-border)] fixed top-0 left-0 right-0 z-40 transition-all duration-300 backdrop-blur-md">
-            <div class="max-w-7xl mx-auto px-4 py-3 grid grid-cols-[auto_1fr] md:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 md:gap-4">
-                <div class="flex items-center gap-2">
+            <div class="header-shell max-w-7xl mx-auto px-4 py-3">
+                <div class="header-brand">
                     <img src="Go%20Mission%20Logo.png" alt="Go Mission logo" class="w-4 h-4 object-contain shrink-0 opacity-95" loading="eager" decoding="async">
                     <span class="font-mission font-bold text-[var(--text-color)] tracking-widest text-lg">GO MISSION</span>
                 </div>
 
-                <nav id="appDesktopNav" class="desktop-primary-nav hidden md:flex justify-self-center max-w-full" aria-label="Primary">
+                <div class="header-center-lane">
+                    <nav id="appDesktopNav" class="desktop-primary-nav" aria-label="Primary">
                     <button type="button" class="desktop-nav-item" data-primary-nav="home" aria-current="page" onclick="window.openHomeNav && window.openHomeNav()">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -1984,9 +2198,10 @@
                         </svg>
                         <span>Groups</span>
                     </button>
-                </nav>
+                    </nav>
+                </div>
 
-                <div class="flex items-center justify-end gap-2 sm:gap-3">
+                <div class="header-utility-bar">
                     <!-- Chat Icon -->
                     <button id="headerChatBadge" onclick="window.handleInboxIconClick && window.handleInboxIconClick();" class="relative text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Messages">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5623,6 +5838,83 @@
             return false;
         };
 
+        window.runMainMenuAction = async function(action, ev) {
+            const eventObj = ev || window.event;
+            if (eventObj?.preventDefault) eventObj.preventDefault();
+            if (eventObj?.stopPropagation) eventObj.stopPropagation();
+
+            const closeMenu = () => {
+                const modal = document.getElementById('mainMenuModal');
+                if (modal) modal.remove();
+            };
+
+            switch (action) {
+                case 'home':
+                    closeMenu();
+                    window.openHomeNav?.();
+                    break;
+                case 'training':
+                    closeMenu();
+                    await window.openTrainingNav?.();
+                    break;
+                case 'bible':
+                    closeMenu();
+                    await window.openBibleNav?.();
+                    break;
+                case 'watch':
+                    closeMenu();
+                    window.openWatchNav?.();
+                    break;
+                case 'groups':
+                    closeMenu();
+                    await window.openGroupsNav?.();
+                    break;
+                case 'messages':
+                    closeMenu();
+                    await window.handleInboxIconClick?.();
+                    break;
+                case 'notifications':
+                    closeMenu();
+                    window.handleNotificationBellClick?.();
+                    break;
+                case 'journal':
+                    closeMenu();
+                    await window.openJournalFromMainMenu?.(eventObj);
+                    break;
+                case 'language':
+                    if (window.i18n && window.i18n.toggle) {
+                        window.i18n.toggle();
+                    } else {
+                        window.setLanguage((localStorage.getItem('goMission_language') || 'tl') === 'en' ? 'tl' : 'en');
+                    }
+                    closeMenu();
+                    break;
+                case 'theme':
+                    Theme.toggle();
+                    closeMenu();
+                    break;
+                case 'photo':
+                    if (window.triggerProfilePhotoPicker) {
+                        window.triggerProfilePhotoPicker();
+                    }
+                    closeMenu();
+                    break;
+                case 'updates':
+                    AutoUpdate.showUpdateDetails();
+                    closeMenu();
+                    break;
+                case 'signout':
+                    closeMenu();
+                    signOut(auth);
+                    break;
+                default:
+                    closeMenu();
+                    break;
+            }
+
+            return false;
+        };
+
         window.toggleMainMenu = function() {
             const modal = document.getElementById('mainMenuModal');
             if (modal) {
@@ -5632,52 +5924,180 @@
                 // Create menu modal with current language
                 const currentLang = window.i18n?.getLang?.() || localStorage.getItem('goMission_language') || 'tl';
                 const updateInfo = (typeof AutoUpdate !== 'undefined') ? AutoUpdate.CURRENT_UPDATE : { version: '2.0.0', date: '2026-01-27' };
+                const menuText = currentLang === 'tl'
+                    ? {
+                        destinations: 'Mga Destinasyon',
+                        tools: 'Mga Gamit',
+                        settings: 'Mga Setting',
+                        home: 'Home',
+                        homeCopy: 'Bumalik sa iyong journey at devotion.',
+                        training: 'Training',
+                        trainingCopy: 'Buksan ang disciple-making sessions.',
+                        bible: 'Bible',
+                        bibleCopy: 'Magbasa at magnilay sa Salita.',
+                        watch: 'Watch',
+                        watchCopy: 'Panoorin ang mga series at lessons.',
+                        groups: 'Groups',
+                        groupsCopy: 'Buksan ang mission groups dashboard.',
+                        messages: 'Messages',
+                        messagesCopy: 'Basahin ang group at direct inbox.',
+                        notifications: 'Notifications',
+                        notificationsCopy: 'Tingnan ang alerts at updates.',
+                        journal: 'My Journal',
+                        journalCopy: 'Buksan ang reflections at prayers mo.',
+                        language: 'Palitan ang Wika',
+                        languageCopy: currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog',
+                        theme: 'Itsura ng App',
+                        themeCopy: 'Light o dark view ng app.',
+                        photo: 'Profile Photo',
+                        photoCopy: 'Palitan ang larawan mo.',
+                        updates: 'Update App',
+                        updatesCopy: 'Tingnan ang latest release notes.',
+                        signOut: 'Sign Out',
+                        signOutCopy: 'Lumabas sa account na ito.'
+                    }
+                    : {
+                        destinations: 'Destinations',
+                        tools: 'Tools',
+                        settings: 'Settings',
+                        home: 'Home',
+                        homeCopy: 'Return to your journey and devotion.',
+                        training: 'Training',
+                        trainingCopy: 'Open the disciple-making sessions.',
+                        bible: 'Bible',
+                        bibleCopy: 'Read and reflect on Scripture.',
+                        watch: 'Watch',
+                        watchCopy: 'Open video series and lessons.',
+                        groups: 'Groups',
+                        groupsCopy: 'Open the mission groups dashboard.',
+                        messages: 'Messages',
+                        messagesCopy: 'Check group and direct inbox.',
+                        notifications: 'Notifications',
+                        notificationsCopy: 'Review alerts and updates.',
+                        journal: 'My Journal',
+                        journalCopy: 'Open your reflections and prayers.',
+                        language: 'Language',
+                        languageCopy: currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog',
+                        theme: 'Theme',
+                        themeCopy: 'Change the app appearance.',
+                        photo: 'Profile Photo',
+                        photoCopy: 'Update your photo.',
+                        updates: 'Update App',
+                        updatesCopy: 'View the latest release notes.',
+                        signOut: 'Sign Out',
+                        signOutCopy: 'Leave this account.'
+                    };
                 const menuHTML = `
                     <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
-                        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-64 mt-16 mr-2 overflow-hidden shadow-2xl">
+                        <div class="menu-panel">
                             <div class="p-4 border-b border-[var(--card-border)]">
                                 <p class="text-sm font-bold text-[var(--text-color)]">${window.currentUser?.displayName || 'User'}</p>
                                 <p class="text-xs text-[var(--text-muted)]">${window.currentUser?.email || ''}</p>
                             </div>
-                            <div class="p-2">
-                                <button onclick="if(window.i18n && window.i18n.toggle){window.i18n.toggle();} else {window.setLanguage((localStorage.getItem('goMission_language')||'tl') === 'en' ? 'tl' : 'en');} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
-                                    <span class="text-lg">${currentLang === 'tl' ? '🇺🇸' : '🇵🇭'}</span>
-                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog'}</span>
-                                </button>
-                                <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
-                                    <span class="text-lg">🌓</span>
-                                    <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
-                                </button>
-                                <button id="mainMenuJournalBtn"
-                                   type="button"
-                                   onclick="window.openJournalFromMainMenu(event); return false;"
-                                   onpointerdown="window.forceOpenJournalModal(); return false;"
-                                   class="relative z-10 w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer">
-                                    <span class="text-lg">📖</span>
-                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Aking Journal' : 'My Journal'}</span>
-                                </button>
-                                <button onclick="if(window.triggerProfilePhotoPicker){window.triggerProfilePhotoPicker();} toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
-                                    <span class="text-lg">🖼️</span>
-                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Palitan ang Profile Photo' : 'Change Profile Photo'}</span>
-                                </button>
-                                <button onclick="AutoUpdate.showUpdateDetails(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
-                                    <span class="text-lg">🔄</span>
-                                    <div class="flex-1">
-                                        <span class="text-sm text-[var(--text-color)] block">${currentLang === 'tl' ? 'I-update ang App' : 'Update App'}</span>
-                                        <span class="text-[10px] text-[var(--text-muted)]">v${updateInfo.version} • ${updateInfo.date}</span>
-                                    </div>
-                                </button>
-                                <button onclick="signOut(auth); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left text-red-400">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                    </svg>
-                                    <span class="text-sm">Sign Out</span>
-                                </button>
+                            <div class="menu-section">
+                                <p class="menu-section-label">${menuText.destinations}</p>
+                                <div class="menu-primary-grid">
+                                    <button type="button" class="menu-primary-item" onclick="window.runMainMenuAction('home', event)">
+                                        <span class="menu-primary-icon">⌂</span>
+                                        <span class="menu-primary-title">${menuText.home}</span>
+                                        <span class="menu-primary-copy">${menuText.homeCopy}</span>
+                                    </button>
+                                    <button type="button" class="menu-primary-item" onclick="window.runMainMenuAction('training', event)">
+                                        <span class="menu-primary-icon">✓</span>
+                                        <span class="menu-primary-title">${menuText.training}</span>
+                                        <span class="menu-primary-copy">${menuText.trainingCopy}</span>
+                                    </button>
+                                    <button type="button" class="menu-primary-item" onclick="window.runMainMenuAction('bible', event)">
+                                        <span class="menu-primary-icon">✦</span>
+                                        <span class="menu-primary-title">${menuText.bible}</span>
+                                        <span class="menu-primary-copy">${menuText.bibleCopy}</span>
+                                    </button>
+                                    <button type="button" class="menu-primary-item" onclick="window.runMainMenuAction('watch', event)">
+                                        <span class="menu-primary-icon">▶</span>
+                                        <span class="menu-primary-title">${menuText.watch}</span>
+                                        <span class="menu-primary-copy">${menuText.watchCopy}</span>
+                                    </button>
+                                    <button type="button" class="menu-primary-item" onclick="window.runMainMenuAction('groups', event)">
+                                        <span class="menu-primary-icon">◎</span>
+                                        <span class="menu-primary-title">${menuText.groups}</span>
+                                        <span class="menu-primary-copy">${menuText.groupsCopy}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="menu-section">
+                                <p class="menu-section-label">${menuText.tools}</p>
+                                <div class="menu-list">
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('messages', event)">
+                                        <span class="menu-list-icon">💬</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.messages}</span>
+                                            <span class="menu-list-copy">${menuText.messagesCopy}</span>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('notifications', event)">
+                                        <span class="menu-list-icon">🔔</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.notifications}</span>
+                                            <span class="menu-list-copy">${menuText.notificationsCopy}</span>
+                                        </span>
+                                    </button>
+                                    <button id="mainMenuJournalBtn"
+                                       type="button"
+                                       onpointerdown="window.forceOpenJournalModal(); return false;"
+                                       class="menu-list-item">
+                                        <span class="menu-list-icon">📖</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.journal}</span>
+                                            <span class="menu-list-copy">${menuText.journalCopy}</span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="menu-section">
+                                <p class="menu-section-label">${menuText.settings}</p>
+                                <div class="menu-list">
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('language', event)">
+                                        <span class="menu-list-icon">${currentLang === 'tl' ? '🇺🇸' : '🇵🇭'}</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.language}</span>
+                                            <span class="menu-list-copy">${menuText.languageCopy}</span>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('theme', event)">
+                                        <span class="menu-list-icon">🌓</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.theme}</span>
+                                            <span class="menu-list-copy">${menuText.themeCopy}</span>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('photo', event)">
+                                        <span class="menu-list-icon">🖼️</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.photo}</span>
+                                            <span class="menu-list-copy">${menuText.photoCopy}</span>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('updates', event)">
+                                        <span class="menu-list-icon">🔄</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.updates}</span>
+                                            <span class="menu-list-copy">${menuText.updatesCopy}</span>
+                                        </span>
+                                        <span class="menu-meta">v${updateInfo.version}</span>
+                                    </button>
+                                    <button type="button" class="menu-list-item danger" onclick="window.runMainMenuAction('signout', event)">
+                                        <span class="menu-list-icon">⇢</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.signOut}</span>
+                                            <span class="menu-list-copy">${menuText.signOutCopy}</span>
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
-                document.body.insertAdjacentHTML('beforeend', menuHTML);
+                document.body.insertAdjacentHTML('beforeend', menuHTML);                document.body.insertAdjacentHTML('beforeend', menuHTML);
                 const journalBtn = document.getElementById('mainMenuJournalBtn');
                 if (journalBtn) {
                     const openJournalHandler = (event) => {
