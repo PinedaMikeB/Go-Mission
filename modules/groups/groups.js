@@ -72,6 +72,52 @@ const Groups = {
     return this.normalizeCollectionEntries(groupData.members).some((entry) => this.getEntityUserId(entry) === userId);
   },
 
+  async findEligibleUplineGroupId(uid = window.currentUser?.uid, hintedGroupIds = []) {
+    if (!uid || !window.db) return null;
+
+    for (const groupId of [...new Set((hintedGroupIds || []).filter(Boolean))]) {
+      try {
+        const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', groupId));
+        if (!groupDoc.exists()) continue;
+        const groupData = groupDoc.data() || {};
+        if (!groupData.leaderId || groupData.leaderId === uid) continue;
+        if (!this.isUserMemberInGroupData(groupData, uid)) continue;
+        return groupDoc.id;
+      } catch (error) {
+        console.warn('[Groups] findEligibleUplineGroupId candidate check failed:', groupId, error);
+      }
+    }
+
+    try {
+      const memberQuery = window.query(
+        window.collection(window.db, 'goMission_groups'),
+        window.where('members', 'array-contains', uid)
+      );
+      const memberSnapshot = await window.getDocs(memberQuery);
+      const memberGroupDoc = memberSnapshot.docs.find((docSnap) => {
+        const data = docSnap.data() || {};
+        return data.leaderId && data.leaderId !== uid;
+      }) || null;
+
+      if (memberGroupDoc) return memberGroupDoc.id;
+    } catch (error) {
+      console.warn('[Groups] findEligibleUplineGroupId member query failed:', error);
+    }
+
+    try {
+      const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+      const legacyGroupDoc = allGroupsSnapshot.docs.find((docSnap) => {
+        const data = docSnap.data() || {};
+        return data.leaderId && data.leaderId !== uid && this.isUserMemberInGroupData(data, uid);
+      }) || null;
+
+      return legacyGroupDoc ? legacyGroupDoc.id : null;
+    } catch (error) {
+      console.warn('[Groups] findEligibleUplineGroupId legacy scan failed:', error);
+      return null;
+    }
+  },
+
   async ensureCreationUplineProfilePointer(profile = null) {
     if (!window.currentUser?.uid || !window.db) {
       return { ok: false, reason: 'missing_context', patched: false, targetGroupId: null };
@@ -86,21 +132,7 @@ const Groups = {
     const profileUpline = typeof memberProfile?.uplineGroupId === 'string' ? memberProfile.uplineGroupId.trim() : '';
     const profileGroup = typeof memberProfile?.groupId === 'string' ? memberProfile.groupId.trim() : '';
     const candidateIds = [...new Set([profileUpline, profileGroup].filter(Boolean))];
-
-    let targetGroupId = null;
-    for (const groupId of candidateIds) {
-      try {
-        const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', groupId));
-        if (!groupDoc.exists()) continue;
-        const groupData = groupDoc.data() || {};
-        if (!groupData.leaderId || groupData.leaderId === uid) continue;
-        if (!this.isUserMemberInGroupData(groupData, uid)) continue;
-        targetGroupId = groupDoc.id;
-        break;
-      } catch (error) {
-        console.warn('[Groups] ensureCreationUplineProfilePointer candidate check failed:', groupId, error);
-      }
-    }
+    const targetGroupId = await this.findEligibleUplineGroupId(uid, candidateIds);
 
     if (!targetGroupId) {
       return { ok: false, reason: 'requires_upline_pointer', patched: false, targetGroupId: null };
@@ -234,7 +266,19 @@ const Groups = {
       }
 
       // STRICT RULE: all non-exempt users need an active upline group to create downline.
-      const uplineGroupId = userData.uplineGroupId || null;
+      let uplineGroupId = userData.uplineGroupId || null;
+      if (!uplineGroupId) {
+        uplineGroupId = await this.findEligibleUplineGroupId(window.currentUser.uid, [userData.groupId]);
+        if (uplineGroupId) {
+          await window.setDoc(userRef, {
+            uplineGroupId,
+            groupId: userData.groupId || uplineGroupId,
+            groupRole: String(userData.groupRole || '').toLowerCase() === 'guest' ? 'member' : (userData.groupRole || 'member')
+          }, { merge: true });
+          userData.uplineGroupId = uplineGroupId;
+          if (!userData.groupId) userData.groupId = uplineGroupId;
+        }
+      }
       if (!uplineGroupId) {
         return { allowed: false, reason: 'requires_upline' };
       }

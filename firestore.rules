@@ -102,6 +102,32 @@ service cloud.firestore {
       );
     }
 
+    function canSelfSyncOwnUplinePointer(uid) {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let targetGroupId = request.resource.data.uplineGroupId is string && request.resource.data.uplineGroupId.size() > 0
+        ? request.resource.data.uplineGroupId
+        : (
+            request.resource.data.groupId is string && request.resource.data.groupId.size() > 0
+              ? request.resource.data.groupId
+              : ''
+          );
+      let targetGroup = targetGroupId != ''
+        ? get(/databases/$(database)/documents/goMission_groups/$(targetGroupId)).data
+        : null;
+      let targetMembers = targetGroup != null && targetGroup.members is list ? targetGroup.members : [];
+      return isSelf(uid) &&
+        changed.hasOnly(['uplineGroupId', 'groupId', 'groupRole']) &&
+        targetGroupId != '' &&
+        targetGroup != null &&
+        targetGroup.leaderId is string &&
+        targetGroup.leaderId != uid &&
+        targetMembers.hasAny([uid]) &&
+        (
+          request.resource.data.groupRole == null ||
+          request.resource.data.groupRole == 'member'
+        );
+    }
+
     function canSelfAppendOwnJoinRequest() {
       let changed = request.resource.data.diff(resource.data).changedKeys();
       let incoming = request.resource.data.joinRequests is list ? request.resource.data.joinRequests : [];
@@ -250,7 +276,7 @@ service cloud.firestore {
     match /goMission_members/{uid} {
       allow read: if isSignedIn();
       allow create: if isAdmin() || (isSelf(uid) && !hasProtectedMemberPrivileges(request.resource.data));
-      allow update: if isAdmin() || (isSelf(uid) && !touchesProtectedMemberFields());
+      allow update: if isAdmin() || (isSelf(uid) && (!touchesProtectedMemberFields() || canSelfSyncOwnUplinePointer(uid)));
       allow delete: if isSelf(uid) || isAdmin();
 
       match /notifications/{docId} {
