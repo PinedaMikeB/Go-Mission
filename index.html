@@ -3662,6 +3662,12 @@
                     if (typeof window.requestJourneyStageRefresh === 'function') {
                         window.requestJourneyStageRefresh('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 120 });
                     }
+                    if (typeof window.requestAdminJourneyStageReconcile === 'function') {
+                        window.requestAdminJourneyStageReconcile('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 900 });
+                    }
+                    if (typeof window.initJourneyStageAdminWatcher === 'function') {
+                        window.initJourneyStageAdminWatcher();
+                    }
 
                     // Initialize Chat Inbox module
                     if (typeof ChatApp !== 'undefined') {
@@ -3822,6 +3828,9 @@
                     }
                 }
             } else {
+                if (typeof window.teardownJourneyStageAdminWatcher === 'function') {
+                    window.teardownJourneyStageAdminWatcher();
+                }
                 if (typeof ChatApp !== 'undefined') {
                     if (typeof ChatApp.cleanup === 'function') {
                         ChatApp.cleanup();
@@ -4037,8 +4046,15 @@
             graphCacheAt: 0,
             graphCacheTtlMs: 120000,
             graphCache: null,
-            evalTimer: null
+            evalTimer: null,
+            reconcileTimer: null,
+            adminReconcileInFlight: false,
+            groupWatcherUnsub: null
         };
+        const JOURNEY_STAGE_ADMIN_EMAILS = new Set([
+            'michael.marga@gmail.com',
+            'vasquezperlie18@gmail.com'
+        ]);
 
         function normalizeJourneyStage(stage) {
             const normalized = String(stage || '').toLowerCase().trim();
@@ -4051,6 +4067,15 @@
 
         function getHighestJourneyStage(a, b) {
             return getJourneyStageRank(a) >= getJourneyStageRank(b) ? normalizeJourneyStage(a) : normalizeJourneyStage(b);
+        }
+
+        function canReconcileJourneyStagesForOthers() {
+            const roleFlags = (window.currentUserRoles && typeof window.currentUserRoles === 'object') ? window.currentUserRoles : {};
+            const normalizedEmail = String(window.currentUser?.email || window.currentUserProfile?.email || '').toLowerCase().trim();
+            return !!(
+                roleFlags.isAdmin ||
+                JOURNEY_STAGE_ADMIN_EMAILS.has(normalizedEmail)
+            );
         }
 
         function getJourneyLanguage() {
@@ -4254,11 +4279,18 @@
         }
 
         async function resolveJourneyStatus(uid, options = {}) {
-            let profile = window.currentUserProfile || null;
-            if (!profile || profile.id !== uid) {
+            const normalizedUid = String(uid || '').trim();
+            const isCurrentUser = normalizedUid && normalizedUid === String(window.currentUser?.uid || '').trim();
+            let profile = isCurrentUser ? (window.currentUserProfile || null) : null;
+            if ((!profile || profile.id !== normalizedUid) && options.profile && options.profile.id === normalizedUid) {
+                profile = options.profile;
+            }
+            if (!profile || profile.id !== normalizedUid) {
                 const userDoc = await window.getDoc(window.doc(window.db, 'goMission_members', uid));
-                profile = userDoc.exists() ? ({ id: uid, ...(userDoc.data() || {}) }) : { id: uid };
-                window.currentUserProfile = profile;
+                profile = userDoc.exists() ? ({ id: normalizedUid, ...(userDoc.data() || {}) }) : { id: normalizedUid };
+                if (isCurrentUser) {
+                    window.currentUserProfile = profile;
+                }
             }
 
             let memberGroupId = null;
@@ -4388,49 +4420,76 @@
             };
         }
 
+        async function persistJourneyStageForUser(uid, options = {}) {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid || !window.db) return null;
+
+            const status = await resolveJourneyStatus(normalizedUid, options);
+            const isCurrentUser = normalizedUid === String(window.currentUser?.uid || '').trim();
+            const persistedStage = normalizeJourneyStage(
+                status.profile?.stage || (isCurrentUser ? window.currentUserStage : 'seeker')
+            );
+            const finalStage = normalizeJourneyStage(status.detectedStage);
+            const advanced = getJourneyStageRank(finalStage) > getJourneyStageRank(persistedStage);
+            const changed = finalStage !== persistedStage;
+
+            if (changed) {
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_members', normalizedUid),
+                    {
+                        stage: finalStage,
+                        stageUpdatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                        stageAutoStatus: {
+                            detectedStage: finalStage,
+                            hasMissionGroupMember: !!status.hasMissionGroupMember,
+                            leadsMissionGroup: !!status.leadsMissionGroup,
+                            groupsLedCount: Number(status.groupsLedCount || 0),
+                            groupsLedWithMembersCount: Number(status.groupsLedWithMembersCount || 0),
+                            generationDepth: Number(status.generationDepth || 0),
+                            generationCount: Number(status.generationCount || 0),
+                            updatedAtIso: new Date().toISOString()
+                        }
+                    },
+                    { merge: true }
+                );
+            }
+
+            if (isCurrentUser) {
+                window.currentUserProfile = { ...(status.profile || {}), stage: finalStage, id: normalizedUid };
+                window.currentUserStage = finalStage;
+
+                if (!options.skipCurrentUserUi) {
+                    updateJourneyDisplay(finalStage);
+
+                    if (advanced && !options.suppressCelebration) {
+                        showJourneyAdvancementCelebration(finalStage, persistedStage, status);
+                    } else if (!options.silentMotivation) {
+                        maybeShowStageEncouragement(finalStage);
+                    }
+                }
+            }
+
+            return { ...status, persistedStage, finalStage, advanced, changed };
+        }
+
+        async function collectJourneyStageTargetUserIds(forceRefresh = false) {
+            const allGroups = await getAllGroupsForJourney(forceRefresh);
+            const targetIds = new Set();
+            allGroups.forEach((group) => {
+                const leaderId = String(group?.leaderId || '').trim();
+                if (leaderId) targetIds.add(leaderId);
+                getCollectionIds(group?.members).forEach((memberId) => {
+                    if (memberId) targetIds.add(String(memberId));
+                });
+            });
+            return [...targetIds];
+        }
+
         window.evaluateAndApplyJourneyStage = async function(options = {}) {
             if (!window.currentUser?.uid || !window.db) return null;
 
             try {
-                const uid = window.currentUser.uid;
-                const status = await resolveJourneyStatus(uid, options);
-                const persistedStage = normalizeJourneyStage(status.profile?.stage || window.currentUserStage || 'seeker');
-                const detectedStage = normalizeJourneyStage(status.detectedStage);
-                const finalStage = getHighestJourneyStage(persistedStage, detectedStage);
-                const advanced = getJourneyStageRank(finalStage) > getJourneyStageRank(persistedStage);
-
-                if (finalStage !== persistedStage) {
-                    await window.setDoc(
-                        window.doc(window.db, 'goMission_members', uid),
-                        {
-                            stage: finalStage,
-                            stageUpdatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
-                            stageAutoStatus: {
-                                detectedStage,
-                                hasMissionGroupMember: !!status.hasMissionGroupMember,
-                                leadsMissionGroup: !!status.leadsMissionGroup,
-                                groupsLedCount: Number(status.groupsLedCount || 0),
-                                groupsLedWithMembersCount: Number(status.groupsLedWithMembersCount || 0),
-                                generationDepth: Number(status.generationDepth || 0),
-                                generationCount: Number(status.generationCount || 0),
-                                updatedAtIso: new Date().toISOString()
-                            }
-                        },
-                        { merge: true }
-                    );
-                }
-
-                window.currentUserProfile = { ...(status.profile || {}), stage: finalStage, id: uid };
-                window.currentUserStage = finalStage;
-                updateJourneyDisplay(finalStage);
-
-                if (advanced) {
-                    showJourneyAdvancementCelebration(finalStage, persistedStage, status);
-                } else if (!options.silentMotivation) {
-                    maybeShowStageEncouragement(finalStage);
-                }
-
-                return { ...status, persistedStage, finalStage, advanced };
+                return await persistJourneyStageForUser(window.currentUser.uid, options);
             } catch (error) {
                 console.error('[Journey] Stage evaluation failed:', error);
                 return null;
@@ -4452,8 +4511,94 @@
             }, delayMs);
         };
 
+        window.adminReconcileJourneyStages = async function(options = {}) {
+            if (!window.currentUser?.uid || !window.db) {
+                return { skipped: true, reason: 'not_signed_in' };
+            }
+            if (!canReconcileJourneyStagesForOthers()) {
+                return { skipped: true, reason: 'not_admin' };
+            }
+            if (JourneyStageRuntime.adminReconcileInFlight) {
+                return { skipped: true, reason: 'in_flight' };
+            }
+
+            JourneyStageRuntime.adminReconcileInFlight = true;
+            try {
+                const targetIds = await collectJourneyStageTargetUserIds(!!options.forceGraphRefresh);
+                let changedCount = 0;
+                const errors = [];
+
+                for (const targetUid of targetIds) {
+                    try {
+                        const result = await persistJourneyStageForUser(targetUid, {
+                            forceGraphRefresh: false,
+                            silentMotivation: true,
+                            suppressCelebration: true
+                        });
+                        if (result?.changed) changedCount += 1;
+                    } catch (error) {
+                        errors.push({
+                            uid: targetUid,
+                            message: String(error?.message || error)
+                        });
+                    }
+                }
+
+                return {
+                    processedCount: targetIds.length,
+                    changedCount,
+                    errorCount: errors.length,
+                    errors: errors.slice(0, 20)
+                };
+            } finally {
+                JourneyStageRuntime.adminReconcileInFlight = false;
+            }
+        };
+
+        window.requestAdminJourneyStageReconcile = function(source = 'manual', options = {}) {
+            if (!canReconcileJourneyStagesForOthers()) return;
+            if (JourneyStageRuntime.reconcileTimer) clearTimeout(JourneyStageRuntime.reconcileTimer);
+
+            const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 800;
+            JourneyStageRuntime.reconcileTimer = setTimeout(() => {
+                JourneyStageRuntime.reconcileTimer = null;
+                window.adminReconcileJourneyStages({
+                    source,
+                    forceGraphRefresh: !!options.forceGraphRefresh
+                }).catch((error) => {
+                    console.warn('[Journey] Admin reconcile failed:', error);
+                });
+            }, delayMs);
+        };
+
+        window.teardownJourneyStageAdminWatcher = function() {
+            if (typeof JourneyStageRuntime.groupWatcherUnsub === 'function') {
+                JourneyStageRuntime.groupWatcherUnsub();
+            }
+            JourneyStageRuntime.groupWatcherUnsub = null;
+        };
+
+        window.initJourneyStageAdminWatcher = function() {
+            if (!canReconcileJourneyStagesForOthers() || !window.db || typeof window.onSnapshot !== 'function') return;
+            if (JourneyStageRuntime.groupWatcherUnsub) return;
+
+            JourneyStageRuntime.groupWatcherUnsub = window.onSnapshot(
+                window.collection(window.db, 'goMission_groups'),
+                () => {
+                    window.requestAdminJourneyStageReconcile?.('groupWatcher', {
+                        forceGraphRefresh: true,
+                        delayMs: 1200
+                    });
+                },
+                (error) => {
+                    console.warn('[Journey] Admin group watcher failed:', error);
+                }
+            );
+        };
+
         document.addEventListener('myGroupsUpdated', function() {
             window.requestJourneyStageRefresh('myGroupsUpdated', { forceGraphRefresh: true });
+            window.requestAdminJourneyStageReconcile?.('myGroupsUpdated', { forceGraphRefresh: true, delayMs: 900 });
         });
 
         async function loadUserData(uid) {
