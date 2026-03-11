@@ -706,6 +706,9 @@
             width: min(24rem, calc(100vw - 2rem));
             margin-top: 4.5rem;
             margin-right: 0.25rem;
+            max-height: calc(100dvh - 5.5rem);
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
             border-radius: 28px;
             border: 1px solid var(--card-border);
@@ -716,6 +719,14 @@
             box-shadow: 0 28px 50px rgba(16, 8, 8, 0.32);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+        }
+
+        .menu-body {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
         }
 
         .menu-section {
@@ -5994,6 +6005,7 @@
                                 <p class="text-sm font-bold text-[var(--text-color)]">${window.currentUser?.displayName || 'User'}</p>
                                 <p class="text-xs text-[var(--text-muted)]">${window.currentUser?.email || ''}</p>
                             </div>
+                            <div class="menu-body">
                             <div class="menu-section">
                                 <p class="menu-section-label">${menuText.destinations}</p>
                                 <div class="menu-primary-grid">
@@ -6093,6 +6105,7 @@
                                         </span>
                                     </button>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
