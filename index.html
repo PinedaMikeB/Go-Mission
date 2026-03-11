@@ -4076,7 +4076,7 @@
             const extractEntryId = (entry) => {
                 if (!entry) return null;
                 if (typeof entry === 'string') return entry;
-                return entry.odId || entry.uid || entry.userId || entry.memberId || entry.id || entry._key || null;
+                return entry.odId || entry.uid || entry.userId || entry.memberId || entry.profileId || entry.id || entry._key || null;
             };
 
             if (Array.isArray(raw)) {
@@ -4261,31 +4261,86 @@
                 window.currentUserProfile = profile;
             }
 
-            let hasMissionGroupMember = false;
-            const roleFromProfile = String(profile.groupRole || '').toLowerCase().trim();
-            const primaryGroupId = profile.uplineGroupId || (roleFromProfile === 'member' ? profile.groupId : null);
+            let memberGroupId = null;
+            const candidateMemberGroupIds = [
+                profile.uplineGroupId,
+                profile.groupId
+            ].filter((groupId) => typeof groupId === 'string' && groupId.trim());
 
-            const uplineGroup = window.MyGroups?.uplineGroup || null;
-            if (!hasMissionGroupMember && uplineGroup?.id) {
-                const memberIds = getCollectionIds(uplineGroup.members);
-                hasMissionGroupMember = memberIds.includes(uid);
-            }
-
-            if (!hasMissionGroupMember && primaryGroupId) {
+            const verifyMembershipInGroup = async (groupId) => {
+                if (!groupId || memberGroupId) return;
                 try {
-                    const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', String(primaryGroupId)));
-                    if (groupDoc.exists()) {
-                        const groupData = groupDoc.data() || {};
-                        const memberIds = getCollectionIds(groupData.members);
-                        hasMissionGroupMember = memberIds.includes(uid);
+                    const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', String(groupId)));
+                    if (!groupDoc.exists()) return;
+                    const groupData = groupDoc.data() || {};
+                    if (String(groupData.leaderId || '').trim() === uid) return;
+                    const memberIds = getCollectionIds(groupData.members);
+                    if (memberIds.includes(uid)) {
+                        memberGroupId = String(groupDoc.id);
                     }
                 } catch (error) {
                     console.warn('[Journey] Could not verify member group pointer:', error);
                 }
+            };
+
+            const uplineGroup = window.MyGroups?.uplineGroup || null;
+            if (!memberGroupId && uplineGroup?.id && String(uplineGroup.leaderId || '').trim() !== uid) {
+                const memberIds = getCollectionIds(uplineGroup.members);
+                if (memberIds.includes(uid)) {
+                    memberGroupId = String(uplineGroup.id);
+                }
             }
 
-            let groupsLedCount = Array.isArray(window.MyGroups?.downlineGroups) ? window.MyGroups.downlineGroups.length : 0;
-            if (!groupsLedCount) {
+            for (const groupId of [...new Set(candidateMemberGroupIds)]) {
+                await verifyMembershipInGroup(groupId);
+                if (memberGroupId) break;
+            }
+
+            if (!memberGroupId) {
+                try {
+                    const memberQuery = window.query(
+                        window.collection(window.db, 'goMission_groups'),
+                        window.where('members', 'array-contains', uid)
+                    );
+                    const memberSnapshot = await window.getDocs(memberQuery);
+                    const memberGroupDoc = memberSnapshot.docs.find((docSnap) => {
+                        const groupData = docSnap.data() || {};
+                        return String(groupData.leaderId || '').trim() !== uid;
+                    }) || null;
+                    if (memberGroupDoc) {
+                        memberGroupId = String(memberGroupDoc.id);
+                    }
+                } catch (error) {
+                    console.warn('[Journey] Member array-contains lookup failed, falling back to graph scan:', error);
+                }
+            }
+
+            if (!memberGroupId) {
+                try {
+                    const allGroups = await getAllGroupsForJourney(!!options.forceGraphRefresh);
+                    const fallbackGroup = allGroups.find((group) => {
+                        if (String(group?.leaderId || '').trim() === uid) return false;
+                        return getCollectionIds(group?.members).includes(uid);
+                    }) || null;
+                    if (fallbackGroup?.id) {
+                        memberGroupId = String(fallbackGroup.id);
+                    }
+                } catch (error) {
+                    console.warn('[Journey] Could not scan all groups for member fallback:', error);
+                }
+            }
+
+            const hasMissionGroupMember = !!memberGroupId;
+
+            let groupsLedCount = 0;
+            let groupsLedWithMembersCount = 0;
+            const cachedDownlineGroups = Array.isArray(window.MyGroups?.downlineGroups) ? window.MyGroups.downlineGroups : null;
+            if (cachedDownlineGroups) {
+                groupsLedCount = cachedDownlineGroups.length;
+                groupsLedWithMembersCount = cachedDownlineGroups.filter((group) => (
+                    getCollectionIds(group?.members).some((memberId) => memberId && memberId !== uid)
+                )).length;
+            } else {
                 try {
                     const downlineQuery = window.query(
                         window.collection(window.db, 'goMission_groups'),
@@ -4293,12 +4348,16 @@
                     );
                     const downlineSnapshot = await window.getDocs(downlineQuery);
                     groupsLedCount = downlineSnapshot.size || 0;
+                    groupsLedWithMembersCount = downlineSnapshot.docs.filter((docSnap) => {
+                        const groupData = docSnap.data() || {};
+                        return getCollectionIds(groupData.members).some((memberId) => memberId && memberId !== uid);
+                    }).length;
                 } catch (error) {
                     console.warn('[Journey] Could not count led groups:', error);
                 }
             }
 
-            const leadsMissionGroup = groupsLedCount > 0;
+            const leadsMissionGroup = groupsLedWithMembersCount > 0;
             let generationDepth = 0;
             if (leadsMissionGroup) {
                 try {
@@ -4308,19 +4367,23 @@
                     console.warn('[Journey] Could not compute generation depth:', error);
                 }
             }
+            const generationCount = leadsMissionGroup ? generationDepth + 1 : 0;
 
             let detectedStage = 'seeker';
-            if (generationDepth >= 6) detectedStage = 'multiplier';
-            else if (generationDepth >= 5) detectedStage = 'builder';
+            if (generationCount >= 6) detectedStage = 'multiplier';
+            else if (generationCount >= 5) detectedStage = 'builder';
             else if (leadsMissionGroup) detectedStage = 'disciple-maker';
             else if (hasMissionGroupMember) detectedStage = 'disciple';
 
             return {
                 profile,
+                memberGroupId,
                 hasMissionGroupMember,
                 leadsMissionGroup,
                 groupsLedCount,
+                groupsLedWithMembersCount,
                 generationDepth,
+                generationCount,
                 detectedStage: normalizeJourneyStage(detectedStage)
             };
         }
@@ -4347,7 +4410,9 @@
                                 hasMissionGroupMember: !!status.hasMissionGroupMember,
                                 leadsMissionGroup: !!status.leadsMissionGroup,
                                 groupsLedCount: Number(status.groupsLedCount || 0),
+                                groupsLedWithMembersCount: Number(status.groupsLedWithMembersCount || 0),
                                 generationDepth: Number(status.generationDepth || 0),
+                                generationCount: Number(status.generationCount || 0),
                                 updatedAtIso: new Date().toISOString()
                             }
                         },
