@@ -10,7 +10,7 @@
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
         // Auto-generated build timestamp - changes on every deployment
-        const BUILD_TIMESTAMP = '1772859120000';
+        const BUILD_TIMESTAMP = '1773225576000';
         // PWAUpdater is the active updater; keep legacy updater in passive mode.
         window.GO_MISSION_DISABLE_LEGACY_SW_UPDATER = true;
     </script>
@@ -579,13 +579,40 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-up { animation: fade-up 0.4s ease-out forwards; }
-        
-        /* Slow pulse animation for loading logo */
-        @keyframes pulse-slow {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.9; }
+
+        /* Lightweight startup loader for older phones */
+        @keyframes loader-breathe {
+            0%, 100% { transform: scale(1); opacity: 0.96; }
+            50% { transform: scale(1.015); opacity: 1; }
         }
-        .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+        @keyframes loader-dot-pulse {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 0.9; transform: translateY(-1px); }
+        }
+        .loader-shell {
+            contain: layout paint;
+        }
+        .loader-mark {
+            animation: loader-breathe 2.4s ease-in-out infinite;
+            box-shadow: 0 10px 26px rgba(122, 0, 0, 0.18);
+        }
+        .loader-ring {
+            border-color: rgba(255, 215, 0, 0.18);
+            transform: translateZ(0);
+        }
+        .loader-dot {
+            opacity: 0.35;
+            animation: loader-dot-pulse 1.2s ease-in-out infinite;
+        }
+        .loader-dot-2 { animation-delay: 0.18s; }
+        .loader-dot-3 { animation-delay: 0.36s; }
+        @media (prefers-reduced-motion: reduce) {
+            .animate-fade-up,
+            .loader-mark,
+            .loader-dot {
+                animation: none !important;
+            }
+        }
         
         /* Header/Nav hide on scroll */
         .nav-hidden {
@@ -1831,24 +1858,22 @@
     
     <!-- Loading State -->
     <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
-        <div class="text-center animate-fade-up">
-            <!-- Pulsing Logo Animation -->
+        <div class="text-center animate-fade-up loader-shell">
             <div class="relative mb-6">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--mission-red-bright)] to-[var(--mission-red-deep)] flex items-center justify-center animate-pulse-slow shadow-2xl shadow-[var(--mission-red-bright)]/30">
+                <div class="loader-mark w-24 h-24 rounded-full bg-gradient-to-br from-[var(--mission-red-bright)] to-[var(--mission-red-deep)] flex items-center justify-center">
                     <div class="text-center">
                         <span class="text-[var(--mission-gold)] text-2xl">★</span>
                         <div class="text-[var(--text-color)] text-[10px] font-bold tracking-[0.15em] mt-1">GO</div>
                         <div class="text-[var(--text-color)] text-[8px] font-bold tracking-[0.1em]">MISSION</div>
                     </div>
                 </div>
-                <!-- Rotating ring -->
-                <div class="absolute inset-0 w-24 h-24 border-2 border-transparent border-t-[var(--mission-gold)] rounded-full animate-spin"></div>
+                <div class="loader-ring absolute inset-0 w-24 h-24 border rounded-full"></div>
             </div>
             <p class="text-stone-500 text-xs font-medium uppercase tracking-widest">Loading</p>
             <div class="flex justify-center gap-1 mt-2">
-                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                <span class="loader-dot w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+                <span class="loader-dot loader-dot-2 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+                <span class="loader-dot loader-dot-3 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
             </div>
         </div>
     </div>
@@ -3262,7 +3287,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, startAfter, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
         import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
@@ -3293,6 +3318,7 @@
         window.verifyPasswordResetCode = httpsCallable(functions, 'verifyPasswordResetCode');
         window.completePasswordReset = httpsCallable(functions, 'completePasswordReset');
         window.sendCustomNotificationCallable = httpsCallable(functions, 'sendCustomNotification');
+        window.ensureMemberProfileCallable = httpsCallable(functions, 'ensureMemberProfile');
 
         // Make available globally
         window.db = db;
@@ -3319,6 +3345,20 @@
         window.uploadBytes = uploadBytes;
         window.getDownloadURL = getDownloadURL;
         window.currentUser = null;
+        const authPersistenceReady = (async () => {
+            try {
+                await setPersistence(auth, browserLocalPersistence);
+                console.log('[Auth] Using local persistence');
+            } catch (localError) {
+                console.warn('[Auth] Local persistence unavailable, falling back to session:', localError);
+                try {
+                    await setPersistence(auth, browserSessionPersistence);
+                    console.log('[Auth] Using session persistence');
+                } catch (sessionError) {
+                    console.warn('[Auth] Session persistence unavailable, using default persistence:', sessionError);
+                }
+            }
+        })();
         
         // Initialize Firebase Messaging
         let messaging = null;
@@ -3336,6 +3376,11 @@
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
         let authBootResolved = false;
+        function notifyPWAAppReady(reason) {
+            if (window.PWAUpdater && typeof window.PWAUpdater.notifyAppReady === 'function') {
+                window.PWAUpdater.notifyAppReady(reason);
+            }
+        }
         const postLoginRedirect = (() => {
             const raw = new URLSearchParams(window.location.search).get('redirect');
             if (!raw) return null;
@@ -3359,6 +3404,7 @@
             console.warn('[Auth] Boot watchdog fired - showing login fallback');
             loading.classList.add('hidden');
             if (loginScreen) loginScreen.classList.remove('hidden');
+            notifyPWAAppReady('boot-watchdog');
 
             const existing = document.getElementById('bootWatchdogNotice');
             if (!existing && loginScreen) {
@@ -3603,229 +3649,240 @@
             }
         };
 
+        function reportBootstrapIssue(error, fallbackMessage = 'Signed in, but some parts of the app did not finish loading. Please refresh and try again.') {
+            const message = String(error?.message || fallbackMessage).trim() || fallbackMessage;
+            console.error('[Auth] Bootstrap issue:', error);
+
+            if (typeof Notifications !== 'undefined' && typeof Notifications.showToast === 'function') {
+                Notifications.showToast({
+                    title: 'Setup issue',
+                    body: message,
+                    icon: '⚠️',
+                    duration: 4200
+                });
+                return;
+            }
+
+            alert(message);
+        }
+
+        async function runBootstrapStep(label, handler, options = {}) {
+            const isRequired = !!options.required;
+            try {
+                return await handler();
+            } catch (error) {
+                console.error(`[Auth] ${label} failed:`, error);
+                if (isRequired) throw error;
+                return null;
+            }
+        }
+
         onAuthStateChanged(auth, async (user) => {
             authBootResolved = true;
             clearTimeout(authBootWatchdog);
             loading.classList.add('hidden');
             
             if (user) {
-                window.currentUser = user;
-                applyCurrentUserIdentity(user);
-                
-                await ensureUserExists(user);
+                try {
+                    window.currentUser = user;
+                    applyCurrentUserIdentity(user);
 
-                if (postLoginRedirect) {
-                    window.location.replace(postLoginRedirect);
-                    return;
-                }
-
-                loginScreen.classList.add('hidden');
-                
-                // Check if should show welcome modal BEFORE showing mainApp
-                const shouldShowWelcome = !localStorage.getItem('goMission_welcomeSeen');
-                
-                if (shouldShowWelcome) {
-                    // Show welcome modal immediately, keep mainApp hidden
-                    if (typeof WelcomeModal !== 'undefined') {
-                        WelcomeModal.show();
-                    }
-                } else {
-                    // User has seen welcome, show mainApp directly
+                    loginScreen.classList.add('hidden');
                     mainApp.classList.remove('hidden');
-                }
-                
-                await loadUserData(user.uid);
-                initializeDevotion();
-                await loadTodaysEntry(user.uid);
-                await loadWeekProgress(user.uid);
-                
-                // Show Welcome Modal for new users (already shown above if needed)
-                // This init is now just a no-op since we handle it above
-                // if (typeof WelcomeModal !== 'undefined') {
-                //     WelcomeModal.init();
-                // }
-                
-                // Clear app badge when user opens app
-                if (typeof PushNotifications !== 'undefined') {
-                    PushNotifications.clearBadge();
-                }
-                
-                // Initialize Groups module
-                if (typeof Groups !== 'undefined') {
-                    await Groups.init();
-                    
-                    // Initialize My Groups module (Upline/Downline)
-                    if (typeof MyGroups !== 'undefined') {
-                        await MyGroups.init();
+                    notifyPWAAppReady('main-app-visible');
+
+                    await runBootstrapStep('ensureUserExists', () => ensureUserExists(user), { required: true });
+
+                    if (postLoginRedirect) {
+                        window.location.replace(postLoginRedirect);
+                        return;
                     }
 
-                    if (typeof window.requestJourneyStageRefresh === 'function') {
-                        window.requestJourneyStageRefresh('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 120 });
-                    }
-                    if (typeof window.requestAdminJourneyStageReconcile === 'function') {
-                        window.requestAdminJourneyStageReconcile('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 900 });
-                    }
-                    if (typeof window.initJourneyStageAdminWatcher === 'function') {
-                        window.initJourneyStageAdminWatcher();
+                    const shouldShowWelcome = !localStorage.getItem('goMission_welcomeSeen');
+
+                    if (shouldShowWelcome) {
+                        if (typeof WelcomeModal !== 'undefined') {
+                            WelcomeModal.show();
+                        }
+                        notifyPWAAppReady('welcome-modal');
                     }
 
-                    // Initialize Chat Inbox module
-                    if (typeof ChatApp !== 'undefined') {
-                        await ChatApp.init();
-                    }
-                    
-                    // Initialize Notifications after Groups
-                    if (typeof Notifications !== 'undefined') {
-                        await Notifications.init();
-                    }
-                    
-                    // Initialize Training module
-                    if (typeof Training !== 'undefined') {
-                        await Training.init();
-                        // Update training card verse and progress
-                        if (window.DiscipleshipContent) {
-                            const verse = window.DiscipleshipContent.getTrainingVerse();
-                            const verseText = document.getElementById('trainingVerseText');
-                            const verseRef = document.getElementById('trainingVerseRef');
-                            if (verseText) verseText.textContent = `"${verse.text}"`;
-                            if (verseRef) verseRef.textContent = `— ${verse.verse}`;
-                        }
-                        // Update progress
-                        const progress = Training.getProgressSummary();
-                        const progressEl = document.getElementById('trainingProgress');
-                        if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
-                    }
-                    
-                    // Handle deep-link params from notifications
-                    const urlParams = new URLSearchParams(window.location.search);
-                    let openChatGroupId = urlParams.get('openChat');
-                    let openChatMessageId = urlParams.get('openChatMessage');
-                    let openDmWith = urlParams.get('openDmWith');
-                    let openMessagesTab = urlParams.get('openMessages');
-                    let openAnnouncement = urlParams.get('openAnnouncement');
-                    let announcementTitle = urlParams.get('announcementTitle');
-                    let announcementBody = urlParams.get('announcementBody');
-                    const joinCode = urlParams.get('join');
-                    const pendingPushTap = await consumePendingPushClickPayload();
+                    await runBootstrapStep('loadUserData', () => loadUserData(user.uid));
+                    initializeDevotion();
+                    await runBootstrapStep('loadTodaysEntry', () => loadTodaysEntry(user.uid));
+                    await runBootstrapStep('loadWeekProgress', () => loadWeekProgress(user.uid));
 
-                    if (pendingPushTap) {
-                        if (typeof Notifications !== 'undefined' && typeof Notifications.capturePushTap === 'function') {
-                            Notifications.capturePushTap(pendingPushTap);
-                        }
-                        const pendingType = String(pendingPushTap.type || '').toLowerCase();
-                        if (!openChatGroupId && (pendingType === 'chat' || pendingType === 'chat_mention') && pendingPushTap.groupId) {
-                            openChatGroupId = String(pendingPushTap.groupId);
-                            openChatMessageId = pendingPushTap.messageId ? String(pendingPushTap.messageId) : null;
-                        }
-                        if (!openDmWith && pendingType === 'dm' && pendingPushTap.senderId) {
-                            openDmWith = String(pendingPushTap.senderId);
-                            openMessagesTab = 'direct';
-                        }
-                        if (!openAnnouncement && (pendingType === 'announcement' || pendingPushTap.notificationTitle || pendingPushTap.notificationBody)) {
-                            openAnnouncement = '1';
-                            if (!openMessagesTab) openMessagesTab = 'groups';
-                            if (!announcementTitle && pendingPushTap.notificationTitle) {
-                                announcementTitle = String(pendingPushTap.notificationTitle);
-                            }
-                            if (!announcementBody && pendingPushTap.notificationBody) {
-                                announcementBody = String(pendingPushTap.notificationBody);
-                            }
-                        }
-                    }
-
-                    if (openChatGroupId) {
-                        let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
-                            ? MyGroups.getGroupById(openChatGroupId)
-                            : null;
-                        if (!targetGroup && typeof window.getDoc === 'function' && typeof window.doc === 'function' && window.db) {
-                            try {
-                                const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', openChatGroupId));
-                                if (groupDoc.exists()) {
-                                    const groupData = groupDoc.data() || {};
-                                    const uid = window.currentUser?.uid;
-                                    const isMember = Array.isArray(groupData.members) && groupData.members.includes(uid);
-                                    const isGuest = Array.isArray(groupData.guests) && groupData.guests.some((g) => g?.odId === uid);
-                                    if (isMember || isGuest) {
-                                        targetGroup = { id: groupDoc.id, ...groupData };
-                                    }
-                                }
-                            } catch (error) {
-                                console.warn('[DeepLink] Failed loading chat group by id:', openChatGroupId, error);
-                            }
-                        }
-                        if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
-                            Groups.currentGroup = targetGroup;
-                            GroupChat.pendingFocusMessageId = openChatMessageId || null;
-                            await GroupChat.open();
-                        } else if (typeof ChatApp !== 'undefined') {
-                            await ChatApp.open();
-                            const opened = (typeof ChatApp.openGroupChat === 'function')
-                                ? ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
-                                : false;
-                            if (!opened) {
-                                ChatApp.setTab('groups');
-                            }
-                        }
-                    }
-
-                    if (openDmWith && typeof ChatApp !== 'undefined') {
-                        await ChatApp.open();
-                        ChatApp.setTab('direct');
-                        await ChatApp.openDirectChat(openDmWith);
-                    } else if (openMessagesTab && typeof ChatApp !== 'undefined') {
-                        await ChatApp.open();
-                        if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
-                            ChatApp.setTab(openMessagesTab);
-                        }
-                    }
-
-                    if (joinCode && !Groups.currentGroup) {
-                        // Show join modal with pre-filled code
-                        Groups.showJoinWithCodeModal();
-                        setTimeout(() => {
-                            const codeInput = document.getElementById('groupInviteCode');
-                            if (codeInput) {
-                                codeInput.value = joinCode.toUpperCase();
-                            }
-                        }, 200);
-                    }
-
-                    if ((openAnnouncement === '1' || announcementTitle || announcementBody) && !openChatGroupId && !openDmWith) {
-                        if (typeof Notifications !== 'undefined' && typeof Notifications.recordNotification === 'function') {
-                            Notifications.recordNotification({
-                                title: announcementTitle || 'Go Mission Update',
-                                body: announcementBody || 'You have a new announcement.',
-                                type: 'announcement',
-                                data: {
-                                    type: 'announcement'
-                                }
-                            }, {
-                                unread: false
-                            });
-                        }
-                        setTimeout(() => {
-                            showAnnouncementFromPush(
-                                announcementTitle || 'Go Mission Update',
-                                announcementBody || 'You have a new announcement.'
-                            );
-                        }, 220);
-                    }
-
-                    // Clear one-time URL parameters.
-                    if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || openAnnouncement || announcementTitle || announcementBody || joinCode) {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }
-                    
-                    // Initialize Push Notifications and show prompt if needed
                     if (typeof PushNotifications !== 'undefined') {
-                        await PushNotifications.init();
-                        // Show permission prompt after a short delay
-                        setTimeout(() => {
-                            if (PushNotifications.shouldShowPrompt()) {
-                                PushNotifications.showPermissionPrompt();
-                            }
-                        }, 3000);
+                        runBootstrapStep('clearPushBadge', () => PushNotifications.clearBadge());
                     }
+
+                    if (typeof Groups !== 'undefined') {
+                        await runBootstrapStep('Groups.init', () => Groups.init());
+
+                        if (typeof MyGroups !== 'undefined') {
+                            await runBootstrapStep('MyGroups.init', () => MyGroups.init());
+                        }
+
+                        if (typeof window.requestJourneyStageRefresh === 'function') {
+                            window.requestJourneyStageRefresh('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 120 });
+                        }
+                        if (typeof window.requestAdminJourneyStageReconcile === 'function') {
+                            window.requestAdminJourneyStageReconcile('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 900 });
+                        }
+                        if (typeof window.initJourneyStageAdminWatcher === 'function') {
+                            window.initJourneyStageAdminWatcher();
+                        }
+
+                        if (typeof ChatApp !== 'undefined') {
+                            await runBootstrapStep('ChatApp.init', () => ChatApp.init());
+                        }
+
+                        if (typeof Notifications !== 'undefined') {
+                            await runBootstrapStep('Notifications.init', () => Notifications.init());
+                        }
+
+                        if (typeof Training !== 'undefined') {
+                            await runBootstrapStep('Training.init', () => Training.init());
+                            if (window.DiscipleshipContent) {
+                                const verse = window.DiscipleshipContent.getTrainingVerse();
+                                const verseText = document.getElementById('trainingVerseText');
+                                const verseRef = document.getElementById('trainingVerseRef');
+                                if (verseText) verseText.textContent = `"${verse.text}"`;
+                                if (verseRef) verseRef.textContent = `— ${verse.verse}`;
+                            }
+                            const progress = Training.getProgressSummary();
+                            const progressEl = document.getElementById('trainingProgress');
+                            if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
+                        }
+                        
+                        const urlParams = new URLSearchParams(window.location.search);
+                        let openChatGroupId = urlParams.get('openChat');
+                        let openChatMessageId = urlParams.get('openChatMessage');
+                        let openDmWith = urlParams.get('openDmWith');
+                        let openMessagesTab = urlParams.get('openMessages');
+                        let openAnnouncement = urlParams.get('openAnnouncement');
+                        let announcementTitle = urlParams.get('announcementTitle');
+                        let announcementBody = urlParams.get('announcementBody');
+                        const joinCode = urlParams.get('join');
+                        const pendingPushTap = await consumePendingPushClickPayload();
+
+                        if (pendingPushTap) {
+                            if (typeof Notifications !== 'undefined' && typeof Notifications.capturePushTap === 'function') {
+                                Notifications.capturePushTap(pendingPushTap);
+                            }
+                            const pendingType = String(pendingPushTap.type || '').toLowerCase();
+                            if (!openChatGroupId && (pendingType === 'chat' || pendingType === 'chat_mention') && pendingPushTap.groupId) {
+                                openChatGroupId = String(pendingPushTap.groupId);
+                                openChatMessageId = pendingPushTap.messageId ? String(pendingPushTap.messageId) : null;
+                            }
+                            if (!openDmWith && pendingType === 'dm' && pendingPushTap.senderId) {
+                                openDmWith = String(pendingPushTap.senderId);
+                                openMessagesTab = 'direct';
+                            }
+                            if (!openAnnouncement && (pendingType === 'announcement' || pendingPushTap.notificationTitle || pendingPushTap.notificationBody)) {
+                                openAnnouncement = '1';
+                                if (!openMessagesTab) openMessagesTab = 'groups';
+                                if (!announcementTitle && pendingPushTap.notificationTitle) {
+                                    announcementTitle = String(pendingPushTap.notificationTitle);
+                                }
+                                if (!announcementBody && pendingPushTap.notificationBody) {
+                                    announcementBody = String(pendingPushTap.notificationBody);
+                                }
+                            }
+                        }
+
+                        if (openChatGroupId) {
+                            let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+                                ? MyGroups.getGroupById(openChatGroupId)
+                                : null;
+                            if (!targetGroup && typeof window.getDoc === 'function' && typeof window.doc === 'function' && window.db) {
+                                try {
+                                    const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', openChatGroupId));
+                                    if (groupDoc.exists()) {
+                                        const groupData = groupDoc.data() || {};
+                                        const uid = window.currentUser?.uid;
+                                        const isMember = Array.isArray(groupData.members) && groupData.members.includes(uid);
+                                        const isGuest = Array.isArray(groupData.guests) && groupData.guests.some((g) => g?.odId === uid);
+                                        if (isMember || isGuest) {
+                                            targetGroup = { id: groupDoc.id, ...groupData };
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.warn('[DeepLink] Failed loading chat group by id:', openChatGroupId, error);
+                                }
+                            }
+                            if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
+                                Groups.currentGroup = targetGroup;
+                                GroupChat.pendingFocusMessageId = openChatMessageId || null;
+                                await GroupChat.open();
+                            } else if (typeof ChatApp !== 'undefined') {
+                                await ChatApp.open();
+                                const opened = (typeof ChatApp.openGroupChat === 'function')
+                                    ? ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
+                                    : false;
+                                if (!opened) {
+                                    ChatApp.setTab('groups');
+                                }
+                            }
+                        }
+
+                        if (openDmWith && typeof ChatApp !== 'undefined') {
+                            await ChatApp.open();
+                            ChatApp.setTab('direct');
+                            await ChatApp.openDirectChat(openDmWith);
+                        } else if (openMessagesTab && typeof ChatApp !== 'undefined') {
+                            await ChatApp.open();
+                            if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
+                                ChatApp.setTab(openMessagesTab);
+                            }
+                        }
+
+                        if (joinCode && !Groups.currentGroup) {
+                            Groups.showJoinWithCodeModal();
+                            setTimeout(() => {
+                                const codeInput = document.getElementById('groupInviteCode');
+                                if (codeInput) {
+                                    codeInput.value = joinCode.toUpperCase();
+                                }
+                            }, 200);
+                        }
+
+                        if ((openAnnouncement === '1' || announcementTitle || announcementBody) && !openChatGroupId && !openDmWith) {
+                            if (typeof Notifications !== 'undefined' && typeof Notifications.recordNotification === 'function') {
+                                Notifications.recordNotification({
+                                    title: announcementTitle || 'Go Mission Update',
+                                    body: announcementBody || 'You have a new announcement.',
+                                    type: 'announcement',
+                                    data: {
+                                        type: 'announcement'
+                                    }
+                                }, {
+                                    unread: false
+                                });
+                            }
+                            setTimeout(() => {
+                                showAnnouncementFromPush(
+                                    announcementTitle || 'Go Mission Update',
+                                    announcementBody || 'You have a new announcement.'
+                                );
+                            }, 220);
+                        }
+
+                        if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || openAnnouncement || announcementTitle || announcementBody || joinCode) {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+
+                        if (typeof PushNotifications !== 'undefined') {
+                            await runBootstrapStep('PushNotifications.init', () => PushNotifications.init());
+                            setTimeout(() => {
+                                if (PushNotifications.shouldShowPrompt()) {
+                                    PushNotifications.showPermissionPrompt();
+                                }
+                            }, 3000);
+                        }
+                    }
+                } catch (bootstrapError) {
+                    reportBootstrapIssue(bootstrapError);
                 }
             } else {
                 if (typeof window.teardownJourneyStageAdminWatcher === 'function') {
@@ -3843,37 +3900,63 @@
                 window.currentUser = null;
                 loginScreen.classList.remove('hidden');
                 mainApp.classList.add('hidden');
+                notifyPWAAppReady('login-visible');
             }
         });
 
         async function ensureUserExists(user) {
+            if (!user?.uid) return;
+
+            if (window.ensureMemberProfileCallable) {
+                try {
+                    await window.ensureMemberProfileCallable({
+                        displayName: user.displayName || '',
+                        email: user.email || '',
+                        photoURL: user.photoURL || ''
+                    });
+                    return;
+                } catch (callableError) {
+                    console.warn('[Auth] ensureMemberProfile callable failed, falling back to client create:', callableError);
+                }
+            }
+
             const userRef = doc(db, 'goMission_members', user.uid);
             const userDoc = await getDoc(userRef);
-            
+            const profilePayload = {
+                id: user.uid,
+                name: user.displayName || '',
+                displayName: user.displayName || '',
+                email: user.email || '',
+                photoURL: user.photoURL || '',
+                stage: 'seeker',
+                roles: {
+                    isMissionary: true,
+                    isGroupLeader: false,
+                    isTrainer: false,
+                    isShepherd: false,
+                    isWelcomeTeam: false,
+                    isAdmin: false
+                },
+                groupId: null,
+                discipledBy: null,
+                discipling: [],
+                training: {
+                    currentPhase: 1,
+                    phases: {
+                        phase1: { status: 'enrolled', sessionsAttended: [] },
+                        phase2: { status: 'locked' },
+                        phase3: { status: 'locked' },
+                        phase4: { status: 'locked' }
+                    }
+                },
+                updatedAt: serverTimestamp()
+            };
+
             if (!userDoc.exists()) {
-                await setDoc(userRef, {
-                    id: user.uid,
-                    name: user.displayName || '',
-                    email: user.email,
-                    photoURL: user.photoURL || '',
-                    stage: 'seeker',
-                    roles: { isMissionary: true, isGroupLeader: false, isTrainer: false, isShepherd: false, isWelcomeTeam: false, isAdmin: false },
-                    groupId: null,
-                    discipledBy: null,
-                    discipling: [],
-                    training: {
-                        currentPhase: 1,
-                        phases: {
-                            phase1: { status: 'enrolled', sessionsAttended: [] },
-                            phase2: { status: 'locked' },
-                            phase3: { status: 'locked' },
-                            phase4: { status: 'locked' }
-                        }
-                    },
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                });
+                profilePayload.createdAt = serverTimestamp();
             }
+
+            await setDoc(userRef, profilePayload, { merge: true });
         }
 
         const JOURNEY_STAGE_ORDER = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
@@ -4488,6 +4571,14 @@
                     if (memberId) targetIds.add(String(memberId));
                 });
             });
+            try {
+                const membersSnapshot = await window.getDocs(window.collection(window.db, 'goMission_members'));
+                membersSnapshot.docs.forEach((docSnap) => {
+                    if (docSnap?.id) targetIds.add(String(docSnap.id));
+                });
+            } catch (error) {
+                console.warn('[Journey] Could not load all members for admin reconciliation:', error);
+            }
             return [...targetIds];
         }
 
@@ -4603,8 +4694,7 @@
         };
 
         document.addEventListener('myGroupsUpdated', function() {
-            window.requestJourneyStageRefresh('myGroupsUpdated', { forceGraphRefresh: true });
-            window.requestAdminJourneyStageReconcile?.('myGroupsUpdated', { forceGraphRefresh: true, delayMs: 900 });
+            window.requestJourneyStageRefresh('myGroupsUpdated', { forceGraphRefresh: false });
         });
 
         async function loadUserData(uid) {
@@ -4617,6 +4707,13 @@
                     window.currentUserStage = data.stage || 'seeker';
                     window.currentUserRoles = data.roles || {};
                     updateJourneyDisplay(window.currentUserStage);
+                    if (typeof window.requestJourneyStageRefresh === 'function') {
+                        window.requestJourneyStageRefresh('loadUserData', {
+                            forceGraphRefresh: false,
+                            silentMotivation: true,
+                            delayMs: 0
+                        });
+                    }
                     
                     // Show/hide leader dashboard based on roles
                     const leaderDashboard = document.getElementById('leaderDashboardCard');
@@ -4772,6 +4869,7 @@
         
         // Sign In with Email/Password
         window.handleSignIn = async function() {
+            await authPersistenceReady;
             const email = document.getElementById('signInEmail').value.trim();
             const password = document.getElementById('signInPassword').value;
             
@@ -4808,6 +4906,7 @@
         
         // Sign Up with Email/Password
         window.handleSignUp = async function() {
+            await authPersistenceReady;
             const name = document.getElementById('signUpName').value.trim();
             const email = document.getElementById('signUpEmail').value.trim();
             const password = document.getElementById('signUpPassword').value;
@@ -4836,6 +4935,11 @@
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 // Update display name
                 await updateProfile(userCredential.user, { displayName: name });
+                try {
+                    await userCredential.user.reload();
+                } catch (_) {}
+                const refreshedUser = auth.currentUser || userCredential.user;
+                await ensureUserExists(refreshedUser);
                 // Success! onAuthStateChanged will handle the rest
             } catch (error) {
                 console.error('Sign up error:', error);

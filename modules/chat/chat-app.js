@@ -60,7 +60,7 @@ const ChatApp = {
     document.addEventListener('myGroupsUpdated', async () => {
       if (!this.initialized || !window.currentUser) return;
       try {
-        await this.loadGroups();
+        await this.loadGroups({ refreshMyGroups: false });
         if (this.isOpen || this.activeTab === 'groups') {
           this.renderGroups();
         }
@@ -182,11 +182,12 @@ const ChatApp = {
   /**
    * Load groups and build list previews
    */
-  async loadGroups() {
+  async loadGroups(options = {}) {
     if (!window.currentUser || !window.db) return;
+    const { refreshMyGroups = true } = options || {};
 
-    if (typeof MyGroups !== 'undefined' && typeof MyGroups.loadGroups === 'function') {
-      await MyGroups.loadGroups();
+    if (refreshMyGroups && typeof MyGroups !== 'undefined' && typeof MyGroups.loadGroups === 'function') {
+      await MyGroups.loadGroups({ emitUpdate: false });
     }
 
     const dedupe = new Map();

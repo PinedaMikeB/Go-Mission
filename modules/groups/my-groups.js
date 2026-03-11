@@ -17,6 +17,7 @@ const MyGroups = {
     isCreatingGroup: false,
     currentMemberProfile: null,
     activeGroupDetailContext: null,
+    loadGroupsPromise: null,
     groupCardMediaState: {},
     groupCardTouchState: {},
     groupPhotoBackfillPromise: null,
@@ -500,254 +501,249 @@ const MyGroups = {
     /**
      * Load user's groups from Firestore
      */
-    async loadGroups() {
+    async loadGroups(options = {}) {
         if (!window.currentUser) return;
-        
-        try {
-            const uid = window.currentUser.uid;
-            this.uplineGroup = null;
-            this.downlineGroups = [];
-            this.guestGroups = [];
-            this.currentMemberProfile = null;
-            const userDoc = await window.getDoc(
-                window.doc(window.db, 'goMission_members', uid)
-            );
-            
-            if (!userDoc.exists()) return;
-            
-            const userData = userDoc.data();
-            this.currentMemberProfile = userData || null;
-            
-            // Load upline/member group (legacy groupId fallback is guarded against self-led groups)
-            const memberGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(userData, uid);
-            if (memberGroupId) {
-                const uplineDoc = await window.getDoc(
-                    window.doc(window.db, 'goMission_groups', memberGroupId)
+        if (this.loadGroupsPromise) return this.loadGroupsPromise;
+
+        const { emitUpdate = true } = options || {};
+
+        this.loadGroupsPromise = (async () => {
+            try {
+                const uid = window.currentUser.uid;
+                let nextUplineGroup = null;
+                let nextDownlineGroups = [];
+                let nextGuestGroups = [];
+                let nextCurrentMemberProfile = null;
+
+                const userDoc = await window.getDoc(
+                    window.doc(window.db, 'goMission_members', uid)
                 );
-                if (uplineDoc.exists()) {
-                    const groupData = uplineDoc.data();
-                    if (groupData?.leaderId === uid) {
-                        this.uplineGroup = null;
-                    } else {
-                    // Verify user is still a member of this group
-                    const isMember = this.isUserMemberInGroupData(groupData, uid);
-                    const isGuest = this.isUserGuestInGroupData(groupData, uid);
-                    
-                    if (isMember || isGuest) {
-                        this.uplineGroup = { id: uplineDoc.id, ...groupData };
-                        // Backfill canonical field for legacy profiles.
-                        if (!userData.uplineGroupId && userData.groupId) {
-                            await window.setDoc(
-                                window.doc(window.db, 'goMission_members', uid),
-                                { uplineGroupId: userData.groupId },
-                                { merge: true }
-                            );
-                        }
-                        // Also set Groups.currentGroup for chat
-                        if (typeof Groups !== 'undefined') {
-                            Groups.currentGroup = this.uplineGroup;
-                        }
-                    } else {
-                        // Keep visible instead of clearing profile pointers on potential schema mismatch.
-                        console.warn('[MyGroups] Member group pointer exists but membership check failed; keeping visible');
-                        this.uplineGroup = { id: uplineDoc.id, ...groupData };
-                        if (typeof Groups !== 'undefined') {
-                            Groups.currentGroup = this.uplineGroup;
-                        }
-                    }
-                    }
-                } else {
-                    // Group doesn't exist anymore
-                    this.uplineGroup = null;
-                }
-            }
 
-            // Recovery path for member profiles with missing uplineGroupId/groupId.
-            if (!this.uplineGroup) {
-                try {
-                    const memberQuery = window.query(
-                        window.collection(window.db, 'goMission_groups'),
-                        window.where('members', 'array-contains', uid)
+                if (!userDoc.exists()) return;
+
+                const userData = userDoc.data();
+                nextCurrentMemberProfile = userData || null;
+
+                const memberGroupId = await this.resolvePrimaryMemberGroupIdFromProfile(userData, uid);
+                if (memberGroupId) {
+                    const uplineDoc = await window.getDoc(
+                        window.doc(window.db, 'goMission_groups', memberGroupId)
                     );
-                    const memberSnapshot = await window.getDocs(memberQuery);
-                    const memberGroupDoc = memberSnapshot.docs.find((doc) => {
-                        const data = doc.data() || {};
-                        return data.leaderId !== uid;
-                    }) || null;
+                    if (uplineDoc.exists()) {
+                        const groupData = uplineDoc.data();
+                        if (groupData?.leaderId !== uid) {
+                            const isMember = this.isUserMemberInGroupData(groupData, uid);
+                            const isGuest = this.isUserGuestInGroupData(groupData, uid);
 
-                    if (memberGroupDoc) {
-                        this.uplineGroup = { id: memberGroupDoc.id, ...memberGroupDoc.data() };
-                        await window.setDoc(
-                            window.doc(window.db, 'goMission_members', uid),
-                            { uplineGroupId: memberGroupDoc.id, groupId: memberGroupDoc.id },
-                            { merge: true }
-                        );
-                        if (typeof Groups !== 'undefined') {
-                            Groups.currentGroup = this.uplineGroup;
+                            nextUplineGroup = { id: uplineDoc.id, ...groupData };
+                            if (isMember || isGuest) {
+                                if (!userData.uplineGroupId && userData.groupId) {
+                                    await window.setDoc(
+                                        window.doc(window.db, 'goMission_members', uid),
+                                        { uplineGroupId: userData.groupId },
+                                        { merge: true }
+                                    );
+                                }
+                            } else {
+                                console.warn('[MyGroups] Member group pointer exists but membership check failed; keeping visible');
+                            }
+
+                            if (typeof Groups !== 'undefined') {
+                                Groups.currentGroup = nextUplineGroup;
+                            }
                         }
-                    } else {
-                        // Final fallback for legacy members arrays that are not queryable by array-contains.
-                        const allGroupsSnapshot = await window.getDocs(
-                            window.collection(window.db, 'goMission_groups')
+                    }
+                }
+
+                if (!nextUplineGroup) {
+                    try {
+                        const memberQuery = window.query(
+                            window.collection(window.db, 'goMission_groups'),
+                            window.where('members', 'array-contains', uid)
                         );
-                        const legacyMemberGroupDoc = allGroupsSnapshot.docs.find((doc) => {
+                        const memberSnapshot = await window.getDocs(memberQuery);
+                        const memberGroupDoc = memberSnapshot.docs.find((doc) => {
                             const data = doc.data() || {};
-                            return data.leaderId !== uid && this.isUserMemberInGroupData(data, uid);
+                            return data.leaderId !== uid;
                         }) || null;
 
-                        if (legacyMemberGroupDoc) {
-                            this.uplineGroup = { id: legacyMemberGroupDoc.id, ...legacyMemberGroupDoc.data() };
+                        if (memberGroupDoc) {
+                            nextUplineGroup = { id: memberGroupDoc.id, ...memberGroupDoc.data() };
                             await window.setDoc(
                                 window.doc(window.db, 'goMission_members', uid),
-                                { uplineGroupId: legacyMemberGroupDoc.id, groupId: legacyMemberGroupDoc.id },
+                                { uplineGroupId: memberGroupDoc.id, groupId: memberGroupDoc.id },
                                 { merge: true }
                             );
                             if (typeof Groups !== 'undefined') {
-                                Groups.currentGroup = this.uplineGroup;
-                            }
-                        }
-                    }
-                } catch (memberRecoveryError) {
-                    console.warn('[MyGroups] Member recovery query failed:', memberRecoveryError);
-                }
-            }
-            
-            // Load downline groups (where user is leader)
-            const downlineQuery = window.query(
-                window.collection(window.db, 'goMission_groups'),
-                window.where('leaderId', '==', uid)
-            );
-            const downlineSnapshot = await window.getDocs(downlineQuery);
-            this.downlineGroups = downlineSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            // Load guest groups (where user is in guests array)
-            const guestGroupMap = new Map();
-            const declaredGuestGroupIds = this.extractIdList(userData.guestGroups);
-            const declaredGuestGroupMeta = (userData.guestGroupMeta && typeof userData.guestGroupMeta === 'object')
-                ? userData.guestGroupMeta
-                : {};
-
-            if (declaredGuestGroupIds.length > 0) {
-                for (const groupId of declaredGuestGroupIds) {
-                    try {
-                        const guestGroupDoc = await window.getDoc(
-                            window.doc(window.db, 'goMission_groups', groupId)
-                        );
-                        if (guestGroupDoc.exists()) {
-                            const groupData = guestGroupDoc.data();
-                            const hasGuestEntries = this.normalizeCollectionEntries(groupData?.guests).length > 0;
-                            if (this.isUserGuestInGroupData(groupData, uid) || (!hasGuestEntries && declaredGuestGroupIds.includes(groupId))) {
-                                guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
+                                Groups.currentGroup = nextUplineGroup;
                             }
                         } else {
+                            const allGroupsSnapshot = await window.getDocs(
+                                window.collection(window.db, 'goMission_groups')
+                            );
+                            const legacyMemberGroupDoc = allGroupsSnapshot.docs.find((doc) => {
+                                const data = doc.data() || {};
+                                return data.leaderId !== uid && this.isUserMemberInGroupData(data, uid);
+                            }) || null;
+
+                            if (legacyMemberGroupDoc) {
+                                nextUplineGroup = { id: legacyMemberGroupDoc.id, ...legacyMemberGroupDoc.data() };
+                                await window.setDoc(
+                                    window.doc(window.db, 'goMission_members', uid),
+                                    { uplineGroupId: legacyMemberGroupDoc.id, groupId: legacyMemberGroupDoc.id },
+                                    { merge: true }
+                                );
+                                if (typeof Groups !== 'undefined') {
+                                    Groups.currentGroup = nextUplineGroup;
+                                }
+                            }
+                        }
+                    } catch (memberRecoveryError) {
+                        console.warn('[MyGroups] Member recovery query failed:', memberRecoveryError);
+                    }
+                }
+
+                const downlineQuery = window.query(
+                    window.collection(window.db, 'goMission_groups'),
+                    window.where('leaderId', '==', uid)
+                );
+                const downlineSnapshot = await window.getDocs(downlineQuery);
+                nextDownlineGroups = downlineSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                const guestGroupMap = new Map();
+                const declaredGuestGroupIds = this.extractIdList(userData.guestGroups);
+                const declaredGuestGroupMeta = (userData.guestGroupMeta && typeof userData.guestGroupMeta === 'object')
+                    ? userData.guestGroupMeta
+                    : {};
+
+                if (declaredGuestGroupIds.length > 0) {
+                    for (const groupId of declaredGuestGroupIds) {
+                        try {
+                            const guestGroupDoc = await window.getDoc(
+                                window.doc(window.db, 'goMission_groups', groupId)
+                            );
+                            if (guestGroupDoc.exists()) {
+                                const groupData = guestGroupDoc.data();
+                                const hasGuestEntries = this.normalizeCollectionEntries(groupData?.guests).length > 0;
+                                if (this.isUserGuestInGroupData(groupData, uid) || (!hasGuestEntries && declaredGuestGroupIds.includes(groupId))) {
+                                    guestGroupMap.set(guestGroupDoc.id, { id: guestGroupDoc.id, ...groupData });
+                                }
+                            } else {
+                                guestGroupMap.set(
+                                    groupId,
+                                    this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
+                                );
+                            }
+                        } catch (e) {
+                            console.log('[MyGroups] Error loading guest group:', groupId, e);
                             guestGroupMap.set(
                                 groupId,
                                 this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
                             );
                         }
-                    } catch (e) {
-                        console.log('[MyGroups] Error loading guest group:', groupId, e);
+                    }
+                }
+
+                try {
+                    const allGroupsSnapshot = await window.getDocs(
+                        window.collection(window.db, 'goMission_groups')
+                    );
+                    const recoveredGroupIds = [];
+                    allGroupsSnapshot.forEach((groupDoc) => {
+                        const groupData = groupDoc.data();
+                        if (this.isUserGuestInGroupData(groupData, uid)) {
+                            if (!guestGroupMap.has(groupDoc.id)) {
+                                recoveredGroupIds.push(groupDoc.id);
+                            }
+                            guestGroupMap.set(groupDoc.id, { id: groupDoc.id, ...groupData });
+                        }
+                    });
+
+                    const missingPointerIds = recoveredGroupIds
+                        .filter((groupId) => !declaredGuestGroupIds.includes(groupId));
+                    if (missingPointerIds.length > 0) {
+                        await window.setDoc(
+                            window.doc(window.db, 'goMission_members', uid),
+                            { guestGroups: window.arrayUnion(...missingPointerIds) },
+                            { merge: true }
+                        );
+                    }
+                } catch (scanError) {
+                    console.warn('[MyGroups] Guest recovery scan failed:', scanError);
+                }
+
+                if (guestGroupMap.size === 0 && declaredGuestGroupIds.length > 0) {
+                    declaredGuestGroupIds.forEach((groupId) => {
                         guestGroupMap.set(
                             groupId,
                             this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
                         );
-                    }
+                    });
                 }
-            }
 
-            // Recovery path: always scan for actual guest membership and merge missing cards.
-            // This prevents newly approved guest groups from being hidden when profile pointers are stale.
-            try {
-                const allGroupsSnapshot = await window.getDocs(
-                    window.collection(window.db, 'goMission_groups')
-                );
-                const recoveredGroupIds = [];
-                allGroupsSnapshot.forEach((groupDoc) => {
-                    const groupData = groupDoc.data();
-                    if (this.isUserGuestInGroupData(groupData, uid)) {
-                        if (!guestGroupMap.has(groupDoc.id)) {
-                            recoveredGroupIds.push(groupDoc.id);
-                        }
-                        guestGroupMap.set(groupDoc.id, { id: groupDoc.id, ...groupData });
-                    }
-                });
+                if (!nextUplineGroup && guestGroupMap.size === 0) {
+                    const hintGroupIds = [
+                        userData.uplineGroupId,
+                        userData.groupId,
+                        userData.activeGroupId,
+                        userData.currentGroupId,
+                        userData.lastGroupId
+                    ].filter(Boolean);
 
-                const missingPointerIds = recoveredGroupIds
-                    .filter((groupId) => !declaredGuestGroupIds.includes(groupId));
-                if (missingPointerIds.length > 0) {
-                    await window.setDoc(
-                        window.doc(window.db, 'goMission_members', uid),
-                        { guestGroups: window.arrayUnion(...missingPointerIds) },
-                        { merge: true }
-                    );
-                }
-            } catch (scanError) {
-                console.warn('[MyGroups] Guest recovery scan failed:', scanError);
-            }
+                    for (const hintGroupId of [...new Set(hintGroupIds)]) {
+                        try {
+                            const hintDoc = await window.getDoc(
+                                window.doc(window.db, 'goMission_groups', hintGroupId)
+                            );
+                            if (!hintDoc.exists()) continue;
+                            const hintData = hintDoc.data() || {};
 
-            // Keep explicit guest-group pointers visible even when direct group reads are unavailable.
-            if (guestGroupMap.size === 0 && declaredGuestGroupIds.length > 0) {
-                declaredGuestGroupIds.forEach((groupId) => {
-                    guestGroupMap.set(
-                        groupId,
-                        this.buildGuestFallbackGroup(groupId, declaredGuestGroupMeta[groupId], uid)
-                    );
-                });
-            }
-
-            // Final profile-hints fallback for legacy user documents
-            if (!this.uplineGroup && guestGroupMap.size === 0) {
-                const hintGroupIds = [
-                    userData.uplineGroupId,
-                    userData.groupId,
-                    userData.activeGroupId,
-                    userData.currentGroupId,
-                    userData.lastGroupId
-                ].filter(Boolean);
-
-                for (const hintGroupId of [...new Set(hintGroupIds)]) {
-                    try {
-                        const hintDoc = await window.getDoc(
-                            window.doc(window.db, 'goMission_groups', hintGroupId)
-                        );
-                        if (!hintDoc.exists()) continue;
-                        const hintData = hintDoc.data() || {};
-
-                        const isGuestByProfile = userData.groupRole === 'guest' || userData.role === 'guest';
-                        if (isGuestByProfile) {
-                            guestGroupMap.set(hintDoc.id, { id: hintDoc.id, ...hintData });
-                        } else {
-                            this.uplineGroup = { id: hintDoc.id, ...hintData };
-                            if (typeof Groups !== 'undefined') {
-                                Groups.currentGroup = this.uplineGroup;
+                            const isGuestByProfile = userData.groupRole === 'guest' || userData.role === 'guest';
+                            if (isGuestByProfile) {
+                                guestGroupMap.set(hintDoc.id, { id: hintDoc.id, ...hintData });
+                            } else {
+                                nextUplineGroup = { id: hintDoc.id, ...hintData };
+                                if (typeof Groups !== 'undefined') {
+                                    Groups.currentGroup = nextUplineGroup;
+                                }
                             }
+                        } catch (hintError) {
+                            console.warn('[MyGroups] Hint group recovery failed:', hintGroupId, hintError);
                         }
-                    } catch (hintError) {
-                        console.warn('[MyGroups] Hint group recovery failed:', hintGroupId, hintError);
                     }
                 }
+
+                nextGuestGroups = [...guestGroupMap.values()];
+
+                this.uplineGroup = nextUplineGroup;
+                this.downlineGroups = nextDownlineGroups;
+                this.guestGroups = nextGuestGroups;
+                this.currentMemberProfile = nextCurrentMemberProfile;
+
+                await this.loadPendingGroupDeletionRequests();
+
+                console.log('[MyGroups] Loaded:', {
+                    upline: this.uplineGroup?.name || 'None',
+                    downline: this.downlineGroups.length,
+                    guest: this.guestGroups.length
+                });
+                if (emitUpdate) {
+                    this.emitGroupsUpdated('loadGroups');
+                }
+                this.runGroupPhotoBackfill().catch((error) => {
+                    console.warn('[MyGroups] Deferred group photo backfill failed:', error);
+                });
+            } catch (error) {
+                console.error('[MyGroups] Load error:', error);
             }
+        })().finally(() => {
+            this.loadGroupsPromise = null;
+        });
 
-            this.guestGroups = [...guestGroupMap.values()];
-
-            await this.loadPendingGroupDeletionRequests();
-            
-            console.log('[MyGroups] Loaded:', {
-                upline: this.uplineGroup?.name || 'None',
-                downline: this.downlineGroups.length,
-                guest: this.guestGroups.length
-            });
-            this.emitGroupsUpdated('loadGroups');
-            this.runGroupPhotoBackfill().catch((error) => {
-                console.warn('[MyGroups] Deferred group photo backfill failed:', error);
-            });
-            
-        } catch (error) {
-            console.error('[MyGroups] Load error:', error);
-        }
+        return this.loadGroupsPromise;
     },
     
     /**
