@@ -4055,6 +4055,10 @@
             'michael.marga@gmail.com',
             'vasquezperlie18@gmail.com'
         ]);
+        const JOURNEY_STAGE_ADMIN_UIDS = new Set([
+            '9zVKHJ11zaXD0f4GI6P7LHD6re32',
+            'QRjyNLzDvwZxqjoIA3hQVnNf7Bs1'
+        ]);
 
         function normalizeJourneyStage(stage) {
             const normalized = String(stage || '').toLowerCase().trim();
@@ -4071,9 +4075,11 @@
 
         function canReconcileJourneyStagesForOthers() {
             const roleFlags = (window.currentUserRoles && typeof window.currentUserRoles === 'object') ? window.currentUserRoles : {};
+            const normalizedUid = String(window.currentUser?.uid || '').trim();
             const normalizedEmail = String(window.currentUser?.email || window.currentUserProfile?.email || '').toLowerCase().trim();
             return !!(
                 roleFlags.isAdmin ||
+                JOURNEY_STAGE_ADMIN_UIDS.has(normalizedUid) ||
                 JOURNEY_STAGE_ADMIN_EMAILS.has(normalizedEmail)
             );
         }
