@@ -2232,6 +2232,187 @@ const MyGroups = {
         `;
     },
 
+    normalizeDashboardPrayerRequests(rawPrayerRequests = []) {
+        if (!Array.isArray(rawPrayerRequests)) return [];
+        const seen = new Set();
+        const list = [];
+        rawPrayerRequests.forEach((item, index) => {
+            const text = String(item?.text || item || '').trim();
+            const id = String(item?.id || `prayer_${index}`).trim();
+            if (!text || !id || seen.has(id)) return;
+            seen.add(id);
+            list.push({
+                id,
+                text,
+                answered: !!item?.answered,
+                answeredAt: item?.answeredAt || null,
+                remarks: String(item?.remarks || '').trim(),
+                answerSummary: String(item?.answerSummary || '').trim(),
+                requestSharedAt: item?.requestSharedAt || null
+            });
+        });
+        return list;
+    },
+
+    normalizeDashboardPrayerSupportMap(rawSupports = {}) {
+        if (!rawSupports || typeof rawSupports !== 'object') return {};
+        const normalized = {};
+        Object.entries(rawSupports).forEach(([prayerId, users]) => {
+            const id = String(prayerId || '').trim();
+            if (!id || !Array.isArray(users)) return;
+            const dedupe = new Map();
+            users.forEach((user) => {
+                const uid = String(user?.uid || user?.userId || user?.id || '').trim();
+                if (!uid) return;
+                dedupe.set(uid, {
+                    uid,
+                    name: String(user?.name || 'Member').trim() || 'Member',
+                    senderPhoto: String(user?.senderPhoto || '').trim(),
+                    prayedAt: user?.prayedAt || null
+                });
+            });
+            if (dedupe.size > 0) normalized[id] = Array.from(dedupe.values());
+        });
+        return normalized;
+    },
+
+    getGroupPrayerPointerTab() {
+        return this.activeGroupDetailContext?.prayerPointerTab === 'answered' ? 'answered' : 'active';
+    },
+
+    setGroupPrayerPointerTab(tab = 'active') {
+        const nextTab = tab === 'answered' ? 'answered' : 'active';
+        if (!this.activeGroupDetailContext) this.activeGroupDetailContext = {};
+        this.activeGroupDetailContext.prayerPointerTab = nextTab;
+
+        document.querySelectorAll('[data-group-prayer-tab]').forEach((button) => {
+            const isActive = button.getAttribute('data-group-prayer-tab') === nextTab;
+            button.className = isActive
+                ? 'px-3.5 py-2 rounded-full bg-[#9d0500] text-white text-sm font-black shadow-[0_8px_20px_rgba(123,31,20,0.18)]'
+                : 'px-3.5 py-2 rounded-full border border-[#e5d8cf] bg-white/82 text-[#7a675d] text-sm font-black';
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('[data-group-prayer-panel]').forEach((panel) => {
+            const isMatch = panel.getAttribute('data-group-prayer-panel') === nextTab;
+            panel.classList.toggle('hidden', !isMatch);
+        });
+    },
+
+    buildGroupPrayerPointerRow(groupId, pointer, tab = 'active') {
+        const requestedAt = this.resolveDate(pointer?.requestedAt || pointer?.chatCreatedAt || pointer?.createdAt);
+        const answeredAt = this.resolveDate(pointer?.answeredAt);
+        const prayedByCount = Number(pointer?.prayedByCount || 0);
+        const prayedLabel = prayedByCount <= 1
+            ? '1 person marked pray'
+            : `${prayedByCount} people marked pray`;
+        const statusTone = tab === 'answered'
+            ? {
+                card: 'border-[#bfe5cc] bg-[linear-gradient(180deg,rgba(239,251,243,0.96),rgba(255,255,255,0.98))]',
+                label: 'text-[#2b8d5f]',
+                chip: 'bg-[#e4f8eb] text-[#2b8d5f] border-[#bfe5cc]'
+            }
+            : {
+                card: 'border-[#ead8c7] bg-white/88',
+                label: 'text-[#c19200]',
+                chip: 'bg-[#fff5df] text-[#8f5c00] border-[#f1d79a]'
+            };
+        const statusLine = tab === 'answered'
+            ? `Answered${answeredAt ? ` • ${answeredAt.toLocaleDateString()}` : ''}`
+            : `Marked to pray${requestedAt ? ` • ${requestedAt.toLocaleDateString()}` : ''}`;
+        const answerSummary = String(pointer?.answerSummary || '').trim();
+
+        return `
+            <div class="rounded-[24px] border ${statusTone.card} p-4 shadow-[0_10px_28px_rgba(89,49,22,0.05)]">
+                <div class="flex items-start gap-3">
+                    <img src="${this.escapeHtml(pointer.memberPhoto || this.getMemberPhoto(pointer.member || {}))}"
+                         alt="${this.escapeHtml(pointer.memberName || 'Member')}"
+                         class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm shrink-0">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[1.02rem] font-black text-[#6d0707] leading-tight break-words">${this.escapeHtml(pointer.memberName || 'Unknown')}</p>
+                                <p class="mt-1 text-[11px] uppercase tracking-[0.16em] ${statusTone.label}">Conversation Time Prayer</p>
+                            </div>
+                            <button type="button"
+                                    onclick="window.MyGroups.openGroupChat('${this.escapeForJs(groupId)}')"
+                                    class="shrink-0 px-3.5 py-2 rounded-full border border-[#e5d8cf] bg-white/85 text-[#6d0707] text-xs font-black">
+                                Open Chat
+                            </button>
+                        </div>
+                        <p class="mt-3 text-[15px] leading-6 text-[#655751] break-words">${this.escapeHtml(pointer.text || 'Prayer request')}</p>
+                        ${answerSummary && tab === 'answered' ? `
+                            <div class="mt-3 rounded-[18px] border border-[#d4ebdb] bg-white/80 px-3 py-2.5">
+                                <p class="text-[11px] uppercase tracking-[0.16em] text-[#2b8d5f]">Answered Prayer</p>
+                                <p class="mt-1 text-[14px] leading-6 text-[#5f5a55]">${this.escapeHtml(answerSummary)}</p>
+                            </div>
+                        ` : ''}
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="px-2.5 py-1 rounded-full border text-[11px] font-semibold ${statusTone.chip}">
+                                ${this.escapeHtml(statusLine)}
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full border border-[#d9e8f4] bg-[#edf7ff] text-[#3c93c7] text-[11px] font-semibold">
+                                ${this.escapeHtml(prayedLabel)}
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full border border-[#f1e5db] bg-[#fffdfa] text-[#8f7a6d] text-[11px] font-semibold">
+                                Keep praying
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderGroupPrayerPointersSection(groupId, prayerPointers = { active: [], answered: [] }) {
+        const activePointers = Array.isArray(prayerPointers?.active) ? prayerPointers.active : [];
+        const answeredPointers = Array.isArray(prayerPointers?.answered) ? prayerPointers.answered : [];
+        const activeTab = this.getGroupPrayerPointerTab();
+        const activeHtml = activePointers.length
+            ? activePointers.map((pointer) => this.buildGroupPrayerPointerRow(groupId, pointer, 'active')).join('')
+            : `
+                <div class="rounded-[22px] border border-dashed border-[#eadcd2] bg-white/72 p-5 text-center">
+                    <p class="text-lg font-black text-[#6d0707]">No prayer pointers waiting</p>
+                    <p class="mt-2 text-sm leading-relaxed text-[#6b5b54]">When you tap <span class="font-black text-[#9d0500]">I prayed</span> on a shared Conversation Time request in group chat, it will appear here.</p>
+                </div>
+            `;
+        const answeredHtml = answeredPointers.length
+            ? answeredPointers.map((pointer) => this.buildGroupPrayerPointerRow(groupId, pointer, 'answered')).join('')
+            : `
+                <div class="rounded-[22px] border border-dashed border-[#d7eadf] bg-white/72 p-5 text-center">
+                    <p class="text-lg font-black text-[#2b8d5f]">No answered prayers archived yet</p>
+                    <p class="mt-2 text-sm leading-relaxed text-[#6b5b54]">Answered requests from Conversation Time will move here automatically.</p>
+                </div>
+            `;
+
+        return `
+            <div class="rounded-[24px] border border-white/80 bg-white/62 p-3 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button"
+                            data-group-prayer-tab="active"
+                            onclick="window.MyGroups.setGroupPrayerPointerTab('active')"
+                            aria-pressed="${activeTab === 'active' ? 'true' : 'false'}"
+                            class="${activeTab === 'active' ? 'px-3.5 py-2 rounded-full bg-[#9d0500] text-white text-sm font-black shadow-[0_8px_20px_rgba(123,31,20,0.18)]' : 'px-3.5 py-2 rounded-full border border-[#e5d8cf] bg-white/82 text-[#7a675d] text-sm font-black'}">
+                        To Pray (${activePointers.length})
+                    </button>
+                    <button type="button"
+                            data-group-prayer-tab="answered"
+                            onclick="window.MyGroups.setGroupPrayerPointerTab('answered')"
+                            aria-pressed="${activeTab === 'answered' ? 'true' : 'false'}"
+                            class="${activeTab === 'answered' ? 'px-3.5 py-2 rounded-full bg-[#9d0500] text-white text-sm font-black shadow-[0_8px_20px_rgba(123,31,20,0.18)]' : 'px-3.5 py-2 rounded-full border border-[#e5d8cf] bg-white/82 text-[#7a675d] text-sm font-black'}">
+                        Answered Prayer (${answeredPointers.length})
+                    </button>
+                </div>
+                <div class="mt-4 space-y-3 ${activeTab === 'active' ? '' : 'hidden'}" data-group-prayer-panel="active">
+                    ${activeHtml}
+                </div>
+                <div class="mt-4 space-y-3 ${activeTab === 'answered' ? '' : 'hidden'}" data-group-prayer-panel="answered">
+                    ${answeredHtml}
+                </div>
+            </div>
+        `;
+    },
+
     buildGroupCareRow(groupId, member, mode = 'encourage_bible') {
         const stats = member?.stats || {};
         const config = {
@@ -2403,6 +2584,7 @@ const MyGroups = {
                 members: [],
                 careMembers: [],
                 careSegments: { encourageBible: [], attendanceFollowUp: [], affirmActive: [] },
+                prayerPointers: { active: [], answered: [] },
                 prayerList: [],
                 meetings: [],
                 health: {},
@@ -2418,7 +2600,7 @@ const MyGroups = {
         }
         const uniqueMemberIds = [...new Set(normalizedMemberIds)];
 
-        const [memberProfiles, meetingsSnapshot, chatsSnapshot, prayerSnapshot] = await Promise.all([
+        const [memberProfiles, meetingsSnapshot, chatsSnapshot, prayerSnapshot, devotionGroupSnapshot, devotionSharedSnapshot] = await Promise.all([
             Promise.all(uniqueMemberIds.map(async (memberId) => {
                 try {
                     const snap = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
@@ -2450,8 +2632,29 @@ const MyGroups = {
             )).catch((error) => {
                 console.warn('[MyGroups] Failed loading prayer requests:', group.id, error);
                 return { docs: [] };
+            }),
+            window.getDocs(window.query(
+                window.collection(window.db, 'goMission_devotions'),
+                window.where('groupId', '==', group.id),
+                window.limit(180)
+            )).catch((error) => {
+                console.warn('[MyGroups] Failed loading primary devotion prayers:', group.id, error);
+                return { docs: [] };
+            }),
+            window.getDocs(window.query(
+                window.collection(window.db, 'goMission_devotions'),
+                window.where('sharedGroupIds', 'array-contains', group.id),
+                window.limit(180)
+            )).catch((error) => {
+                console.warn('[MyGroups] Failed loading shared devotion prayers:', group.id, error);
+                return { docs: [] };
             })
         ]);
+
+        const memberProfileMap = memberProfiles.reduce((acc, entry) => {
+            acc[entry.id] = entry.data || {};
+            return acc;
+        }, {});
 
         const meetings = (meetingsSnapshot?.docs || [])
             .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
@@ -2519,15 +2722,11 @@ const MyGroups = {
                 const action = String(devotion.actionText || devotion.commitment || '').trim();
                 if (understanding || action) activitySignals[senderId].sharedInsights += 1;
 
-                const prayerRequests = Array.isArray(devotion.prayerRequests)
-                    ? devotion.prayerRequests.filter((item) => String(item?.text || item || '').trim())
-                    : [];
+                const prayerRequests = this.normalizeDashboardPrayerRequests(devotion.prayerRequests || []);
                 activitySignals[senderId].prayerRequestsShared += prayerRequests.length;
             }
 
-            const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
-                ? devotion.prayerSupports
-                : {};
+            const supportMap = this.normalizeDashboardPrayerSupportMap(devotion.prayerSupports || {});
             Object.values(supportMap).forEach((supportEntries) => {
                 if (!Array.isArray(supportEntries)) return;
                 supportEntries.forEach((entry) => {
@@ -2558,6 +2757,103 @@ const MyGroups = {
         const careMembers = members.filter((member) => !member.isLeader);
         const careSegments = this.getGroupCareSegments(careMembers);
         const weeklyFocus = this.getThisWeeksFocus(careSegments);
+
+        const devotionPrayerStateByKey = {};
+        const devotionDocsById = new Map();
+        [...(devotionGroupSnapshot?.docs || []), ...(devotionSharedSnapshot?.docs || [])].forEach((docSnap) => {
+            devotionDocsById.set(docSnap.id, docSnap);
+        });
+        devotionDocsById.forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            const senderId = String(data.uid || data.senderId || '').trim();
+            if (!senderId) return;
+            const prayerRequests = this.normalizeDashboardPrayerRequests(data.prayerRequests || []);
+            prayerRequests.forEach((item) => {
+                const key = `${senderId}::${item.id}`;
+                const previous = devotionPrayerStateByKey[key];
+                const nextUpdatedAt = this.resolveDate(item.answeredAt || data.savedAt || data.devotionAt || data.createdAt)?.getTime() || 0;
+                const previousUpdatedAt = this.resolveDate(previous?.answeredAt || previous?.savedAt || previous?.devotionAt || previous?.createdAt)?.getTime() || 0;
+                if (!previous || nextUpdatedAt >= previousUpdatedAt) {
+                    devotionPrayerStateByKey[key] = {
+                        ...item,
+                        savedAt: data.savedAt || null,
+                        devotionAt: data.devotionAt || null,
+                        createdAt: data.createdAt || null
+                    };
+                }
+            });
+        });
+
+        const currentUid = String(window.currentUser?.uid || '').trim();
+        const prayerPointerMap = new Map();
+        (chatsSnapshot?.docs || []).forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            if (String(data.type || '') !== 'devotion') return;
+
+            const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
+            const senderId = String(data.senderId || devotion.uid || data.userId || '').trim();
+            if (!senderId) return;
+
+            const supportMap = this.normalizeDashboardPrayerSupportMap(devotion.prayerSupports || {});
+            const prayerRequests = this.normalizeDashboardPrayerRequests(devotion.prayerRequests || []);
+            prayerRequests.forEach((item) => {
+                const supportUsers = Array.isArray(supportMap[item.id]) ? supportMap[item.id] : [];
+                const leaderPrayed = !!currentUid && supportUsers.some((user) => String(user?.uid || '').trim() === currentUid);
+                if (!leaderPrayed) return;
+
+                const mergedState = devotionPrayerStateByKey[`${senderId}::${item.id}`] || item;
+                const memberData = memberProfileMap[senderId] || {};
+                const memberName = this.getMemberDisplayName({
+                    ...memberData,
+                    displayName: memberData.displayName || data.senderName || '',
+                    fullName: memberData.fullName || data.senderName || '',
+                    name: memberData.name || data.senderName || '',
+                    email: memberData.email || data.senderEmail || ''
+                });
+                const memberPhoto = memberData.photoURL || memberData.photo || data.senderPhoto || this.getMemberPhoto(memberData);
+                const pointerKey = `${senderId}::${item.id}`;
+                const nextChatTime = this.resolveDate(data.createdAt)?.getTime() || 0;
+                const existing = prayerPointerMap.get(pointerKey);
+                const existingChatTime = this.resolveDate(existing?.chatCreatedAt)?.getTime() || 0;
+                if (existing && existingChatTime > nextChatTime) return;
+
+                prayerPointerMap.set(pointerKey, {
+                    id: pointerKey,
+                    messageId: docSnap.id,
+                    prayerId: item.id,
+                    memberId: senderId,
+                    memberName,
+                    memberPhoto,
+                    text: String(mergedState?.text || item.text || '').trim(),
+                    answered: !!(mergedState?.answered || mergedState?.answeredAt),
+                    answeredAt: mergedState?.answeredAt || null,
+                    answerSummary: String(mergedState?.answerSummary || '').trim(),
+                    requestedAt: mergedState?.requestSharedAt || data.createdAt || null,
+                    chatCreatedAt: data.createdAt || null,
+                    prayedByCount: supportUsers.length
+                });
+            });
+        });
+
+        const prayerPointers = { active: [], answered: [] };
+        Array.from(prayerPointerMap.values()).forEach((pointer) => {
+            if (pointer.answered || pointer.answeredAt) {
+                prayerPointers.answered.push(pointer);
+            } else {
+                prayerPointers.active.push(pointer);
+            }
+        });
+        prayerPointers.active.sort((a, b) => {
+            const aTime = this.resolveDate(a.requestedAt || a.chatCreatedAt)?.getTime() || 0;
+            const bTime = this.resolveDate(b.requestedAt || b.chatCreatedAt)?.getTime() || 0;
+            return bTime - aTime;
+        });
+        prayerPointers.answered.sort((a, b) => {
+            const aTime = this.resolveDate(a.answeredAt || a.requestedAt || a.chatCreatedAt)?.getTime() || 0;
+            const bTime = this.resolveDate(b.answeredAt || b.requestedAt || b.chatCreatedAt)?.getTime() || 0;
+            return bTime - aTime;
+        });
+
         const prayerList = (prayerSnapshot?.docs || [])
             .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
             .sort((a, b) => {
@@ -2580,6 +2876,7 @@ const MyGroups = {
             careMembers,
             careSegments,
             weeklyFocus,
+            prayerPointers,
             prayerList,
             meetings,
             health: {
@@ -2803,10 +3100,15 @@ const MyGroups = {
             const previousSectionState = this.activeGroupDetailContext?.groupId === groupId
                 ? (this.activeGroupDetailContext?.sectionState || {})
                 : {};
+            const previousPrayerPointerTab = this.activeGroupDetailContext?.groupId === groupId
+                ? (this.activeGroupDetailContext?.prayerPointerTab || 'active')
+                : 'active';
             this.activeGroupDetailContext = {
                 groupId,
                 members: dashboardData.members,
+                prayerPointers: dashboardData.prayerPointers,
                 prayerList: dashboardData.prayerList,
+                prayerPointerTab: previousPrayerPointerTab,
                 sectionState: { ...previousSectionState }
             };
 
@@ -2818,6 +3120,8 @@ const MyGroups = {
             const encourageCount = dashboardData.careSegments.encourageBible.length;
             const attendanceCount = dashboardData.careSegments.attendanceFollowUp.length;
             const affirmCount = dashboardData.careSegments.affirmActive.length;
+            const prayerPointerActiveCount = dashboardData.prayerPointers?.active?.length || 0;
+            const prayerPointerAnsweredCount = dashboardData.prayerPointers?.answered?.length || 0;
             const summaryIntro = attentionCount > 0
                 ? `${attentionCount} member${attentionCount === 1 ? '' : 's'} need follow-up right now.`
                 : (focusMember ? `${this.getFirstName(focusMember)} is the best person to shepherd next.` : 'Your group is steady right now.');
@@ -2934,6 +3238,8 @@ const MyGroups = {
                     </div>
                 </div>
             `;
+
+            const prayerPointersBody = this.renderGroupPrayerPointersSection(groupId, dashboardData.prayerPointers);
 
             const groupHealthBody = `
                 <div class="grid grid-cols-2 gap-3">
@@ -3144,6 +3450,21 @@ const MyGroups = {
                     </div>
 
                     <div class="max-h-[72vh] overflow-y-auto px-4 pb-5 pt-4 space-y-4 bg-[radial-gradient(circle_at_top,rgba(255,214,108,0.08),transparent_28%)]">
+                        ${this.renderGroupDashboardSection('prayer_pointers', {
+                            title: 'Prayer Pointers',
+                            summary: prayerPointerActiveCount > 0
+                                ? `Prayer requests from Conversation Time that you marked to pray for.`
+                                : (prayerPointerAnsweredCount > 0
+                                    ? 'Answered prayers are archived here after members mark them answered.'
+                                    : 'Shared prayer requests you marked to pray for will appear here.'),
+                            shellClass: 'border-[#ead8c7] bg-[linear-gradient(180deg,rgba(255,247,231,0.98),rgba(255,255,255,0.98))]',
+                            titleClass: 'text-[#c19200]',
+                            count: String(prayerPointerActiveCount),
+                            countClass: 'bg-[#fff5df] text-[#8f5c00] border border-[#f1d79a]',
+                            defaultExpanded: true,
+                            body: prayerPointersBody
+                        })}
+
                         ${actionSummaryCard}
 
                         ${this.renderGroupDashboardSection('this_week_focus', {
