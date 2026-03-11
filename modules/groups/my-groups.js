@@ -5396,7 +5396,7 @@ const MyGroups = {
 
             const leaderDoc = await window.getDoc(window.doc(window.db, 'goMission_members', group.leaderId));
             const leaderData = leaderDoc.exists() ? leaderDoc.data() : {};
-            const leaderName = this.escapeHtml(leaderData.displayName || group.leaderName || 'Leader');
+            const leaderName = this.escapeHtml(leaderData.fullName || leaderData.displayName || leaderData.name || group.leaderName || 'Leader');
             const otherMembers = memberIds.filter(id => id !== group.leaderId);
             const memberRows = [];
 
@@ -5412,7 +5412,7 @@ const MyGroups = {
             for (const memberId of otherMembers) {
                 const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
                 const member = memberDoc.exists() ? memberDoc.data() : {};
-                const memberName = member.displayName || member.fullName || member.email?.split('@')[0] || 'Unknown';
+                const memberName = member.fullName || member.displayName || member.name || member.email?.split('@')[0] || 'Unknown';
 
                 memberRows.push(`
                     <li class="flex items-center justify-between gap-3 py-3 border-b border-[#efe3d8]">
@@ -5432,7 +5432,7 @@ const MyGroups = {
 
             for (const guest of guests) {
                 const guestId = this.getGuestUserId(guest);
-                const guestName = guest.name || guest.displayName || 'Unknown';
+                const guestName = guest.fullName || guest.displayName || guest.name || guest.email?.split('@')[0] || 'Unknown';
                 memberRows.push(`
                     <li class="flex items-center justify-between gap-3 py-3 border-b border-[#efe3d8]">
                         <div class="min-w-0">
