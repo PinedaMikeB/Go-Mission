@@ -4688,6 +4688,11 @@ const MyGroups = {
                         <span class="block text-sm font-black text-[#6d0707]">Open Dashboard</span>
                         <span class="block mt-1 text-xs text-[#7d6c64]">See this week’s focus, care lists, prayer, and members.</span>
                     </button>
+                    <button onclick="window.MyGroups.showGroupMembers('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">View Members</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Open the simple member and guest list with remove actions.</span>
+                    </button>
                     ${isLeader ? `
                         <button onclick="window.MyGroups.openGroupEditSettings('${groupIdSafe}')"
                                 class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
@@ -5383,154 +5388,87 @@ const MyGroups = {
         modal.classList.remove('hidden');
         
         try {
-            // Load member details
             const memberIds = this.normalizeCollectionEntries(group.members)
                 .map((member) => this.getEntityUserId(member))
                 .filter(Boolean);
             const guests = this.normalizeCollectionEntries(group.guests);
             const isLeader = group.leaderId === window.currentUser?.uid;
-            
-            let membersHtml = '<div class="space-y-3">';
-            
-            // Section: Leader first
+
             const leaderDoc = await window.getDoc(window.doc(window.db, 'goMission_members', group.leaderId));
             const leaderData = leaderDoc.exists() ? leaderDoc.data() : {};
-            const leaderName = leaderData.displayName || group.leaderName || 'Leader';
-            const leaderPhoto = leaderData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(leaderName)}&background=4a0404&color=fbbf24`;
-            
-            membersHtml += `
-                <div class="flex items-center justify-between bg-[var(--card-bg)] rounded-lg p-3 border border-[var(--mission-gold)]/30">
-                    <div class="flex items-center gap-3">
-                        <img src="${leaderPhoto}" class="w-10 h-10 rounded-full border-2 border-[var(--mission-gold)]">
-                        <div>
-                            <p class="text-[var(--text-color)] font-medium">${leaderName} ${group.leaderId === window.currentUser?.uid ? '<span class="text-[var(--mission-gold)]">(You)</span>' : ''}</p>
-                            <p class="text-xs text-[var(--mission-gold)]">👑 Leader</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Section: Members (excluding leader)
+            const leaderName = this.escapeHtml(leaderData.displayName || group.leaderName || 'Leader');
             const otherMembers = memberIds.filter(id => id !== group.leaderId);
-            if (otherMembers.length > 0) {
-                membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium mt-4">📍 DISCIPLES (${otherMembers.length})</p>`;
-                
-                for (const memberId of otherMembers) {
-                    const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
-                    const member = memberDoc.exists() ? memberDoc.data() : {};
-                    const memberName = member.displayName || member.email?.split('@')[0] || 'Unknown';
-                    const memberPhoto = member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(memberName)}&background=4a0404&color=fbbf24`;
-                    
-                    membersHtml += `
-                        <div class="flex items-center justify-between bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
-                            <div class="flex items-center gap-3">
-                                <img src="${memberPhoto}" class="w-10 h-10 rounded-full">
-                                <div>
-                                    <p class="text-[var(--text-color)] font-medium">${memberName}</p>
-                                    <p class="text-xs text-[var(--text-muted)]">Member</p>
-                                </div>
-                            </div>
-                            ${isLeader ? `
-                                <button onclick="window.MyGroups.removeMember('${groupId}', '${memberId}', '${memberName.replace(/'/g, "\\'")}')" 
-                                        class="text-[var(--mission-red-bright)] text-sm hover:opacity-80">Remove</button>
-                            ` : ''}
-                        </div>
-                    `;
-                }
-            }
-            
-            // Section: Guests
-            if (guests.length > 0) {
-                membersHtml += `<p class="text-sm text-[var(--text-muted)] font-medium mt-4">🎫 GUESTS (${guests.length})</p>`;
-                
-                for (const guest of guests) {
-                    membersHtml += `
-                        <div class="flex items-center justify-between bg-[var(--card-bg)] rounded-lg p-3 border border-[var(--card-border)]">
-                            <div class="flex items-center gap-3">
-                                <img src="${guest.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(guest.name)}&background=1e40af&color=93c5fd`}" 
-                                     class="w-10 h-10 rounded-full">
-                                <div>
-                                    <p class="text-[var(--text-color)] font-medium">${guest.name} <span class="text-[var(--mission-gold)] text-xs">🎫</span></p>
-                                    <p class="text-xs text-[var(--text-muted)]">From: ${guest.homeGroupName || 'Unknown'}</p>
-                                </div>
-                            </div>
-                            ${isLeader ? `
-                                <button onclick="window.MyGroups.showGuestOptions('${groupId}', '${this.getGuestUserId(guest)}')" class="text-[var(--text-muted)]">•••</button>
-                            ` : ''}
-                        </div>
-                    `;
-                }
-            }
-            
-            membersHtml += '</div>';
-            
-            // Build pending requests section (if any and user is leader)
-            const requests = await this.enrichJoinRequestsWithMemberLock(
-                this.getUnifiedJoinRequests(group),
-                groupId
-            );
-            let pendingHtml = '';
-            
-            if (isLeader && requests.length > 0) {
-                pendingHtml = `
-                    <div class="mb-4 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-4">
-                        <p class="text-[var(--mission-gold)] font-bold text-sm mb-3">🔔 PENDING REQUESTS (${requests.length})</p>
-                        <div class="space-y-3">
-                            ${requests.map(req => `
-                                <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-3">
-                                    <div class="flex items-center gap-3 mb-3">
-                                        <img src="${req.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name)}&background=4a0404&color=fbbf24`}" 
-                                             class="w-10 h-10 rounded-full border border-[var(--mission-gold)]/40">
-                                        <div class="flex-1">
-                                            <p class="text-[var(--text-color)] font-medium">${req.name}</p>
-                                            <p class="text-xs text-[var(--text-muted)]">${req.email || 'No email'}</p>
-                                            ${req.memberLocked ? `
-                                                <p class="text-xs text-[var(--text-muted)] mt-1">Already in: ${req.existingGroupName || req.existingGroupId || 'Assigned Group'}</p>
-                                            ` : `
-                                                <p class="text-xs text-[var(--text-muted)] mt-1">✨ New (no current group)</p>
-                                            `}
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        ${req.memberLocked ? `
-                                            <button type="button"
-                                                    class="flex-1 bg-[var(--mission-gold)]/40 text-[var(--mission-red-deep)]/70 text-xs font-bold py-2 rounded-lg cursor-not-allowed"
-                                                    title="Already under another upline leader. Approve as guest only."
-                                                    disabled>
-                                                🚫 Member Locked
-                                            </button>
-                                        ` : `
-                                            <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'member')" 
-                                                    class="flex-1 bg-[var(--mission-gold)] hover:opacity-90 text-[var(--mission-red-deep)] text-xs font-bold py-2 rounded-lg transition-opacity">
-                                                ✅ Member
-                                            </button>
-                                        `}
-                                        <button onclick="window.MyGroups.approveRequest('${groupId}', '${req.odId}', 'guest')" 
-                                                class="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-xs font-bold py-2 rounded-lg">
-                                            🎫 Guest
-                                        </button>
-                                        <button onclick="window.MyGroups.declineRequest('${groupId}', '${req.odId}')" 
-                                                class="bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] text-xs font-bold py-2 px-3 rounded-lg border border-[var(--mission-red-bright)]/30">
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
+            const memberRows = [];
+
+            memberRows.push(`
+                <li class="flex items-center justify-between gap-3 py-3 border-b border-[#efe3d8]">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#6d0707] break-words">${leaderName}${group.leaderId === window.currentUser?.uid ? ' (You)' : ''}</p>
+                        <p class="text-xs uppercase tracking-[0.14em] text-[#c19200]">Leader</p>
                     </div>
-                `;
+                </li>
+            `);
+
+            for (const memberId of otherMembers) {
+                const memberDoc = await window.getDoc(window.doc(window.db, 'goMission_members', memberId));
+                const member = memberDoc.exists() ? memberDoc.data() : {};
+                const memberName = member.displayName || member.fullName || member.email?.split('@')[0] || 'Unknown';
+
+                memberRows.push(`
+                    <li class="flex items-center justify-between gap-3 py-3 border-b border-[#efe3d8]">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-[#6d0707] break-words">${this.escapeHtml(memberName)}</p>
+                            <p class="text-xs uppercase tracking-[0.14em] text-[#8a776d]">Member</p>
+                        </div>
+                        ${isLeader ? `
+                            <button onclick="window.MyGroups.removeMember('${groupId}', '${memberId}', '${String(memberName).replace(/'/g, "\\'")}')"
+                                    class="shrink-0 text-sm font-semibold text-[#9d0500]">
+                                Remove
+                            </button>
+                        ` : ''}
+                    </li>
+                `);
+            }
+
+            for (const guest of guests) {
+                const guestId = this.getGuestUserId(guest);
+                const guestName = guest.name || guest.displayName || 'Unknown';
+                memberRows.push(`
+                    <li class="flex items-center justify-between gap-3 py-3 border-b border-[#efe3d8]">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-[#6d0707] break-words">${this.escapeHtml(guestName)}</p>
+                            <p class="text-xs uppercase tracking-[0.14em] text-[#3e82a8]">Guest</p>
+                        </div>
+                        ${isLeader ? `
+                            <button onclick="window.MyGroups.removeGuest('${groupId}', '${guestId}')"
+                                    class="shrink-0 text-sm font-semibold text-[#9d0500]">
+                                Remove
+                            </button>
+                        ` : ''}
+                    </li>
+                `);
             }
             
             content.innerHTML = `
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-[var(--text-color)]">👥 ${group.name}</h3>
-                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                <div class="p-6 sm:p-7">
+                    <div class="flex items-start justify-between gap-4 mb-5">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">View Members</p>
+                            <h3 class="mt-2 text-[1.2rem] leading-tight font-black text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</h3>
+                            <p class="mt-2 text-sm text-[#7d6c64]">${memberIds.length} member${memberIds.length === 1 ? '' : 's'} • ${guests.length} guest${guests.length === 1 ? '' : 's'}</p>
+                        </div>
+                        <button onclick="window.MyGroups.closeModal()" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
                     </div>
-                    <div class="max-h-[60vh] overflow-y-auto">
-                        ${pendingHtml}
-                        ${membersHtml}
+                    <div class="rounded-[22px] border border-[#eadcd2] bg-white/88 px-4">
+                        <ul class="divide-y divide-[#efe3d8]">
+                            ${memberRows.join('') || `
+                                <li class="py-4 text-sm text-[#7d6c64]">No members yet.</li>
+                            `}
+                        </ul>
                     </div>
+                    ${isLeader ? `
+                        <p class="mt-4 text-xs leading-relaxed text-[#8a776d]">Use Remove to take someone out of this mission group. Pending requests stay in the separate Review Join Requests screen.</p>
+                    ` : ''}
                 </div>
             `;
             
