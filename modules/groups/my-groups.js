@@ -20,6 +20,7 @@ const MyGroups = {
     loadGroupsPromise: null,
     groupCardMediaState: {},
     groupCardTouchState: {},
+    groupCardAutoSlideTimers: {},
     groupPhotoBackfillPromise: null,
     lastGroupPhotoBackfillCheckAt: 0,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
@@ -947,6 +948,7 @@ const MyGroups = {
         if (dashboard) {
             dashboard.classList.add('hidden');
         }
+        this.clearGroupCardAutoSlide();
         this.isDashboardOpen = false;
         window.setPrimaryNavActive?.('home');
     },
@@ -1456,7 +1458,11 @@ const MyGroups = {
             return `
                 <div class="mission-groups-status-item p-4 sm:p-5">
                     <div class="rounded-[26px] border border-[#eadcd2] bg-[linear-gradient(180deg,rgba(255,251,246,0.98),rgba(255,255,255,0.96))] overflow-hidden">
-                        <div class="relative aspect-[1.48/1] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))]"
+                        <button type="button"
+                             data-group-card-gallery="${groupIdForJs}"
+                             data-group-card-photo-count="${gallery.length}"
+                             onclick="window.MyGroups.openGroupCardPrimary('${groupIdForJs}')"
+                             class="relative block w-full aspect-[1.48/1] bg-[linear-gradient(155deg,rgba(255,245,214,0.92),rgba(255,255,255,0.98))] text-left"
                              ontouchstart="window.MyGroups.handleGroupCardTouchStart('${groupIdForJs}', event)"
                              ontouchend="window.MyGroups.handleGroupCardTouchEnd('${groupIdForJs}', event)">
                             ${hasGallery ? `
@@ -1481,7 +1487,7 @@ const MyGroups = {
                                     ›
                                 </button>
                             ` : ''}
-                        </div>
+                        </button>
                         ${gallery.length > 1 ? `
                             <div class="px-4 pt-3">
                                 <div class="mx-auto w-fit rounded-full bg-[linear-gradient(180deg,rgba(255,250,246,0.82),rgba(255,245,238,0.9))] border border-[#efe3d8] px-2.5 py-1.5 flex items-center justify-center gap-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
@@ -1515,6 +1521,10 @@ const MyGroups = {
                 </div>
             `;
         }).join('');
+
+        requestAnimationFrame(() => {
+            this.startGroupCardAutoSlide();
+        });
     },
 
     resolveDate(value) {
@@ -1820,6 +1830,44 @@ const MyGroups = {
         if (gallery.length <= 1) return;
         const current = this.getGroupCardPhotoIndex(groupId, gallery.length);
         await this.setGroupCardPhotoIndex(groupId, current + Number(direction || 1));
+    },
+
+    async openGroupCardPrimary(groupId) {
+        if (!groupId) return;
+        await this.viewGroupDetails(groupId);
+    },
+
+    clearGroupCardAutoSlide() {
+        Object.values(this.groupCardAutoSlideTimers || {}).forEach((timerId) => {
+            if (timerId) clearInterval(timerId);
+        });
+        this.groupCardAutoSlideTimers = {};
+    },
+
+    startGroupCardAutoSlide() {
+        if (typeof window === 'undefined' || !this.isDashboardOpen) return;
+        this.clearGroupCardAutoSlide();
+
+        const prefersReducedMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        const isMobileViewport = window.innerWidth <= 768;
+        if (prefersReducedMotion) return;
+
+        const cards = Array.from(document.querySelectorAll('[data-group-card-gallery]'));
+        cards.forEach((card) => {
+            const groupId = String(card.getAttribute('data-group-card-gallery') || '').trim();
+            const photoCount = Number(card.getAttribute('data-group-card-photo-count') || 0);
+            if (!groupId || photoCount <= 1) return;
+
+            const timerId = window.setInterval(async () => {
+                const rect = card.getBoundingClientRect();
+                const visibleHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+                const mostlyVisible = rect.bottom > 60 && rect.top < (visibleHeight - 60);
+                if (!mostlyVisible || document.hidden || !this.isDashboardOpen) return;
+                await this.stepGroupCardPhoto(groupId, 1);
+            }, isMobileViewport ? 4200 : 3600);
+
+            this.groupCardAutoSlideTimers[groupId] = timerId;
+        });
     },
 
     handleGroupCardTouchStart(groupId, event) {
@@ -3982,6 +4030,7 @@ const MyGroups = {
      */
     closeModal() {
         this.activeGroupDetailContext = null;
+        this.clearGroupCardAutoSlide();
         document.getElementById('groupModal')?.classList.add('hidden');
     },
     
