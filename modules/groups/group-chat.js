@@ -1675,7 +1675,12 @@ const GroupChat = {
    * Use fullscreen composer on small screens to avoid cramped typing.
    */
   shouldUseFullscreenComposer() {
-    return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    const isMobileViewport = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    const compactInput = document.getElementById('chatInput');
+    const composerWidth = compactInput?.getBoundingClientRect?.().width || window.innerWidth || 0;
+    const isCrampedLayout = composerWidth > 0 && composerWidth < 720;
+    const isShortViewport = (window.innerHeight || 0) > 0 && (window.innerHeight || 0) < 820;
+    return isMobileViewport || isCrampedLayout || isShortViewport;
   },
 
   /**
