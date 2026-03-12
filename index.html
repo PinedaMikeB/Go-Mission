@@ -3109,30 +3109,31 @@
                 <input id="chatCameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="GroupChat.handleAttachmentSelected(event, 'camera')">
 
                 <div class="flex gap-2 items-end">
-                    <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
+                    <button id="chatEmojiToggleBtn" onclick="GroupChat.toggleEmojiPicker()" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji">
                         😊
                     </button>
-                    <button id="chatBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
+                    <button id="chatBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatInput')" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
                         B
                     </button>
-                    <button id="chatAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
+                    <button id="chatAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.19-9.2a3.5 3.5 0 114.95 4.95l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.49"></path>
                         </svg>
                     </button>
-                    <div class="flex-1 relative">
+                    <div class="min-w-0 flex-1 relative">
                         <div id="chatInputPreview" class="hidden pointer-events-none absolute inset-0 px-4 py-3 text-sm text-[#5a0505] bg-white overflow-hidden rounded-xl"><div id="chatInputPreviewText" class="block whitespace-pre-wrap break-words"></div></div>
                         <textarea id="chatInput" rows="1" placeholder="Type a message..." 
-                               class="relative z-10 w-full min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto"
+                               class="relative z-10 block w-full min-w-0 min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm leading-6 text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto"
                                style="caret-color: var(--text-color);"
                                oninput="GroupChat.handleInputChange(event)"
                                onscroll="GroupChat.syncComposerPreviewScroll(event)"
                                onkeyup="GroupChat.syncComposerPreviewScroll(event)"
+                               onpointerdown="GroupChat.handleComposerInputPointerDown(event)"
                                onfocus="GroupChat.handleComposerInputFocus(event)"
                                onclick="GroupChat.syncComposerPreviewScroll(event)"
                                onkeydown="GroupChat.handleComposerKeyDown(event)"></textarea>
                     </div>
-                    <button id="chatSendBtn" onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 h-12 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
+                    <button id="chatSendBtn" onclick="GroupChat.handleSend()" class="shrink-0 w-12 h-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors flex items-center justify-center" title="Send message" aria-label="Send message">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                         </svg>

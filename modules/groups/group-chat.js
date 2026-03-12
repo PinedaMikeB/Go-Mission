@@ -1675,12 +1675,26 @@ const GroupChat = {
    * Use fullscreen composer on small screens to avoid cramped typing.
    */
   shouldUseFullscreenComposer() {
+    const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const isMobileViewport = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    const narrowDeviceWidth = Math.min(window.innerWidth || Number.MAX_SAFE_INTEGER, window.screen?.width || Number.MAX_SAFE_INTEGER);
+    const isTouchPhoneLayout = coarsePointer && narrowDeviceWidth <= 1024;
     const compactInput = document.getElementById('chatInput');
     const composerWidth = compactInput?.getBoundingClientRect?.().width || window.innerWidth || 0;
     const isCrampedLayout = composerWidth > 0 && composerWidth < 720;
     const isShortViewport = (window.innerHeight || 0) > 0 && (window.innerHeight || 0) < 820;
-    return isMobileViewport || isCrampedLayout || isShortViewport;
+    return isMobileViewport || isTouchPhoneLayout || isCrampedLayout || isShortViewport;
+  },
+
+  /**
+   * Intercept touch/pointer presses early so Android does not leave the user in the cramped inline field.
+   */
+  handleComposerInputPointerDown(event) {
+    if (!this.shouldUseFullscreenComposer()) return;
+    if (this.isFullscreenComposerOpen || this.suppressNextComposerFocusOverlay) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    this.openFullscreenComposer();
   },
 
   /**
