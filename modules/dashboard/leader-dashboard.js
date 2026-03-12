@@ -429,6 +429,114 @@ const LeaderDashboard = {
     return `${day.toLowerCase()} • ${hour12}:${mm} ${ampm}`;
   },
 
+  getMemberLabel(member = {}) {
+    return member?.fullName || member?.name || member?.displayName || member?.email || member?.id || 'Unknown';
+  },
+
+  getMeetingAttendeeIds(meeting = {}) {
+    return [...new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+      .map((entry) => entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+      .filter(Boolean))];
+  },
+
+  memberWasInGroupByMeeting(member = {}, meetingAt = null) {
+    if (!member || !meetingAt) return true;
+    const joinedAt = this.resolveDate(member?.joinedAt || member?.becameLeaderAt || member?.joinedAsSeeker || member?.createdAt);
+    if (!joinedAt) return true;
+    return joinedAt.getTime() <= meetingAt.getTime();
+  },
+
+  buildSelectedGroupAttendanceReport() {
+    const membersById = new Map(this.members.map((member) => [member.id, member]));
+    const recentMeetings = this.groupMeetings.slice(0, 4).map((meeting) => {
+      const meetingAt = this.resolveDate(meeting?.startedAt || meeting?.createdAt || meeting?.updatedAt || meeting?.date);
+      const attendeeIds = this.getMeetingAttendeeIds(meeting);
+      const attendeeIdSet = new Set(attendeeIds);
+      const eligibleMembers = this.members.filter((member) => this.memberWasInGroupByMeeting(member, meetingAt));
+      const attendees = attendeeIds
+        .map((memberId) => membersById.get(memberId) || { id: memberId, fullName: memberId })
+        .map((member) => ({ id: member.id, name: this.getMemberLabel(member) }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const absentees = eligibleMembers
+        .filter((member) => !attendeeIdSet.has(member.id))
+        .map((member) => ({ id: member.id, name: this.getMemberLabel(member), stats: member.stats || {} }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        meeting,
+        meetingAt,
+        attendees,
+        absentees,
+        attendeeCount: attendees.length,
+        expectedCount: eligibleMembers.length,
+        attendancePercent: eligibleMembers.length ? Math.round((attendees.length / eligibleMembers.length) * 100) : 0
+      };
+    });
+
+    const latestMeeting = recentMeetings[0] || null;
+    const urgentFollowUp = this.members
+      .filter((member) => Number(member.stats?.consecutiveMisses || 0) >= this.THRESHOLDS.MISSED_MEETINGS)
+      .sort((a, b) => Number(b.stats?.consecutiveMisses || 0) - Number(a.stats?.consecutiveMisses || 0));
+
+    return {
+      recentMeetings,
+      latestMeeting,
+      followUpNow: latestMeeting?.absentees || [],
+      urgentFollowUp
+    };
+  },
+
+  buildAttendanceMeetingCard(reportEntry) {
+    if (!reportEntry) return '';
+    const meetingDateText = reportEntry.meetingAt
+      ? reportEntry.meetingAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })
+      : 'Unknown date';
+
+    return `
+      <article class="rounded-[28px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">Meeting Record</p>
+            <h3 class="mt-2 text-lg font-black text-[var(--text-color)]">${this.escapeHtml(meetingDateText)}</h3>
+            <p class="mt-1 text-[11px] text-[var(--text-muted)]">
+              ${this.escapeHtml(`${reportEntry.attendeeCount}/${reportEntry.expectedCount || 0} members attended • ${reportEntry.attendancePercent}% coverage`)}
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] ${reportEntry.absentees.length ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}">
+            ${this.escapeHtml(reportEntry.absentees.length ? `${reportEntry.absentees.length} follow up` : 'complete')}
+          </span>
+        </div>
+        <div class="mt-3">
+          <p class="text-[10px] uppercase tracking-[0.16em] text-green-300">Attended</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            ${reportEntry.attendees.length
+              ? reportEntry.attendees.map((member) => `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/15 text-green-200 border border-green-500/20">${this.escapeHtml(member.name)}</span>`).join('')
+              : '<span class="text-[11px] text-[var(--text-muted)]">No attendees captured.</span>'}
+          </div>
+        </div>
+        <div class="mt-4">
+          <p class="text-[10px] uppercase tracking-[0.16em] text-amber-300">Needs Follow-Up</p>
+          <div class="mt-2 space-y-2">
+            ${reportEntry.absentees.length
+              ? reportEntry.absentees.map((member) => `
+                <div class="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/8 px-3 py-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.name)}</p>
+                    <p class="text-[11px] text-[var(--text-muted)]">${this.escapeHtml(`${member.stats?.consecutiveMisses || 0} missed in a row`)}</p>
+                  </div>
+                  <button onclick="window.LeaderDashboard.sendCareMessage('${this.escapeForJs(member.id)}', 'check_attendance')"
+                          class="shrink-0 px-3 py-2 rounded-xl bg-amber-500/20 text-amber-300 text-[11px] font-bold">
+                    Check in
+                  </button>
+                </div>
+              `).join('')
+              : '<div class="rounded-2xl border border-green-500/15 bg-green-500/8 px-3 py-3 text-[11px] text-green-200">Nobody missed this meeting.</div>'}
+          </div>
+        </div>
+      </article>
+    `;
+  },
+
   getStatusGroupsForTab(tabGroups) {
     if (this.dashboardTab !== 'downline') {
       return tabGroups;
@@ -672,32 +780,37 @@ const LeaderDashboard = {
     const dayMs = 24 * 60 * 60 * 1000;
     
     // Calculate days since last active
-    const lastActive = memberData.lastActive?.toDate?.() || memberData.lastActive;
+    const lastActive = this.resolveDate(memberData.lastActive);
     const daysSinceActive = lastActive 
-      ? Math.floor((now - new Date(lastActive).getTime()) / dayMs)
+      ? Math.floor((now - lastActive.getTime()) / dayMs)
       : 999;
     
     // Devotion streak
-    const devotionStreak = memberData.bibleProgress?.currentStreak || 0;
-    const lastDevotion = memberData.bibleProgress?.lastReadAt;
+    const lastDevotion = this.resolveDate(memberData.bibleProgress?.lastReadAt);
     const daysSinceDevotion = lastDevotion
-      ? Math.floor((now - lastDevotion) / dayMs)
+      ? Math.floor((now - lastDevotion.getTime()) / dayMs)
       : 999;
+    const devotionStreak = Math.max(
+      0,
+      Number(memberData.bibleProgress?.currentStreak || 0),
+      daysSinceDevotion <= 0 ? 1 : 0
+    );
     
     const meetingStats = this.memberMeetingStats?.[memberId] || {};
     const activitySignals = this.memberActivitySignals?.[memberId] || {};
     const missedMeetings = Number(meetingStats.consecutiveMisses || meetingStats.missedRecent || 0);
     
     // Days since joined
-    const joinedAt = memberData.joinedAt?.toDate?.() || memberData.joinedAt || memberData.createdAt;
+    const joinedAt = this.resolveDate(memberData.joinedAt || memberData.createdAt);
     const daysSinceJoined = joinedAt
-      ? Math.floor((now - new Date(joinedAt).getTime()) / dayMs)
+      ? Math.floor((now - joinedAt.getTime()) / dayMs)
       : 0;
     
     // Last check-in from leader
     const lastCheckIn = memberData.leaderCheckIns?.slice(-1)[0];
-    const daysSinceCheckIn = lastCheckIn?.date
-      ? Math.floor((now - new Date(lastCheckIn.date).getTime()) / dayMs)
+    const lastCheckInDate = this.resolveDate(lastCheckIn?.date);
+    const daysSinceCheckIn = lastCheckInDate
+      ? Math.floor((now - lastCheckInDate.getTime()) / dayMs)
       : 999;
     
     return {
@@ -1027,7 +1140,7 @@ const LeaderDashboard = {
   },
 
   getFirstName(member) {
-    const name = String(member?.fullName || member?.displayName || member?.email || '').trim();
+    const name = String(member?.fullName || member?.name || member?.displayName || member?.email || '').trim();
     return name.split(/\s+/)[0] || 'kapatid';
   },
 
@@ -1223,6 +1336,7 @@ const LeaderDashboard = {
     const isDownlineView = this.dashboardTab === 'downline';
     const careSegments = this.getCareSegments();
     const recentGroupMeeting = this.groupMeetings[0] || null;
+    const attendanceReport = this.buildSelectedGroupAttendanceReport();
     
     modal.innerHTML = `
       <div class="absolute inset-0 bg-[var(--bg-color)]">
@@ -1379,6 +1493,52 @@ const LeaderDashboard = {
               </div>
             </div>
           </div>
+
+          <!-- Attendance Coaching -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(59,130,246,0.06))]">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="font-bold text-amber-400 flex items-center gap-2">
+                    <span>🧭</span> Attendance Coaching
+                  </h2>
+                  <p class="text-[11px] text-[var(--text-muted)] mt-1">See who attended, who missed, and who needs a pastoral follow-up from recent meetings.</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] ${attendanceReport.recentMeetings.length ? 'bg-blue-500/15 text-blue-300' : 'bg-[var(--input-bg)] text-[var(--text-muted)]'}">
+                  ${attendanceReport.recentMeetings.length ? `${attendanceReport.recentMeetings.length} records` : 'No records'}
+                </span>
+              </div>
+            </div>
+            <div class="p-4 space-y-4">
+              <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-blue-300">Latest Attendance</p>
+                  <p class="mt-2 text-3xl font-black text-blue-100">${attendanceReport.latestMeeting ? `${attendanceReport.latestMeeting.attendeeCount}/${attendanceReport.latestMeeting.expectedCount || 0}` : '0/0'}</p>
+                  <p class="text-[11px] text-blue-100/75 mt-2">${attendanceReport.latestMeeting ? `${attendanceReport.latestMeeting.attendancePercent}% of members were present` : 'No meeting recorded yet for this group.'}</p>
+                </div>
+                <div class="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-amber-300">Follow Up Now</p>
+                  <p class="mt-2 text-3xl font-black text-amber-100">${attendanceReport.followUpNow.length}</p>
+                  <p class="text-[11px] text-amber-100/75 mt-2">Absent from the latest recorded meeting.</p>
+                </div>
+                <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-red-300">Urgent Check-In</p>
+                  <p class="mt-2 text-3xl font-black text-red-100">${attendanceReport.urgentFollowUp.length}</p>
+                  <p class="text-[11px] text-red-100/75 mt-2">Members who missed ${this.THRESHOLDS.MISSED_MEETINGS}+ meetings in a row.</p>
+                </div>
+              </div>
+              ${attendanceReport.recentMeetings.length ? `
+              <div class="grid gap-3 lg:grid-cols-2">
+                ${attendanceReport.recentMeetings.map((entry) => this.buildAttendanceMeetingCard(entry)).join('')}
+              </div>
+              ` : `
+              <div class="rounded-[28px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/30 p-6 text-center">
+                <p class="text-sm text-[var(--text-color)]">No meeting attendance has been recorded yet.</p>
+                <p class="text-[11px] text-[var(--text-muted)] mt-2">Start the in-app meeting to capture attendance automatically, then this report will show who attended and who needs follow-up.</p>
+              </div>
+              `}
+            </div>
+          </div>
           ` : ''}
 
           ${isDownlineView ? `
@@ -1440,12 +1600,17 @@ const LeaderDashboard = {
                 <div class="rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-3">
                   <div class="flex items-start justify-between gap-3">
                     <div class="flex items-start gap-3 min-w-0">
-                      <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`}" 
+                      <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getMemberLabel(member) || 'U')}&background=4a0404&color=fbbf24`}" 
                            class="w-10 h-10 rounded-full">
                       <div class="min-w-0">
-                        <p class="text-sm font-medium text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+                        <p class="text-sm font-medium text-[var(--text-color)] truncate">${this.escapeHtml(this.getMemberLabel(member))}</p>
                         <p class="text-[10px] text-[var(--text-muted)] mt-1">
                           ${member.stats?.sharedInsights ? `${member.stats.sharedInsights} shared insight${member.stats.sharedInsights === 1 ? '' : 's'}` : 'No shared insight yet'} • ${member.stats?.prayedForOthers ? `prayed for ${member.stats.prayedForOthers}` : 'keep building'}
+                        </p>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-1">
+                          ${member.stats?.lastAttendedAt
+                            ? `Last attended ${this.resolveDate(member.stats.lastAttendedAt)?.toLocaleDateString() || 'recently'}`
+                            : 'No attendance record yet'} • ${member.stats?.consecutiveMisses || 0} missed in a row
                         </p>
                       </div>
                     </div>
@@ -1545,7 +1710,13 @@ const LeaderDashboard = {
                     </div>
                   </div>
                   <p class="text-sm text-[var(--text-muted)] mt-3">📅 ${scheduleText}</p>
-                  <p class="text-sm text-[var(--text-muted)] mt-1">✅ No recorded meeting yet</p>
+                  <p class="text-sm text-[var(--text-muted)] mt-1">
+                    ${this.selectedGroup?.id === group.id
+                      ? (recentGroupMeeting
+                        ? `✅ Latest recorded meeting ${this.resolveDate(recentGroupMeeting.startedAt || recentGroupMeeting.createdAt || recentGroupMeeting.updatedAt || recentGroupMeeting.date)?.toLocaleDateString() || 'recently'}`
+                        : '✅ No recorded meeting yet')
+                      : '✅ Select this group to view attendance'}
+                  </p>
                   ${hasPendingDelete ? `<p class="text-sm text-red-500 font-semibold mt-1">🗑️ Delete request pending admin approval</p>` : ''}
                   <div class="mt-4 grid ${isUplineTab ? 'grid-cols-3' : 'grid-cols-4'} gap-2">
                     ${isUplineTab ? '' : `

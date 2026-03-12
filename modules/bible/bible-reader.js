@@ -423,7 +423,9 @@ const BibleReader = {
   async saveProgress() {
     this.progress.book = this.currentBook;
     this.progress.chapter = this.currentChapter;
-    this.progress.lastReadAt = Date.now();
+    const now = Date.now();
+    this.updateReadingStreak(now);
+    this.progress.lastReadAt = now;
     
     // Track chapters read per book
     if (!this.progress.booksProgress) {
@@ -450,6 +452,51 @@ const BibleReader = {
     } catch (e) {
       console.log('[BibleReader] Could not save to Firestore:', e.message);
     }
+  },
+
+  normalizeProgressTimestamp(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value?.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    if (typeof value === 'object' && typeof value.seconds === 'number') {
+      const date = new Date(value.seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  },
+
+  getDayDiff(fromValue, toValue = Date.now()) {
+    const fromDate = this.normalizeProgressTimestamp(fromValue);
+    const toDate = this.normalizeProgressTimestamp(toValue);
+    if (!fromDate || !toDate) return null;
+    const fromMidnight = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate()).getTime();
+    const toMidnight = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate()).getTime();
+    return Math.round((toMidnight - fromMidnight) / (24 * 60 * 60 * 1000));
+  },
+
+  updateReadingStreak(now = Date.now()) {
+    const previousReadAt = this.normalizeProgressTimestamp(this.progress.lastReadAt);
+    const previousStreak = Math.max(0, Number(this.progress.currentStreak || 0));
+    const dayDiff = this.getDayDiff(previousReadAt, now);
+
+    let nextStreak = previousStreak;
+    if (!previousReadAt) {
+      nextStreak = 1;
+    } else if (dayDiff === 0) {
+      nextStreak = Math.max(1, previousStreak);
+    } else if (dayDiff === 1) {
+      nextStreak = Math.max(1, previousStreak) + 1;
+    } else {
+      nextStreak = 1;
+    }
+
+    this.progress.currentStreak = nextStreak;
+    this.progress.longestStreak = Math.max(nextStreak, Number(this.progress.longestStreak || 0));
+    this.progress.streakUpdatedAt = now;
   },
 
   /**

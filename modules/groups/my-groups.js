@@ -1911,12 +1911,16 @@ const MyGroups = {
         const joinedAtDate = this.resolveDate(memberData.joinedAt || memberData.createdAt);
         const lastCheckIn = Array.isArray(memberData.leaderCheckIns) ? memberData.leaderCheckIns[memberData.leaderCheckIns.length - 1] : null;
         const lastCheckInDate = this.resolveDate(lastCheckIn?.date);
-        const devotionStreak = Math.max(0, Number(memberData?.bibleProgress?.currentStreak || 0));
         const meetingStats = meetingStatsByMember?.[memberId] || {};
         const sharedSignals = activitySignals?.[memberId] || {};
 
         const daysSinceActive = lastActiveDate ? Math.floor((now - lastActiveDate.getTime()) / dayMs) : 999;
         const daysSinceDevotion = lastDevotionDate ? Math.floor((now - lastDevotionDate.getTime()) / dayMs) : 999;
+        const devotionStreak = Math.max(
+            0,
+            Number(memberData?.bibleProgress?.currentStreak || 0),
+            daysSinceDevotion <= 0 ? 1 : 0
+        );
         const daysSinceJoined = joinedAtDate ? Math.floor((now - joinedAtDate.getTime()) / dayMs) : 0;
         const daysSinceCheckIn = lastCheckInDate ? Math.floor((now - lastCheckInDate.getTime()) / dayMs) : 999;
 
