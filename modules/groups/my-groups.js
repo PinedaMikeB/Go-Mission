@@ -4053,6 +4053,43 @@ const MyGroups = {
             }
             return;
         }
+
+        if (typeof window.submitMissionGroupJoinRequestCallable === 'function') {
+            try {
+                const response = await window.submitMissionGroupJoinRequestCallable({ code });
+                const payload = response?.data || {};
+                this.closeModal();
+                alert(`Request sent to ${payload.groupName || 'the group'}!\n\nThe group leader will review your request.`);
+                return;
+            } catch (callableError) {
+                console.error('[MyGroups] submitMissionGroupJoinRequest callable failed:', callableError);
+                const callableCode = String(callableError?.code || '').toLowerCase();
+                const callableMessage = String(callableError?.message || '').trim();
+                const isFallbackWorthy = callableCode.includes('unimplemented') || callableCode.includes('unavailable');
+
+                if (!isFallbackWorthy) {
+                    if (errorEl) {
+                        if (callableCode.includes('invalid-argument')) {
+                            errorEl.textContent = callableMessage || 'Please enter a valid 6-character code';
+                        } else if (callableCode.includes('not-found')) {
+                            errorEl.textContent = callableMessage || 'Invalid invite code';
+                        } else if (callableCode.includes('already-exists')) {
+                            errorEl.textContent = callableMessage || 'You already have a pending request for this group';
+                        } else if (callableCode.includes('failed-precondition')) {
+                            errorEl.textContent = callableMessage || 'This invite code can no longer be used.';
+                        } else if (callableCode.includes('unauthenticated')) {
+                            errorEl.textContent = 'Please sign in again and try once more.';
+                        } else if (callableCode.includes('permission')) {
+                            errorEl.textContent = 'Request blocked by permissions. Please refresh and try again.';
+                        } else {
+                            errorEl.textContent = callableMessage || 'Failed to send request. Please try again.';
+                        }
+                        errorEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+        }
         
         try {
             let groupDoc = null;

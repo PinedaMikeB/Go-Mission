@@ -13,6 +13,7 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 initializeApp();
 
@@ -28,6 +29,9 @@ const ADMIN_EMAIL_ALLOWLIST = new Set([
 ]);
 
 const SYSTEM_TEMPLATE_SOURCE = 'system_scheduler';
+const MEMBER_NOTIFICATIONS_SUBCOLLECTION = 'notifications';
+const ADMIN_NOTIFICATIONS_COLLECTION = 'goMission_adminNotifications';
+const DAILY_ACTIVITY_COLLECTION = 'goMission_dailyActivity';
 const MOTIVATION_NOTIFICATION_TAG = 'motivation_conversation_time';
 const MOTIVATION_TIMEZONE = 'Asia/Manila';
 const MOTIVATION_START_DATE_KEY = '2026-03-06';
@@ -36,6 +40,8 @@ const MOTIVATION_ROTATION_STATE_DOC = 'notificationRotation_motivationConversati
 const JOIN_GROUP_NOTIFICATION_TAG = 'join_mission_group_sequence';
 const JOIN_GROUP_ROTATION_STATE_DOC = 'notificationRotation_joinMissionGroupSequence';
 const JOIN_GROUP_TIMEZONE = 'Asia/Manila';
+const STAGE_ENCOURAGEMENT_TIMEZONE = 'Asia/Manila';
+const STAGE_ENCOURAGEMENT_NOTIFICATION_TAG_PREFIX = 'stage_encouragement_';
 
 const JOIN_GROUP_MESSAGES = [
   '🛡️ You are called! Step into your God-given purpose today. The mission awaits!',
@@ -103,6 +109,165 @@ const MOTIVATION_MESSAGES = [
   "You'll never regret spending time with God. Do it now."
 ];
 
+const DEFAULT_STAGE_ENCOURAGEMENT_TEMPLATES = [
+  {
+    id: 'stage_encouragement_seeker_group_01',
+    title: 'Grow with others',
+    body: 'Growth is stronger in community. Join a mission group this week and let others walk with you.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_seeker',
+    rotationGroup: 'stage_encouragement_seeker',
+    audienceStage: 'seeker',
+    focusArea: 'group',
+    verseReference: 'Hebrews 10:24-25',
+    verseText: 'Let us consider how we may spur one another on toward love and good deeds... not giving up meeting together.',
+    sequence: 1
+  },
+  {
+    id: 'stage_encouragement_seeker_training_02',
+    title: 'Take the next step on Wednesday',
+    body: 'Attend training this Wednesday and let God sharpen your faith with truth, practice, and community.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_seeker',
+    rotationGroup: 'stage_encouragement_seeker',
+    audienceStage: 'seeker',
+    focusArea: 'training',
+    verseReference: '2 Timothy 2:15',
+    verseText: 'Do your best to present yourself to God as one approved... who correctly handles the word of truth.',
+    sequence: 2
+  },
+  {
+    id: 'stage_encouragement_seeker_bible_03',
+    title: 'Open the Word today',
+    body: 'You do not need to know everything to begin. Read one passage today and ask God what He wants you to obey.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_seeker',
+    rotationGroup: 'stage_encouragement_seeker',
+    audienceStage: 'seeker',
+    focusArea: 'bible',
+    verseReference: 'Psalm 119:105',
+    verseText: 'Your word is a lamp for my feet, a light on my path.',
+    sequence: 3
+  },
+  {
+    id: 'stage_encouragement_disciple_group_01',
+    title: 'Love people enough to lead',
+    body: 'Your next growth step is not only receiving. Start preparing to lead a discipleship group and care for others well.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_disciple',
+    rotationGroup: 'stage_encouragement_disciple',
+    audienceStage: 'disciple',
+    focusArea: 'group',
+    verseReference: 'John 13:34-35',
+    verseText: 'Love one another. As I have loved you, so you must love one another.',
+    sequence: 1
+  },
+  {
+    id: 'stage_encouragement_disciple_training_02',
+    title: 'Keep showing up for training',
+    body: 'Training forms conviction and clarity. Keep attending and let God prepare you to guide others faithfully.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_disciple',
+    rotationGroup: 'stage_encouragement_disciple',
+    audienceStage: 'disciple',
+    focusArea: 'training',
+    verseReference: 'Luke 6:40',
+    verseText: 'Everyone who is fully trained will be like their teacher.',
+    sequence: 2
+  },
+  {
+    id: 'stage_encouragement_disciple_mission_03',
+    title: 'Start thinking of one person',
+    body: 'Ask God for one person you can encourage, pray for, and begin discipling this month.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_disciple',
+    rotationGroup: 'stage_encouragement_disciple',
+    audienceStage: 'disciple',
+    focusArea: 'mission',
+    verseReference: 'Matthew 28:19',
+    verseText: 'Go and make disciples of all nations.',
+    sequence: 3
+  },
+  {
+    id: 'stage_encouragement_disciple_maker_leadership_01',
+    title: 'Do not stay an attender',
+    body: 'A disciple-maker does more than gather. Train, notice, and mentor the people God has already placed around you.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_disciple_maker',
+    rotationGroup: 'stage_encouragement_disciple_maker',
+    audienceStage: 'disciple-maker',
+    focusArea: 'leadership',
+    verseReference: '2 Timothy 2:2',
+    verseText: 'Entrust to reliable people who will also be qualified to teach others.',
+    sequence: 1
+  },
+  {
+    id: 'stage_encouragement_disciple_maker_prayer_02',
+    title: 'Pray over future leaders',
+    body: 'Pray specifically for the members under you. Ask God who is ready for deeper responsibility and follow-up.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_disciple_maker',
+    rotationGroup: 'stage_encouragement_disciple_maker',
+    audienceStage: 'disciple-maker',
+    focusArea: 'prayer',
+    verseReference: 'Luke 10:2',
+    verseText: 'Ask the Lord of the harvest... to send out workers into his harvest field.',
+    sequence: 2
+  },
+  {
+    id: 'stage_encouragement_builder_leadership_01',
+    title: 'Build leaders on purpose',
+    body: 'You are now shaping leaders, not only members. Coach them, release them, and help them carry responsibility.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_builder',
+    rotationGroup: 'stage_encouragement_builder',
+    audienceStage: 'builder',
+    focusArea: 'leadership',
+    verseReference: 'Exodus 18:21',
+    verseText: 'Select capable men... and appoint them as officials.',
+    sequence: 1
+  },
+  {
+    id: 'stage_encouragement_builder_mission_02',
+    title: 'Mobilize the whole network',
+    body: 'Think in terms of movement. What concrete activity can help your groups share the gospel and multiply this week?',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_builder',
+    rotationGroup: 'stage_encouragement_builder',
+    audienceStage: 'builder',
+    focusArea: 'mission',
+    verseReference: '1 Corinthians 3:6',
+    verseText: 'I planted the seed, Apollos watered it, but God has been making it grow.',
+    sequence: 2
+  },
+  {
+    id: 'stage_encouragement_multiplier_leadership_01',
+    title: 'Strengthen leaders under your cluster',
+    body: 'Multipliers do not carry everything alone. Strengthen builders and disciple-makers so the mission keeps spreading.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_multiplier',
+    rotationGroup: 'stage_encouragement_multiplier',
+    audienceStage: 'multiplier',
+    focusArea: 'leadership',
+    verseReference: 'Titus 1:5',
+    verseText: 'Appoint elders in every town, as I directed you.',
+    sequence: 1
+  },
+  {
+    id: 'stage_encouragement_multiplier_bible_02',
+    title: 'Keep studying the Word deeply',
+    body: 'Your influence is wide, so your roots must go deep. Keep studying Scripture carefully and leading from truth.',
+    category: 'stage_encouragement',
+    notificationTag: 'stage_encouragement_multiplier',
+    rotationGroup: 'stage_encouragement_multiplier',
+    audienceStage: 'multiplier',
+    focusArea: 'bible',
+    verseReference: 'Ezra 7:10',
+    verseText: 'Ezra had devoted himself to the study and observance of the Law of the Lord, and to teaching.',
+    sequence: 2
+  }
+];
+
 function getManilaDateKey(input = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: MOTIVATION_TIMEZONE,
@@ -131,6 +296,92 @@ function isCadenceDay({ todayKey, startDateKey, everyDays }) {
   const dayDiff = getDayDiff(startDateKey, todayKey);
   if (dayDiff === null || dayDiff < 0) return false;
   return dayDiff % cadence === 0;
+}
+
+function clampNumber(value, min, max, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+
+function randomInt(min, max) {
+  const low = Math.min(min, max);
+  const high = Math.max(min, max);
+  return Math.floor(Math.random() * ((high - low) + 1)) + low;
+}
+
+function getDefaultStageEncouragementScheduleConfig() {
+  return {
+    nextSendAt: buildRandomStageEncouragementNextSendAt({
+      minGapDays: 2,
+      maxGapDays: 6,
+      sendHourStart: 8,
+      sendHourEnd: 20,
+      timezone: STAGE_ENCOURAGEMENT_TIMEZONE
+    }),
+    loopEnabled: true,
+    minGapDays: 2,
+    maxGapDays: 6,
+    sendHourStart: 8,
+    sendHourEnd: 20,
+    timezone: STAGE_ENCOURAGEMENT_TIMEZONE
+  };
+}
+
+function buildRandomStageEncouragementNextSendAt(config = {}) {
+  const minGapDays = clampNumber(config.minGapDays, 1, 30, 2);
+  const maxGapDays = clampNumber(config.maxGapDays, minGapDays, 60, Math.max(6, minGapDays));
+  const sendHourStart = clampNumber(config.sendHourStart, 0, 23, 8);
+  const sendHourEnd = clampNumber(config.sendHourEnd, sendHourStart, 23, Math.max(20, sendHourStart));
+  const now = new Date();
+  const next = new Date(now.getTime() + (randomInt(minGapDays, maxGapDays) * 86400000));
+  const randomHour = randomInt(sendHourStart, sendHourEnd);
+  const randomMinute = randomInt(0, 59);
+
+  if (String(config.timezone || STAGE_ENCOURAGEMENT_TIMEZONE).trim() === 'Asia/Manila') {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: STAGE_ENCOURAGEMENT_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const dateKey = formatter.format(next);
+    return new Date(`${dateKey}T${String(randomHour).padStart(2, '0')}:${String(randomMinute).padStart(2, '0')}:00+08:00`).toISOString();
+  }
+
+  next.setHours(randomHour, randomMinute, 0, 0);
+  return next.toISOString();
+}
+
+function normalizeStageEncouragementScheduleConfig(raw = {}, options = {}) {
+  const fallback = getDefaultStageEncouragementScheduleConfig();
+  const config = (raw && typeof raw === 'object') ? raw : {};
+  const minGapDays = clampNumber(config.minGapDays, 1, 30, fallback.minGapDays);
+  const maxGapDays = clampNumber(config.maxGapDays, minGapDays, 60, Math.max(fallback.maxGapDays, minGapDays));
+  const sendHourStart = clampNumber(config.sendHourStart, 0, 23, fallback.sendHourStart);
+  const sendHourEnd = clampNumber(config.sendHourEnd, sendHourStart, 23, Math.max(fallback.sendHourEnd, sendHourStart));
+  const timezone = String(config.timezone || fallback.timezone || STAGE_ENCOURAGEMENT_TIMEZONE).trim() || STAGE_ENCOURAGEMENT_TIMEZONE;
+  const nextSendAt = String(config.nextSendAt || '').trim();
+
+  return {
+    nextSendAt: nextSendAt || buildRandomStageEncouragementNextSendAt({ minGapDays, maxGapDays, sendHourStart, sendHourEnd, timezone }),
+    loopEnabled: options.forceLoopEnabled === true ? true : config.loopEnabled !== false,
+    minGapDays,
+    maxGapDays,
+    sendHourStart,
+    sendHourEnd,
+    timezone,
+    lastSentAt: config.lastSentAt || null,
+    lastRecipientCount: Number(config.lastRecipientCount || 0)
+  };
+}
+
+function normalizeJourneyStageValue(stage = '') {
+  const raw = String(stage || '').trim().toLowerCase();
+  if (!raw) return 'seeker';
+  if (raw === 'believer' || raw === 'on the journey') return 'disciple';
+  if (raw === 'discipler') return 'disciple-maker';
+  return raw;
 }
 
 function getSafeProfileName(memberData = {}) {
@@ -176,6 +427,105 @@ async function getAdminRecipientIds({ excludeUserId = '' } = {}) {
   return [...adminIds];
 }
 
+async function assertAdminCaller(request) {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  const callerEmail = String(request.auth.token?.email || '').toLowerCase().trim();
+  if (ADMIN_UID_ALLOWLIST.has(request.auth.uid) || ADMIN_EMAIL_ALLOWLIST.has(callerEmail)) {
+    return { uid: request.auth.uid, email: callerEmail, isAdmin: true };
+  }
+
+  const callerDoc = await db.collection('goMission_members').doc(request.auth.uid).get();
+  const callerData = callerDoc.exists ? (callerDoc.data() || {}) : {};
+  const roles = (callerData.roles && !Array.isArray(callerData.roles)) ? callerData.roles : {};
+  const roleList = Array.isArray(callerData.roles) ? callerData.roles : [];
+  const isAdmin = !!roles.isAdmin || roleList.includes('admin');
+
+  if (!isAdmin) {
+    throw new HttpsError('permission-denied', 'Admin access required');
+  }
+
+  return { uid: request.auth.uid, email: callerEmail, isAdmin: true };
+}
+
+function getLinkedUserId(entry) {
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry.trim();
+  return String(entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || '').trim();
+}
+
+async function deleteMemberNotificationInbox(userId) {
+  const inboxSnap = await db
+    .collection('goMission_members')
+    .doc(userId)
+    .collection(MEMBER_NOTIFICATIONS_SUBCOLLECTION)
+    .get();
+
+  if (inboxSnap.empty) return 0;
+
+  let deletedCount = 0;
+  let batch = db.batch();
+  let batchSize = 0;
+
+  for (const docSnap of inboxSnap.docs) {
+    batch.delete(docSnap.ref);
+    batchSize += 1;
+    deletedCount += 1;
+    if (batchSize >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      batchSize = 0;
+    }
+  }
+
+  if (batchSize > 0) {
+    await batch.commit();
+  }
+
+  return deletedCount;
+}
+
+async function cleanupUserGroupMembershipLinks(userId) {
+  const groupsSnap = await db.collection('goMission_groups').get();
+  let updatedGroups = 0;
+
+  for (const docSnap of groupsSnap.docs) {
+    const group = docSnap.data() || {};
+    if (String(group.leaderId || '').trim() === userId) continue;
+
+    const rawMembers = Array.isArray(group.members) ? group.members : [];
+    const rawGuests = Array.isArray(group.guests) ? group.guests : [];
+    const rawJoinRequests = Array.isArray(group.joinRequests) ? group.joinRequests : [];
+    const rawPendingRequests = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+
+    const nextMembers = rawMembers.filter((entry) => getLinkedUserId(entry) !== userId);
+    const nextGuests = rawGuests.filter((entry) => getLinkedUserId(entry) !== userId);
+    const nextJoinRequests = rawJoinRequests.filter((entry) => getLinkedUserId(entry) !== userId);
+    const nextPendingRequests = rawPendingRequests.filter((entry) => getLinkedUserId(entry) !== userId);
+
+    const changed =
+      nextMembers.length !== rawMembers.length ||
+      nextGuests.length !== rawGuests.length ||
+      nextJoinRequests.length !== rawJoinRequests.length ||
+      nextPendingRequests.length !== rawPendingRequests.length;
+
+    if (!changed) continue;
+
+    await docSnap.ref.set({
+      members: nextMembers,
+      guests: nextGuests,
+      joinRequests: nextJoinRequests,
+      pendingRequests: nextPendingRequests,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    updatedGroups += 1;
+  }
+
+  return { updatedGroups };
+}
+
 async function upsertSystemNotificationTemplate({
   id,
   title,
@@ -185,12 +535,20 @@ async function upsertSystemNotificationTemplate({
   notificationTag = '',
   rotationGroup = '',
   sequence = null,
+  audienceStage = '',
+  focusArea = '',
+  verseReference = '',
+  verseText = '',
+  scheduleConfig = null,
   active = true
 }) {
   if (!id || !title || !body) return;
   const ref = db.collection('goMission_notificationTemplates').doc(String(id));
   const snap = await ref.get();
   const existing = snap.exists ? (snap.data() || {}) : {};
+  const resolvedScheduleConfig = category === 'stage_encouragement'
+    ? normalizeStageEncouragementScheduleConfig(scheduleConfig || existing.scheduleConfig || {}, { forceLoopEnabled: true })
+    : (scheduleConfig || existing.scheduleConfig || null);
 
   const payload = {
     title: String(title).trim(),
@@ -205,6 +563,11 @@ async function upsertSystemNotificationTemplate({
     sequence: Number.isFinite(Number(sequence))
       ? Number(sequence)
       : (Number.isFinite(Number(existing.sequence)) ? Number(existing.sequence) : null),
+    audienceStage: audienceStage || existing.audienceStage || '',
+    focusArea: focusArea || existing.focusArea || '',
+    verseReference: verseReference || existing.verseReference || '',
+    verseText: verseText || existing.verseText || '',
+    scheduleConfig: resolvedScheduleConfig,
     active: active !== false,
     updatedAt: FieldValue.serverTimestamp(),
     updatedByUid: 'system',
@@ -265,6 +628,14 @@ async function ensureSystemNotificationTemplatesSeeded() {
       notificationTag: MOTIVATION_NOTIFICATION_TAG,
       rotationGroup: 'motivation_conversation_time',
       sequence: i + 1
+    });
+  }
+
+  for (const item of DEFAULT_STAGE_ENCOURAGEMENT_TEMPLATES) {
+    await upsertSystemNotificationTemplate({
+      ...item,
+      deliveryMode: 'repeatable',
+      scheduleConfig: getDefaultStageEncouragementScheduleConfig()
     });
   }
 }
@@ -378,6 +749,235 @@ function normalizeNotificationData(data = {}, title = '', body = '') {
   return normalized;
 }
 
+function hashNotificationKey(value = '') {
+  return crypto.createHash('sha1').update(String(value)).digest('hex');
+}
+
+function resolveNotificationType(notification = {}, normalizedData = {}) {
+  return String(
+    notification.type ||
+    normalizedData.type ||
+    notification.notificationType ||
+    'general'
+  ).trim().toLowerCase() || 'general';
+}
+
+function buildNotificationAction(type, data = {}, title = '', body = '') {
+  if ((type === 'dm' || type === 'direct_message' || type === 'friend_request_accepted') && (data.senderId || data.fromId || data.friendId)) {
+    return {
+      kind: 'dm',
+      senderId: String(data.senderId || data.fromId || data.friendId),
+      threadId: data.threadId ? String(data.threadId) : '',
+      messageId: data.messageId ? String(data.messageId) : ''
+    };
+  }
+
+  if ((type === 'chat' || type === 'chat_mention' || type === 'member_joined' || type === 'join_request' || type === 'guest_joined' || type === 'guest_approved' || type === 'prayer_answered') && data.groupId) {
+    return {
+      kind: 'group',
+      groupId: String(data.groupId),
+      messageId: data.messageId ? String(data.messageId) : ''
+    };
+  }
+
+  if (type === 'friend_request') {
+    return { kind: 'friend_requests' };
+  }
+
+  if ((type === 'watch_episode' || type === 'video_episode') && data.episodeId) {
+    return {
+      kind: 'watch',
+      episodeId: String(data.episodeId)
+    };
+  }
+
+  if (data.url) {
+    return {
+      kind: 'url',
+      url: String(data.url)
+    };
+  }
+
+  if (type === 'devotion') {
+    return { kind: 'devotion' };
+  }
+
+  if (type === 'announcement' || data.announcementId || title || body) {
+    return {
+      kind: 'announcement',
+      announcementId: data.announcementId ? String(data.announcementId) : '',
+      title: String(title || ''),
+      body: String(body || '')
+    };
+  }
+
+  return { kind: 'general' };
+}
+
+function buildNotificationSourceKey(type, action = {}, data = {}, title = '', body = '') {
+  const explicit = String(
+    data.notificationId ||
+    data.announcementId ||
+    data.eventId ||
+    data.sourceId ||
+    ''
+  ).trim();
+  if (explicit) return explicit;
+
+  if (action.kind === 'group' && action.groupId) {
+    return `group:${action.groupId}:${action.messageId || title}`;
+  }
+  if (action.kind === 'dm' && action.senderId) {
+    return `dm:${action.threadId || action.senderId}:${action.messageId || title}`;
+  }
+  if (action.kind === 'announcement') {
+    return `announcement:${action.announcementId || `${title}|${body}`}`;
+  }
+  if (action.kind === 'watch' && action.episodeId) {
+    return `watch:${action.episodeId}`;
+  }
+  if (action.kind === 'friend_requests') {
+    return `friend-request:${title}|${body}`;
+  }
+  if (action.kind === 'url' && action.url) {
+    return `url:${action.url}`;
+  }
+  return `${type}:${title}|${body}`;
+}
+
+function buildNotificationRecord(notification = {}, options = {}) {
+  const title = String(notification.title || 'Notification').trim();
+  const body = String(notification.body || '').trim();
+  const normalizedData = normalizeNotificationData(notification.data || {}, title, body);
+  const type = resolveNotificationType(notification, normalizedData);
+  const action = buildNotificationAction(type, normalizedData, title, body);
+  const sourceKey = buildNotificationSourceKey(type, action, normalizedData, title, body);
+  const scopeKey = String(options.scopeKey || options.userId || options.adminScope || 'global');
+  const explicitId = String(
+    notification.notificationId ||
+    normalizedData.notificationId ||
+    normalizedData.announcementId ||
+    normalizedData.eventId ||
+    ''
+  ).trim();
+  const docId = explicitId
+    ? hashNotificationKey(`${scopeKey}:${explicitId}`)
+    : hashNotificationKey(`${scopeKey}:${sourceKey}`);
+
+  return {
+    docId,
+    title,
+    body,
+    type,
+    normalizedData,
+    action,
+    sourceKey
+  };
+}
+
+async function writeNotificationInbox(userId, notification = {}, options = {}) {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) {
+    return { success: false, error: 'Missing userId' };
+  }
+
+  const record = buildNotificationRecord(notification, {
+    ...options,
+    scopeKey: options.scopeKey || `user:${normalizedUserId}`
+  });
+  const ref = db
+    .collection('goMission_members')
+    .doc(normalizedUserId)
+    .collection(MEMBER_NOTIFICATIONS_SUBCOLLECTION)
+    .doc(record.docId);
+
+  const existingSnap = await ref.get();
+  const existing = existingSnap.exists ? (existingSnap.data() || {}) : null;
+  const shouldBeRead = options.read === true ? true : notification.read === true;
+  const wasUnread = existing ? existing.read !== true : false;
+  const shouldIncrementUnread = !shouldBeRead && !wasUnread;
+
+  await ref.set({
+    title: record.title,
+    body: record.body,
+    type: record.type,
+    category: String(notification.category || record.normalizedData.category || record.type),
+    icon: notification.icon ? String(notification.icon) : (existing?.icon || ''),
+    read: shouldBeRead,
+    readAt: shouldBeRead ? FieldValue.serverTimestamp() : null,
+    action: record.action,
+    data: record.normalizedData,
+    sourceKey: record.sourceKey,
+    sourceEvent: String(notification.event || record.normalizedData.event || ''),
+    sourceCollection: String(options.sourceCollection || notification.sourceCollection || ''),
+    sourceEntityId: String(
+      options.sourceEntityId ||
+      notification.sourceEntityId ||
+      record.normalizedData.groupId ||
+      record.normalizedData.messageId ||
+      record.normalizedData.announcementId ||
+      record.normalizedData.episodeId ||
+      ''
+    ),
+    priority: String(notification.priority || record.normalizedData.priority || 'normal'),
+    audience: String(notification.audience || record.normalizedData.audience || ''),
+    createdAt: existing?.createdAt || FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  if (shouldIncrementUnread) {
+    await incrementUnreadCount(normalizedUserId);
+  }
+
+  return {
+    success: true,
+    id: record.docId,
+    unreadIncremented: shouldIncrementUnread,
+    sourceKey: record.sourceKey
+  };
+}
+
+async function writeNotificationInboxes(userIds = [], notification = {}, options = {}) {
+  const ids = uniqueUserIds(userIds);
+  if (!ids.length) return [];
+  return Promise.all(ids.map((userId) => writeNotificationInbox(userId, notification, options)));
+}
+
+async function writeAdminFeedNotification(notification = {}, options = {}) {
+  const record = buildNotificationRecord(notification, {
+    ...options,
+    scopeKey: options.scopeKey || 'admin-feed'
+  });
+  const ref = db.collection(ADMIN_NOTIFICATIONS_COLLECTION).doc(record.docId);
+  const existingSnap = await ref.get();
+  const existing = existingSnap.exists ? (existingSnap.data() || {}) : null;
+
+  await ref.set({
+    title: record.title,
+    body: record.body,
+    type: record.type,
+    category: String(notification.category || record.normalizedData.category || record.type),
+    action: record.action,
+    data: record.normalizedData,
+    sourceKey: record.sourceKey,
+    sourceEvent: String(notification.event || record.normalizedData.event || ''),
+    sourceCollection: String(options.sourceCollection || notification.sourceCollection || ''),
+    sourceEntityId: String(
+      options.sourceEntityId ||
+      notification.sourceEntityId ||
+      record.normalizedData.groupId ||
+      record.normalizedData.announcementId ||
+      record.normalizedData.episodeId ||
+      ''
+    ),
+    visibility: String(notification.visibility || 'admin'),
+    createdAt: existing?.createdAt || FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  return { success: true, id: record.docId };
+}
+
 function buildNotificationDeepLink(data = {}, title = '', body = '') {
   const payload = (data && typeof data === 'object') ? data : {};
   const type = String(payload.type || '').toLowerCase();
@@ -421,12 +1021,17 @@ async function sendToUser(userId, notification) {
     
     const userData = userDoc.data();
     const tokens = userData.fcmTokens || [];
-
-    await incrementUnreadCount(userId);
-    const badgeCount = (userData.unreadCount || 0) + 1;
+    const inboxResult = await writeNotificationInbox(userId, notification, {
+      sourceCollection: notification.sourceCollection || '',
+      sourceEntityId: notification.sourceEntityId || ''
+    });
+    const badgeCount = Math.max(
+      0,
+      Number(userData.unreadCount || 0) + (inboxResult?.unreadIncremented ? 1 : 0)
+    );
     
     if (tokens.length === 0) {
-      return { success: false, error: 'No tokens', badgeCount };
+      return { success: false, error: 'No tokens', badgeCount, inboxId: inboxResult?.id || null };
     }
 
     const normalizedData = normalizeNotificationData(
@@ -475,12 +1080,20 @@ async function sendToUser(userId, notification) {
     };
     
     const response = await messaging.sendEachForMulticast(message);
+    const successCount = Number(response.successCount || 0);
+    const failureCount = Number(response.failureCount || 0);
+    const responseErrors = [];
     
     if (response.failureCount > 0) {
       const invalidTokens = [];
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
           const code = resp.error?.code;
+          if (code) {
+            responseErrors.push(code);
+          } else if (resp.error?.message) {
+            responseErrors.push(String(resp.error.message));
+          }
           if (code === 'messaging/invalid-registration-token' || 
               code === 'messaging/registration-token-not-registered') {
             invalidTokens.push(tokens[idx]);
@@ -494,8 +1107,25 @@ async function sendToUser(userId, notification) {
         });
       }
     }
-    
-    return { success: true, successCount: response.successCount };
+
+    if (successCount === 0) {
+      return {
+        success: false,
+        error: responseErrors[0] || 'No valid tokens',
+        successCount,
+        failureCount,
+        badgeCount,
+        inboxId: inboxResult?.id || null
+      };
+    }
+
+    return {
+      success: true,
+      successCount,
+      failureCount,
+      badgeCount,
+      inboxId: inboxResult?.id || null
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -542,6 +1172,113 @@ async function sendToGroup(groupId, notification, excludeUserId = null) {
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+async function getGroupRecipientIds(groupId, excludeUserId = null) {
+  const normalizedGroupId = String(groupId || '').trim();
+  if (!normalizedGroupId) return [];
+  const groupDoc = await db.collection('goMission_groups').doc(normalizedGroupId).get();
+  if (!groupDoc.exists) return [];
+
+  let memberIds = getGroupParticipantIds(groupDoc.data() || {});
+  if (excludeUserId) {
+    memberIds = memberIds.filter((id) => id !== excludeUserId);
+  }
+  return memberIds;
+}
+
+async function resolveAnnouncementRecipientIds(audience, { groupId = '', memberId = '' } = {}) {
+  const normalizedAudience = String(audience || 'all_users').trim().toLowerCase();
+
+  if (normalizedAudience === 'specific_member' && memberId) {
+    return [String(memberId)];
+  }
+
+  if (normalizedAudience === 'specific_group' && groupId) {
+    return getGroupRecipientIds(groupId);
+  }
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  let members = usersSnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    data: docSnap.data() || {}
+  }));
+
+  if (normalizedAudience === 'group_members' || normalizedAudience === 'ungrouped_users') {
+    members = members.filter((entry) => (
+      normalizedAudience === 'group_members'
+        ? hasGroupMembership(entry.data)
+        : !hasGroupMembership(entry.data)
+    ));
+  }
+
+  if (normalizedAudience === 'leaders_only') {
+    members = members.filter((entry) => isLeaderProfile(entry.data));
+  }
+
+  return members.map((entry) => entry.id);
+}
+
+async function ensureMemberProfileDocument(userId, profile = {}) {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) {
+    throw new HttpsError('invalid-argument', 'Missing user id');
+  }
+
+  const userRef = db.collection('goMission_members').doc(normalizedUserId);
+  const userDoc = await userRef.get();
+  const existing = userDoc.exists ? (userDoc.data() || {}) : {};
+  const displayName = String(
+    profile.displayName ||
+    profile.name ||
+    existing.displayName ||
+    existing.name ||
+    ''
+  ).trim();
+  const email = String(profile.email || existing.email || '').trim().toLowerCase();
+  const photoURL = String(profile.photoURL || existing.photoURL || '').trim();
+
+  const basePayload = {
+    id: normalizedUserId,
+    name: displayName,
+    displayName,
+    email,
+    photoURL,
+    updatedAt: FieldValue.serverTimestamp()
+  };
+
+  if (!userDoc.exists) {
+    await userRef.set({
+      ...basePayload,
+      stage: 'seeker',
+      roles: {
+        isMissionary: true,
+        isGroupLeader: false,
+        isTrainer: false,
+        isShepherd: false,
+        isWelcomeTeam: false,
+        isAdmin: false
+      },
+      groupId: null,
+      discipledBy: null,
+      discipling: [],
+      training: {
+        currentPhase: 1,
+        phases: {
+          phase1: { status: 'enrolled', sessionsAttended: [] },
+          phase2: { status: 'locked' },
+          phase3: { status: 'locked' },
+          phase4: { status: 'locked' }
+        }
+      },
+      createdAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { created: true, updated: true };
+  }
+
+  await userRef.set(basePayload, { merge: true });
+  return { created: false, updated: true };
 }
 
 function uniqueUserIds(values = []) {
@@ -662,6 +1399,107 @@ function collectRequests(groupData) {
     out.push(normalized);
   }
   return out;
+}
+
+function normalizeInviteCode(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 6);
+}
+
+function normalizeEntryUserId(entry) {
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry.trim();
+  if (typeof entry === 'object') {
+    return String(entry.odId || entry.uid || entry.id || '').trim();
+  }
+  return '';
+}
+
+function getNormalizedGroupUserIds(entries = []) {
+  if (!Array.isArray(entries)) return [];
+  return uniqueUserIds(entries.map((entry) => normalizeEntryUserId(entry)).filter(Boolean));
+}
+
+function isUserAlreadyInGroup(groupData = {}, uid = '') {
+  const normalizedUid = String(uid || '').trim();
+  if (!normalizedUid) return false;
+
+  if (String(groupData?.leaderId || '').trim() === normalizedUid) {
+    return true;
+  }
+
+  const memberIds = getNormalizedGroupUserIds(groupData?.members);
+  const guestIds = getNormalizedGroupUserIds(groupData?.guests);
+  return memberIds.includes(normalizedUid) || guestIds.includes(normalizedUid);
+}
+
+async function resolveInviteGroupTarget(inviteCode) {
+  const normalizedCode = normalizeInviteCode(inviteCode);
+  if (!normalizedCode) return null;
+
+  let codeDoc = await db.collection('goMission_groupInviteCodes').doc(normalizedCode).get();
+
+  if (!codeDoc.exists) {
+    const codeQuerySnapshot = await db.collection('goMission_groupInviteCodes')
+      .where('code', '==', normalizedCode)
+      .limit(1)
+      .get();
+    if (!codeQuerySnapshot.empty) {
+      codeDoc = codeQuerySnapshot.docs[0];
+    }
+  }
+
+  let groupDoc = null;
+  let codeData = codeDoc.exists ? (codeDoc.data() || {}) : null;
+  const linkedGroupId = String(codeData?.groupId || codeData?.group || codeData?.groupID || '').trim();
+
+  if (linkedGroupId) {
+    const candidate = await db.collection('goMission_groups').doc(linkedGroupId).get();
+    if (candidate.exists) {
+      const candidateData = candidate.data() || {};
+      if (normalizeInviteCode(candidateData.inviteCode) === normalizedCode) {
+        groupDoc = candidate;
+      }
+    }
+  }
+
+  if (!groupDoc) {
+    const directGroupSnapshot = await db.collection('goMission_groups')
+      .where('inviteCode', '==', normalizedCode)
+      .limit(1)
+      .get();
+    if (!directGroupSnapshot.empty) {
+      groupDoc = directGroupSnapshot.docs[0];
+    }
+  }
+
+  if (!groupDoc) {
+    const allGroupsSnapshot = await db.collection('goMission_groups').get();
+    groupDoc = allGroupsSnapshot.docs.find((docSnap) => {
+      const data = docSnap.data() || {};
+      return normalizeInviteCode(data.inviteCode) === normalizedCode;
+    }) || null;
+  }
+
+  if (!groupDoc || !groupDoc.exists) {
+    return null;
+  }
+
+  const groupData = groupDoc.data() || {};
+  if (!codeData) {
+    codeData = null;
+  }
+
+  return {
+    inviteCode: normalizedCode,
+    groupRef: groupDoc.ref,
+    groupDoc,
+    groupData,
+    codeRef: codeDoc.exists ? codeDoc.ref : null,
+    codeData
+  };
 }
 
 async function sendEventEmailToUser(userId, subject, html) {
@@ -992,6 +1830,14 @@ exports.onMemberSignup = onDocumentCreated('goMission_members/{memberId}', async
     }
   };
 
+  await writeAdminFeedNotification({
+    ...notification,
+    category: 'admin_growth',
+    event: 'member_signup'
+  }, {
+    sourceCollection: 'goMission_members',
+    sourceEntityId: memberId
+  });
   await sendToUsers(adminRecipientIds, notification);
   return null;
 });
@@ -1018,7 +1864,382 @@ exports.onGroupCreated = onDocumentCreated('goMission_groups/{groupId}', async (
     }
   };
 
+  await writeAdminFeedNotification({
+    ...notification,
+    category: 'admin_growth',
+    event: 'group_created'
+  }, {
+    sourceCollection: 'goMission_groups',
+    sourceEntityId: groupId
+  });
   await sendToUsers(adminRecipientIds, notification);
+  return null;
+});
+
+exports.onFriendRequestCreated = onDocumentCreated('goMission_friendRequests/{requestId}', async (event) => {
+  const request = event.data?.data() || {};
+  const requestId = String(event.params?.requestId || '').trim();
+  if (!requestId) return null;
+
+  const toId = String(request.toId || '').trim();
+  const fromId = String(request.fromId || '').trim();
+  if (!toId || !fromId) return null;
+  if (String(request.status || 'pending').toLowerCase() !== 'pending') return null;
+
+  await sendToUser(toId, {
+    title: '🤝 New friend request',
+    body: `${request.fromName || 'Someone'} wants to connect with you.`,
+    data: {
+      type: 'friend_request',
+      requestId,
+      fromId,
+      notificationId: `friend_request_${requestId}`
+    },
+    sourceCollection: 'goMission_friendRequests',
+    sourceEntityId: requestId
+  });
+
+  return null;
+});
+
+exports.onFriendRequestAccepted = onDocumentUpdated('goMission_friendRequests/{requestId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data() || {};
+  const requestId = String(event.params?.requestId || '').trim();
+  if (!requestId) return null;
+
+  const oldStatus = String(before.status || '').toLowerCase();
+  const newStatus = String(after.status || '').toLowerCase();
+  if (newStatus !== 'accepted' || oldStatus === 'accepted') return null;
+
+  const fromId = String(after.fromId || '').trim();
+  const toId = String(after.toId || '').trim();
+  if (!fromId || !toId) return null;
+
+  await sendToUser(fromId, {
+    title: '✅ Friend request accepted',
+    body: `${after.toName || 'Your friend'} accepted your request.`,
+    data: {
+      type: 'friend_request_accepted',
+      fromId: toId,
+      friendId: toId,
+      requestId,
+      notificationId: `friend_request_accepted_${requestId}`
+    },
+    sourceCollection: 'goMission_friendRequests',
+    sourceEntityId: requestId
+  });
+
+  return null;
+});
+
+exports.onAnnouncementCreated = onDocumentCreated('goMission_announcements/{announcementId}', async (event) => {
+  const announcement = event.data?.data() || {};
+  const announcementId = String(event.params?.announcementId || '').trim();
+  if (!announcementId) return null;
+
+  const title = String(announcement.title || 'Go Mission Update').trim();
+  const body = String(announcement.body || '').trim();
+  if (!title && !body) return null;
+
+  const recipientIds = await resolveAnnouncementRecipientIds(announcement.audience, {
+    groupId: String(announcement.groupId || '').trim(),
+    memberId: String(announcement.memberId || '').trim()
+  });
+  if (recipientIds.length) {
+    await writeNotificationInboxes(recipientIds, {
+      title,
+      body,
+      category: 'announcement',
+      event: 'announcement_created',
+      audience: String(announcement.audience || 'all_users'),
+      data: {
+        type: 'announcement',
+        announcementId,
+        notificationId: `announcement_${announcementId}`
+      },
+      sourceCollection: 'goMission_announcements',
+      sourceEntityId: announcementId
+    }, {
+      sourceCollection: 'goMission_announcements',
+      sourceEntityId: announcementId
+    });
+  }
+
+  await writeAdminFeedNotification({
+    title: '📣 Announcement published',
+    body: `${title}${announcement.audience ? ` • Audience: ${announcement.audience}` : ''}`,
+    category: 'admin_content',
+    event: 'announcement_created',
+    data: {
+      type: 'admin_event',
+      announcementId,
+      audience: String(announcement.audience || 'all_users'),
+      recipientCount: String(recipientIds.length),
+      notificationId: `admin_announcement_${announcementId}`
+    }
+  }, {
+    sourceCollection: 'goMission_announcements',
+    sourceEntityId: announcementId
+  });
+
+  return null;
+});
+
+exports.onVideoEpisodeCreated = onDocumentCreated('video_episodes/{episodeId}', async (event) => {
+  const episode = event.data?.data() || {};
+  const episodeId = String(event.params?.episodeId || '').trim();
+  if (!episodeId) return null;
+  if (String(episode.status || '').toLowerCase() !== 'published') return null;
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const recipientIds = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id);
+
+  if (recipientIds.length) {
+    await sendToUsersInBatches(recipientIds, {
+      title: '🎬 New episode is ready',
+      body: `${episode.title || 'A new Go Mission episode'} is now available to watch.`,
+      category: 'watch',
+      event: 'video_episode_published',
+      data: {
+        type: 'watch_episode',
+        episodeId,
+        notificationId: `watch_episode_${episodeId}`
+      },
+      sourceCollection: 'video_episodes',
+      sourceEntityId: episodeId
+    });
+  }
+
+  await writeAdminFeedNotification({
+    title: '🎬 Watch episode published',
+    body: `${episode.title || episodeId} is now live.`,
+    category: 'admin_content',
+    event: 'video_episode_published',
+    data: {
+      type: 'admin_event',
+      episodeId,
+      notificationId: `admin_watch_episode_${episodeId}`
+    }
+  }, {
+    sourceCollection: 'video_episodes',
+    sourceEntityId: episodeId
+  });
+
+  return null;
+});
+
+exports.onVideoEpisodePublished = onDocumentUpdated('video_episodes/{episodeId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data() || {};
+  const episodeId = String(event.params?.episodeId || '').trim();
+  if (!episodeId) return null;
+
+  const beforeStatus = String(before.status || '').toLowerCase();
+  const afterStatus = String(after.status || '').toLowerCase();
+  if (afterStatus !== 'published' || beforeStatus === 'published') return null;
+
+  const usersSnapshot = await db.collection('goMission_members').get();
+  const recipientIds = usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id);
+
+  if (recipientIds.length) {
+    await sendToUsersInBatches(recipientIds, {
+      title: '🎬 New episode is ready',
+      body: `${after.title || 'A new Go Mission episode'} is now available to watch.`,
+      category: 'watch',
+      event: 'video_episode_published',
+      data: {
+        type: 'watch_episode',
+        episodeId,
+        notificationId: `watch_episode_${episodeId}`
+      },
+      sourceCollection: 'video_episodes',
+      sourceEntityId: episodeId
+    });
+  }
+
+  await writeAdminFeedNotification({
+    title: '🎬 Watch episode published',
+    body: `${after.title || episodeId} is now live.`,
+    category: 'admin_content',
+    event: 'video_episode_published',
+    data: {
+      type: 'admin_event',
+      episodeId,
+      notificationId: `admin_watch_episode_${episodeId}`
+    }
+  }, {
+    sourceCollection: 'video_episodes',
+    sourceEntityId: episodeId
+  });
+
+  return null;
+});
+
+exports.onPrayerAnswered = onDocumentUpdated('goMission_groups/{groupId}/prayerRequests/{requestId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data() || {};
+  const groupId = String(event.params?.groupId || '').trim();
+  const requestId = String(event.params?.requestId || '').trim();
+  if (!groupId || !requestId) return null;
+  if (before.answered === true || after.answered !== true) return null;
+
+  const memberId = String(after.memberId || '').trim();
+  let groupName = 'your mission group';
+  try {
+    const groupDoc = await db.collection('goMission_groups').doc(groupId).get();
+    if (groupDoc.exists) {
+      groupName = String(groupDoc.data()?.name || groupName);
+    }
+  } catch (_) {}
+
+  if (memberId) {
+    await sendToUser(memberId, {
+      title: '🙌 Prayer answered',
+      body: `${groupName} marked one of your prayer requests as answered. Praise God.`,
+      category: 'prayer',
+      event: 'prayer_answered',
+      data: {
+        type: 'prayer_answered',
+        groupId,
+        requestId,
+        notificationId: `prayer_answered_${requestId}`
+      },
+      sourceCollection: 'goMission_groups.prayerRequests',
+      sourceEntityId: requestId
+    });
+  }
+
+  await writeAdminFeedNotification({
+    title: '🙌 Answered prayer recorded',
+    body: `${groupName} recorded an answered prayer today.`,
+    category: 'admin_discipleship',
+    event: 'prayer_answered',
+    data: {
+      type: 'admin_event',
+      groupId,
+      requestId,
+      notificationId: `admin_prayer_answered_${requestId}`
+    }
+  }, {
+    sourceCollection: 'goMission_groups.prayerRequests',
+    sourceEntityId: requestId
+  });
+
+  return null;
+});
+
+exports.onMeetingStarted = onDocumentCreated('goMission_meetings/{meetingId}', async (event) => {
+  const meeting = event.data?.data() || {};
+  const meetingId = String(event.params?.meetingId || '').trim();
+  const groupId = String(meeting.groupId || '').trim();
+  const meetingDate = String(meeting.date || '').trim();
+  if (!meetingId || !groupId || !meetingDate) return null;
+
+  const groupDoc = await db.collection('goMission_groups').doc(groupId).get();
+  const groupName = groupDoc.exists ? String(groupDoc.data()?.name || groupId) : groupId;
+
+  await writeAdminFeedNotification({
+    title: '🟢 Group meeting started',
+    body: `${groupName} started meeting on ${meetingDate}.`,
+    category: 'admin_activity',
+    event: 'meeting_started',
+    data: {
+      type: 'admin_event',
+      groupId,
+      meetingId,
+      meetingDate,
+      notificationId: `meeting_started_${meetingId}`
+    }
+  }, {
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  const dayRef = db.collection(DAILY_ACTIVITY_COLLECTION).doc(meetingDate);
+  const daySnap = await dayRef.get();
+  const dayData = daySnap.exists ? (daySnap.data() || {}) : {};
+  const nextCount = Number(dayData.meetingsStarted || 0) + 1;
+  const milestone = [5, 10, 20].find((value) => value === nextCount);
+
+  await dayRef.set({
+    date: meetingDate,
+    meetingsStarted: FieldValue.increment(1),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  if (milestone && !(Array.isArray(dayData.milestonesSent) && dayData.milestonesSent.includes(milestone))) {
+    await writeAdminFeedNotification({
+      title: '📈 Meeting milestone reached',
+      body: `${milestone} groups have met on ${meetingDate}.`,
+      category: 'admin_activity',
+      event: 'meeting_milestone',
+      data: {
+        type: 'admin_event',
+        meetingDate,
+        milestone: String(milestone),
+        notificationId: `meeting_milestone_${meetingDate}_${milestone}`
+      }
+    }, {
+      sourceCollection: DAILY_ACTIVITY_COLLECTION,
+      sourceEntityId: meetingDate
+    });
+
+    await dayRef.set({
+      milestonesSent: FieldValue.arrayUnion(milestone)
+    }, { merge: true });
+  }
+
+  return null;
+});
+
+exports.onMeetingCompleted = onDocumentUpdated('goMission_meetings/{meetingId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data() || {};
+  const meetingId = String(event.params?.meetingId || '').trim();
+  if (!meetingId) return null;
+  if (after.adminCompletionNotifiedAt) return null;
+
+  const beforeCompleted = Array.isArray(before.attendees) && before.attendees.some((item) => item?.leftAt);
+  const afterCompleted = Array.isArray(after.attendees) && after.attendees.some((item) => item?.leftAt);
+  if (!afterCompleted || beforeCompleted) return null;
+
+  const groupId = String(after.groupId || '').trim();
+  const meetingDate = String(after.date || '').trim();
+  if (!groupId) return null;
+
+  const groupDoc = await db.collection('goMission_groups').doc(groupId).get();
+  const groupName = groupDoc.exists ? String(groupDoc.data()?.name || groupId) : groupId;
+  const attendeeCount = Array.isArray(after.attendees) ? after.attendees.length : 0;
+
+  await writeAdminFeedNotification({
+    title: '✅ Group meeting finished',
+    body: `${groupName} finished meeting${meetingDate ? ` on ${meetingDate}` : ''}${attendeeCount ? ` with ${attendeeCount} attendee${attendeeCount === 1 ? '' : 's'}` : ''}.`,
+    category: 'admin_activity',
+    event: 'meeting_completed',
+    data: {
+      type: 'admin_event',
+      groupId,
+      meetingId,
+      meetingDate,
+      attendeeCount: String(attendeeCount),
+      notificationId: `meeting_completed_${meetingId}`
+    }
+  }, {
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  await db.collection('goMission_meetings').doc(meetingId).set({
+    adminCompletionNotifiedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
   return null;
 });
 
@@ -1081,7 +2302,16 @@ exports.sendCustomNotification = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Must be logged in');
   }
   
-  const { targetType, targetId, title, body, notificationType, targetFilter = {} } = request.data;
+  const {
+    targetType,
+    targetId,
+    title,
+    body,
+    notificationType,
+    targetFilter = {},
+    announcementId = '',
+    notificationId = ''
+  } = request.data;
   const normalizedFilter = (targetFilter && typeof targetFilter === 'object') ? targetFilter : {};
   
   const userDoc = await db.collection('goMission_members').doc(request.auth.uid).get();
@@ -1113,8 +2343,12 @@ exports.sendCustomNotification = onCall(async (request) => {
     body,
     data: {
       type: notificationType || 'announcement',
-      senderId: request.auth.uid
-    }
+      senderId: request.auth.uid,
+      announcementId: announcementId ? String(announcementId) : '',
+      notificationId: notificationId ? String(notificationId) : ''
+    },
+    sourceCollection: notificationType === 'announcement' ? 'goMission_announcements' : '',
+    sourceEntityId: announcementId ? String(announcementId) : ''
   };
   
   let result;
@@ -1169,6 +2403,202 @@ exports.sendCustomNotification = onCall(async (request) => {
   }
   
   return result;
+});
+
+exports.adminDeleteUser = onCall(async (request) => {
+  const caller = await assertAdminCaller(request);
+  const payload = (request.data && typeof request.data === 'object') ? request.data : {};
+  const targetUid = String(payload.uid || '').trim();
+
+  if (!targetUid) {
+    throw new HttpsError('invalid-argument', 'uid is required');
+  }
+
+  if (targetUid === caller.uid) {
+    throw new HttpsError('failed-precondition', 'Use Firebase Console for your own admin account. Self-delete is blocked here.');
+  }
+
+  const targetRef = db.collection('goMission_members').doc(targetUid);
+  const targetSnap = await targetRef.get();
+  const targetData = targetSnap.exists ? (targetSnap.data() || {}) : {};
+  const targetEmail = String(targetData.email || '').toLowerCase().trim();
+  const targetRoles = (targetData.roles && !Array.isArray(targetData.roles)) ? targetData.roles : {};
+  const targetRoleList = Array.isArray(targetData.roles) ? targetData.roles : [];
+  const targetIsAdmin = Boolean(
+    targetRoles.isAdmin ||
+    targetRoleList.includes('admin') ||
+    ADMIN_UID_ALLOWLIST.has(targetUid) ||
+    ADMIN_EMAIL_ALLOWLIST.has(targetEmail)
+  );
+
+  if (targetIsAdmin) {
+    throw new HttpsError('failed-precondition', 'Admin accounts cannot be removed from this panel.');
+  }
+
+  const ledGroupsSnap = await db.collection('goMission_groups').where('leaderId', '==', targetUid).limit(5).get();
+  if (!ledGroupsSnap.empty) {
+    throw new HttpsError(
+      'failed-precondition',
+      `User is still leading ${ledGroupsSnap.size} group(s). Transfer or remove those groups first.`
+    );
+  }
+
+  const { updatedGroups } = await cleanupUserGroupMembershipLinks(targetUid);
+  const deletedNotifications = await deleteMemberNotificationInbox(targetUid);
+
+  if (targetSnap.exists) {
+    await targetRef.delete();
+  }
+
+  try {
+    await adminAuth.deleteUser(targetUid);
+  } catch (error) {
+    if (error?.code !== 'auth/user-not-found') {
+      throw error;
+    }
+  }
+
+  return {
+    success: true,
+    uid: targetUid,
+    deletedNotifications,
+    cleanedGroups: updatedGroups
+  };
+});
+
+exports.ensureMemberProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  const authUser = request.auth.token || {};
+  const payload = (request.data && typeof request.data === 'object') ? request.data : {};
+  const result = await ensureMemberProfileDocument(request.auth.uid, {
+    displayName: String(payload.displayName || authUser.name || '').trim(),
+    name: String(payload.name || payload.displayName || authUser.name || '').trim(),
+    email: String(payload.email || authUser.email || '').trim(),
+    photoURL: String(payload.photoURL || authUser.picture || '').trim()
+  });
+
+  return { success: true, ...result };
+});
+
+exports.submitMissionGroupJoinRequest = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  const payload = (request.data && typeof request.data === 'object') ? request.data : {};
+  const inviteCode = normalizeInviteCode(payload.code);
+  if (!inviteCode || inviteCode.length !== 6) {
+    throw new HttpsError('invalid-argument', 'Please enter a valid 6-character code.');
+  }
+
+  const target = await resolveInviteGroupTarget(inviteCode);
+  if (!target?.groupRef) {
+    throw new HttpsError('not-found', 'Invalid invite code.');
+  }
+
+  const authUser = request.auth.token || {};
+  const userId = request.auth.uid;
+  const memberDoc = await db.collection('goMission_members').doc(userId).get();
+  const memberData = memberDoc.exists ? (memberDoc.data() || {}) : {};
+
+  const joinRequest = {
+    odId: userId,
+    uid: userId,
+    name: String(
+      memberData.fullName ||
+      memberData.displayName ||
+      memberData.name ||
+      authUser.name ||
+      'Unknown'
+    ).trim(),
+    email: String(memberData.email || authUser.email || '').trim(),
+    photo: String(memberData.photoURL || authUser.picture || '').trim(),
+    requestedAt: new Date().toISOString(),
+    inviteCode,
+    hasExistingGroup: !!String(memberData.uplineGroupId || memberData.groupId || '').trim(),
+    existingGroupId: String(memberData.uplineGroupId || memberData.groupId || '').trim() || null,
+    existingGroupName: String(memberData.uplineGroupName || memberData.groupName || '').trim() || null,
+    existingLeaderName: String(memberData.uplineLeaderName || '').trim() || null
+  };
+
+  try {
+    const result = await db.runTransaction(async (transaction) => {
+      const liveGroupDoc = await transaction.get(target.groupRef);
+      if (!liveGroupDoc.exists) {
+        throw new HttpsError('not-found', 'This group no longer exists.');
+      }
+
+      const liveGroupData = liveGroupDoc.data() || {};
+      const codeMatchesGroup = normalizeInviteCode(liveGroupData.inviteCode) === inviteCode;
+      if (!codeMatchesGroup) {
+        throw new HttpsError('failed-precondition', 'This invite code is no longer linked to this group.');
+      }
+
+      const codeExpiry = toDateOrNull(target.codeData?.expiresAt);
+      const legacyExpiry = toDateOrNull(liveGroupData.inviteCodeExpiresAt);
+      const effectiveExpiry = codeExpiry || legacyExpiry;
+      if (effectiveExpiry && effectiveExpiry.getTime() < Date.now()) {
+        throw new HttpsError('failed-precondition', 'This invite code has expired. Ask the group leader for a new code.');
+      }
+
+      let liveCodeUsedCount = Number(target.codeData?.usedCount || 0);
+
+      if (target.codeRef) {
+        const liveCodeDoc = await transaction.get(target.codeRef);
+        if (liveCodeDoc.exists) {
+          const liveCodeData = liveCodeDoc.data() || {};
+          const liveMaxUses = Number(liveCodeData.maxUses || 0);
+          liveCodeUsedCount = Number(liveCodeData.usedCount || 0);
+          if (liveMaxUses > 0 && liveCodeUsedCount >= liveMaxUses) {
+            throw new HttpsError('failed-precondition', 'This invite code has reached its usage limit.');
+          }
+        }
+      }
+
+      if (isUserAlreadyInGroup(liveGroupData, userId)) {
+        throw new HttpsError('already-exists', 'You are already part of this group.');
+      }
+
+      const existingRequests = collectRequests(liveGroupData);
+      if (existingRequests.some((entry) => entry.requesterId === userId)) {
+        throw new HttpsError('already-exists', 'You already have a pending request for this group.');
+      }
+
+      const normalizedJoinRequests = Array.isArray(liveGroupData.joinRequests)
+        ? liveGroupData.joinRequests.filter((entry) => entry && typeof entry === 'object')
+        : [];
+
+      transaction.set(target.groupRef, {
+        joinRequests: [...normalizedJoinRequests, joinRequest]
+      }, { merge: true });
+
+      if (target.codeRef) {
+        transaction.set(target.codeRef, {
+          usedCount: liveCodeUsedCount + 1,
+          lastUsedAt: FieldValue.serverTimestamp(),
+          lastUsedBy: userId
+        }, { merge: true });
+      }
+
+      return {
+        success: true,
+        groupId: liveGroupDoc.id,
+        groupName: String(liveGroupData.name || target.groupData?.name || 'this group')
+      };
+    });
+
+    return result;
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    console.error('[submitMissionGroupJoinRequest] Failed:', error);
+    throw new HttpsError('internal', 'Could not send join request right now.');
+  }
 });
 
 exports.registerToken = onCall(async (request) => {
@@ -1969,6 +3399,110 @@ exports.dispatchJoinMissionGroupSequence = onSchedule({
   console.log(
     `[JoinGroupSequence] Sent to ungrouped users: targets=${activeUngroupedUsers.length}, success=${successCount}, failure=${failureCount}, skipped=${skippedCount}`
   );
+
+  return null;
+});
+
+/**
+ * Dispatches due stage encouragement notifications and rolls forward next send time.
+ */
+exports.dispatchStageEncouragements = onSchedule({
+  schedule: '*/30 * * * *',
+  timeZone: STAGE_ENCOURAGEMENT_TIMEZONE,
+}, async () => {
+  await ensureSystemNotificationTemplatesSeeded();
+
+  const templatesSnapshot = await db.collection('goMission_notificationTemplates').get();
+  const dueTemplates = templatesSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {}, ref: docSnap.ref }))
+    .filter((entry) => entry.data.category === 'stage_encouragement' && entry.data.active !== false)
+    .map((entry) => ({
+      ...entry,
+      scheduleConfig: normalizeStageEncouragementScheduleConfig(entry.data.scheduleConfig || {})
+    }))
+    .filter((entry) => entry.data.audienceStage)
+    .filter((entry) => {
+      const nextSendMs = Date.parse(String(entry.scheduleConfig.nextSendAt || ''));
+      return Number.isFinite(nextSendMs) && nextSendMs <= Date.now();
+    });
+
+  if (!dueTemplates.length) {
+    console.log('[StageEncouragement] No due templates.');
+    return null;
+  }
+
+  const membersSnapshot = await db.collection('goMission_members').get();
+  const members = membersSnapshot.docs.map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }));
+
+  for (const template of dueTemplates) {
+    const audienceStage = normalizeJourneyStageValue(template.data.audienceStage);
+    const recipientIds = members
+      .filter((entry) => isActiveProfile(entry.data))
+      .filter((entry) => normalizeJourneyStageValue(entry.data.stage) === audienceStage)
+      .map((entry) => entry.id);
+
+    const notificationId = `stage_encouragement_${template.id}_${Date.now()}`;
+    let sendResult = { successCount: 0, failureCount: 0, errors: [] };
+
+    if (recipientIds.length) {
+      sendResult = await sendToUsersInBatches(recipientIds, {
+        title: String(template.data.title || 'Mission Encouragement'),
+        body: String(template.data.body || '').trim(),
+        category: 'stage_encouragement',
+        notificationTag: String(template.data.notificationTag || `${STAGE_ENCOURAGEMENT_NOTIFICATION_TAG_PREFIX}${audienceStage}`),
+        notificationId,
+        data: {
+          type: 'announcement',
+          notificationId,
+          notificationTag: String(template.data.notificationTag || `${STAGE_ENCOURAGEMENT_NOTIFICATION_TAG_PREFIX}${audienceStage}`),
+          stage: audienceStage,
+          templateId: template.id,
+          focusArea: String(template.data.focusArea || ''),
+          verseReference: String(template.data.verseReference || '')
+        }
+      });
+    }
+
+    await writeAdminFeedNotification({
+      title: `Stage encouragement sent: ${template.data.title || template.id}`,
+      body: `Stage: ${audienceStage}. Recipients: ${recipientIds.length}. Success: ${sendResult.successCount || 0}. Failures: ${sendResult.failureCount || 0}.`,
+      category: 'stage_encouragement',
+      data: {
+        type: 'stage_encouragement_admin',
+        templateId: template.id,
+        stage: audienceStage,
+        recipientCount: String(recipientIds.length),
+        successCount: String(sendResult.successCount || 0),
+        failureCount: String(sendResult.failureCount || 0)
+      },
+      sourceCollection: 'goMission_notificationTemplates',
+      sourceEntityId: template.id
+    });
+
+    const nextScheduleConfig = normalizeStageEncouragementScheduleConfig({
+      ...template.scheduleConfig,
+      nextSendAt: template.scheduleConfig.loopEnabled === false
+        ? ''
+        : buildRandomStageEncouragementNextSendAt(template.scheduleConfig),
+      lastSentAt: new Date().toISOString(),
+      lastRecipientCount: recipientIds.length
+    });
+
+    if (template.scheduleConfig.loopEnabled === false) {
+      nextScheduleConfig.nextSendAt = '';
+    }
+
+    await template.ref.set({
+      scheduleConfig: nextScheduleConfig,
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedByUid: 'system',
+      updatedByEmail: 'system@gomission.local'
+    }, { merge: true });
+
+    console.log(
+      `[StageEncouragement] Template=${template.id} stage=${audienceStage} recipients=${recipientIds.length} success=${sendResult.successCount || 0} failure=${sendResult.failureCount || 0}`
+    );
+  }
 
   return null;
 });
