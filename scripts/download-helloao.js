@@ -69,12 +69,34 @@ function ensureDir(dir) {
  * Extract verse text from HelloAO content array
  */
 function extractVerseText(content) {
-  if (!Array.isArray(content)) return '';
-  
-  return content
-    .filter(item => typeof item === 'string')
-    .join(' ')
-    .replace(/\s+/g, ' ')
+  function flattenContent(node) {
+    if (node == null) return '';
+    if (typeof node === 'string') return node;
+    if (Array.isArray(node)) {
+      return node
+        .map(flattenContent)
+        .filter(Boolean)
+        .join(' ');
+    }
+    if (typeof node === 'object') {
+      if (typeof node.text === 'string') {
+        return node.text;
+      }
+      if (node.lineBreak) {
+        return '\n';
+      }
+      if (Array.isArray(node.content)) {
+        return flattenContent(node.content);
+      }
+    }
+    return '';
+  }
+
+  return flattenContent(content)
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 

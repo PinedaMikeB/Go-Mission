@@ -8,7 +8,7 @@
       "chapter": 1,
       "verses": {
         "1": "Paul, an apostle—sent not from men nor by man, but by Jesus Christ and God the Father, who raised Him from the dead—",
-        "2": "and all the brothers with me, To the churches of Galatia:",
+        "2": "and all the brothers with me,\nTo the churches of Galatia:",
         "3": "Grace and peace to you from God our Father and the Lord Jesus Christ,",
         "4": "who gave Himself for our sins to rescue us from the present evil age, according to the will of our God and Father,",
         "5": "to whom be glory forever and ever. Amen.",
@@ -17,7 +17,7 @@
         "8": "But even if we or an angel from heaven should preach a gospel contrary to the one we preached to you, let him be under a curse!",
         "9": "As we have said before, so now I say again: If anyone is preaching to you a gospel contrary to the one you received, let him be under a curse!",
         "10": "Am I now seeking the approval of men, or of God? Or am I striving to please men? If I were still trying to please men, I would not be a servant of Christ.",
-        "11": "For I certify to you, brothers, that the gospel I preached was not devised by man.",
+        "11": "For I want you to know, brothers, that the gospel I preached was not devised by man.",
         "12": "I did not receive it from any man, nor was I taught it; rather, I received it by revelation from Jesus Christ.",
         "13": "For you have heard of my former way of life in Judaism, how severely I persecuted the church of God and tried to destroy it.",
         "14": "I was advancing in Judaism beyond many of my contemporaries and was extremely zealous for the traditions of my fathers.",
@@ -46,7 +46,7 @@
         "8": "For the One who was at work in Peter’s apostleship to the circumcised was also at work in my apostleship to the Gentiles.",
         "9": "And recognizing the grace that I had been given, James, Cephas, and John—those reputed to be pillars—gave me and Barnabas the right hand of fellowship, so that we should go to the Gentiles, and they to the circumcised.",
         "10": "They only asked us to remember the poor, the very thing I was eager to do.",
-        "11": "When Cephas came to Antioch, however, I opposed him to his face, because he stood to be condemned.",
+        "11": "When Cephas came to Antioch, however, I opposed him to his face, because he stood condemned.",
         "12": "For before certain men came from James, he used to eat with the Gentiles. But when they arrived, he began to draw back and separate himself, for fear of those in the circumcision group.",
         "13": "The other Jews joined him in his hypocrisy, so that by their hypocrisy even Barnabas was led astray.",
         "14": "When I saw that they were not walking in line with the truth of the gospel, I said to Cephas in front of them all, “If you, who are a Jew, live like a Gentile and not like a Jew, how can you compel the Gentiles to live like Jews?”",
@@ -56,7 +56,7 @@
         "18": "If I rebuild what I have already torn down, I prove myself to be a lawbreaker.",
         "19": "For through the law I died to the law so that I might live to God.",
         "20": "I have been crucified with Christ, and I no longer live, but Christ lives in me. The life I live in the body, I live by faith in the Son of God, who loved me and gave Himself up for me.",
-        "21": "I do not set aside the grace of God. For if righteousness comes through the law, Christ died for nothing."
+        "21": "I do not set aside the grace of God. For if righteousness comes through the law, then Christ died for nothing."
       }
     },
     "3": {
@@ -122,7 +122,7 @@
         "24": "These things serve as illustrations, for the women represent two covenants. One covenant is from Mount Sinai and bears children into slavery: This is Hagar.",
         "25": "Now Hagar stands for Mount Sinai in Arabia and corresponds to the present-day Jerusalem, because she is in slavery with her children.",
         "26": "But the Jerusalem above is free, and she is our mother.",
-        "27": "For it is written:",
+        "27": "For it is written:\n“Rejoice, O barren woman, who bears no children; break forth and cry aloud, you who have never travailed; because more are the children of the desolate woman than of her who has a husband.”",
         "28": "Now you, brothers, like Isaac, are children of promise.",
         "29": "At that time, however, the son born by the flesh persecuted the son born by the Spirit. It is the same now.",
         "30": "But what does the Scripture say? “Expel the slave woman and her son, for the slave woman’s son will never share in the inheritance with the free woman’s son.”",
@@ -137,7 +137,7 @@
         "3": "Again I testify to every man who gets himself circumcised that he is obligated to obey the whole law.",
         "4": "You who are trying to be justified by the law have been severed from Christ; you have fallen away from grace.",
         "5": "But by faith we eagerly await through the Spirit the hope of righteousness.",
-        "6": "For in Christ Jesus neither circumcision nor uncircumcision has any value. All that matters is faith, expressed through love.",
+        "6": "For in Christ Jesus neither circumcision nor uncircumcision has any value. What matters is faith expressing itself through love.",
         "7": "You were running so well. Who has obstructed you from obeying the truth?",
         "8": "Such persuasion does not come from the One who calls you.",
         "9": "A little leaven works through the whole batch of dough.",
@@ -180,7 +180,7 @@
         "15": "For neither circumcision nor uncircumcision means anything. What counts is a new creation.",
         "16": "Peace and mercy to all who walk by this rule, even to the Israel of God.",
         "17": "From now on let no one cause me trouble, for I bear on my body the marks of Jesus.",
-        "18": "The grace of our Lord Jesus Christ be with your spirit, brothers. Amen."
+        "18": "The grace of our Lord Jesus Christ be with your spirit, brothers.\nAmen."
       }
     }
   }

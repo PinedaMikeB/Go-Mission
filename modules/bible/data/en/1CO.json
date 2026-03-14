@@ -25,7 +25,7 @@
         "16": "Yes, I also baptized the household of Stephanas; beyond that I do not remember if I baptized anyone else.",
         "17": "For Christ did not send me to baptize, but to preach the gospel, not with words of wisdom, lest the cross of Christ be emptied of its power.",
         "18": "For the message of the cross is foolishness to those who are perishing, but to us who are being saved it is the power of God.",
-        "19": "For it is written:",
+        "19": "For it is written:\n“I will destroy the wisdom of the wise; the intelligence of the intelligent I will frustrate.”",
         "20": "Where is the wise man? Where is the scribe? Where is the philosopher of this age? Has not God made foolish the wisdom of the world?",
         "21": "For since in the wisdom of God the world through its wisdom did not know Him, God was pleased through the foolishness of what was preached to save those who believe.",
         "22": "Jews demand signs and Greeks search for wisdom,",
@@ -51,8 +51,8 @@
         "6": "Among the mature, however, we speak a message of wisdom—but not the wisdom of this age or of the rulers of this age, who are coming to nothing.",
         "7": "No, we speak of the mysterious and hidden wisdom of God, which He destined for our glory before time began.",
         "8": "None of the rulers of this age understood it. For if they had, they would not have crucified the Lord of glory.",
-        "9": "Rather, as it is written:",
-        "10": "But God has revealed it to us by the Spirit. The Spirit searches all things, even the deep things of God.",
+        "9": "Rather, as it is written:\n“No eye has seen, no ear has heard,\nno heart has imagined, what God has prepared for those who love Him.”",
+        "10": "But God has revealed it to us by the Spirit.\nThe Spirit searches all things, even the deep things of God.",
         "11": "For who among men knows the thoughts of man except his own spirit within him? So too, no one knows the thoughts of God except the Spirit of God.",
         "12": "We have not received the spirit of the world, but the Spirit who is from God, that we may understand what God has freely given us.",
         "13": "And this is what we speak, not in words taught us by human wisdom, but in words taught by the Spirit, expressing spiritual truths in spiritual words.",
@@ -262,7 +262,7 @@
         "4": "and drank the same spiritual drink; for they drank from the spiritual rock that accompanied them, and that rock was Christ.",
         "5": "Nevertheless, God was not pleased with most of them, for they were struck down in the wilderness.",
         "6": "These things took place as examples to keep us from craving evil things as they did.",
-        "7": "Do not be idolaters, as some of them were. As it is written: “The people sat down to eat and to drink, and got up to indulge in revelry.”",
+        "7": "Do not be idolaters, as some of them were. As it is written: “The people sat down to eat and drink and got up to indulge in revelry.”",
         "8": "We should not commit sexual immorality, as some of them did, and in one day twenty-three thousand of them died.",
         "9": "We should not test Christ, as some of them did, and were killed by snakes.",
         "10": "And do not complain, as some of them did, and were killed by the destroying angel.",
@@ -356,14 +356,14 @@
         "21": "The eye cannot say to the hand, “I do not need you.” Nor can the head say to the feet, “I do not need you.”",
         "22": "On the contrary, the parts of the body that seem to be weaker are indispensable,",
         "23": "and the parts we consider less honorable, we treat with greater honor. And our unpresentable parts are treated with special modesty,",
-        "24": "whereas our presentable parts have no such need. But God has composed the body and has given greater honor to the parts that lacked it,",
+        "24": "whereas our presentable parts have no such need.\nBut God has composed the body and has given greater honor to the parts that lacked it,",
         "25": "so that there should be no division in the body, but that its members should have mutual concern for one another.",
         "26": "If one part suffers, every part suffers with it; if one part is honored, every part rejoices with it.",
         "27": "Now you are the body of Christ, and each of you is a member of it.",
         "28": "And in the church God has appointed first of all apostles, second prophets, third teachers, then workers of miracles, and those with gifts of healing, helping, administration, and various tongues.",
         "29": "Are all apostles? Are all prophets? Are all teachers? Do all work miracles?",
         "30": "Do all have gifts of healing? Do all speak in tongues? Do all interpret?",
-        "31": "But eagerly desire the greater gifts. And now I will show you the most excellent way."
+        "31": "But eagerly desire the greater gifts.\nAnd now I will show you the most excellent way."
       }
     },
     "13": {
@@ -407,7 +407,7 @@
         "18": "I thank God that I speak in tongues more than all of you.",
         "19": "But in the church, I would rather speak five coherent words to instruct others than ten thousand words in a tongue.",
         "20": "Brothers, stop thinking like children. In regard to evil be infants, but in your thinking be mature.",
-        "21": "It is written in the Law:",
+        "21": "It is written in the Law:\n“By strange tongues and foreign lips I will speak to this people, but even then they will not listen to Me, says the Lord.”",
         "22": "Tongues, then, are a sign, not for believers, but for unbelievers. Prophecy, however, is for believers, not for unbelievers.",
         "23": "So if the whole church comes together and everyone speaks in tongues, and some who are uninstructed or some unbelievers come in, will they not say that you are out of your minds?",
         "24": "But if an unbeliever or uninstructed person comes in while everyone is prophesying, he will be convicted and called to account by all,",
@@ -463,7 +463,7 @@
         "29": "If these things are not so, what will those do who are baptized for the dead? If the dead are not raised at all, why are people baptized for them?",
         "30": "And why do we endanger ourselves every hour?",
         "31": "I face death every day, brothers, as surely as I boast about you in Christ Jesus our Lord.",
-        "32": "If I fought wild beasts in Ephesus for human motives, what did I gain? If the dead are not raised,",
+        "32": "If I fought wild beasts in Ephesus for human motives, what did I gain? If the dead are not raised,\n“Let us eat and drink, for tomorrow we die.”",
         "33": "Do not be deceived: “Bad company corrupts good character.”",
         "34": "Sober up as you ought, and stop sinning; for some of you are ignorant of God. I say this to your shame.",
         "35": "But someone will ask, “How are the dead raised? With what kind of body will they come?”",
@@ -476,7 +476,7 @@
         "42": "So will it be with the resurrection of the dead: What is sown is perishable; it is raised imperishable.",
         "43": "It is sown in dishonor; it is raised in glory. It is sown in weakness; it is raised in power.",
         "44": "It is sown a natural body; it is raised a spiritual body. If there is a natural body, there is also a spiritual body.",
-        "45": "So it is written: “The first man Adam became a living being;” the last Adam a life-giving spirit.",
+        "45": "So it is written: “The first man Adam became a living being”; the last Adam a life-giving spirit.",
         "46": "The spiritual, however, was not first, but the natural, and then the spiritual.",
         "47": "The first man was of the dust of the earth, the second man from heaven.",
         "48": "As was the earthly man, so also are those who are of the earth; and as is the heavenly man, so also are those who are of heaven.",
@@ -486,7 +486,7 @@
         "52": "in an instant, in the twinkling of an eye, at the last trumpet. For the trumpet will sound, the dead will be raised imperishable, and we will be changed.",
         "53": "For the perishable must be clothed with the imperishable, and the mortal with immortality.",
         "54": "When the perishable has been clothed with the imperishable and the mortal with immortality, then the saying that is written will come to pass: “Death has been swallowed up in victory.”",
-        "55": "",
+        "55": "“Where, O Death, is your victory? Where, O Death, is your sting?”",
         "56": "The sting of death is sin, and the power of sin is the law.",
         "57": "But thanks be to God, who gives us the victory through our Lord Jesus Christ!",
         "58": "Therefore, my beloved brothers, be steadfast and immovable. Always excel in the work of the Lord, because you know that your labor in the Lord is not in vain."
@@ -513,12 +513,12 @@
         "16": "to submit to such as these, and to every fellow worker and laborer.",
         "17": "I am glad that Stephanas, Fortunatus, and Achaicus have arrived, because they have supplied what was lacking from you.",
         "18": "For they refreshed my spirit and yours as well. Show your appreciation, therefore, to such men.",
-        "19": "The churches in the province of Asia send you greetings. Aquila and Prisca greet you warmly in the Lord, and so does the church that meets at their house.",
+        "19": "The churches in the province of Asia send you greetings.\nAquila and Prisca greet you warmly in the Lord, and so does the church that meets at their house.",
         "20": "All the brothers here send you greetings. Greet one another with a holy kiss.",
         "21": "This greeting is in my own hand—Paul.",
         "22": "If anyone does not love the Lord, let him be under a curse. Come, O Lord!",
         "23": "The grace of the Lord Jesus be with you.",
-        "24": "My love be with all of you in Christ Jesus. Amen."
+        "24": "My love be with all of you in Christ Jesus.\nAmen."
       }
     }
   }
