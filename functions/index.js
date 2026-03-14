@@ -2503,6 +2503,7 @@ exports.submitMissionGroupJoinRequest = onCall(async (request) => {
   const userId = request.auth.uid;
   const memberDoc = await db.collection('goMission_members').doc(userId).get();
   const memberData = memberDoc.exists ? (memberDoc.data() || {}) : {};
+  const targetGroupName = String(target.groupData?.name || 'this group');
 
   const joinRequest = {
     odId: userId,
@@ -2532,6 +2533,7 @@ exports.submitMissionGroupJoinRequest = onCall(async (request) => {
       }
 
       const liveGroupData = liveGroupDoc.data() || {};
+      const liveGroupName = String(liveGroupData.name || targetGroupName || 'this group');
       const codeMatchesGroup = normalizeInviteCode(liveGroupData.inviteCode) === inviteCode;
       if (!codeMatchesGroup) {
         throw new HttpsError('failed-precondition', 'This invite code is no longer linked to this group.');
@@ -2559,12 +2561,12 @@ exports.submitMissionGroupJoinRequest = onCall(async (request) => {
       }
 
       if (isUserAlreadyInGroup(liveGroupData, userId)) {
-        throw new HttpsError('already-exists', 'You are already part of this group.');
+        throw new HttpsError('already-exists', `You are already part of ${liveGroupName}.`);
       }
 
       const existingRequests = collectRequests(liveGroupData);
       if (existingRequests.some((entry) => entry.requesterId === userId)) {
-        throw new HttpsError('already-exists', 'You already have a pending request for this group.');
+        throw new HttpsError('already-exists', `You already have a pending request for ${liveGroupName}.`);
       }
 
       const normalizedJoinRequests = Array.isArray(liveGroupData.joinRequests)
@@ -2586,7 +2588,7 @@ exports.submitMissionGroupJoinRequest = onCall(async (request) => {
       return {
         success: true,
         groupId: liveGroupDoc.id,
-        groupName: String(liveGroupData.name || target.groupData?.name || 'this group')
+        groupName: liveGroupName
       };
     });
 

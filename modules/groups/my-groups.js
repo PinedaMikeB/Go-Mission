@@ -4219,7 +4219,7 @@ const MyGroups = {
             // Check if already a member
             if (this.isUserMemberInGroupData(groupData, window.currentUser.uid)) {
                 if (errorEl) {
-                    errorEl.textContent = 'You are already a member of this group';
+                    errorEl.textContent = `You are already a member of ${groupData?.name || 'this group'}`;
                     errorEl.classList.remove('hidden');
                 }
                 return;
@@ -4228,7 +4228,7 @@ const MyGroups = {
             // Check if already a guest
             if (this.isUserGuestInGroupData(groupData, window.currentUser.uid)) {
                 if (errorEl) {
-                    errorEl.textContent = 'You are already a guest in this group';
+                    errorEl.textContent = `You are already a guest in ${groupData?.name || 'this group'}`;
                     errorEl.classList.remove('hidden');
                 }
                 return;
@@ -4237,7 +4237,7 @@ const MyGroups = {
             // Check if already has pending request
             if (this.getUnifiedJoinRequests(groupData).some((r) => r.odId === window.currentUser.uid)) {
                 if (errorEl) {
-                    errorEl.textContent = 'You already have a pending request for this group';
+                    errorEl.textContent = `You already have a pending request for ${groupData?.name || 'this group'}`;
                     errorEl.classList.remove('hidden');
                 }
                 return;
