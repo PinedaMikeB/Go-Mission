@@ -1446,7 +1446,10 @@ const MyGroups = {
             const memberCount = this.normalizeCollectionEntries(group.members).length;
             const previewLine = scheduleConfig?.day && scheduleConfig?.time
                 ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
-                : '';
+                : 'Meeting waiting';
+            const battleCry = this.getGroupBattleCry(group);
+            const commitment = this.getGroupCommitment(group);
+            const sharedMission = this.getSharedGroupMission();
             const menuBadge = pendingRequestsCount > 0
                 ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#9d0500] text-white text-[10px] font-black inline-flex items-center justify-center px-1 border border-white">${pendingRequestsCount}</span>`
                 : '';
@@ -1504,7 +1507,9 @@ const MyGroups = {
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="text-[1.24rem] font-black leading-tight text-[#6d0707] break-words">${this.escapeHtml(group.name || 'Mission Group')}</p>
-                                    ${previewLine ? `<p class="mt-2 text-[13px] leading-5 text-[#86736a]">${this.escapeHtml(previewLine)}</p>` : ''}
+                                    ${battleCry ? `
+                                        <p class="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#c19200] break-words">${this.escapeHtml(battleCry)}</p>
+                                    ` : ''}
                                 </div>
                                 <button onclick="window.MyGroups.showGroupMenu('${groupIdForJs}')"
                                         class="relative shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#eadcd2] bg-white/90 text-[#8f7a6d] shadow-[0_8px_18px_rgba(91,49,26,0.08)] hover:border-[#d9bb6b] hover:text-[#c19200] transition-colors"
@@ -1514,7 +1519,20 @@ const MyGroups = {
                                     ${menuBadge}
                                 </button>
                             </div>
-                            <p class="mt-2 text-[12px] uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
+                            ${commitment ? `
+                                <div class="mt-3 rounded-[20px] border border-[#efe3d8] bg-[linear-gradient(180deg,rgba(255,251,247,0.95),rgba(255,247,239,0.75))] px-4 py-3">
+                                    <p class="text-[10px] uppercase tracking-[0.18em] text-[#8f7a6d]">Our Commitment</p>
+                                    <p class="mt-1.5 text-[13px] leading-6 text-[#655751] break-words">${this.escapeHtml(commitment)}</p>
+                                </div>
+                            ` : ''}
+                            <div class="mt-3 rounded-[20px] border border-[#f1e6da] bg-white/78 px-4 py-3">
+                                <p class="text-[10px] uppercase tracking-[0.18em] text-[#c19200]">Mission</p>
+                                <p class="mt-1.5 text-[13px] leading-6 text-[#655751] break-words">${this.escapeHtml(sharedMission)}</p>
+                            </div>
+                            <div class="mt-3 flex flex-col gap-1.5 text-[13px] leading-5 text-[#86736a]">
+                                <p>${this.escapeHtml(previewLine)}</p>
+                                <p class="uppercase tracking-[0.16em] text-[#a8958b]">${memberCount}/${group.capacity || 12} members</p>
+                            </div>
                             ${hasPendingDelete ? `<p class="mt-3 text-[12px] text-[#b43a3a]">Delete request pending admin review.</p>` : ''}
                         </div>
                     </div>
@@ -1592,6 +1610,18 @@ const MyGroups = {
         });
 
         return unique;
+    },
+
+    getSharedGroupMission() {
+        return 'To grow in our love for God and others, and raise leaders who make disciples.';
+    },
+
+    getGroupBattleCry(group = {}) {
+        return String(group?.battleCry || '').trim();
+    },
+
+    getGroupCommitment(group = {}) {
+        return String(group?.ourCommitment || '').trim();
     },
 
     loadImageElement(file) {
@@ -3219,6 +3249,9 @@ const MyGroups = {
                 `;
             const groupPhotoGallery = this.getGroupPhotoGallery(group);
             const primaryGroupPhoto = this.getGroupDisplayImage(group) || groupPhotoGallery[0] || '';
+            const battleCry = this.getGroupBattleCry(group);
+            const ourCommitment = this.getGroupCommitment(group);
+            const sharedMission = this.getSharedGroupMission();
 
             const focusBody = focusMember ? `
                 <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_12px_30px_rgba(89,49,22,0.05)]">
@@ -3360,6 +3393,22 @@ const MyGroups = {
                                 Save
                             </button>
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[#74655c] mb-2">Battle Cry</label>
+                        <input id="groupBattleCryInput" type="text" value="${this.escapeHtml(battleCry)}" maxlength="80"
+                               placeholder="Short identity line for this group"
+                               class="w-full bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base text-[#6d0707]">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[#74655c] mb-2">Our Commitment</label>
+                        <textarea id="groupCommitmentInput" rows="4" maxlength="280"
+                                  placeholder="Write the unique commitment of this group."
+                                  class="w-full bg-[#fffdfa] border border-[#e7d6c9] rounded-[20px] px-4 py-3 text-base leading-7 text-[#4d3c37]">${this.escapeHtml(ourCommitment)}</textarea>
+                    </div>
+                    <div class="rounded-[24px] border border-[#efe3d8] bg-[linear-gradient(180deg,rgba(255,251,247,0.95),rgba(255,247,239,0.78))] p-4">
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-[#c19200]">Mission</p>
+                        <p class="mt-2 text-sm leading-7 text-[#655751]">${this.escapeHtml(sharedMission)}</p>
                     </div>
                     <div class="rounded-[24px] border border-white/80 bg-white/82 p-4 shadow-[0_10px_28px_rgba(89,49,22,0.04)]">
                         <div class="flex items-start justify-between gap-3">
@@ -3675,6 +3724,10 @@ const MyGroups = {
 
         const rawName = document.getElementById('groupNameInput')?.value || '';
         const newName = rawName.trim().replace(/\s+/g, ' ');
+        const rawBattleCry = document.getElementById('groupBattleCryInput')?.value || '';
+        const battleCry = rawBattleCry.trim().replace(/\s+/g, ' ');
+        const rawCommitment = document.getElementById('groupCommitmentInput')?.value || '';
+        const ourCommitment = rawCommitment.trim().replace(/\s+/g, ' ');
 
         if (newName.length < 3) {
             alert('Group name must be at least 3 characters.');
@@ -3686,30 +3739,31 @@ const MyGroups = {
             return;
         }
 
+        if (battleCry.length > 80) {
+            alert('Battle Cry is too long.');
+            return;
+        }
+
+        if (ourCommitment.length > 280) {
+            alert('Our Commitment is too long.');
+            return;
+        }
+
         try {
+            const patch = {
+                name: newName,
+                battleCry,
+                ourCommitment,
+                updatedAt: new Date().toISOString()
+            };
+
             await window.setDoc(
                 window.doc(window.db, 'goMission_groups', groupId),
-                {
-                    name: newName,
-                    updatedAt: new Date().toISOString()
-                },
+                patch,
                 { merge: true }
             );
 
-            // Keep local state in sync for immediate UI updates.
-            if (this.uplineGroup?.id === groupId) {
-                this.uplineGroup = { ...this.uplineGroup, name: newName };
-            }
-            this.downlineGroups = (this.downlineGroups || []).map((g) => (
-                g.id === groupId ? { ...g, name: newName } : g
-            ));
-            this.guestGroups = (this.guestGroups || []).map((g) => (
-                g.id === groupId ? { ...g, name: newName } : g
-            ));
-
-            if (typeof Groups !== 'undefined' && Groups.currentGroup?.id === groupId) {
-                Groups.currentGroup = { ...Groups.currentGroup, name: newName };
-            }
+            this.syncGroupState(groupId, patch);
 
             if (this.isOpen) {
                 this.render();
@@ -3720,10 +3774,10 @@ const MyGroups = {
 
             // Re-render details modal so header and field reflect saved value.
             await this.viewGroupDetails(groupId);
-            alert('Group name updated.');
+            alert('Group details updated.');
         } catch (error) {
             console.error('[MyGroups] saveGroupName error:', error);
-            alert('Failed to update group name.');
+            alert('Failed to update group details.');
         }
     },
     
