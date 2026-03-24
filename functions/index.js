@@ -31,7 +31,9 @@ const ADMIN_EMAIL_ALLOWLIST = new Set([
 const SYSTEM_TEMPLATE_SOURCE = 'system_scheduler';
 const MEMBER_NOTIFICATIONS_SUBCOLLECTION = 'notifications';
 const ADMIN_NOTIFICATIONS_COLLECTION = 'goMission_adminNotifications';
+const STAGE_ENCOURAGEMENT_RUNS_COLLECTION = 'goMission_stageEncouragementRuns';
 const DAILY_ACTIVITY_COLLECTION = 'goMission_dailyActivity';
+const MAX_FCM_TOKENS_PER_USER = 4;
 const MOTIVATION_NOTIFICATION_TAG = 'motivation_conversation_time';
 const MOTIVATION_TIMEZONE = 'Asia/Manila';
 const MOTIVATION_START_DATE_KEY = '2026-03-06';
@@ -384,6 +386,30 @@ function normalizeJourneyStageValue(stage = '') {
   return raw;
 }
 
+function formatJourneyStageLabel(stage = '') {
+  const normalized = normalizeJourneyStageValue(stage);
+  switch (normalized) {
+    case 'disciple-maker':
+      return 'Disciple-Maker';
+    case 'builder':
+      return 'Builder';
+    case 'multiplier':
+      return 'Multiplier';
+    case 'disciple':
+      return 'Disciple';
+    default:
+      return 'Seeker';
+  }
+}
+
+function hasConfirmedGroupMembership(memberData = {}) {
+  if (!memberData || typeof memberData !== 'object') return false;
+  return Boolean(
+    String(memberData.groupId || '').trim() ||
+    String(memberData.uplineGroupId || '').trim()
+  );
+}
+
 function getSafeProfileName(memberData = {}) {
   const displayName = String(
     memberData.displayName ||
@@ -669,6 +695,79 @@ async function isMotivationPushEnabled() {
   }
 }
 
+async function getPushSettingsConfig() {
+  try {
+    const configDoc = await db.collection('goMission_config').doc('pushSettings').get();
+    return configDoc.exists ? (configDoc.data() || {}) : {};
+  } catch (error) {
+    console.warn('[PushSettings] Could not read pushSettings:', error);
+    return {};
+  }
+}
+
+async function isMovementActivityPushEnabled() {
+  const config = await getPushSettingsConfig();
+  return config.movementActivityEnabled !== false;
+}
+
+async function isAdminActivityMirrorEnabled() {
+  const config = await getPushSettingsConfig();
+  return config.adminActivityMirrorEnabled !== false;
+}
+
+async function getActiveMemberRecipientIds({ excludeUserIds = [] } = {}) {
+  const excluded = new Set(uniqueUserIds(excludeUserIds));
+  const usersSnapshot = await db.collection('goMission_members').get();
+  return usersSnapshot.docs
+    .map((docSnap) => ({ id: docSnap.id, data: docSnap.data() || {} }))
+    .filter((entry) => isActiveProfile(entry.data))
+    .map((entry) => entry.id)
+    .filter((id) => !excluded.has(id));
+}
+
+async function sendMovementActivityNotification(notification = {}, { excludeUserIds = [] } = {}) {
+  const enabled = await isMovementActivityPushEnabled();
+  if (!enabled) {
+    return { successCount: 0, failureCount: 0, errors: [{ error: 'movement_activity_disabled' }] };
+  }
+
+  const recipientIds = await getActiveMemberRecipientIds({ excludeUserIds });
+  if (!recipientIds.length) {
+    return { successCount: 0, failureCount: 0, errors: [] };
+  }
+
+  return sendToUsersInBatches(recipientIds, {
+    ...notification,
+    category: notification.category || 'movement_activity',
+    priority: notification.priority || 'normal',
+    data: {
+      type: 'movement_activity',
+      ...(notification.data || {})
+    }
+  });
+}
+
+async function mirrorNotificationToAdmins(notification = {}, { excludeUserId = '' } = {}) {
+  const enabled = await isAdminActivityMirrorEnabled();
+  if (!enabled) {
+    return { successCount: 0, failureCount: 0, errors: [{ error: 'admin_activity_mirror_disabled' }] };
+  }
+
+  const adminRecipientIds = await getAdminRecipientIds({ excludeUserId });
+  if (!adminRecipientIds.length) {
+    return { successCount: 0, failureCount: 0, errors: [] };
+  }
+
+  return sendToUsersInBatches(adminRecipientIds, {
+    ...notification,
+    category: notification.category || 'admin_activity',
+    data: {
+      type: 'admin_event',
+      ...(notification.data || {})
+    }
+  });
+}
+
 // ============================================
 // EMAIL CONFIGURATION (using Firebase Secrets)
 // ============================================
@@ -869,6 +968,7 @@ function buildNotificationRecord(notification = {}, options = {}) {
     title,
     body,
     type,
+    explicitId,
     normalizedData,
     action,
     sourceKey
@@ -896,6 +996,17 @@ async function writeNotificationInbox(userId, notification = {}, options = {}) {
   const shouldBeRead = options.read === true ? true : notification.read === true;
   const wasUnread = existing ? existing.read !== true : false;
   const shouldIncrementUnread = !shouldBeRead && !wasUnread;
+
+  if (existing) {
+    return {
+      success: true,
+      id: record.docId,
+      unreadIncremented: false,
+      sourceKey: record.sourceKey,
+      alreadyExists: true,
+      explicitId: record.explicitId
+    };
+  }
 
   await ref.set({
     title: record.title,
@@ -933,7 +1044,9 @@ async function writeNotificationInbox(userId, notification = {}, options = {}) {
     success: true,
     id: record.docId,
     unreadIncremented: shouldIncrementUnread,
-    sourceKey: record.sourceKey
+    sourceKey: record.sourceKey,
+    alreadyExists: false,
+    explicitId: record.explicitId
   };
 }
 
@@ -951,6 +1064,10 @@ async function writeAdminFeedNotification(notification = {}, options = {}) {
   const ref = db.collection(ADMIN_NOTIFICATIONS_COLLECTION).doc(record.docId);
   const existingSnap = await ref.get();
   const existing = existingSnap.exists ? (existingSnap.data() || {}) : null;
+
+  if (existing) {
+    return { success: true, id: record.docId, alreadyExists: true };
+  }
 
   await ref.set({
     title: record.title,
@@ -975,7 +1092,80 @@ async function writeAdminFeedNotification(notification = {}, options = {}) {
     updatedAt: FieldValue.serverTimestamp()
   }, { merge: true });
 
-  return { success: true, id: record.docId };
+  return { success: true, id: record.docId, alreadyExists: false };
+}
+
+function normalizeTokenList(tokens = [], incomingToken = '') {
+  const ordered = [];
+  const seen = new Set();
+
+  for (const rawToken of [].concat(tokens || [])) {
+    const token = String(rawToken || '').trim();
+    if (!token || seen.has(token)) continue;
+    seen.add(token);
+    ordered.push(token);
+  }
+
+  const newestToken = String(incomingToken || '').trim();
+  if (newestToken) {
+    const filtered = ordered.filter((token) => token !== newestToken);
+    filtered.push(newestToken);
+    return filtered.slice(-MAX_FCM_TOKENS_PER_USER);
+  }
+
+  return ordered.slice(-MAX_FCM_TOKENS_PER_USER);
+}
+
+function buildStageEncouragementRecipientRecord(memberId = '', memberData = {}, options = {}) {
+  const tokenCount = Array.isArray(memberData?.fcmTokens) ? memberData.fcmTokens.length : 0;
+  const status = String(options.status || (tokenCount > 0 ? 'pending' : 'no_token')).trim().toLowerCase();
+  return {
+    userId: String(memberId || ''),
+    name: getSafeProfileName(memberData),
+    email: String(memberData?.email || '').trim(),
+    stage: normalizeJourneyStageValue(memberData?.stage),
+    tokenCount,
+    status,
+    error: String(options.error || '').trim()
+  };
+}
+
+async function writeStageEncouragementRun(record = {}) {
+  const runId = String(
+    record.runId ||
+    `stage_encouragement_run_${record.templateId || 'template'}_${Date.now()}`
+  ).trim();
+  if (!runId) return null;
+
+  const targetedUsers = Array.isArray(record.targetedUsers) ? record.targetedUsers.slice(0, 200) : [];
+  const noTokenUsers = targetedUsers.filter((item) => item.status === 'no_token').slice(0, 100);
+  const failedUsers = targetedUsers.filter((item) => item.status === 'failed').slice(0, 100);
+
+  await db.collection(STAGE_ENCOURAGEMENT_RUNS_COLLECTION).doc(runId).set({
+    type: 'stage_encouragement_run',
+    templateId: String(record.templateId || '').trim(),
+    templateTitle: String(record.templateTitle || '').trim(),
+    stage: normalizeJourneyStageValue(record.stage),
+    focusArea: String(record.focusArea || '').trim(),
+    startedAt: FieldValue.serverTimestamp(),
+    startedAtIso: new Date().toISOString(),
+    completedAt: FieldValue.serverTimestamp(),
+    recipientCount: Number(record.recipientCount || 0),
+    successCount: Number(record.successCount || 0),
+    failureCount: Number(record.failureCount || 0),
+    noTokenCount: Number(noTokenUsers.length),
+    notificationId: String(record.notificationId || '').trim(),
+    nextSendAt: String(record.nextSendAt || '').trim(),
+    loopEnabled: record.loopEnabled !== false,
+    targetedUsers,
+    noTokenUsers,
+    failedUsers,
+    errors: Array.isArray(record.errors) ? record.errors.slice(0, 100) : [],
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  return runId;
 }
 
 function buildNotificationDeepLink(data = {}, title = '', body = '') {
@@ -1020,11 +1210,19 @@ async function sendToUser(userId, notification) {
     if (!userDoc.exists) return { success: false, error: 'User not found' };
     
     const userData = userDoc.data();
-    const tokens = userData.fcmTokens || [];
+    const tokens = normalizeTokenList(userData.fcmTokens || []);
     const inboxResult = await writeNotificationInbox(userId, notification, {
       sourceCollection: notification.sourceCollection || '',
       sourceEntityId: notification.sourceEntityId || ''
     });
+    if (inboxResult?.alreadyExists) {
+      return {
+        success: true,
+        skippedDuplicate: true,
+        badgeCount: Number(userData.unreadCount || 0),
+        inboxId: inboxResult?.id || null
+      };
+    }
     const badgeCount = Math.max(
       0,
       Number(userData.unreadCount || 0) + (inboxResult?.unreadIncremented ? 1 : 0)
@@ -1287,6 +1485,17 @@ function uniqueUserIds(values = []) {
     .map((value) => value.trim()))];
 }
 
+function normalizeCollectionEntries(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') {
+    return Object.entries(value).map(([key, entry]) => {
+      if (entry && typeof entry === 'object') return { ...entry, _key: key };
+      return { id: key, value: entry, _key: key };
+    });
+  }
+  return [];
+}
+
 function collectMentionedUserIds(message = {}) {
   const fromArray = [];
   if (Array.isArray(message.mentionedUserIds)) {
@@ -1302,11 +1511,14 @@ function collectMentionedUserIds(message = {}) {
 }
 
 function getGroupParticipantIds(groupData = {}) {
-  const members = Array.isArray(groupData.members) ? groupData.members : [];
-  const guestIds = (Array.isArray(groupData.guests) ? groupData.guests : [])
-    .map((guest) => guest?.odId)
+  const memberIds = normalizeCollectionEntries(groupData.members)
+    .map((entry) => normalizeEntryUserId(entry))
     .filter(Boolean);
-  return uniqueUserIds([...members, ...guestIds]);
+  const guestIds = normalizeCollectionEntries(groupData.guests)
+    .map((entry) => normalizeEntryUserId(entry))
+    .filter(Boolean);
+  const leaderId = String(groupData?.leaderId || '').trim();
+  return uniqueUserIds([leaderId, ...memberIds, ...guestIds]);
 }
 
 function toDateOrNull(value) {
@@ -1412,7 +1624,7 @@ function normalizeEntryUserId(entry) {
   if (!entry) return '';
   if (typeof entry === 'string') return entry.trim();
   if (typeof entry === 'object') {
-    return String(entry.odId || entry.uid || entry.id || '').trim();
+    return String(entry.odId || entry.uid || entry.id || entry.userId || entry.memberId || entry.profileId || entry._key || '').trim();
   }
   return '';
 }
@@ -1420,6 +1632,17 @@ function normalizeEntryUserId(entry) {
 function getNormalizedGroupUserIds(entries = []) {
   if (!Array.isArray(entries)) return [];
   return uniqueUserIds(entries.map((entry) => normalizeEntryUserId(entry)).filter(Boolean));
+}
+
+function findGroupEntryByUserId(entries = [], userId = '') {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId || !Array.isArray(entries)) return null;
+  return entries.find((entry) => normalizeEntryUserId(entry) === normalizedUserId) || null;
+}
+
+function getGroupEntryDisplayName(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  return String(entry.name || entry.displayName || entry.fullName || '').trim();
 }
 
 function isUserAlreadyInGroup(groupData = {}, uid = '') {
@@ -1668,14 +1891,18 @@ exports.onMemberJoined = onDocumentUpdated({
   
   const oldMembers = before.members || [];
   const newMembers = after.members || [];
+  const oldMemberIds = new Set(getNormalizedGroupUserIds(oldMembers));
+  const newMemberIds = getNormalizedGroupUserIds(newMembers);
   
   // New member joined
-  if (newMembers.length > oldMembers.length) {
-    const newMemberId = newMembers.find(id => !oldMembers.includes(id));
+  if (newMemberIds.length > oldMemberIds.size) {
+    const newMemberId = newMemberIds.find((id) => !oldMemberIds.has(id));
     
     if (newMemberId) {
+      const joinedEntry = findGroupEntryByUserId(newMembers, newMemberId);
       const newMemberDoc = await db.collection('goMission_members').doc(newMemberId).get();
-      const newMemberName = newMemberDoc.exists ? newMemberDoc.data().displayName : 'Someone';
+      const newMemberName = getGroupEntryDisplayName(joinedEntry) ||
+        (newMemberDoc.exists ? getSafeProfileName(newMemberDoc.data() || {}) : 'Someone');
       
       const notification = {
         title: `👋 New Member!`,
@@ -1687,7 +1914,7 @@ exports.onMemberJoined = onDocumentUpdated({
         }
       };
       
-      const existingMembers = oldMembers.filter(id => id !== newMemberId);
+      const existingMembers = getNormalizedGroupUserIds(oldMembers).filter((id) => id !== newMemberId);
       if (existingMembers.length > 0) {
         await sendToUsers(existingMembers, notification);
       }
@@ -1732,6 +1959,51 @@ exports.onMemberJoined = onDocumentUpdated({
       const result = await sendToUser(after.leaderId, notification);
       console.log('[onMemberJoined] Notification result:', result);
 
+      await writeAdminFeedNotification({
+        title: '🔔 New join request',
+        body: `${newRequest.name} wants to join ${after.name || 'a mission group'}.`,
+        category: 'admin_growth',
+        event: 'join_request_created',
+        data: {
+          type: 'admin_event',
+          event: 'join_request_created',
+          groupId: String(event.params.groupId || ''),
+          memberId: String(newRequest.requesterId || ''),
+          notificationId: `admin_join_request_${event.params.groupId}_${newRequest.requesterId}`
+        }
+      }, {
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
+
+      await mirrorNotificationToAdmins({
+        title: '🔔 New join request',
+        body: `${newRequest.name} wants to join ${after.name || 'a mission group'}.`,
+        event: 'join_request_created',
+        data: {
+          event: 'join_request_created',
+          groupId: String(event.params.groupId || ''),
+          memberId: String(newRequest.requesterId || ''),
+          notificationId: `admin_push_join_request_${event.params.groupId}_${newRequest.requesterId}`
+        },
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
+
+      await sendMovementActivityNotification({
+        title: '🔔 Someone wants to join a mission group',
+        body: `${newRequest.name} requested to join ${after.name || 'a mission group'}. Pray they find community and keep growing.`,
+        event: 'join_request_created',
+        data: {
+          event: 'join_request_created',
+          groupId: String(event.params.groupId || ''),
+          memberId: String(newRequest.requesterId || ''),
+          notificationId: `movement_join_request_${event.params.groupId}_${newRequest.requesterId}`
+        },
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
+
       const requestHtml = `
         <div style="font-family:Arial,sans-serif;line-height:1.5">
           <h2 style="margin:0 0 12px">🔔 New Join Request</h2>
@@ -1750,11 +2022,16 @@ exports.onMemberJoined = onDocumentUpdated({
   // Check for new guests
   const oldGuests = before.guests || [];
   const newGuests = after.guests || [];
+  const oldGuestIds = new Set(getNormalizedGroupUserIds(oldGuests));
+  const newGuestIds = getNormalizedGroupUserIds(newGuests);
   
-  if (newGuests.length > oldGuests.length) {
-    const newGuest = newGuests.find(g => !oldGuests.some(o => o.odId === g.odId));
+  if (newGuestIds.length > oldGuestIds.size) {
+    const newGuestId = newGuestIds.find((id) => !oldGuestIds.has(id));
+    const newGuest = findGroupEntryByUserId(newGuests, newGuestId);
     
-    if (newGuest) {
+    if (newGuestId) {
+      const guestName = getGroupEntryDisplayName(newGuest) || 'Someone';
+
       // Notify the new guest
       const guestNotification = {
         title: '🎫 You are now a Guest!',
@@ -1766,23 +2043,68 @@ exports.onMemberJoined = onDocumentUpdated({
         }
       };
       
-      await sendToUser(newGuest.odId, guestNotification);
+      await sendToUser(newGuestId, guestNotification);
       
       // Notify other members
       const memberNotification = {
         title: `🎫 New Guest!`,
-        body: `${newGuest.name} joined ${after.name} as a guest`,
+        body: `${guestName} joined ${after.name} as a guest`,
         data: {
           type: 'guest_joined',
           groupId: event.params.groupId,
-          guestId: newGuest.odId
+          guestId: newGuestId
         }
       };
       
-      const membersToNotify = (after.members || []).filter(id => id !== after.leaderId);
+      const membersToNotify = getNormalizedGroupUserIds(after.members || []).filter((id) => id !== after.leaderId);
       if (membersToNotify.length > 0) {
         await sendToUsers(membersToNotify, memberNotification);
       }
+
+      await writeAdminFeedNotification({
+        title: '🎫 Guest approved',
+        body: `${guestName} joined ${after.name || 'a mission group'} as a guest.`,
+        category: 'admin_growth',
+        event: 'guest_joined_group',
+        data: {
+          type: 'admin_event',
+          event: 'guest_joined_group',
+          groupId: String(event.params.groupId || ''),
+          memberId: newGuestId,
+          notificationId: `admin_guest_joined_group_${event.params.groupId}_${newGuestId}`
+        }
+      }, {
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
+
+      await mirrorNotificationToAdmins({
+        title: '🎫 Guest approved',
+        body: `${guestName} joined ${after.name || 'a mission group'} as a guest.`,
+        event: 'guest_joined_group',
+        data: {
+          event: 'guest_joined_group',
+          groupId: String(event.params.groupId || ''),
+          memberId: newGuestId,
+          notificationId: `admin_push_guest_joined_group_${event.params.groupId}_${newGuestId}`
+        },
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
+
+      await sendMovementActivityNotification({
+        title: '🎫 A guest joined a mission group',
+        body: `${guestName} was added as a guest in ${after.name || 'a mission group'}. Welcome them and keep the mission moving.`,
+        event: 'guest_joined_group',
+        data: {
+          event: 'guest_joined_group',
+          groupId: String(event.params.groupId || ''),
+          memberId: newGuestId,
+          notificationId: `movement_guest_joined_group_${event.params.groupId}_${newGuestId}`
+        },
+        sourceCollection: 'goMission_groups',
+        sourceEntityId: String(event.params.groupId || '')
+      });
     }
   }
   
@@ -1790,7 +2112,124 @@ exports.onMemberJoined = onDocumentUpdated({
 });
 
 exports.onDevotionShared = onDocumentCreated('goMission_devotions/{devotionId}', async (event) => {
-  const devotion = event.data.data();
+  const devotion = event.data?.data() || {};
+  const devotionId = String(event.params?.devotionId || '').trim();
+  const devotionDate = String(devotion.date || '').trim() || getManilaDateKey();
+  const devotionReference = [String(devotion.book || '').trim(), String(devotion.chapter || '').trim()]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || 'today\'s reading';
+  const memberName = getSafeProfileName({
+    displayName: devotion.userName,
+    name: devotion.userName
+  });
+
+  await writeAdminFeedNotification({
+    title: '📖 Bible time logged',
+    body: `${memberName} saved a devotion in ${devotionReference}.`,
+    category: 'admin_discipleship',
+    event: 'devotion_logged',
+    data: {
+      type: 'admin_event',
+      event: 'devotion_logged',
+      devotionId,
+      memberId: String(devotion.uid || '').trim(),
+      notificationId: `admin_devotion_logged_${devotionId}`
+    }
+  }, {
+    sourceCollection: 'goMission_devotions',
+    sourceEntityId: devotionId
+  });
+
+  await mirrorNotificationToAdmins({
+    title: '📖 Bible time logged',
+    body: `${memberName} saved a devotion in ${devotionReference}.`,
+    event: 'devotion_logged',
+    data: {
+      event: 'devotion_logged',
+      devotionId,
+      memberId: String(devotion.uid || '').trim(),
+      notificationId: `admin_push_devotion_logged_${devotionId}`
+    },
+    sourceCollection: 'goMission_devotions',
+    sourceEntityId: devotionId
+  });
+
+  await sendMovementActivityNotification({
+    title: '📖 Someone spent time in the Word',
+    body: `A devotion was logged in ${devotionReference}. Open the Bible and meet with God today.`,
+    event: 'devotion_logged',
+    data: {
+      event: 'devotion_logged',
+      devotionId,
+      notificationId: `movement_devotion_logged_${devotionId}`
+    },
+    sourceCollection: 'goMission_devotions',
+    sourceEntityId: devotionId
+  });
+
+  const dayRef = db.collection(DAILY_ACTIVITY_COLLECTION).doc(devotionDate);
+  const daySnap = await dayRef.get();
+  const dayData = daySnap.exists ? (daySnap.data() || {}) : {};
+  const nextCount = Number(dayData.devotionsCompleted || 0) + 1;
+  const milestone = [5, 10, 20].find((value) => value === nextCount);
+
+  await dayRef.set({
+    date: devotionDate,
+    devotionsCompleted: FieldValue.increment(1),
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  if (milestone && !(Array.isArray(dayData.devotionMilestonesSent) && dayData.devotionMilestonesSent.includes(milestone))) {
+    await Promise.all([
+      writeAdminFeedNotification({
+        title: '📖 Bible activity milestone reached',
+        body: `${milestone} devotions were logged on ${devotionDate}.`,
+        category: 'admin_discipleship',
+        event: 'devotion_milestone',
+        data: {
+          type: 'admin_event',
+          event: 'devotion_milestone',
+          devotionDate,
+          milestone: String(milestone),
+          notificationId: `admin_devotion_milestone_${devotionDate}_${milestone}`
+        }
+      }, {
+        sourceCollection: DAILY_ACTIVITY_COLLECTION,
+        sourceEntityId: devotionDate
+      }),
+      mirrorNotificationToAdmins({
+        title: '📖 Bible activity milestone reached',
+        body: `${milestone} devotions were logged on ${devotionDate}.`,
+        event: 'devotion_milestone',
+        data: {
+          event: 'devotion_milestone',
+          devotionDate,
+          milestone: String(milestone),
+          notificationId: `admin_push_devotion_milestone_${devotionDate}_${milestone}`
+        },
+        sourceCollection: DAILY_ACTIVITY_COLLECTION,
+        sourceEntityId: devotionDate
+      }),
+      sendMovementActivityNotification({
+        title: '📖 People are in the Word today',
+        body: `${milestone} devotions have already been logged today. Open the Bible and join the movement.`,
+        event: 'devotion_milestone',
+        data: {
+          event: 'devotion_milestone',
+          devotionDate,
+          milestone: String(milestone),
+          notificationId: `movement_devotion_milestone_${devotionDate}_${milestone}`
+        },
+        sourceCollection: DAILY_ACTIVITY_COLLECTION,
+        sourceEntityId: devotionDate
+      })
+    ]);
+
+    await dayRef.set({
+      devotionMilestonesSent: FieldValue.arrayUnion(milestone)
+    }, { merge: true });
+  }
   
   if (!devotion.sharedWithGroup || !devotion.groupId) return null;
   
@@ -1799,12 +2238,27 @@ exports.onDevotionShared = onDocumentCreated('goMission_devotions/{devotionId}',
     body: `${devotion.userName} shared their reflection on ${devotion.book} ${devotion.chapter}`,
     data: {
       type: 'devotion',
-      devotionId: event.params.devotionId,
+      devotionId,
       groupId: devotion.groupId
     }
   };
   
-  await sendToGroup(devotion.groupId, notification, devotion.uid);
+  await Promise.all([
+    sendToGroup(devotion.groupId, notification, devotion.uid),
+    sendMovementActivityNotification({
+      title: '🔥 A reflection was shared',
+      body: `${memberName} shared a reflection from ${devotionReference}. Open the app and encourage someone today.`,
+      event: 'devotion_shared',
+      data: {
+        event: 'devotion_shared',
+        devotionId,
+        groupId: String(devotion.groupId || '').trim(),
+        notificationId: `movement_devotion_shared_${devotionId}`
+      },
+      sourceCollection: 'goMission_devotions',
+      sourceEntityId: devotionId
+    })
+  ]);
   return null;
 });
 
@@ -1816,7 +2270,6 @@ exports.onMemberSignup = onDocumentCreated('goMission_members/{memberId}', async
   const memberName = getSafeProfileName(memberData);
   const memberEmail = String(memberData.email || '').trim();
   const adminRecipientIds = await getAdminRecipientIds({ excludeUserId: memberId });
-  if (!adminRecipientIds.length) return null;
 
   const notification = {
     title: '🆕 New Member Signup',
@@ -1838,7 +2291,22 @@ exports.onMemberSignup = onDocumentCreated('goMission_members/{memberId}', async
     sourceCollection: 'goMission_members',
     sourceEntityId: memberId
   });
-  await sendToUsers(adminRecipientIds, notification);
+  if (adminRecipientIds.length) {
+    await sendToUsers(adminRecipientIds, notification);
+  }
+
+  await sendMovementActivityNotification({
+    title: '🙌 Someone new joined Go Mission',
+    body: 'A new person signed up today. Pray that they keep taking their next step with Jesus.',
+    event: 'member_signup',
+    data: {
+      event: 'member_signup',
+      memberId,
+      notificationId: `movement_member_signup_${memberId}`
+    },
+    sourceCollection: 'goMission_members',
+    sourceEntityId: memberId
+  });
   return null;
 });
 
@@ -1850,7 +2318,6 @@ exports.onGroupCreated = onDocumentCreated('goMission_groups/{groupId}', async (
   const groupName = String(groupData.name || 'Mission Group').trim();
   const creatorName = String(groupData.leaderName || groupData.createdByName || '').trim();
   const adminRecipientIds = await getAdminRecipientIds();
-  if (!adminRecipientIds.length) return null;
 
   const notification = {
     title: '🧭 New Group Formed',
@@ -1872,7 +2339,154 @@ exports.onGroupCreated = onDocumentCreated('goMission_groups/{groupId}', async (
     sourceCollection: 'goMission_groups',
     sourceEntityId: groupId
   });
-  await sendToUsers(adminRecipientIds, notification);
+  if (adminRecipientIds.length) {
+    await sendToUsers(adminRecipientIds, notification);
+  }
+
+  await sendMovementActivityNotification({
+    title: '🧭 A new mission group just formed',
+    body: creatorName
+      ? `${creatorName} just started ${groupName}. Pray for fruit, unity, and multiplication.`
+      : 'A new mission group was just formed. Pray for fruit, unity, and multiplication.',
+    event: 'group_created',
+    data: {
+      event: 'group_created',
+      groupId,
+      notificationId: `movement_group_created_${groupId}`
+    },
+    sourceCollection: 'goMission_groups',
+    sourceEntityId: groupId
+  });
+  return null;
+});
+
+exports.onMemberJourneyUpdated = onDocumentUpdated('goMission_members/{memberId}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data() || {};
+  const memberId = String(event.params?.memberId || '').trim();
+  if (!memberId) return null;
+
+  const beforeStage = normalizeJourneyStageValue(before.stage);
+  const afterStage = normalizeJourneyStageValue(after.stage);
+  const beforeConfirmedMembership = hasConfirmedGroupMembership(before);
+  const afterConfirmedMembership = hasConfirmedGroupMembership(after);
+
+  if (beforeStage === afterStage && beforeConfirmedMembership === afterConfirmedMembership) {
+    return null;
+  }
+
+  const memberName = getSafeProfileName(after);
+  const movementTasks = [];
+
+  if (!beforeConfirmedMembership && afterConfirmedMembership) {
+    movementTasks.push(
+      sendToUser(memberId, {
+        title: '🤝 You joined a mission group',
+        body: 'You are not walking alone anymore. Stay connected, show up, and keep growing.',
+        category: 'journey',
+        event: 'member_joined_group',
+        data: {
+          type: 'journey_update',
+          event: 'member_joined_group',
+          groupId: String(after.groupId || after.uplineGroupId || ''),
+          notificationId: `member_joined_group_${memberId}`
+        },
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }),
+      writeAdminFeedNotification({
+        title: '🤝 Member joined a mission group',
+        body: `${memberName} is now connected to a mission group.`,
+        category: 'admin_growth',
+        event: 'member_joined_group',
+        data: {
+          type: 'admin_event',
+          event: 'member_joined_group',
+          memberId,
+          notificationId: `admin_member_joined_group_${memberId}`
+        }
+      }, {
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }),
+      sendMovementActivityNotification({
+        title: '🤝 Someone joined a mission group',
+        body: 'A user just took the next step into community. Pray that they grow strong in Christ and in mission.',
+        event: 'member_joined_group',
+        data: {
+          event: 'member_joined_group',
+          memberId,
+          notificationId: `movement_member_joined_group_${memberId}`
+        },
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }, {
+        excludeUserIds: [memberId]
+      })
+    );
+  }
+
+  const shouldSkipStagePromotionBecauseJoinStep =
+    !beforeConfirmedMembership &&
+    afterConfirmedMembership &&
+    beforeStage === 'seeker' &&
+    afterStage === 'disciple';
+
+  if (beforeStage !== afterStage && afterStage !== 'seeker' && !shouldSkipStagePromotionBecauseJoinStep) {
+    const stageLabel = formatJourneyStageLabel(afterStage);
+    movementTasks.push(
+      sendToUser(memberId, {
+        title: `🌱 You are now a ${stageLabel}`,
+        body: `Praise God for this step. Keep obeying Jesus and keep helping others follow Him too.`,
+        category: 'journey',
+        event: 'stage_promoted',
+        data: {
+          type: 'journey_update',
+          event: 'stage_promoted',
+          stage: afterStage,
+          notificationId: `stage_promoted_${memberId}_${afterStage}`
+        },
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }),
+      writeAdminFeedNotification({
+        title: `🌱 Stage growth: ${stageLabel}`,
+        body: `${memberName} is now in the ${stageLabel} stage.`,
+        category: 'admin_growth',
+        event: 'stage_promoted',
+        data: {
+          type: 'admin_event',
+          event: 'stage_promoted',
+          memberId,
+          stage: afterStage,
+          notificationId: `admin_stage_promoted_${memberId}_${afterStage}`
+        }
+      }, {
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }),
+      sendMovementActivityNotification({
+        title: `🌱 Someone stepped into ${stageLabel}`,
+        body: `God is moving. A user just entered the ${stageLabel} stage. Pray for steady growth and multiplication.`,
+        event: 'stage_promoted',
+        data: {
+          event: 'stage_promoted',
+          memberId,
+          stage: afterStage,
+          notificationId: `movement_stage_promoted_${memberId}_${afterStage}`
+        },
+        sourceCollection: 'goMission_members',
+        sourceEntityId: memberId
+      }, {
+        excludeUserIds: [memberId]
+      })
+    );
+  }
+
+  if (movementTasks.length) {
+    await Promise.all(movementTasks);
+  }
+
   return null;
 });
 
@@ -2132,6 +2746,35 @@ exports.onPrayerAnswered = onDocumentUpdated('goMission_groups/{groupId}/prayerR
     sourceEntityId: requestId
   });
 
+  await Promise.all([
+    mirrorNotificationToAdmins({
+      title: '🙌 Answered prayer recorded',
+      body: `${groupName} recorded an answered prayer today.`,
+      event: 'prayer_answered',
+      data: {
+        event: 'prayer_answered',
+        groupId,
+        requestId,
+        notificationId: `admin_push_prayer_answered_${requestId}`
+      },
+      sourceCollection: 'goMission_groups.prayerRequests',
+      sourceEntityId: requestId
+    }),
+    sendMovementActivityNotification({
+      title: '🙌 God answered a prayer',
+      body: `${groupName} recorded an answered prayer today. Give thanks and keep praying boldly.`,
+      event: 'prayer_answered',
+      data: {
+        event: 'prayer_answered',
+        groupId,
+        requestId,
+        notificationId: `movement_prayer_answered_${requestId}`
+      },
+      sourceCollection: 'goMission_groups.prayerRequests',
+      sourceEntityId: requestId
+    })
+  ]);
+
   return null;
 });
 
@@ -2158,6 +2801,36 @@ exports.onMeetingStarted = onDocumentCreated('goMission_meetings/{meetingId}', a
       notificationId: `meeting_started_${meetingId}`
     }
   }, {
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  await mirrorNotificationToAdmins({
+    title: '🟢 Group meeting started',
+    body: `${groupName} started meeting on ${meetingDate}.`,
+    event: 'meeting_started',
+    data: {
+      event: 'meeting_started',
+      groupId,
+      meetingId,
+      meetingDate,
+      notificationId: `admin_push_meeting_started_${meetingId}`
+    },
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  await sendMovementActivityNotification({
+    title: '🟢 A mission group just started meeting',
+    body: `${groupName} is meeting now${meetingDate ? ` (${meetingDate})` : ''}. Pray for truth, unity, and transformation.`,
+    event: 'meeting_started',
+    data: {
+      event: 'meeting_started',
+      groupId,
+      meetingId,
+      meetingDate,
+      notificationId: `movement_meeting_started_${meetingId}`
+    },
     sourceCollection: 'goMission_meetings',
     sourceEntityId: meetingId
   });
@@ -2190,6 +2863,35 @@ exports.onMeetingStarted = onDocumentCreated('goMission_meetings/{meetingId}', a
       sourceCollection: DAILY_ACTIVITY_COLLECTION,
       sourceEntityId: meetingDate
     });
+
+    await Promise.all([
+      mirrorNotificationToAdmins({
+        title: '📈 Meeting milestone reached',
+        body: `${milestone} groups have met on ${meetingDate}.`,
+        event: 'meeting_milestone',
+        data: {
+          event: 'meeting_milestone',
+          meetingDate,
+          milestone: String(milestone),
+          notificationId: `admin_push_meeting_milestone_${meetingDate}_${milestone}`
+        },
+        sourceCollection: DAILY_ACTIVITY_COLLECTION,
+        sourceEntityId: meetingDate
+      }),
+      sendMovementActivityNotification({
+        title: '🔥 Groups are meeting today',
+        body: `${milestone} mission groups have already met today. God is moving through His people right now.`,
+        event: 'meeting_milestone',
+        data: {
+          event: 'meeting_milestone',
+          meetingDate,
+          milestone: String(milestone),
+          notificationId: `movement_meeting_milestone_${meetingDate}_${milestone}`
+        },
+        sourceCollection: DAILY_ACTIVITY_COLLECTION,
+        sourceEntityId: meetingDate
+      })
+    ]);
 
     await dayRef.set({
       milestonesSent: FieldValue.arrayUnion(milestone)
@@ -2232,6 +2934,38 @@ exports.onMeetingCompleted = onDocumentUpdated('goMission_meetings/{meetingId}',
       notificationId: `meeting_completed_${meetingId}`
     }
   }, {
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  await mirrorNotificationToAdmins({
+    title: '✅ Group meeting finished',
+    body: `${groupName} finished meeting${meetingDate ? ` on ${meetingDate}` : ''}${attendeeCount ? ` with ${attendeeCount} attendee${attendeeCount === 1 ? '' : 's'}` : ''}.`,
+    event: 'meeting_completed',
+    data: {
+      event: 'meeting_completed',
+      groupId,
+      meetingId,
+      meetingDate,
+      attendeeCount: String(attendeeCount),
+      notificationId: `admin_push_meeting_completed_${meetingId}`
+    },
+    sourceCollection: 'goMission_meetings',
+    sourceEntityId: meetingId
+  });
+
+  await sendMovementActivityNotification({
+    title: '✅ A mission group finished meeting',
+    body: `${groupName} just finished meeting${attendeeCount ? ` with ${attendeeCount} attendee${attendeeCount === 1 ? '' : 's'}` : ''}. Thank God for what He is doing.`,
+    event: 'meeting_completed',
+    data: {
+      event: 'meeting_completed',
+      groupId,
+      meetingId,
+      meetingDate,
+      attendeeCount: String(attendeeCount),
+      notificationId: `movement_meeting_completed_${meetingId}`
+    },
     sourceCollection: 'goMission_meetings',
     sourceEntityId: meetingId
   });
@@ -2613,8 +3347,16 @@ exports.registerToken = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'Token required');
   }
   
-  await db.collection('goMission_members').doc(request.auth.uid).update({
-    fcmTokens: FieldValue.arrayUnion(token)
+  const normalizedToken = String(token || '').trim();
+  const memberRef = db.collection('goMission_members').doc(request.auth.uid);
+  await db.runTransaction(async (transaction) => {
+    const memberSnap = await transaction.get(memberRef);
+    const memberData = memberSnap.exists ? (memberSnap.data() || {}) : {};
+    transaction.set(memberRef, {
+      fcmTokens: normalizeTokenList(memberData.fcmTokens || [], normalizedToken),
+      lastTokenUpdate: FieldValue.serverTimestamp(),
+      lastTokenUpdateIso: new Date().toISOString()
+    }, { merge: true });
   });
   
   return { success: true };
@@ -2630,8 +3372,17 @@ exports.unregisterToken = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'Token required');
   }
   
-  await db.collection('goMission_members').doc(request.auth.uid).update({
-    fcmTokens: FieldValue.arrayRemove(token)
+  const normalizedToken = String(token || '').trim();
+  const memberRef = db.collection('goMission_members').doc(request.auth.uid);
+  await db.runTransaction(async (transaction) => {
+    const memberSnap = await transaction.get(memberRef);
+    const memberData = memberSnap.exists ? (memberSnap.data() || {}) : {};
+    const nextTokens = normalizeTokenList(memberData.fcmTokens || []).filter((value) => value !== normalizedToken);
+    transaction.set(memberRef, {
+      fcmTokens: nextTokens,
+      lastTokenUpdate: FieldValue.serverTimestamp(),
+      lastTokenUpdateIso: new Date().toISOString()
+    }, { merge: true });
   });
   
   return { success: true };
@@ -3391,6 +4142,19 @@ exports.dispatchJoinMissionGroupSequence = onSchedule({
     updatedAt: FieldValue.serverTimestamp()
   }, { merge: true });
 
+  await sendMovementActivityNotification({
+    title: '🤝 A fresh mission invitation is live today',
+    body: 'Go Mission is inviting people to join community and take their next step. Open the app and encourage someone today.',
+    event: 'join_group_sequence_broadcast',
+    data: {
+      event: 'join_group_sequence_broadcast',
+      announcementId,
+      notificationId: `movement_join_group_sequence_${todayKey}`
+    },
+    sourceCollection: 'goMission_announcements',
+    sourceEntityId: announcementId
+  });
+
   await stateRef.set({
     enabled: state.enabled !== false,
     lastSentDateKey: todayKey,
@@ -3438,10 +4202,15 @@ exports.dispatchStageEncouragements = onSchedule({
 
   for (const template of dueTemplates) {
     const audienceStage = normalizeJourneyStageValue(template.data.audienceStage);
-    const recipientIds = members
+    const recipientEntries = members
       .filter((entry) => isActiveProfile(entry.data))
       .filter((entry) => normalizeJourneyStageValue(entry.data.stage) === audienceStage)
-      .map((entry) => entry.id);
+      .map((entry) => ({
+        id: entry.id,
+        data: entry.data || {},
+        tokenCount: Array.isArray(entry.data?.fcmTokens) ? entry.data.fcmTokens.length : 0
+      }));
+    const recipientIds = recipientEntries.map((entry) => entry.id);
 
     const notificationId = `stage_encouragement_${template.id}_${Date.now()}`;
     let sendResult = { successCount: 0, failureCount: 0, errors: [] };
@@ -3465,6 +4234,30 @@ exports.dispatchStageEncouragements = onSchedule({
       });
     }
 
+    const errorMap = new Map(
+      (Array.isArray(sendResult.errors) ? sendResult.errors : []).map((item) => [
+        String(item?.userId || '').trim(),
+        String(item?.error || '').trim()
+      ]).filter(([userId]) => !!userId)
+    );
+    const targetedUsers = recipientEntries.map((entry) => {
+      if (entry.tokenCount <= 0) {
+        return buildStageEncouragementRecipientRecord(entry.id, entry.data, {
+          status: 'no_token',
+          error: 'No tokens'
+        });
+      }
+      if (errorMap.has(entry.id)) {
+        return buildStageEncouragementRecipientRecord(entry.id, entry.data, {
+          status: 'failed',
+          error: errorMap.get(entry.id)
+        });
+      }
+      return buildStageEncouragementRecipientRecord(entry.id, entry.data, {
+        status: 'sent'
+      });
+    });
+
     await writeAdminFeedNotification({
       title: `Stage encouragement sent: ${template.data.title || template.id}`,
       body: `Stage: ${audienceStage}. Recipients: ${recipientIds.length}. Success: ${sendResult.successCount || 0}. Failures: ${sendResult.failureCount || 0}.`,
@@ -3476,6 +4269,37 @@ exports.dispatchStageEncouragements = onSchedule({
         recipientCount: String(recipientIds.length),
         successCount: String(sendResult.successCount || 0),
         failureCount: String(sendResult.failureCount || 0)
+      },
+      sourceCollection: 'goMission_notificationTemplates',
+      sourceEntityId: template.id
+    });
+
+    await mirrorNotificationToAdmins({
+      title: `📬 Stage encouragement sent`,
+      body: `${template.data.title || template.id} went to ${formatJourneyStageLabel(audienceStage)} users. Recipients: ${recipientIds.length}. Success: ${sendResult.successCount || 0}. Failures: ${sendResult.failureCount || 0}.`,
+      event: 'stage_encouragement_sent',
+      data: {
+        event: 'stage_encouragement_sent',
+        templateId: template.id,
+        stage: audienceStage,
+        recipientCount: String(recipientIds.length),
+        successCount: String(sendResult.successCount || 0),
+        failureCount: String(sendResult.failureCount || 0),
+        notificationId: `admin_push_stage_encouragement_${template.id}_${Date.now()}`
+      },
+      sourceCollection: 'goMission_notificationTemplates',
+      sourceEntityId: template.id
+    });
+
+    await sendMovementActivityNotification({
+      title: '📬 Fresh mission encouragement is live',
+      body: `${template.data.title || 'A new encouragement'} is now active in Go Mission. Open the app and respond today.`,
+      event: 'stage_encouragement_broadcast',
+      data: {
+        event: 'stage_encouragement_broadcast',
+        templateId: template.id,
+        stage: audienceStage,
+        notificationId: `movement_stage_encouragement_${template.id}_${Date.now()}`
       },
       sourceCollection: 'goMission_notificationTemplates',
       sourceEntityId: template.id
@@ -3493,6 +4317,22 @@ exports.dispatchStageEncouragements = onSchedule({
     if (template.scheduleConfig.loopEnabled === false) {
       nextScheduleConfig.nextSendAt = '';
     }
+
+    await writeStageEncouragementRun({
+      runId: `stage_encouragement_run_${template.id}_${Date.now()}`,
+      templateId: template.id,
+      templateTitle: String(template.data.title || template.id),
+      stage: audienceStage,
+      focusArea: String(template.data.focusArea || ''),
+      recipientCount: recipientIds.length,
+      successCount: Number(sendResult.successCount || 0),
+      failureCount: Number(sendResult.failureCount || 0),
+      notificationId,
+      nextSendAt: String(nextScheduleConfig.nextSendAt || ''),
+      loopEnabled: nextScheduleConfig.loopEnabled !== false,
+      targetedUsers,
+      errors: Array.isArray(sendResult.errors) ? sendResult.errors : []
+    });
 
     await template.ref.set({
       scheduleConfig: nextScheduleConfig,

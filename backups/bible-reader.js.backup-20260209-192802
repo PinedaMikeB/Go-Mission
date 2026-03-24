@@ -1,0 +1,1242 @@
+/**
+ * Go Mission - Bible Reader Module
+ * Full chapter display with verse highlighting and auto-commentary
+ * 
+ * Features:
+ * - Load full chapter (no verse limits - Spirit-led reading)
+ * - Tap verses to highlight
+ * - Auto-load commentary for highlighted verses
+ * - Progress tracking (chapter X of Y)
+ * - Prev/Next navigation
+ * - Resume from last position
+ */
+
+const BibleReader = {
+  // State
+  currentBook: 'JHN',
+  currentChapter: 1,
+  highlightedVerses: [],      // Now stores objects: [{verse: 1, color: 'gold'}, ...]
+  chapterData: null,
+  commentaryData: null,
+  quickInsightsData: null,
+  tyndaleData: null,
+  
+  // Bible translation (independent of global language)
+  // This only affects the Bible text, NOT insights/reflect
+  bibleTranslation: 'tl',     // 'en' or 'tl' - default Tagalog
+  
+  // Reading preferences
+  preferences: {
+    fontSize: 16,           // Base font size in pixels
+    highlightColor: 'gold', // Current/active highlight color for new highlights
+    isFullscreen: false     // Fullscreen mode
+  },
+  
+  // Available highlight colors
+  highlightColors: {
+    gold: { bg: 'rgba(251, 191, 36, 0.25)', border: 'rgba(251, 191, 36, 0.5)', name: 'Gold' },
+    green: { bg: 'rgba(34, 197, 94, 0.25)', border: 'rgba(34, 197, 94, 0.5)', name: 'Green' },
+    blue: { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(59, 130, 246, 0.5)', name: 'Blue' },
+    purple: { bg: 'rgba(168, 85, 247, 0.25)', border: 'rgba(168, 85, 247, 0.5)', name: 'Purple' },
+    pink: { bg: 'rgba(236, 72, 153, 0.25)', border: 'rgba(236, 72, 153, 0.5)', name: 'Pink' },
+    orange: { bg: 'rgba(249, 115, 22, 0.25)', border: 'rgba(249, 115, 22, 0.5)', name: 'Orange' }
+  },
+  
+  // DOM references
+  elements: {},
+  
+  // Progress tracking
+  progress: {
+    book: 'JHN',
+    chapter: 1,
+    booksProgress: {}
+  },
+
+  /**
+   * Initialize the reader
+   */
+  async init() {
+    console.log('[BibleReader] Initializing...');
+    
+    // Load saved progress and preferences
+    await this.loadProgress();
+    this.loadPreferences();
+    
+    // Listen for passage selection from BiblePicker
+    document.addEventListener('biblePassageSelected', (e) => {
+      this.loadChapter(e.detail.book, e.detail.chapter);
+    });
+    
+    // Listen for language changes
+    document.addEventListener('languageChanged', () => {
+      // Reload current chapter in new language, but KEEP highlighted verses
+      if (this.currentBook && this.currentChapter) {
+        this.reloadChapterForLanguageChange();
+      }
+    });
+    
+    // Listen for ESC key to exit fullscreen
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.preferences.isFullscreen) {
+        this.exitFullscreen();
+      }
+    });
+    
+    // Cache DOM elements
+    this.cacheElements();
+    
+    // Load initial chapter
+    await this.loadChapter(this.progress.book, this.progress.chapter);
+    
+    console.log('[BibleReader] Ready');
+  },
+
+  /**
+   * Cache DOM element references
+   */
+  cacheElements() {
+    this.elements = {
+      passageTitle: document.getElementById('passageTitle'),
+      bibleText: document.getElementById('bibleText'),
+      commentaryContent: document.getElementById('commentaryContent'),
+      commentaryBtn: document.getElementById('commentaryBtn'),
+      progressIndicator: document.getElementById('chapterProgress'),
+      prevBtn: document.getElementById('prevChapterBtn'),
+      nextBtn: document.getElementById('nextChapterBtn')
+    };
+  },
+
+  /**
+   * Load progress from localStorage/Firestore
+   */
+  async loadProgress() {
+    // Try localStorage first (immediate)
+    try {
+      const saved = localStorage.getItem('goMission_bibleProgress');
+      if (saved) {
+        this.progress = JSON.parse(saved);
+        this.currentBook = this.progress.book || 'JHN';
+        this.currentChapter = this.progress.chapter || 1;
+      }
+    } catch (e) {
+      console.log('[BibleReader] No local progress found');
+    }
+    
+    // Try Firestore if user logged in
+    try {
+      if (typeof window.currentUser !== 'undefined' && window.currentUser && typeof window.db !== 'undefined') {
+        const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+        const userDoc = await window.getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.bibleProgress) {
+            this.progress = data.bibleProgress;
+            this.currentBook = this.progress.book || 'JHN';
+            this.currentChapter = this.progress.chapter || 1;
+            // Sync to localStorage
+            localStorage.setItem('goMission_bibleProgress', JSON.stringify(this.progress));
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[BibleReader] Could not load Firestore progress:', e.message);
+    }
+  },
+
+  /**
+   * Save progress
+   */
+  async saveProgress() {
+    this.progress.book = this.currentBook;
+    this.progress.chapter = this.currentChapter;
+    this.progress.lastReadAt = Date.now();
+    
+    // Track chapters read per book
+    if (!this.progress.booksProgress) {
+      this.progress.booksProgress = {};
+    }
+    if (!this.progress.booksProgress[this.currentBook]) {
+      this.progress.booksProgress[this.currentBook] = { chaptersRead: [] };
+    }
+    if (!this.progress.booksProgress[this.currentBook].chaptersRead.includes(this.currentChapter)) {
+      this.progress.booksProgress[this.currentBook].chaptersRead.push(this.currentChapter);
+    }
+    this.progress.booksProgress[this.currentBook].lastChapter = this.currentChapter;
+    
+    // Save to localStorage
+    localStorage.setItem('goMission_bibleProgress', JSON.stringify(this.progress));
+    
+    // Save to Firestore if logged in
+    try {
+      if (typeof window.currentUser !== 'undefined' && window.currentUser && typeof window.db !== 'undefined') {
+        await window.setDoc(window.doc(window.db, 'goMission_members', window.currentUser.uid), {
+          bibleProgress: this.progress
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.log('[BibleReader] Could not save to Firestore:', e.message);
+    }
+  },
+
+  /**
+   * Load reading preferences from localStorage
+   */
+  loadPreferences() {
+    try {
+      const saved = localStorage.getItem('goMission_biblePreferences');
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        this.preferences = { ...this.preferences, ...prefs };
+      }
+    } catch (e) {
+      console.log('[BibleReader] No saved preferences');
+    }
+    
+    // Load Bible translation preference (separate from global language)
+    const savedTranslation = localStorage.getItem('goMission_bibleTranslation');
+    if (savedTranslation && (savedTranslation === 'en' || savedTranslation === 'tl')) {
+      this.bibleTranslation = savedTranslation;
+    }
+    
+    // Apply saved preferences
+    this.applyFontSize();
+  },
+
+  /**
+   * Save reading preferences
+   */
+  savePreferences() {
+    localStorage.setItem('goMission_biblePreferences', JSON.stringify(this.preferences));
+  },
+
+  /**
+   * Set highlight color
+   */
+  setHighlightColor(color) {
+    if (this.highlightColors[color]) {
+      this.preferences.highlightColor = color;
+      this.savePreferences();
+      this.renderVerses();
+      this.updateColorPickerUI();
+    }
+  },
+
+  /**
+   * Increase font size
+   */
+  increaseFontSize() {
+    if (this.preferences.fontSize < 28) {
+      this.preferences.fontSize += 2;
+      this.savePreferences();
+      this.applyFontSize();
+    }
+  },
+
+  /**
+   * Decrease font size
+   */
+  decreaseFontSize() {
+    if (this.preferences.fontSize > 12) {
+      this.preferences.fontSize -= 2;
+      this.savePreferences();
+      this.applyFontSize();
+    }
+  },
+
+  /**
+   * Apply font size to Bible text and related sections
+   */
+  applyFontSize() {
+    const bibleText = document.getElementById('bibleText');
+    const fullscreenText = document.getElementById('fullscreenBibleText');
+    const commentaryContent = document.getElementById('commentaryContent');
+    const reflectSection = document.getElementById('reflectSection');
+    const reflectionTextarea = document.getElementById('reflectionTextarea');
+    const fullscreenCommentary = document.getElementById('fullscreenCommentaryContent');
+    
+    const fontSize = `${this.preferences.fontSize}px`;
+    
+    // Apply to main Bible text
+    if (bibleText) bibleText.style.fontSize = fontSize;
+    
+    // Apply to fullscreen Bible text
+    if (fullscreenText) fullscreenText.style.fontSize = fontSize;
+    
+    // Apply to commentary section
+    if (commentaryContent) commentaryContent.style.fontSize = fontSize;
+    
+    // Apply to fullscreen commentary
+    if (fullscreenCommentary) fullscreenCommentary.style.fontSize = fontSize;
+    
+    // Apply to reflect section (adjust slightly smaller)
+    if (reflectSection) reflectSection.style.fontSize = fontSize;
+    
+    // Apply to reflection textarea
+    if (reflectionTextarea) reflectionTextarea.style.fontSize = fontSize;
+  },
+
+  /**
+   * Enter fullscreen mode
+   */
+  enterFullscreen() {
+    this.preferences.isFullscreen = true;
+    
+    // Create fullscreen overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'bibleFullscreenOverlay';
+    overlay.className = 'fixed inset-0 z-50 bg-[var(--bg-color)] flex flex-col transition-all duration-300';
+    
+    // Get book name in the current Bible translation
+    const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const hasHighlights = this.highlightedVerses.length > 0;
+    const isMobile = window.innerWidth < 768;
+    
+    overlay.innerHTML = `
+      <!-- Fullscreen Header -->
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
+        <button onclick="BibleReader.exitFullscreen()" class="flex items-center gap-1 md:gap-2 text-[var(--mission-gold)] hover:opacity-85">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          <span class="text-sm font-medium hidden md:inline">Close</span>
+        </button>
+        
+        <!-- Clickable Title + Translation Dropdown -->
+        <div class="flex items-center gap-2">
+          <button onclick="BiblePicker.open()" class="flex items-center gap-1 text-base md:text-lg font-bold text-[var(--text-color)] hover:text-[var(--mission-gold)] transition-colors">
+            <span>📖</span>
+            <span id="fullscreenBookTitle">${bookName} ${this.currentChapter}</span>
+            <svg class="w-4 h-4 text-[var(--mission-gold)]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          
+          <!-- Translation Dropdown -->
+          <select id="bibleTranslationSelect" 
+                  onchange="BibleReader.setBibleTranslation(this.value)"
+                  class="text-xs px-2 py-1 rounded bg-[var(--input-bg)] text-[var(--text-color)] border border-[var(--card-border)] cursor-pointer">
+            <option value="tl" ${this.bibleTranslation === 'tl' ? 'selected' : ''}>TL</option>
+            <option value="en" ${this.bibleTranslation === 'en' ? 'selected' : ''}>EN</option>
+          </select>
+        </div>
+        
+        <div class="flex items-center gap-1 md:gap-2">
+          <!-- Font Size Controls -->
+          <button onclick="BibleReader.decreaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-[var(--mission-gold)]/20">
+            <span class="text-base md:text-lg font-bold">A-</span>
+          </button>
+          <button onclick="BibleReader.increaseFontSize(); BibleReader.applyFontSize();" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--input-bg)] text-[var(--text-color)] flex items-center justify-center hover:bg-[var(--mission-gold)]/20">
+            <span class="text-base md:text-lg font-bold">A+</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Color Picker & Insights Bar -->
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+        <div class="flex items-center gap-1 md:gap-2">
+          ${Object.entries(this.highlightColors).map(([key, color]) => `
+            <button onclick="BibleReader.setHighlightColor('${key}')" 
+                    class="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 transition-all ${this.preferences.highlightColor === key ? 'border-white scale-110' : 'border-transparent'}"
+                    style="background: ${color.bg}; box-shadow: inset 0 0 0 2px ${color.border};"
+                    title="${color.name}">
+            </button>
+          `).join('')}
+        </div>
+        
+        <!-- Insights & Reflect Buttons -->
+        <div class="flex items-center gap-2">
+          <button onclick="BibleReader.toggleFullscreenCommentary()" 
+                  id="fullscreenCommentaryBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/25' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
+                  ${!hasHighlights ? 'disabled' : ''}>
+            <span>💡</span>
+            <span>Insights</span>
+            <span id="fullscreenCommentaryCount" class="${hasHighlights ? '' : 'hidden'}">(${this.highlightedVerses.length})</span>
+          </button>
+          
+          <button onclick="BibleReader.openReflectModal()" 
+                  id="fullscreenReflectBtn"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasHighlights ? 'bg-[var(--mission-red-bright)]/12 text-[var(--text-color)] hover:bg-[var(--mission-red-bright)]/20' : 'bg-[var(--card-border)] text-[var(--text-dim)] cursor-not-allowed'}"
+                  ${!hasHighlights ? 'disabled' : ''}>
+            <span>📝</span>
+            <span>Reflect</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Chapter Navigation -->
+      <div class="flex items-center justify-between px-3 md:px-4 py-2 bg-[var(--nav-bg)] border-b border-[var(--card-border)]">
+        <button onclick="BibleReader.prevChapter(); BibleReader.updateFullscreenContent();" 
+                class="flex items-center gap-1 text-sm text-[var(--mission-gold)] hover:opacity-85 ${this.currentChapter <= 1 ? 'opacity-30 pointer-events-none' : ''}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Prev
+        </button>
+        
+        <span id="fullscreenChapterLabel" class="text-sm text-[var(--text-muted)]">Chapter ${this.currentChapter}</span>
+        
+        <button onclick="BibleReader.nextChapter(); BibleReader.updateFullscreenContent();" 
+                class="flex items-center gap-1 text-sm text-[var(--mission-gold)] hover:opacity-85">
+          Next
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Main Content Area -->
+      <div class="flex-1 flex overflow-hidden relative">
+        <!-- Bible Text -->
+        <div id="fullscreenBibleText" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 custom-scrollbar" style="font-size: ${this.preferences.fontSize}px;">
+          ${this.generateVersesHTML()}
+        </div>
+        
+        <!-- Commentary Panel - Full overlay on mobile, side panel on desktop -->
+        <div id="fullscreenCommentaryPanel" class="hidden absolute inset-0 md:relative md:inset-auto md:w-80 md:border-l border-[var(--card-border)] bg-[var(--bg-color)] md:bg-[var(--nav-bg)] overflow-y-auto z-20">
+          <div class="p-4 h-full flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-3 border-b border-[var(--card-border)]">
+              <h3 class="text-[var(--mission-gold)] font-bold">💡 ${lang === 'tl' ? 'Tulungan akong maintindihan' : 'Help me understand'}</h3>
+              <button onclick="BibleReader.toggleFullscreenCommentary()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--mission-gold)]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div id="fullscreenCommentaryContent" class="flex-1 overflow-y-auto" style="font-size: ${this.preferences.fontSize}px;">
+              ${this.generateCommentaryHTML()}
+            </div>
+            <!-- Back to Bible button on mobile -->
+            <button onclick="BibleReader.toggleFullscreenCommentary()" class="md:hidden mt-4 w-full py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl">
+              ← ${lang === 'tl' ? 'Bumalik sa Bibliya' : 'Back to Bible'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+    });
+  },
+
+  /**
+   * Toggle fullscreen commentary panel
+   */
+  toggleFullscreenCommentary() {
+    const panel = document.getElementById('fullscreenCommentaryPanel');
+    const btn = document.getElementById('fullscreenCommentaryBtn');
+    
+    if (!panel || this.highlightedVerses.length === 0) return;
+    
+    const isHidden = panel.classList.contains('hidden');
+    
+    if (isHidden) {
+      panel.classList.remove('hidden');
+      btn?.classList.add('bg-[var(--mission-gold)]/25');
+    } else {
+      panel.classList.add('hidden');
+      btn?.classList.remove('bg-[var(--mission-gold)]/25');
+    }
+  },
+
+  /**
+   * Open reflect modal from fullscreen (without exiting)
+   */
+  openReflectModal() {
+    if (this.highlightedVerses.length === 0) return;
+    
+    // Show the reflection popup
+    if (typeof window.showReflectionPopup === 'function') {
+      window.showReflectionPopup();
+    }
+  },
+
+  /**
+   * Generate commentary HTML for fullscreen panel
+   */
+  generateCommentaryHTML() {
+    if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
+      const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+      return `<p class="text-[var(--text-muted)] italic">${lang === 'tl' ? 'I-tap ang mga talata para makita ang insights' : 'Tap verses to see insights'}</p>`;
+    }
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    const labels = {
+      en: { understanding: '📖 Understanding', livingItOut: '🚶 Living It Out', godsLove: '❤️ God\'s Love' },
+      tl: { understanding: '📖 Pag-unawa', livingItOut: '🚶 Isabuhay', godsLove: '❤️ Pag-ibig ng Diyos' }
+    };
+    const L = labels[lang] || labels.en;
+    
+    let html = '';
+    for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
+      html += `
+        <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
+          <p class="text-[var(--mission-gold)] font-bold mb-2">Verse ${verseNum}</p>
+          <div class="space-y-3 text-[var(--text-color)]">
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.understanding}</span><p class="leading-relaxed">${insight.understanding || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.livingItOut}</span><p class="leading-relaxed">${insight.livingItOut || ''}</p></div>
+            <div><span class="text-[var(--mission-gold)]/70 text-xs block mb-1">${L.godsLove}</span><p class="leading-relaxed">${insight.godsLove || ''}</p></div>
+          </div>
+        </div>
+      `;
+    }
+    return html;
+  },
+
+  /**
+   * Exit fullscreen mode
+   */
+  exitFullscreen() {
+    this.preferences.isFullscreen = false;
+    
+    const overlay = document.getElementById('bibleFullscreenOverlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.remove();
+        document.body.style.overflow = '';
+      }, 200);
+    }
+    
+    // Re-render main view to sync highlights
+    this.renderVerses();
+    
+    // Show reflection popup if user has highlighted verses
+    if (this.highlightedVerses.length > 0 && typeof window.showReflectionPopup === 'function') {
+      setTimeout(() => {
+        window.showReflectionPopup();
+      }, 300);
+    }
+  },
+
+  /**
+   * Update fullscreen content after navigation or highlight change
+   */
+  updateFullscreenContent() {
+    setTimeout(() => {
+      const fullscreenText = document.getElementById('fullscreenBibleText');
+      const bookTitleEl = document.getElementById('fullscreenBookTitle');
+      const commentaryContent = document.getElementById('fullscreenCommentaryContent');
+      const commentaryBtn = document.getElementById('fullscreenCommentaryBtn');
+      const commentaryCount = document.getElementById('fullscreenCommentaryCount');
+      
+      if (fullscreenText) {
+        fullscreenText.innerHTML = this.generateVersesHTML();
+        fullscreenText.style.fontSize = `${this.preferences.fontSize}px`;
+      }
+      
+      // Update book title with correct translation
+      if (bookTitleEl) {
+        const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
+        bookTitleEl.textContent = `${bookName} ${this.currentChapter}`;
+      }
+      
+      // Update chapter label in navigation
+      const chapterLabel = document.getElementById('fullscreenChapterLabel');
+      if (chapterLabel) {
+        chapterLabel.textContent = `Chapter ${this.currentChapter}`;
+      }
+      
+      // Update translation dropdown
+      this.updateTranslationDropdown();
+      
+      // Update commentary panel
+      if (commentaryContent) {
+        commentaryContent.innerHTML = this.generateCommentaryHTML();
+        commentaryContent.style.fontSize = `${this.preferences.fontSize}px`;
+      }
+      
+      // Update commentary button state
+      const hasHighlights = this.highlightedVerses.length > 0;
+      if (commentaryBtn) {
+        if (hasHighlights) {
+          commentaryBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          commentaryBtn.classList.add('bg-[var(--mission-gold)]/15', 'text-[var(--mission-gold)]', 'hover:bg-[var(--mission-gold)]/25');
+          commentaryBtn.disabled = false;
+        } else {
+          commentaryBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          commentaryBtn.classList.remove('bg-[var(--mission-gold)]/15', 'text-[var(--mission-gold)]', 'hover:bg-[var(--mission-gold)]/25');
+          commentaryBtn.disabled = true;
+        }
+      }
+      
+      if (commentaryCount) {
+        commentaryCount.textContent = `(${this.highlightedVerses.length})`;
+        commentaryCount.classList.toggle('hidden', !hasHighlights);
+      }
+      
+      // Update reflect button state
+      const reflectBtn = document.getElementById('fullscreenReflectBtn');
+      if (reflectBtn) {
+        if (hasHighlights) {
+          reflectBtn.classList.remove('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.add('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
+          reflectBtn.disabled = false;
+        } else {
+          reflectBtn.classList.add('bg-[var(--card-border)]', 'text-[var(--text-dim)]', 'cursor-not-allowed');
+          reflectBtn.classList.remove('bg-[var(--mission-red-bright)]/12', 'text-[var(--text-color)]', 'hover:bg-[var(--mission-red-bright)]/20');
+          reflectBtn.disabled = true;
+        }
+      }
+    }, 200);
+  },
+
+  /**
+   * Generate HTML for verses (used by both normal and fullscreen views)
+   */
+  generateVersesHTML() {
+    if (!this.chapterData) return '<p class="text-[var(--text-muted)]">Loading...</p>';
+    
+    const verses = this.chapterData.verses;
+    let html = '';
+    
+    for (const [verseNum, verseText] of Object.entries(verses)) {
+      const highlighted = this.highlightedVerses.find(h => h.verse === parseInt(verseNum));
+      let highlightStyle = '';
+      
+      if (highlighted) {
+        const colorConfig = this.highlightColors[highlighted.color] || this.highlightColors.gold;
+        highlightStyle = `background: ${colorConfig.bg}; border-left: 3px solid ${colorConfig.border}; padding-left: 8px; margin-left: -11px;`;
+      }
+      
+      html += `
+        <span class="verse inline" 
+              data-verse="${verseNum}" 
+              onclick="BibleReader.toggleHighlight(${verseNum})"
+              style="${highlightStyle}">
+          <span class="verse-num">${verseNum}</span>${verseText}
+        </span> `;
+    }
+    
+    return html;
+  },
+
+  /**
+   * Update color picker UI in fullscreen
+   */
+  updateColorPickerUI() {
+    const buttons = document.querySelectorAll('#bibleFullscreenOverlay [onclick^="BibleReader.setHighlightColor"]');
+    buttons.forEach(btn => {
+      const color = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+      if (color) {
+        btn.classList.toggle('border-white', this.preferences.highlightColor === color);
+        btn.classList.toggle('scale-110', this.preferences.highlightColor === color);
+        btn.classList.toggle('border-transparent', this.preferences.highlightColor !== color);
+      }
+    });
+    
+    // Re-render verses with new color
+    const fullscreenText = document.getElementById('fullscreenBibleText');
+    if (fullscreenText) {
+      fullscreenText.innerHTML = this.generateVersesHTML();
+    }
+  },
+
+  /**
+   * Load and display a chapter
+   */
+  async loadChapter(bookId, chapter) {
+    console.log(`[BibleReader] Loading ${bookId} ${chapter}`);
+    
+    this.currentBook = bookId;
+    this.currentChapter = chapter;
+    this.highlightedVerses = [];
+    
+    // Use Bible-specific translation (not global language)
+    // Load chapter data using BibleLoader
+    if (typeof BibleLoader !== 'undefined') {
+      this.chapterData = await BibleLoader.getChapter(bookId, chapter, this.bibleTranslation);
+    }
+    
+    if (!this.chapterData) {
+      this.showError('Could not load chapter');
+      return;
+    }
+    
+    // Update UI
+    this.renderPassageTitle();
+    this.renderVerses();
+    this.renderProgress();
+    this.updateNavButtons();
+    
+    // Clear commentary
+    this.clearCommentary();
+    
+    // Save progress
+    await this.saveProgress();
+    
+    // Add to recent readings in BiblePicker
+    if (typeof BiblePicker !== 'undefined') {
+      BiblePicker.addRecentReading(bookId, chapter);
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+    }
+  },
+
+  /**
+   * Reload when global language changes - only affects Quick Insights, NOT Bible text
+   * Bible text stays in the selected translation (bibleTranslation)
+   */
+  async reloadChapterForLanguageChange() {
+    console.log(`[BibleReader] Global language changed, reloading insights only (Bible stays in ${this.bibleTranslation})`);
+    
+    // Bible text does NOT change - it uses bibleTranslation, not global language
+    // Only reload insights in the new global language if verses are highlighted
+    if (this.highlightedVerses.length > 0) {
+      await this.loadCommentary();
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+    }
+  },
+
+  /**
+   * Render passage title with picker trigger (for collapsed view)
+   * Note: This is the main title that opens BiblePicker
+   */
+  renderPassageTitle() {
+    if (!this.elements.passageTitle) return;
+    
+    // Get book name in the current Bible translation
+    const bookName = BibleLoader.getBookName(this.currentBook, this.bibleTranslation);
+    
+    this.elements.passageTitle.textContent = `${bookName} ${this.currentChapter}`;
+    
+    // Sync the preview dropdown
+    const previewDropdown = document.getElementById('bibleTranslationPreview');
+    if (previewDropdown) {
+      previewDropdown.value = this.bibleTranslation;
+    }
+  },
+  
+  /**
+   * Switch Bible translation (EN/TL) - only affects Bible text, NOT insights
+   */
+  async setBibleTranslation(lang) {
+    if (lang !== 'en' && lang !== 'tl') return;
+    if (lang === this.bibleTranslation) return;
+    
+    console.log(`[BibleReader] Switching Bible translation to ${lang}`);
+    this.bibleTranslation = lang;
+    
+    // Save preference
+    localStorage.setItem('goMission_bibleTranslation', lang);
+    
+    // Reload chapter in new translation (keep highlights)
+    const savedHighlights = [...this.highlightedVerses];
+    
+    if (typeof BibleLoader !== 'undefined') {
+      this.chapterData = await BibleLoader.getChapter(this.currentBook, this.currentChapter, this.bibleTranslation);
+    }
+    
+    if (!this.chapterData) {
+      this.showError('Could not load chapter');
+      return;
+    }
+    
+    // Restore highlights
+    this.highlightedVerses = savedHighlights;
+    
+    // Update UI
+    this.renderPassageTitle();
+    this.renderVerses();
+    
+    // Update fullscreen if open
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+      this.updateTranslationDropdown();
+    }
+  },
+  
+  /**
+   * Update translation dropdown UI (both preview and fullscreen)
+   */
+  updateTranslationDropdown() {
+    const previewDropdown = document.getElementById('bibleTranslationPreview');
+    const fullscreenDropdown = document.getElementById('bibleTranslationSelect');
+    
+    if (previewDropdown) {
+      previewDropdown.value = this.bibleTranslation;
+    }
+    if (fullscreenDropdown) {
+      fullscreenDropdown.value = this.bibleTranslation;
+    }
+  },
+
+  /**
+   * Render verses with tap-to-highlight
+   */
+  renderVerses() {
+    if (!this.elements.bibleText || !this.chapterData) return;
+    
+    this.elements.bibleText.innerHTML = this.generateVersesHTML();
+    this.applyFontSize();
+    
+    // Also update fullscreen if open
+    if (this.preferences.isFullscreen) {
+      const fullscreenText = document.getElementById('fullscreenBibleText');
+      if (fullscreenText) {
+        fullscreenText.innerHTML = this.generateVersesHTML();
+      }
+    }
+  },
+
+  /**
+   * Render progress indicator
+   */
+  renderProgress() {
+    // Create progress indicator if it doesn't exist
+    let progressEl = document.getElementById('chapterProgress');
+    
+    if (!progressEl) {
+      // Find the passage title container and add progress next to it
+      const titleContainer = this.elements.passageTitle?.parentElement;
+      if (titleContainer) {
+        const progressDiv = document.createElement('div');
+        progressDiv.id = 'chapterProgress';
+        progressDiv.className = 'text-[10px] text-[var(--text-muted)] flex items-center gap-1';
+        titleContainer.appendChild(progressDiv);
+        progressEl = progressDiv;
+      }
+    }
+    
+    if (!progressEl) return;
+    
+    // Get total chapters for this book
+    const totalChapters = (typeof BiblePicker !== 'undefined') 
+      ? BiblePicker.books[this.currentBook]?.chapters || 1
+      : 1;
+    
+    // Calculate progress
+    const percent = Math.round((this.currentChapter / totalChapters) * 100);
+    
+    // Create progress dots (max 10 dots)
+    const dotsCount = Math.min(totalChapters, 10);
+    const filledDots = Math.ceil((this.currentChapter / totalChapters) * dotsCount);
+    
+    let dotsHtml = '';
+    for (let i = 0; i < dotsCount; i++) {
+      dotsHtml += `<span class="w-1.5 h-1.5 rounded-full ${i < filledDots ? 'bg-[var(--accent-active)]' : 'bg-[var(--card-border)]'}"></span>`;
+    }
+    
+    progressEl.innerHTML = `
+      <span>Chapter ${this.currentChapter} of ${totalChapters}</span>
+      <span class="flex gap-0.5 ml-2">${dotsHtml}</span>
+    `;
+  },
+
+  /**
+   * Update prev/next navigation buttons
+   */
+  updateNavButtons() {
+    // Get total chapters
+    const totalChapters = (typeof BiblePicker !== 'undefined') 
+      ? BiblePicker.books[this.currentBook]?.chapters || 1
+      : 1;
+    
+    // Create nav buttons if they don't exist
+    let navContainer = document.getElementById('chapterNavigation');
+    
+    if (!navContainer) {
+      // Find a good place to insert navigation
+      const bibleTextContainer = this.elements.bibleText?.parentElement;
+      if (bibleTextContainer) {
+        navContainer = document.createElement('div');
+        navContainer.id = 'chapterNavigation';
+        navContainer.className = 'flex justify-between items-center py-3 border-b border-[var(--card-border)]';
+        
+        // Insert before bible text
+        bibleTextContainer.insertBefore(navContainer, this.elements.bibleText);
+      }
+    }
+    
+    if (!navContainer) return;
+    
+    const hasPrev = this.currentChapter > 1;
+    const hasNext = this.currentChapter < totalChapters;
+    
+    navContainer.innerHTML = `
+      <button onclick="BibleReader.prevChapter()" 
+              class="flex items-center gap-1 text-xs ${hasPrev ? 'text-[var(--mission-gold)] hover:opacity-85' : 'text-[var(--text-dim)] cursor-not-allowed'}"
+              ${!hasPrev ? 'disabled' : ''}>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        <span>Prev</span>
+      </button>
+      
+      <button onclick="BiblePicker.open()" class="text-xs text-[var(--text-muted)] hover:text-[var(--mission-gold)]">
+        Chapter ${this.currentChapter}
+      </button>
+      
+      <button onclick="BibleReader.nextChapter()" 
+              class="flex items-center gap-1 text-xs ${hasNext ? 'text-[var(--mission-gold)] hover:opacity-85' : 'text-[var(--text-dim)] cursor-not-allowed'}"
+              ${!hasNext ? 'disabled' : ''}>
+        <span>Next</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </button>
+    `;
+  },
+
+  /**
+   * Toggle verse highlight - each verse stores its own color
+   */
+  async toggleHighlight(verseNum) {
+    const existingIndex = this.highlightedVerses.findIndex(h => h.verse === verseNum);
+    
+    if (existingIndex > -1) {
+      // Remove highlight
+      this.highlightedVerses.splice(existingIndex, 1);
+    } else {
+      // Add highlight with current color
+      this.highlightedVerses.push({
+        verse: verseNum,
+        color: this.preferences.highlightColor
+      });
+    }
+    
+    // Sort highlighted verses by verse number
+    this.highlightedVerses.sort((a, b) => a.verse - b.verse);
+    
+    // Re-render verses
+    this.renderVerses();
+    
+    // Load commentary for highlighted verses
+    if (this.highlightedVerses.length > 0) {
+      await this.loadCommentary();
+    } else {
+      this.clearCommentary();
+    }
+    
+    // Update fullscreen content if in fullscreen mode
+    if (this.preferences.isFullscreen) {
+      this.updateFullscreenContent();
+    }
+  },
+
+  /**
+   * Load and display Quick Insights for highlighted verses
+   */
+  async loadCommentary() {
+    if (this.highlightedVerses.length === 0) return;
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Extract just verse numbers from highlighted verses
+    const verseNumbers = this.highlightedVerses.map(h => h.verse);
+    
+    // Get Quick Insights using BibleLoader
+    if (typeof BibleLoader !== 'undefined') {
+      this.quickInsightsData = await BibleLoader.getQuickInsights(
+        this.currentBook, 
+        this.currentChapter, 
+        verseNumbers,
+        lang
+      );
+      
+      // Also load Tyndale for "Dig Deeper"
+      this.tyndaleData = await BibleLoader.getTyndale(
+        this.currentBook,
+        this.currentChapter,
+        verseNumbers
+      );
+    }
+    
+    this.renderCommentary();
+  },
+
+  /**
+   * Render Quick Insights - 3-section format with Dig Deeper option
+   * Commentary section is shown but collapsed (user clicks to expand)
+   */
+  renderCommentary() {
+    const commentarySection = document.getElementById('commentarySection');
+    const commentaryContent = document.getElementById('commentaryContent');
+    const commentaryArrow = document.getElementById('commentaryArrow');
+    
+    if (!commentarySection || !commentaryContent) return;
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Section labels
+    const labels = {
+      en: {
+        understanding: '📖 Understanding This Verse',
+        livingItOut: '🚶 Living It Out',
+        godsLove: '❤️ See God\'s Love',
+        digDeeper: '📚 Dig Deeper (Tyndale)',
+        noInsights: 'No insights available for this verse yet.',
+        tapVerses: 'Tap verses above to see insights'
+      },
+      tl: {
+        understanding: '📖 Unawain ang Talata',
+        livingItOut: '🚶 Isabuhay Ito',
+        godsLove: '❤️ Makita ang Pag-ibig ng Diyos',
+        digDeeper: '📚 Dig Deeper (Tyndale)',
+        noInsights: 'Wala pang insights para sa talatang ito.',
+        tapVerses: 'I-tap ang mga talata sa itaas para makita ang insights'
+      }
+    };
+    const L = labels[lang] || labels.en;
+    
+    // Show the "Help me understand" button when verses are highlighted
+    commentarySection.classList.remove('hidden');
+    
+    // Keep content collapsed by default (don't auto-expand)
+    commentaryContent.classList.add('hidden');
+    if (commentaryArrow) commentaryArrow.style.transform = '';
+    
+    if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
+      commentaryContent.innerHTML = `
+        <p class="text-[var(--text-muted)] italic text-sm">${L.noInsights}</p>
+      `;
+      return;
+    }
+    
+    let html = '';
+    
+    // Collect reflection questions to update the REFLECT section
+    const reflectionQuestions = [];
+    
+    // Show insights for each highlighted verse
+    for (const [verseNum, insight] of Object.entries(this.quickInsightsData.verses)) {
+      const tyndaleNote = this.tyndaleData?.verses?.[verseNum];
+      const uniqueId = `insight-${verseNum}`;
+      
+      // Collect reflection question
+      if (insight.reflection) {
+        reflectionQuestions.push(insight.reflection);
+      }
+      
+      html += `
+        <div class="mb-5 pb-4 border-b border-[var(--card-border)] last:border-0 last:pb-0 last:mb-0">
+          <p class="text-[var(--mission-gold)] font-bold text-sm mb-3">Verse ${verseNum}</p>
+          
+          <!-- Understanding -->
+          <div class="mb-3">
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.understanding}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.understanding || ''}</p>
+          </div>
+          
+          <!-- Living It Out -->
+          <div class="mb-3">
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.livingItOut}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.livingItOut || ''}</p>
+          </div>
+          
+          <!-- God's Love -->
+          <div class="mb-3">
+            <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.godsLove}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.godsLove || ''}</p>
+          </div>
+          
+          ${tyndaleNote ? `
+          <!-- Dig Deeper Toggle -->
+          <div class="mt-3">
+            <button onclick="BibleReader.toggleDigDeeper('${uniqueId}')" 
+                    id="${uniqueId}-btn"
+                    class="text-xs text-[var(--mission-gold)]/70 hover:text-[var(--mission-gold)] flex items-center gap-1 transition-colors">
+              <span id="${uniqueId}-icon">▶</span>
+              <span>${L.digDeeper}</span>
+            </button>
+            <div id="${uniqueId}-content" class="hidden mt-2 p-3 bg-[var(--card-bg)] rounded-lg border border-[var(--card-border)]">
+              <p class="text-xs text-[var(--text-muted)] leading-relaxed">${tyndaleNote}</p>
+            </div>
+          </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    commentaryContent.innerHTML = html;
+    
+    // Update the REFLECT section with the reflection question(s)
+    this.updateReflectSection(reflectionQuestions);
+  },
+  
+  /**
+   * Update the REFLECT section with AI-generated reflection questions
+   */
+  updateReflectSection(questions) {
+    const reflectSection = document.getElementById('reflectSection');
+    const reflectionEl = document.getElementById('reflectionQuestion');
+    
+    if (!reflectionEl || questions.length === 0) {
+      // Hide the AI reflection card if no questions
+      if (reflectSection) {
+        const aiReflectCard = document.getElementById('aiReflectCard');
+        if (aiReflectCard) aiReflectCard.classList.add('hidden');
+      }
+      return;
+    }
+    
+    const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+    
+    // Show the AI reflection card
+    const aiReflectCard = document.getElementById('aiReflectCard');
+    if (aiReflectCard) aiReflectCard.classList.remove('hidden');
+    
+    // If multiple verses highlighted, combine questions or show first
+    let questionHtml = '';
+    if (questions.length === 1) {
+      questionHtml = questions[0];
+    } else {
+      // Show the first question for multiple verses
+      questionHtml = questions[0];
+    }
+    
+    reflectionEl.innerHTML = `<span class="italic">"${questionHtml}"</span>`;
+  },
+
+  /**
+   * Toggle Dig Deeper section
+   */
+  toggleDigDeeper(uniqueId) {
+    const content = document.getElementById(`${uniqueId}-content`);
+    const icon = document.getElementById(`${uniqueId}-icon`);
+    
+    if (content && icon) {
+      const isHidden = content.classList.contains('hidden');
+      
+      if (isHidden) {
+        content.classList.remove('hidden');
+        icon.textContent = '▼';
+      } else {
+        content.classList.add('hidden');
+        icon.textContent = '▶';
+      }
+    }
+  },
+
+  /**
+   * Toggle commentary expand/collapse (legacy - kept for compatibility)
+   */
+  toggleCommentaryExpand(uniqueId) {
+    const preview = document.getElementById(`${uniqueId}-preview`);
+    const full = document.getElementById(`${uniqueId}-full`);
+    const btn = document.getElementById(`${uniqueId}-btn`);
+    
+    if (preview && full && btn) {
+      const isExpanded = full.classList.contains('hidden');
+      
+      if (isExpanded) {
+        // Expand
+        preview.classList.add('hidden');
+        full.classList.remove('hidden');
+        btn.textContent = 'Show less';
+      } else {
+        // Collapse
+        preview.classList.remove('hidden');
+        full.classList.add('hidden');
+        btn.textContent = 'Read more';
+      }
+    }
+  },
+
+  /**
+   * Clear commentary/insights - hide section when no verses highlighted
+   */
+  clearCommentary() {
+    const commentarySection = document.getElementById('commentarySection');
+    const commentaryContent = document.getElementById('commentaryContent');
+    
+    // Hide the entire commentary section
+    if (commentarySection) commentarySection.classList.add('hidden');
+    if (commentaryContent) commentaryContent.classList.add('hidden');
+    
+    this.quickInsightsData = null;
+    this.tyndaleData = null;
+    
+    // Hide AI reflection card
+    const aiReflectCard = document.getElementById('aiReflectCard');
+    if (aiReflectCard) aiReflectCard.classList.add('hidden');
+  },
+
+  /**
+   * Go to previous chapter
+   */
+  prevChapter() {
+    if (this.currentChapter > 1) {
+      this.loadChapter(this.currentBook, this.currentChapter - 1);
+    }
+  },
+
+  /**
+   * Go to next chapter
+   */
+  nextChapter() {
+    const totalChapters = (typeof BiblePicker !== 'undefined') 
+      ? BiblePicker.books[this.currentBook]?.chapters || 1
+      : 1;
+    
+    if (this.currentChapter < totalChapters) {
+      this.loadChapter(this.currentBook, this.currentChapter + 1);
+    }
+  },
+
+  /**
+   * Get currently highlighted verses (for saving devotion)
+   */
+  getHighlightedVerses() {
+    return this.highlightedVerses;
+  },
+
+  /**
+   * Get current reading info (for saving devotion)
+   */
+  getCurrentReading() {
+    return {
+      book: this.currentBook,
+      chapter: this.currentChapter,
+      highlightedVerses: this.highlightedVerses // Return full objects with color info
+    };
+  },
+
+  /**
+   * Show error message
+   */
+  showError(message) {
+    if (this.elements.bibleText) {
+      this.elements.bibleText.innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-[var(--mission-red-bright)] text-sm">${message}</p>
+          <button onclick="BibleReader.loadChapter('JHN', 1)" class="mt-4 text-[var(--mission-gold)] text-xs hover:underline">
+            Start with John 1
+          </button>
+        </div>
+      `;
+    }
+  }
+};
+
+// Auto-initialize when DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Wait a bit for other modules to load
+    setTimeout(() => BibleReader.init(), 100);
+  });
+} else {
+  setTimeout(() => BibleReader.init(), 100);
+}
+
+// Export
+if (typeof window !== 'undefined') {
+  window.BibleReader = BibleReader;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = BibleReader;
+}

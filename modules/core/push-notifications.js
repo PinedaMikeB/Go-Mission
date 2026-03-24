@@ -14,6 +14,9 @@ const PushNotifications = {
   isSupported: false,
   permissionStatus: 'default',
   swRegistration: null,
+  lifecycleListenersBound: false,
+  syncPromise: null,
+  pendingTokenStorageKey: 'goMission.pendingPushToken',
   
   /**
    * Initialize push notifications
@@ -35,19 +38,26 @@ const PushNotifications = {
     this.isSupported = true;
     this.permissionStatus = Notification.permission;
     
-    // Register service worker
     try {
-      this.swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('[PushNotifications] Service Worker registered:', this.swRegistration.scope);
-      
-      // Wait for service worker to be ready
-      await navigator.serviceWorker.ready;
-      console.log('[PushNotifications] Service Worker ready');
-      
-      // If already granted, get token
-      if (this.permissionStatus === 'granted') {
-        await this.getToken();
+      this.swRegistration =
+        await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js') ||
+        await navigator.serviceWorker.getRegistration();
+
+      if (!this.swRegistration) {
+        this.swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          updateViaCache: 'none'
+        });
+        console.log('[PushNotifications] Service Worker registered:', this.swRegistration.scope);
+      } else {
+        console.log('[PushNotifications] Reusing Service Worker:', this.swRegistration.scope);
       }
+
+      // Wait for the active service worker before using push APIs
+      this.swRegistration = await navigator.serviceWorker.ready;
+      console.log('[PushNotifications] Service Worker ready');
+      this.bindLifecycleListeners();
+      
+      await this.syncPermissionAndToken('init');
       
       // Set up foreground message handler
       this.setupForegroundHandler();
@@ -89,7 +99,7 @@ const PushNotifications = {
       console.log('[PushNotifications] Permission:', permission);
       
       if (permission === 'granted') {
-        await this.getToken();
+        await this.syncPermissionAndToken('permission_granted');
         return true;
       }
       
@@ -189,22 +199,36 @@ const PushNotifications = {
    * Register FCM token with Firebase
    */
   async registerTokenWithBackend(token) {
+    const normalizedToken = String(token || '').trim();
+    if (!normalizedToken) return false;
+
     if (!window.currentUser || !window.db) {
       console.log('[PushNotifications] User not logged in, will register later');
+      this.storePendingToken(normalizedToken);
       return;
     }
     
     try {
-      // Add token to user's document
-      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
-      await window.setDoc(userRef, {
-        fcmTokens: window.arrayUnion(token),
-        lastTokenUpdate: window.serverTimestamp()
-      }, { merge: true });
+      const registerCallable = this.getRegisterCallable();
+      if (registerCallable) {
+        await registerCallable({ token: normalizedToken });
+      } else {
+        const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+        await window.setDoc(userRef, {
+          fcmTokens: window.arrayUnion(normalizedToken),
+          lastTokenUpdate: window.serverTimestamp(),
+          lastTokenUpdateIso: new Date().toISOString(),
+          notificationPermission: this.permissionStatus || Notification.permission || 'default'
+        }, { merge: true });
+      }
+      this.clearPendingToken();
       
       console.log('[PushNotifications] Token registered with backend for user:', window.currentUser.uid);
+      return true;
     } catch (error) {
       console.error('[PushNotifications] Backend registration error:', error);
+      this.storePendingToken(normalizedToken);
+      return false;
     }
   },
   
@@ -215,15 +239,179 @@ const PushNotifications = {
     if (!this.token || !window.currentUser || !window.db) return;
     
     try {
-      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
-      await window.setDoc(userRef, {
-        fcmTokens: window.arrayRemove(this.token)
-      }, { merge: true });
+      const unregisterCallable = this.getUnregisterCallable();
+      if (unregisterCallable) {
+        await unregisterCallable({ token: this.token });
+      } else {
+        const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+        await window.setDoc(userRef, {
+          fcmTokens: window.arrayRemove(this.token)
+        }, { merge: true });
+      }
       
       console.log('[PushNotifications] Token unregistered');
+      this.clearPendingToken();
       this.token = null;
     } catch (error) {
       console.error('[PushNotifications] Unregister error:', error);
+    }
+  },
+
+  getRegisterCallable() {
+    if (!window.httpsCallable || !window.functions) return null;
+    try {
+      return window.httpsCallable(window.functions, 'registerToken');
+    } catch (error) {
+      console.warn('[PushNotifications] Could not create registerToken callable:', error);
+      return null;
+    }
+  },
+
+  getUnregisterCallable() {
+    if (!window.httpsCallable || !window.functions) return null;
+    try {
+      return window.httpsCallable(window.functions, 'unregisterToken');
+    } catch (error) {
+      console.warn('[PushNotifications] Could not create unregisterToken callable:', error);
+      return null;
+    }
+  },
+
+  storePendingToken(token) {
+    try {
+      localStorage.setItem(this.pendingTokenStorageKey, String(token || '').trim());
+    } catch (error) {
+      console.warn('[PushNotifications] Could not persist pending token:', error);
+    }
+  },
+
+  loadPendingToken() {
+    try {
+      return String(localStorage.getItem(this.pendingTokenStorageKey) || '').trim();
+    } catch (error) {
+      console.warn('[PushNotifications] Could not read pending token:', error);
+      return '';
+    }
+  },
+
+  clearPendingToken() {
+    try {
+      localStorage.removeItem(this.pendingTokenStorageKey);
+    } catch (error) {
+      console.warn('[PushNotifications] Could not clear pending token:', error);
+    }
+  },
+
+  async flushPendingTokenRegistration() {
+    const pendingToken = this.loadPendingToken();
+    if (!pendingToken || !window.currentUser) return false;
+    console.log('[PushNotifications] Flushing pending token registration');
+    return this.registerTokenWithBackend(pendingToken);
+  },
+
+  async syncPermissionAndToken(reason = 'manual') {
+    if (this.syncPromise) {
+      return this.syncPromise;
+    }
+
+    this.syncPromise = (async () => {
+      this.permissionStatus = ('Notification' in window) ? Notification.permission : 'default';
+      console.log('[PushNotifications] Sync permission/token:', reason, this.permissionStatus);
+
+      if (this.permissionStatus !== 'granted') {
+        await this.maybeResolveAdminRepairRequest(false, reason);
+        return false;
+      }
+
+      await this.flushPendingTokenRegistration();
+      const token = await this.getToken();
+      const success = !!token;
+      await this.maybeResolveAdminRepairRequest(success, reason);
+      return success;
+    })();
+
+    try {
+      return await this.syncPromise;
+    } finally {
+      this.syncPromise = null;
+    }
+  },
+
+  bindLifecycleListeners() {
+    if (this.lifecycleListenersBound) return;
+    this.lifecycleListenersBound = true;
+
+    window.addEventListener('focus', () => {
+      this.syncPermissionAndToken('window_focus').catch((error) => {
+        console.warn('[PushNotifications] Focus sync failed:', error);
+      });
+    });
+
+    window.addEventListener('online', () => {
+      this.syncPermissionAndToken('network_online').catch((error) => {
+        console.warn('[PushNotifications] Online sync failed:', error);
+      });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      this.syncPermissionAndToken('visibility_change').catch((error) => {
+        console.warn('[PushNotifications] Visibility sync failed:', error);
+      });
+    });
+  },
+
+  toDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    if (typeof value?.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  },
+
+  async maybeResolveAdminRepairRequest(success, reason = 'manual') {
+    if (!window.currentUser || !window.db || !window.doc || !window.getDoc || !window.setDoc || !window.serverTimestamp) {
+      return false;
+    }
+
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const snap = await window.getDoc(userRef);
+      if (!snap.exists()) return false;
+
+      const data = snap.data() || {};
+      const requestedAt = this.toDate(data.pushRepairRequestedAt || data.pushRepairRequestedAtIso);
+      if (!requestedAt) return false;
+
+      const handledAt = this.toDate(data.pushRepairLastHandledAt || data.pushRepairLastHandledAtIso);
+      if (handledAt && handledAt.getTime() >= requestedAt.getTime()) {
+        return false;
+      }
+
+      const resultCode = success
+        ? 'push_ready'
+        : (this.permissionStatus === 'granted'
+          ? 'token_missing'
+          : `permission_${this.permissionStatus || 'default'}`);
+
+      await window.setDoc(userRef, {
+        pushRepairLastHandledAt: window.serverTimestamp(),
+        pushRepairLastHandledAtIso: new Date().toISOString(),
+        pushRepairLastResult: resultCode,
+        pushRepairLastReason: String(reason || 'manual'),
+        notificationPermission: this.permissionStatus || 'default'
+      }, { merge: true });
+
+      console.log('[PushNotifications] Resolved admin repair request:', resultCode);
+      return true;
+    } catch (error) {
+      console.warn('[PushNotifications] Could not resolve admin repair request:', error);
+      return false;
     }
   },
   

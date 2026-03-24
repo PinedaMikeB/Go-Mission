@@ -1,0 +1,3445 @@
+<!DOCTYPE html>
+<!-- TEST: Dev branch deployment - 2026-02-07 -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Mission - Making Disciple-Making Leaders</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    
+    <!-- Auto-Update System - MUST BE FIRST for elderly users -->
+    <script>
+        // Auto-generated build timestamp - changes on every deployment
+        const BUILD_TIMESTAMP = '1769521046000';
+    </script>
+    <script src="/modules/core/auto-update.js"></script>
+    
+    <!-- PWA Auto-Calibration: Redirect to clean URL when opened from home screen -->
+    <script>
+        (function() {
+            // Check if running as installed PWA (standalone mode)
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone === true;
+            
+            // If PWA and URL has parameters or is on install page, clean it
+            if (isStandalone) {
+                const url = new URL(window.location.href);
+                const hasParams = url.search.length > 0;
+                const isInstallPage = url.pathname.includes('install');
+                
+                if (hasParams || isInstallPage) {
+                    console.log('[PWA] Cleaning URL for standalone mode');
+                    // Redirect to clean home page
+                    window.location.replace(url.origin + '/');
+                }
+            }
+        })();
+    </script>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Go Mission">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Design System - Single source of truth for all styles -->
+    <link rel="stylesheet" href="./modules/core/design-system.css">
+    
+    <style>
+        :root {
+            /* ============================================
+               STITCH MINIMAL 3-COLOR DARK MODE PALETTE
+               Colors: Dark Burgundy + White/Stone + Gold (sparingly)
+               ============================================ */
+            
+            /* Core brand colors */
+            --mission-red-deep: #1A0A0A;      /* Very dark burgundy - main bg */
+            --mission-red-mid: #2D0F0F;       /* Card background */
+            --mission-red-bright: #7A0000;    /* Primary buttons */
+            --mission-gold: #FFD700;          /* Gold - USE SPARINGLY! */
+            --mission-gold-dim: #78716c;      /* Stone-500 for inactive states */
+            --mission-text: #f5f5f4;          /* Stone-100 - primary text */
+            --mission-text-muted: #a8a29e;    /* Stone-400 - secondary text */
+            --mission-text-dim: #78716c;      /* Stone-500 - inactive text */
+            --text-dim: #78716c;              /* Alias for easier use */
+            
+            /* Dark Theme (default) - Stitch Minimal Design */
+            --bg-color: #1A0A0A;
+            --bg-secondary: #1A0A0A;
+            --text-color: #f5f5f4;            /* Stone-100 */
+            --text-muted: #a8a29e;            /* Stone-400 */
+            --card-bg: rgba(45, 15, 15, 0.85);
+            --card-bg-solid: #2D0F0F;
+            --card-border: rgba(120, 113, 108, 0.15); /* Stone-500 at 15% */
+            --nav-bg: rgba(26, 10, 10, 0.95);
+            --nav-border: rgba(120, 113, 108, 0.15);
+            --nav-inactive: #78716c;          /* Stone-500 */
+            --input-bg: rgba(0, 0, 0, 0.2);
+            --input-border: rgba(255, 255, 255, 0.05);
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            
+            /* Accent usage - MINIMAL GOLD */
+            --accent-active: var(--mission-gold);      /* Only for active/current states */
+            --accent-inactive: #44403c;               /* Stone-700 for inactive */
+            --accent-border: rgba(255, 215, 0, 0.2);  /* Subtle gold border */
+            --accent-glow: rgba(255, 215, 0, 0.4);    /* Gold glow effect */
+        }
+
+        /* ============================================
+           LIGHT MODE - Stitch Cream/Burgundy Design
+           ============================================ */
+        .light-mode {
+            /* Backgrounds - Cream tones */
+            --bg-color: #F9F6F2;              /* Warm cream background */
+            --bg-secondary: #F9F6F2;
+            --card-bg: #FFFFFF;
+            --card-bg-solid: #FFFFFF;
+            --card-inner: #F5F2EE;            /* Inner card sections */
+            
+            /* Text - Deep burgundy palette */
+            --text-color: #7B0000;            /* Primary burgundy for headings */
+            --text-body: #44403c;             /* Stone-700 for body text */
+            --text-muted: #78716c;            /* Stone-500 */
+            --text-dim: #a8a29e;              /* Stone-400 */
+            
+            /* Borders & UI */
+            --card-border: rgba(123, 0, 0, 0.1);   /* Subtle burgundy border */
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --nav-border: rgba(123, 0, 0, 0.1);
+            --nav-inactive: #a8a29e;          /* Stone-400 */
+            --input-bg: rgba(123, 0, 0, 0.03);
+            --input-border: rgba(123, 0, 0, 0.1);
+            --shadow-color: rgba(123, 0, 0, 0.08);
+            
+            /* Accents - Gold for active only */
+            --accent-active: #D4A017;         /* Slightly darker gold for light mode */
+            --accent-inactive: #E5E7EB;       /* Light gray for inactive */
+            --accent-glow: rgba(212, 160, 23, 0.3);
+            
+            /* Stepper specific */
+            --stepper-line: #E5E7EB;          /* Light gray line */
+            --stepper-line-active: #D4A017;   /* Gold active line */
+            --stepper-dot-inactive: #E5E7EB;
+            --stepper-dot-border: #FFFFFF;
+        }
+        
+        /* Dark mode stepper variables */
+        :root {
+            --stepper-line: #44403c;
+            --stepper-line-active: var(--mission-gold);
+            --stepper-dot-inactive: #44403c;
+            --stepper-dot-border: var(--card-bg-solid);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .font-mission { font-family: 'Cinzel', serif; }
+        .font-display { font-family: 'Playfair Display', serif; }
+
+        .bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(26, 10, 10, 0.88), rgba(26, 10, 10, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        .light-mode.bg-mission-sunset {
+            background: linear-gradient(to bottom, rgba(252, 250, 242, 0.85), rgba(252, 250, 242, 0.95)), 
+                        url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .mission-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 20px var(--shadow-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .light-mode .mission-card {
+            backdrop-filter: none;
+        }
+        
+        .light-mode .checkbox-custom {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        /* Light mode overrides for hardcoded dark colors */
+        .light-mode .bg-black\/40,
+        .light-mode .bg-black\/30,
+        .light-mode .bg-black\/60 {
+            background: rgba(42, 5, 5, 0.05) !important;
+        }
+        
+        .light-mode .border-white\/5,
+        .light-mode .border-white\/10 {
+            border-color: rgba(42, 5, 5, 0.08) !important;
+        }
+        
+        .light-mode .text-white {
+            color: #2a0505 !important;
+        }
+        
+        .light-mode .text-slate-200,
+        .light-mode .text-slate-300 {
+            color: #475569 !important;
+        }
+        
+        .light-mode .text-slate-400,
+        .light-mode .text-slate-500,
+        .light-mode .text-slate-600 {
+            color: #64748b !important;
+        }
+        
+        .light-mode .toggle-switch {
+            background: rgba(123, 0, 0, 0.1);
+        }
+        
+        /* Light mode - AI reflection card text */
+        .light-mode #aiReflectCard,
+        .light-mode #commentaryContent {
+            background: rgba(123, 0, 0, 0.03) !important;
+        }
+        
+        .light-mode #aiReflectCard p,
+        .light-mode #aiReflectCard .text-amber-100,
+        .light-mode #reflectionQuestion {
+            color: #374151 !important;
+        }
+        
+        /* Light mode - Reading toolbar */
+        .light-mode #readingToolbar {
+            background: rgba(42, 5, 5, 0.05);
+        }
+        
+        .light-mode #readingToolbar button {
+            background: rgba(42, 5, 5, 0.08);
+            color: #475569;
+        }
+        
+        .light-mode #readingToolbar button:hover {
+            background: rgba(251, 191, 36, 0.2);
+            color: #d97706;
+        }
+        
+        /* Fullscreen overlay light mode */
+        .light-mode #bibleFullscreenOverlay {
+            background: var(--bg-color);
+        }
+
+        .mission-button {
+            background: var(--mission-red-bright);
+            border: none;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(122, 0, 0, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .mission-button:active { transform: scale(0.97); filter: brightness(1.1); }
+        .mission-button:hover { filter: brightness(1.1); background: #8B0000; }
+        .mission-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Journey Stepper Dots - Stitch Style */
+        .progress-dot {
+            width: 18px; 
+            height: 18px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .progress-dot.active {
+            background: var(--accent-active);
+            border: 4px solid var(--stepper-dot-border, var(--card-bg-solid));
+            box-shadow: 0 0 12px var(--accent-glow, rgba(255, 215, 0, 0.5));
+        }
+        .progress-dot.inactive {
+            background: var(--stepper-dot-inactive, #E5E7EB);
+            border: 4px solid var(--stepper-dot-border, var(--card-bg-solid));
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Light mode specific stepper overrides */
+        .light-mode .progress-dot.inactive {
+            background: #E5E7EB;
+            border-color: #FFFFFF;
+        }
+        .light-mode .progress-dot.active {
+            border-color: #FFFFFF;
+        }
+        
+        /* Journey Phase Card - Different bg for light/dark */
+        .journey-phase-card {
+            background: rgba(0, 0, 0, 0.2);  /* Dark mode default */
+        }
+        .light-mode .journey-phase-card {
+            background: #F5F2EE;              /* Warm cream for light mode */
+            border-color: rgba(123, 0, 0, 0.08);
+        }
+        
+        /* === EXACT COPY FROM PROTOTYPE - STAGE NODE === */
+        .stage-node {
+            width: 100px;
+            height: 100px;
+            background: var(--node-bg);
+            border: 5px solid var(--node-border);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 4px 12px var(--node-shadow);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            margin-bottom: 1rem;
+            z-index: 2;
+        }
+
+        .light-mode .stage-node {
+            box-shadow:
+                0 4px 12px rgba(139, 69, 19, 0.15),
+                0 8px 24px rgba(210, 105, 30, 0.1),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8);
+        }
+        
+        .stage-node:hover {
+            transform: scale(1.08) translateY(-5px);
+        }
+        
+        /* Current Stage - EXACT FROM PROTOTYPE */
+        .stage.current .stage-node {
+            background: var(--node-current);
+            border-color: #fbbf24;
+            border-width: 6px;
+            animation: currentPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+        }
+        
+        @keyframes currentPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); }
+            50% { transform: scale(1.05); box-shadow: 0 0 35px rgba(251, 191, 36, 0.7); }
+        }
+        
+        /* Completed Stage */
+        .stage.completed .stage-node {
+            border-color: var(--node-completed);
+        }
+
+        .light-mode .stage.completed .stage-node {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 50%, #b1dfbb 100%);
+        }
+        
+        .stage.completed .stage-node::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 32px;
+            height: 32px;
+            background: var(--node-completed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .light-mode .stage.completed .stage-node::after {
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        /* === PATH LINE - EXACT FROM PROTOTYPE === */
+        .path-wrapper {
+            position: relative;
+            margin-top: 0.85rem;
+            padding: 2rem 0 1rem;
+        }
+        
+        .path-line-container {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            height: 8px;
+            z-index: 0;
+            overflow: visible;
+            padding: 0 2rem;
+        }
+        
+        .path-line {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            background: var(--path-line);
+            border-radius: 10px;
+        }
+        
+        .path-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, var(--path-glow) 50%, transparent 100%);
+            background-size: 200px 100%;
+            animation: flowRight 3s linear infinite;
+            border-radius: 10px;
+        }
+        
+        @keyframes flowRight {
+            from { background-position: -200px 0; }
+            to { background-position: calc(100% + 200px) 0; }
+        }
+        
+        .path-line::after {
+            content: '▶';
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: var(--text-accent);
+            animation: slideRight 2s ease-in-out infinite;
+        }
+        
+        @keyframes slideRight {
+            0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+            50% { transform: translateY(-50%) translateX(8px); opacity: 0.7; }
+        }
+        
+        /* === STAGES SCROLL - EXACT FROM PROTOTYPE === */
+        .stages-scroll {
+            display: flex;
+            gap: 1.25rem;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding: 1rem 1rem 1rem;
+            scrollbar-width: none;
+        }
+        
+        .stages-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* === STAGE ITEM - EXACT FROM PROTOTYPE === */
+        .stage {
+            flex: 0 0 auto;
+            width: calc(50% - 0.75rem);
+            min-width: 160px;
+            max-width: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            scroll-snap-align: start;
+        }
+        
+        /* Journey text colors */
+        .journey-quote {
+            color: var(--text-muted);
+        }
+        .light-mode .journey-quote {
+            color: #57534e;                   /* Stone-600 - readable on cream */
+        }
+        .journey-next {
+            color: var(--text-muted);
+        }
+        .light-mode .journey-next {
+            color: #78716c;                   /* Stone-500 */
+        }
+        .light-mode .journey-next span:last-child {
+            color: var(--text-color);         /* Burgundy for emphasis */
+        }
+        
+        /* Stepper line colors */
+        .stepper-line-bg {
+            background: var(--stepper-line, #44403c);
+        }
+        .light-mode .stepper-line-bg {
+            background: #E5E7EB;
+        }
+        .stepper-line-active {
+            background: var(--accent-active);
+        }
+        
+        /* Devotion content area - Same cream bg as Journey phase card */
+        .devotion-content-area {
+            background: rgba(0, 0, 0, 0.2);  /* Dark mode */
+        }
+        .light-mode .devotion-content-area {
+            background: #F5F2EE;              /* Cream for light mode */
+        }
+        
+        /* Tap to Read button - Same style as journey quote text */
+        .tap-read-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 215, 0, 0.2);
+            color: var(--accent-active);
+        }
+        .light-mode .tap-read-btn {
+            background: rgba(123, 0, 0, 0.05);
+            border-color: rgba(123, 0, 0, 0.15);
+            color: #57534e;                   /* Stone-600 - same as journey quote */
+        }
+
+        /* Bible verse styles */
+        .verse { 
+            padding: 8px 4px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: background 0.2s;
+            line-height: 1.8;
+        }
+        .verse:hover { background: rgba(255, 255, 255, 0.05); }
+        .verse.highlighted { background: rgba(255, 215, 0, 0.15); }
+        .verse-num { 
+            font-size: 10px; 
+            color: var(--mission-gold); 
+            font-weight: bold;
+            vertical-align: super;
+            margin-right: 4px;
+        }
+
+        /* Language toggle */
+        .lang-toggle {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2px;
+        }
+        .lang-btn {
+            padding: 4px 12px;
+            border-radius: 18px;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .lang-btn.active {
+            background: var(--mission-gold);
+            color: var(--mission-red-deep);
+        }
+        .lang-btn:not(.active) {
+            color: var(--text-muted);
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-switch.active { background: var(--mission-gold); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle-switch.active::after { transform: translateX(20px); }
+
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fade-up 0.4s ease-out forwards; }
+        
+        /* Slow pulse animation for loading logo */
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+        
+        /* Header/Nav hide on scroll */
+        .nav-hidden {
+            transform: translateY(-100%);
+        }
+        .nav-hidden-bottom {
+            transform: translateY(100%);
+        }
+        #appHeader, #appBottomNav {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 162, 158, 0.2); border-radius: 10px; }
+
+        .stat-number { color: var(--mission-gold); }
+
+        /* Global Language Toggle */
+        .lang-toggle-btn {
+            color: var(--text-muted);
+            background: transparent;
+            cursor: pointer;
+            border: none;
+        }
+        .lang-toggle-btn.active {
+            color: var(--mission-gold);
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+        }
+        .lang-toggle-btn:hover:not(.active) {
+            color: var(--text-color);
+        }
+        
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+        }
+        .theme-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        .light-mode .theme-toggle-btn {
+            background: rgba(42, 5, 5, 0.05);
+            border-color: rgba(42, 5, 5, 0.15);
+            color: var(--mission-red-mid);
+        }
+        .light-mode .theme-toggle-btn:hover {
+            background: rgba(42, 5, 5, 0.1);
+        }
+
+        /* ============================================
+           WELCOME MODAL STYLES
+           ============================================ */
+        .welcome-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg-color) 0%, var(--card-bg-solid) 50%, #2d0808 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .light-mode .welcome-overlay {
+            background: linear-gradient(135deg, #fef3e2 0%, #fff8ed 50%, #fef3e2 100%);
+        }
+
+        .welcome-overlay::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(217, 74, 0, 0.06) 0%, transparent 50%);
+            animation: welcomeAmbientFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes welcomeAmbientFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(5deg); }
+            66% { transform: translate(-20px, 20px) rotate(-3deg); }
+        }
+
+        .welcome-particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .welcome-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--mission-gold);
+            border-radius: 50%;
+            opacity: 0;
+            animation: welcomeParticleRise 8s ease-in-out infinite;
+        }
+
+        .welcome-particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .welcome-particle:nth-child(2) { left: 20%; animation-delay: 1.5s; }
+        .welcome-particle:nth-child(3) { left: 35%; animation-delay: 3s; }
+        .welcome-particle:nth-child(4) { left: 50%; animation-delay: 0.5s; }
+        .welcome-particle:nth-child(5) { left: 65%; animation-delay: 2s; }
+        .welcome-particle:nth-child(6) { left: 80%; animation-delay: 4s; }
+        .welcome-particle:nth-child(7) { left: 90%; animation-delay: 1s; }
+
+        @keyframes welcomeParticleRise {
+            0% { bottom: -10px; opacity: 0; transform: scale(0.5); }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.3; }
+            100% { bottom: 100vh; opacity: 0; transform: scale(1.5); }
+        }
+
+        .welcome-content {
+            position: relative;
+            z-index: 10;
+            max-width: 100%;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.5rem;
+            overflow: hidden;
+        }
+
+        .welcome-header {
+            text-align: center;
+            padding-top: 1.5rem;
+            opacity: 0;
+            animation: welcomeFadeSlideDown 1.2s ease-out 0.3s forwards;
+        }
+
+        @keyframes welcomeFadeSlideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-eyebrow {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 0.4em;
+            color: var(--mission-gold);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .welcome-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            font-weight: 400;
+            color: var(--text-color);
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-title em {
+            font-style: italic;
+            color: var(--mission-gold);
+        }
+
+        .welcome-subtitle {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(1rem, 3vw, 1.25rem);
+            color: var(--text-muted);
+            font-style: italic;
+            margin-top: 0.5rem;
+            max-width: 320px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+        .journey-carousel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem 0;
+            position: relative;
+        }
+
+        .carousel-container {
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            padding: 1rem 0;
+        }
+
+        .carousel-track {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0 2rem;
+            animation: carouselScroll 25s linear infinite;
+            width: max-content;
+        }
+
+        @keyframes carouselScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .carousel-track:hover {
+            animation-play-state: paused;
+        }
+
+        .stage-card-welcome {
+            flex-shrink: 0;
+            width: 160px;
+            background: linear-gradient(145deg, rgba(45, 15, 15, 0.9) 0%, rgba(26, 10, 10, 0.95) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            border-radius: 20px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .light-mode .stage-card-welcome {
+            background: linear-gradient(145deg, #ffffff 0%, #fff8ed 100%);
+            border-color: rgba(210, 105, 30, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .stage-card-welcome::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--mission-gold), transparent);
+            opacity: 0.5;
+        }
+
+        .stage-card-welcome:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(251, 191, 36, 0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(251, 191, 36, 0.1);
+        }
+
+        .stage-card-welcome.active-card {
+            border-color: var(--mission-gold);
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.2);
+        }
+
+        .stage-card-welcome.active-card .stage-number-welcome {
+            background: var(--mission-gold);
+            color: var(--bg-color);
+        }
+
+        .stage-number-welcome {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.15);
+            border: 2px solid rgba(251, 191, 36, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--mission-gold);
+            transition: all 0.3s ease;
+        }
+
+        .stage-icon-welcome {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stage-label-welcome {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stage-desc-welcome {
+            font-family: 'Instrument Serif', serif;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        .welcome-message-section {
+            text-align: center;
+            padding: 0.75rem 1rem;
+            opacity: 0;
+            animation: welcomeFadeSlideUp 1s ease-out 1s forwards;
+        }
+
+        @keyframes welcomeFadeSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .welcome-divider-line {
+            width: 40px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.6), transparent);
+        }
+
+        .welcome-divider-icon {
+            color: var(--mission-gold);
+            font-size: 1rem;
+        }
+
+        .welcome-message-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(1.1rem, 4vw, 1.4rem);
+            color: var(--text-color);
+            line-height: 1.6;
+            max-width: 340px;
+            margin: 0 auto 0.5rem;
+        }
+
+        .welcome-message-text .highlight {
+            color: var(--mission-gold);
+            font-weight: 600;
+        }
+
+        .welcome-verse {
+            font-family: 'Instrument Serif', serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .welcome-cta-section {
+            padding: 0.75rem 1.5rem 1.5rem;
+            opacity: 0;
+            animation: welcomeFadeSlideUp 1s ease-out 1.5s forwards;
+        }
+
+        .welcome-cta-button {
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1.25rem 2rem;
+            background: linear-gradient(135deg, #D94A00 0%, #b33d00 100%);
+            border: none;
+            border-radius: 16px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.1rem;
+            letter-spacing: 0.15em;
+            color: white;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(217, 74, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .welcome-cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .welcome-cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(217, 74, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .welcome-cta-button:hover::before {
+            left: 100%;
+        }
+
+        .welcome-cta-icon {
+            font-size: 1.25rem;
+            animation: welcomePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes welcomePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .welcome-cta-arrow {
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .welcome-cta-button:hover .welcome-cta-arrow {
+            transform: translateX(5px);
+        }
+
+        /* ============================================
+           ENHANCED JOURNEY PATH STYLES  
+           ============================================ */
+        .journey-path-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            color: var(--text-color);
+        }
+
+        .journey-path-subtitle {
+            font-family: 'Instrument Serif', serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .journey-path-verse-ref {
+            color: var(--mission-gold);
+            font-style: normal;
+        }
+
+        .journey-stage-node {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(139, 69, 19, 0.3) 0%, rgba(210, 105, 30, 0.2) 100%);
+            border: 3px solid rgba(251, 191, 36, 0.3);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .light-mode .journey-stage-node {
+            background: linear-gradient(135deg, #ffffff 0%, #fff8ed 100%);
+            border-color: rgba(210, 105, 30, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .journey-stage-node.completed {
+            border-color: #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+
+        .light-mode .journey-stage-node.completed {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+
+        .journey-stage-node.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .journey-stage-node.current {
+            border-color: var(--mission-gold);
+            border-width: 4px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(217, 74, 0, 0.1) 100%);
+            animation: currentNodePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes currentNodePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.2); }
+        }
+
+        .journey-stage-number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.25rem;
+            color: var(--mission-gold);
+            line-height: 1;
+        }
+
+        .journey-stage-icon {
+            font-size: 0.875rem;
+            margin-top: 2px;
+        }
+
+        .journey-stage-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.05em;
+            color: var(--text-color);
+            text-align: center;
+            margin-top: 0.5rem;
+            line-height: 1.2;
+        }
+
+        .journey-stage-desc {
+            font-family: 'Instrument Serif', serif;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-align: center;
+            font-style: italic;
+            max-width: 70px;
+            line-height: 1.3;
+            margin-top: 0.25rem;
+        }
+
+        .journey-you-are-here {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #D94A00;
+            color: white;
+            padding: 0.35rem 0.75rem;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+            border-radius: 20px;
+            animation: youAreHereBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes youAreHereBounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        .journey-path-line {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            right: 40px;
+            height: 4px;
+            background: linear-gradient(to right, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.1) 100%);
+            border-radius: 2px;
+            z-index: 0;
+        }
+
+        .journey-path-line-progress {
+            height: 100%;
+            background: linear-gradient(to right, var(--mission-gold) 0%, rgba(251, 191, 36, 0.6) 100%);
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .journey-path-arrow {
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--mission-gold);
+            font-size: 1rem;
+            animation: arrowSlide 2s ease-in-out infinite;
+        }
+
+        @keyframes arrowSlide {
+            0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+            50% { transform: translateY(-50%) translateX(5px); opacity: 0.6; }
+        }
+    </style>
+</head>
+<body class="bg-mission-sunset min-h-screen">
+    
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
+        <div class="text-center animate-fade-up">
+            <!-- Pulsing Logo Animation -->
+            <div class="relative mb-6">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--mission-red-bright)] to-[var(--mission-red-deep)] flex items-center justify-center animate-pulse-slow shadow-2xl shadow-[var(--mission-red-bright)]/30">
+                    <div class="text-center">
+                        <span class="text-[var(--mission-gold)] text-2xl">★</span>
+                        <div class="text-[var(--text-color)] text-[10px] font-bold tracking-[0.15em] mt-1">GO</div>
+                        <div class="text-[var(--text-color)] text-[8px] font-bold tracking-[0.1em]">MISSION</div>
+                    </div>
+                </div>
+                <!-- Rotating ring -->
+                <div class="absolute inset-0 w-24 h-24 border-2 border-transparent border-t-[var(--mission-gold)] rounded-full animate-spin"></div>
+            </div>
+            <p class="text-stone-500 text-xs font-medium uppercase tracking-widest">Loading</p>
+            <div class="flex justify-center gap-1 mt-2">
+                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                <span class="w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- WELCOME MODAL - Shows for new users -->
+    <div id="welcomeModal" class="welcome-overlay hidden">
+        <!-- Floating Particles -->
+        <div class="welcome-particles">
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+            <div class="welcome-particle"></div>
+        </div>
+
+        <div class="welcome-content">
+            <!-- Header -->
+            <div class="welcome-header">
+                <p class="welcome-eyebrow">✦ Go Mission ✦</p>
+                <h1 class="welcome-title">
+                    This is <em>Your Moment</em>
+                </h1>
+                <p class="welcome-subtitle" id="welcomeSubtitle">
+                    God has been preparing this journey just for you. It's no accident you're here.
+                </p>
+            </div>
+
+            <!-- Journey Cards Carousel -->
+            <div class="journey-carousel">
+                <div class="carousel-container">
+                    <div class="carousel-track">
+                        <!-- First set of cards -->
+                        <div class="stage-card-welcome active-card">
+                            <div class="stage-number-welcome">1</div>
+                            <div class="stage-icon-welcome">🌱</div>
+                            <div class="stage-label-welcome">SEEKER</div>
+                            <p class="stage-desc-welcome">Know God's love. Talk to God daily.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">2</div>
+                            <div class="stage-icon-welcome">📖</div>
+                            <div class="stage-label-welcome">DISCIPLE</div>
+                            <p class="stage-desc-welcome">Grow in your Mission Group. Be trained and love others.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">3</div>
+                            <div class="stage-icon-welcome">🤝</div>
+                            <div class="stage-label-welcome">DISCIPLE-MAKER</div>
+                            <p class="stage-desc-welcome">Lead others to follow Jesus.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">4</div>
+                            <div class="stage-icon-welcome">🏗️</div>
+                            <div class="stage-label-welcome">BUILDER</div>
+                            <p class="stage-desc-welcome">Build mission groups. Raise disciple-makers.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">5</div>
+                            <div class="stage-icon-welcome">🌟</div>
+                            <div class="stage-label-welcome">MULTIPLIER</div>
+                            <p class="stage-desc-welcome">Multiply movements across generations.</p>
+                        </div>
+                        
+                        <!-- Duplicate set for infinite scroll (Tagalog) -->
+                        <div class="stage-card-welcome active-card">
+                            <div class="stage-number-welcome">1</div>
+                            <div class="stage-icon-welcome">🌱</div>
+                            <div class="stage-label-welcome">NAGHAHANAP</div>
+                            <p class="stage-desc-welcome">Kilalanin ang pag-ibig ng Diyos. Makipag-usap sa Diyos araw-araw.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">2</div>
+                            <div class="stage-icon-welcome">📖</div>
+                            <div class="stage-label-welcome">ALAGAD</div>
+                            <p class="stage-desc-welcome">Lumago sa iyong Mission Group. Sanayin at mahalin ang iba.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">3</div>
+                            <div class="stage-icon-welcome">🤝</div>
+                            <div class="stage-label-welcome">TAGAPAG-HUBOG</div>
+                            <p class="stage-desc-welcome">Pangunahan ang iba na sumunod kay Jesus.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">4</div>
+                            <div class="stage-icon-welcome">🏗️</div>
+                            <div class="stage-label-welcome">TAGAPAG-TAYO</div>
+                            <p class="stage-desc-welcome">Magtayo ng mission groups. Magpalaki ng tagapag-hubog.</p>
+                        </div>
+                        <div class="stage-card-welcome">
+                            <div class="stage-number-welcome">5</div>
+                            <div class="stage-icon-welcome">🌟</div>
+                            <div class="stage-label-welcome">TAGAPAG-PARAMI</div>
+                            <p class="stage-desc-welcome">Paramihin ang mga kilusan sa mga henerasyon.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Section -->
+            <div class="welcome-message-section">
+                <div class="welcome-divider">
+                    <span class="welcome-divider-line"></span>
+                    <span class="welcome-divider-icon">✦</span>
+                    <span class="welcome-divider-line"></span>
+                </div>
+                <p class="welcome-message-text" id="welcomeMessageText">
+                    God has a <span class="highlight">purpose</span> for your life.<br>
+                    Today, your journey begins.
+                </p>
+                <p class="welcome-verse">— Jeremiah 29:11</p>
+            </div>
+
+            <!-- CTA Section -->
+            <div class="welcome-cta-section">
+                <button class="welcome-cta-button" onclick="WelcomeModal.startJourney()">
+                    <span class="welcome-cta-icon">🌅</span>
+                    <span id="welcomeCtaText" data-i18n="startYourJourney">START YOUR JOURNEY</span>
+                    <span class="welcome-cta-arrow">→</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
+        <div class="max-w-md w-full animate-fade-up">
+            <div class="text-center mb-8">
+                <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
+                <div class="flex justify-center gap-1 text-[var(--mission-gold)] mb-6">
+                    <span>★</span><span>★</span><span>★</span>
+                </div>
+                <h2 class="text-2xl font-black text-[var(--text-color)] leading-tight drop-shadow-xl">
+                    Making Disciple-<br/>Making Leaders
+                </h2>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Auth Mode Tabs -->
+                <div class="flex bg-[var(--card-bg)] rounded-xl p-1 border border-stone-700">
+                    <button id="tabSignIn" onclick="switchAuthMode('signin')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">
+                        Sign In
+                    </button>
+                    <button id="tabSignUp" onclick="switchAuthMode('signup')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all text-stone-400 hover:text-stone-300">
+                        Sign Up
+                    </button>
+                </div>
+                
+                <!-- Sign In Form -->
+                <div id="signInForm" class="space-y-4">
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <input type="email" id="signInEmail" placeholder="your@email.com"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <div class="relative">
+                            <input type="password" id="signInPassword" placeholder="••••••••"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signInPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="signInBtn" onclick="handleSignIn()" 
+                        class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-amber-500/20">
+                        🚀 Sign In
+                    </button>
+                    <div class="text-center">
+                        <button onclick="switchAuthMode('forgot')" class="text-stone-500 text-xs hover:text-[var(--mission-gold)] transition-colors">
+                            Forgot Password?
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Sign Up Form -->
+                <div id="signUpForm" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Full Name</label>
+                        <input type="text" id="signUpName" placeholder="Juan Dela Cruz"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                        <input type="email" id="signUpEmail" placeholder="your@email.com"
+                            class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
+                        <div class="relative">
+                            <input type="password" id="signUpPassword" placeholder="At least 6 characters"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signUpPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm Password</label>
+                        <div class="relative">
+                            <input type="password" id="signUpConfirmPassword" placeholder="Confirm your password"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                            <button type="button" onclick="togglePasswordVisibility('signUpConfirmPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="signUpBtn" onclick="handleSignUp()" 
+                        class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95 hover:shadow-lg hover:shadow-green-500/20">
+                        ✨ Create Account
+                    </button>
+                </div>
+                
+                <!-- Forgot Password Form -->
+                <div id="forgotPasswordForm" class="hidden space-y-4">
+                    <!-- Step 1: Enter Email -->
+                    <div id="forgotStep1" class="space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Enter your email and we'll send you a verification code</p>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+                            <input type="email" id="forgotEmail" placeholder="your@email.com"
+                                class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors">
+                        </div>
+                        <button id="sendResetCodeBtn" onclick="handleSendResetCode()" 
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            📧 Send Verification Code
+                        </button>
+                        <div class="text-center">
+                            <button onclick="switchAuthMode('signin')" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                                ← Back to Sign In
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Enter Code -->
+                    <div id="forgotStep2" class="hidden space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Enter the 6-digit code sent to <span id="forgotEmailDisplay" class="text-[var(--mission-gold)]"></span></p>
+                        </div>
+                        <div class="flex justify-center gap-2">
+                            <input type="text" id="resetCode1" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode2')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode2" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode3')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode3" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode4')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode4" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode5')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode5" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, 'resetCode6')" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="text" id="resetCode6" maxlength="1" class="w-12 h-14 text-center text-2xl font-bold bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] focus:border-[var(--mission-gold)] focus:outline-none" onkeyup="moveToNextResetCode(this, null)" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
+                        <button id="verifyResetCodeBtn" onclick="handleVerifyResetCode()" 
+                            class="w-full p-4 bg-gradient-to-r from-[var(--mission-gold)] to-amber-600 text-[var(--mission-red-deep)] font-bold rounded-xl transition-all active:scale-95">
+                            ✓ Verify Code
+                        </button>
+                        <div class="text-center">
+                            <button onclick="resetForgotPassword()" class="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                                ← Use different email
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: New Password -->
+                    <div id="forgotStep3" class="hidden space-y-4">
+                        <div class="text-center mb-4">
+                            <p class="text-stone-400 text-sm">Create your new password</p>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">New Password</label>
+                            <div class="relative">
+                                <input type="password" id="newPassword" placeholder="At least 6 characters"
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                                <button type="button" onclick="togglePasswordVisibility('newPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-stone-400 text-xs font-bold uppercase tracking-wider mb-2">Confirm New Password</label>
+                            <div class="relative">
+                                <input type="password" id="confirmNewPassword" placeholder="Confirm new password"
+                                    class="w-full p-4 bg-[var(--input-bg)] border border-stone-700 rounded-xl text-[var(--text-color)] placeholder-stone-500 focus:border-[var(--mission-gold)] focus:outline-none transition-colors pr-12">
+                                <button type="button" onclick="togglePasswordVisibility('confirmNewPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="resetPasswordBtn" onclick="handleResetPassword()" 
+                            class="w-full p-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-xl transition-all active:scale-95">
+                            🔐 Reset Password
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="errorMessage" class="hidden mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm"></div>
+                <div id="successMessage" class="hidden mt-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm"></div>
+            </div>
+            <p class="text-center text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mt-8">
+                Tuklasin ang Misyon Ni God!
+            </p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <!-- Header - Minimal Design -->
+        <header id="appHeader" class="bg-[var(--nav-bg)]/80 border-b border-[var(--nav-border)] fixed top-0 left-0 right-0 z-40 transition-all duration-300 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-[var(--accent-active)] text-sm">★</span>
+                    <span class="font-mission font-bold text-[var(--text-color)] tracking-widest text-lg">GO MISSION</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- Chat Icon -->
+                    <button id="headerChatBadge" onclick="GroupChat?.open(); Notifications?.markAsRead();" class="relative hidden text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Group Chat">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <span id="headerNotificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">0</span>
+                    </button>
+                    <!-- Notifications -->
+                    <button class="text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Notifications">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                    </button>
+                    <!-- Profile Avatar -->
+                    <div class="w-8 h-8 rounded-full bg-[var(--mission-red-bright)] flex items-center justify-center text-white text-xs font-bold ring-2 ring-[var(--accent-active)]/20">
+                        <span id="userInitial">M</span>
+                    </div>
+                    <img id="userPhoto" class="w-8 h-8 rounded-full ring-2 ring-[var(--card-border)] hidden" src="" alt="">
+                    <!-- Menu -->
+                    <button onclick="toggleMainMenu()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pb-6">
+            
+            <!-- 1. MY JOURNEY CARD (ALWAYS FIRST) - New Design -->
+            <div class="journey-card-container mb-4 animate-fade-up" id="journeyCard">
+                <!-- Header with Title and Subtitle -->
+                <div class="text-center mb-4 pt-2">
+                    <h2 class="journey-title" id="journeyCardTitle">
+                        <span>◆</span>
+                        <span id="journeyTitleText">MY JOURNEY</span>
+                        <span>◆</span>
+                    </h2>
+                    <p class="journey-subtitle" id="journeySubtitle">"The path of the righteous is like the morning sun, shining ever brighter"</p>
+                    <p class="journey-verse-ref">— Proverbs 4:18</p>
+                </div>
+                
+                <!-- Journey Path Wrapper -->
+                <div class="path-wrapper">
+                    <!-- Path Line (behind circles) -->
+                    <div class="path-line-container">
+                        <div class="path-line" id="journeyProgressLine"></div>
+                    </div>
+                    
+                    <!-- Stages Horizontal Scroll -->
+                    <div class="stages-scroll scrollbar-hide" id="journeyStagesScroll">
+                        <!-- Stage 1: Seeker -->
+                        <div class="stage current" id="stage-1-container" data-stage="1">
+                            <div class="stage-node" id="node-seeker">
+                                <span class="stage-number">1</span>
+                                <span class="stage-icon">🌱</span>
+                            </div>
+                            <div class="stage-content card-bordered">
+                                <h3 class="stage-title">SEEKER</h3>
+                                <p class="stage-description">Know God's love. Talk to God daily.</p>
+                                <!-- Button inside current stage card -->
+                                <button class="btn btn-primary btn-full mt-4 take-step-btn" onclick="NextStepsModal.open()">
+                                    <span>TAKE THE NEXT STEP TODAY</span>
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="you-are-here-container">
+                                <span class="badge badge-current" id="youAreHere">YOU ARE HERE</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 2: Disciple -->
+                        <div class="stage" id="stage-2-container" data-stage="2">
+                            <div class="stage-node" id="node-disciple">
+                                <span class="stage-number">2</span>
+                                <span class="stage-icon">📖</span>
+                            </div>
+                            <div class="stage-content card-bordered">
+                                <h3 class="stage-title">DISCIPLE</h3>
+                                <p class="stage-description">Grow in your Mission Group. Be trained and love others.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 3: Disciple-Maker -->
+                        <div class="stage" id="stage-3-container" data-stage="3">
+                            <div class="stage-node" id="node-disciple-maker">
+                                <span class="stage-number">3</span>
+                                <span class="stage-icon">🤝</span>
+                            </div>
+                            <div class="stage-content card-bordered">
+                                <h3 class="stage-title">DISCIPLE-MAKER</h3>
+                                <p class="stage-description">Lead others to follow Jesus.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 4: Builder -->
+                        <div class="stage" id="stage-4-container" data-stage="4">
+                            <div class="stage-node" id="node-builder">
+                                <span class="stage-number">4</span>
+                                <span class="stage-icon">🏗️</span>
+                            </div>
+                            <div class="stage-content card-bordered">
+                                <h3 class="stage-title">BUILDER</h3>
+                                <p class="stage-description">Build mission groups. Raise disciple-makers.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 5: Multiplier -->
+                        <div class="stage" id="stage-5-container" data-stage="5">
+                            <div class="stage-node" id="node-multiplier">
+                                <span class="stage-number">5</span>
+                                <span class="stage-icon">🌟</span>
+                            </div>
+                            <div class="stage-content card-bordered">
+                                <h3 class="stage-title">MULTIPLIER</h3>
+                                <p class="stage-description">Multiply movements across generations.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collapsible Section Header for Other Cards -->
+            <div class="flex items-center justify-between px-2 mb-3 cursor-pointer" onclick="toggleOtherCards()">
+                <span class="text-xs text-[var(--text-muted)] uppercase tracking-wider" id="otherCardsLabel">Iba pang Features</span>
+                <svg id="otherCardsChevron" class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+
+            <!-- Other Dashboard Cards - Hidden by default -->
+            <div id="otherCardsContent" class="hidden">
+
+            <!-- 2. MY DAY WITH THE LORD CARD (COLLAPSED - TAP TO OPEN) -->
+            <div class="mission-card rounded-3xl overflow-hidden mb-4 animate-fade-up" id="devotionCard">
+                <!-- Header with Menu -->
+                <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🔥</span>
+                        <div>
+                            <h2 class="text-base font-bold text-[var(--text-color)] leading-tight" data-i18n="myDayWithTheLord">My Day with the Lord</h2>
+                            <p class="text-xs text-[var(--accent-active)] font-medium" id="devotionDate"></p>
+                        </div>
+                    </div>
+                    <!-- Menu Button -->
+                    <button onclick="toggleDevotionMenu()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors" title="Menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Collapsed Bible Preview - Cream bg area like Journey phase card -->
+                <div class="devotion-content-area p-4 cursor-pointer transition-colors" onclick="BibleReader.enterFullscreen()">
+                    <!-- Passage Header -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <!-- Clickable Title - Opens Book/Chapter Picker -->
+                            <button onclick="event.stopPropagation(); BiblePicker.open();" class="flex items-center gap-1 text-[var(--text-color)] font-bold hover:text-amber-400 transition-colors">
+                                <span class="text-lg">📖</span>
+                                <span id="passageTitle">John 1</span>
+                                <svg class="w-4 h-4 text-amber-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            
+                            <!-- Translation Dropdown - Bible only, not global -->
+                            <select id="bibleTranslationPreview" 
+                                    onclick="event.stopPropagation();"
+                                    onchange="event.stopPropagation(); BibleReader.setBibleTranslation(this.value);"
+                                    class="text-xs px-2 py-1 rounded bg-[var(--input-bg)] text-[var(--text-color)] border border-[var(--card-border)] cursor-pointer">
+                                <option value="tl">TL</option>
+                                <option value="en">EN</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-[var(--text-muted)] uppercase font-medium" id="chapterProgress"></span>
+                            <div class="flex gap-1" id="chapterDots"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Verse Preview - Same style as Journey quote with left border -->
+                    <div id="bibleText" class="border-l-2 border-[var(--accent-active)]/40 pl-4 journey-quote text-sm italic leading-relaxed line-clamp-2 mb-4">
+                        <p class="text-[var(--text-muted)] text-center py-4">Loading...</p>
+                    </div>
+                    
+                    <!-- Tap to Read Button - Same color as quote text -->
+                    <button class="tap-read-btn w-full border-2 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <span>Tap to Read & Reflect</span>
+                    </button>
+                </div>
+                
+                <!-- Week Progress -->
+                <div class="px-4 pb-4">
+                    <div class="flex items-center justify-center gap-2 pt-3 border-t border-[var(--card-border)]">
+                        <span class="text-[10px] text-[var(--text-muted)]">This week:</span>
+                        <div class="flex gap-1" id="weekDots"></div>
+                        <span class="text-[10px] text-[var(--accent-active)] font-bold" id="weekCount">0/7 days</span>
+                    </div>
+                </div>
+                
+                <!-- Hidden elements needed by BibleReader -->
+                <div class="hidden">
+                    <div id="chapterNavigation"></div>
+                    <div id="readingToolbar"></div>
+                    <div id="commentarySection"><div id="commentaryContent"></div></div>
+                    <div id="reflectSection"></div>
+                    <div id="aiReflectCard"><p id="reflectionQuestion"></p></div>
+                    <textarea id="reflectionAnswer"></textarea>
+                    <div id="shareToggle"></div>
+                    <button id="saveDevotionBtn"><span id="saveBtnText">💾 Save This Day</span></button>
+                </div>
+            </div>
+            
+            <!-- DEVOTION MENU MODAL (Journal, Settings, etc) -->
+            <div id="devotionMenuModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)]/95 hidden">
+                <div class="flex flex-col h-full">
+                    <!-- Menu Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
+                        <h2 class="text-lg font-bold text-amber-500">📋 Menu</h2>
+                        <button onclick="toggleDevotionMenu()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Menu Items -->
+                    <div class="flex-1 p-4 space-y-3">
+                        <button onclick="openJournal()" class="w-full flex items-center gap-3 p-4 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 transition-colors">
+                            <span class="text-2xl">📖</span>
+                            <div class="text-left">
+                                <p class="font-bold text-amber-500">My Journal</p>
+                                <p class="text-xs text-[var(--text-muted)]">Review past devotions</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="BiblePicker.open(); toggleDevotionMenu();" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">🔍</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Choose Passage</p>
+                                <p class="text-xs text-[var(--text-muted)]">Select a book and chapter</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingPlan()" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">📅</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Reading Plan</p>
+                                <p class="text-xs text-[var(--text-muted)]">Follow a guided reading plan</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openReadingStats()" class="w-full flex items-center gap-3 p-4 bg-[var(--card-bg)] hover:bg-amber-500/10 rounded-xl border border-[var(--card-border)] transition-colors">
+                            <span class="text-2xl">📊</span>
+                            <div class="text-left">
+                                <p class="font-bold text-[var(--text-color)]">Reading Stats</p>
+                                <p class="text-xs text-[var(--text-muted)]">Your reading progress</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- REFLECTION POPUP MODAL (shown after exiting fullscreen) -->
+            <div id="reflectionPopupModal" class="fixed inset-0 z-[60] bg-[var(--bg-color)] hidden flex flex-col">
+                <div class="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full overflow-y-auto">
+                    <!-- Header -->
+                    <div class="flex items-center gap-2 mb-4 pt-4">
+                        <span class="text-2xl">🔥</span>
+                        <h2 class="text-xl font-bold text-amber-500 uppercase tracking-wide" id="reflectPopupTitle">PAGNILAYAN</h2>
+                    </div>
+                    
+                    <!-- AI Reflection Question Card -->
+                    <div class="mb-4 p-4 bg-[var(--card-bg)] rounded-xl border border-amber-500/30">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl">💭</span>
+                            <div>
+                                <p class="text-[10px] text-amber-500/70 font-bold uppercase tracking-wider mb-2">PAGNILAYAN</p>
+                                <p class="text-base text-[var(--text-color)] leading-relaxed italic" id="reflectPopupQuestion">"What is one thing God is inviting you to live out today?"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Previous Reflections (if any) -->
+                    <div id="previousReflectionsContainer" class="mb-4 hidden">
+                        <p class="text-xs text-[var(--text-muted)] mb-2">Previous reflections this session:</p>
+                        <div id="previousReflectionsList" class="space-y-2 max-h-32 overflow-y-auto"></div>
+                    </div>
+                    
+                    <!-- Reflection Input -->
+                    <textarea id="reflectionPopupAnswer" rows="4" autocomplete="off" class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl p-4 text-base text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50 resize-none mb-4" placeholder="Write your reflection here..."></textarea>
+                    
+                    <!-- Share Toggle -->
+                    <div class="flex items-start gap-3 mb-4 p-3 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)]">
+                        <div class="toggle-switch" id="sharePopupToggle" onclick="togglePopupShare()"></div>
+                        <div class="flex-1">
+                            <p class="text-sm text-[var(--text-color)] font-medium">Share with my group</p>
+                            <p class="text-[10px] text-[var(--text-muted)] mt-1">Help your leader walk with you</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="space-y-3 pb-4">
+                        <button onclick="saveAndContinueReading()" class="w-full py-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl font-bold text-amber-500 flex items-center justify-center gap-2 transition-colors">
+                            <span>📖</span> Save & Continue Reading
+                        </button>
+                        
+                        <button onclick="saveAndGoHome()" class="mission-button w-full py-4 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+                            <span>🏠</span> Save & Go to Menu
+                        </button>
+                        
+                        <button onclick="skipReflection()" class="w-full py-3 text-[var(--text-muted)] hover:text-[var(--text-color)] text-sm transition-colors">
+                            Skip for now
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- JOURNAL MODAL (List of past devotions) -->
+            <div id="journalModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)] hidden flex flex-col">
+                <div class="flex-1 flex flex-col max-w-lg mx-auto w-full">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)]">
+                        <h2 class="text-lg font-bold text-amber-500 flex items-center gap-2">
+                            <span>📖</span> My Journal
+                        </h2>
+                        <button onclick="closeJournal()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Journal Entries -->
+                    <div class="flex-1 p-4 overflow-y-auto" id="journalEntriesList">
+                        <p class="text-[var(--text-muted)] text-center py-8">Loading journal...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                
+                <!-- My Mission Card (opens My Groups screen) -->
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up cursor-pointer hover:ring-1 hover:ring-[var(--mission-gold)]/30 transition-all" onclick="MyGroups.open()">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">👥</span>
+                            My Mission
+                            <span id="pendingRequestsBadge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                        </h3>
+                        <span class="text-[var(--text-muted)]">›</span>
+                    </div>
+                    <div class="p-4" id="myMissionCardContent">
+                        <p id="missionVerseText" class="text-[var(--text-muted)] text-sm italic mb-2">"Go therefore and make disciples of all nations..."</p>
+                        <p id="missionVerseRef" class="text-[var(--mission-gold)] text-xs font-medium">— Matthew 28:19</p>
+                        <div class="mt-4 flex items-center justify-between text-xs">
+                            <span class="text-[var(--text-dim)]" id="missionGroupCount">0 groups</span>
+                            <span class="text-[var(--mission-gold)]">View Groups →</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Training Card (opens Training screen) -->
+                <div class="mission-card rounded-2xl overflow-hidden animate-fade-up cursor-pointer hover:ring-1 hover:ring-[var(--mission-gold)]/30 transition-all" onclick="Training.openFullScreen()">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">🎯</span>
+                            <span data-i18n="myTraining">My Training</span>
+                        </h3>
+                        <span class="text-[var(--text-muted)]">›</span>
+                    </div>
+                    <div class="p-4" id="myTrainingCardContent">
+                        <p id="trainingVerseText" class="text-[var(--text-muted)] text-sm italic mb-2">"Train yourself to be godly..."</p>
+                        <p id="trainingVerseRef" class="text-[var(--mission-gold)] text-xs font-medium">— 1 Timothy 4:7</p>
+                        <div class="mt-4 flex items-center justify-between text-xs">
+                            <span class="text-[var(--text-dim)]" id="trainingProgress">0/7 sessions</span>
+                            <span class="text-[var(--mission-gold)]">Continue →</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leader Dashboard Card - Only visible for leaders/admins -->
+                <div id="leaderDashboardCard" onclick="LeaderDashboard.open()" class="mission-card rounded-2xl overflow-hidden animate-fade-up hidden cursor-pointer hover:border-amber-500/30 transition-all">
+                    <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+                        <h3 class="font-bold text-[var(--text-color)] flex items-center gap-2">
+                            <span class="text-amber-500">📊</span>
+                            Leader Dashboard
+                        </h3>
+                        <span class="text-amber-500 text-sm">View →</span>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm text-[var(--text-muted)] mb-4">Manage your mission group members</p>
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
+                                <p id="dashboardMemberCount" class="text-2xl font-bold text-[var(--text-color)]">-</p>
+                                <p class="text-[10px] text-[var(--text-muted)]">Members</p>
+                            </div>
+                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
+                                <p id="dashboardActiveCount" class="text-2xl font-bold text-green-500">-</p>
+                                <p class="text-[10px] text-[var(--text-muted)]">Active</p>
+                            </div>
+                            <div class="bg-[var(--input-bg)] rounded-xl p-3">
+                                <p id="dashboardNeedsAttention" class="text-2xl font-bold text-red-500">-</p>
+                                <p class="text-[10px] text-[var(--text-muted)]">Need Care</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div><!-- End otherCardsContent -->
+        </main>
+
+        <!-- Bottom Navigation -->
+        <!-- Bottom Navigation - Minimal Design -->
+        <nav id="appBottomNav" class="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] backdrop-blur-md border-t border-[var(--nav-border)] md:hidden z-40 transition-colors duration-300">
+            <div class="flex justify-around items-center px-6 py-3">
+                <!-- Home/Journey - Active -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--accent-active)]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Home</span>
+                </button>
+                <!-- Training -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Training</span>
+                </button>
+                <!-- Community/Group -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Community</span>
+                </button>
+                <!-- Messages -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Messages</span>
+                </button>
+                <!-- Groups/Dash -->
+                <button class="flex flex-col items-center gap-1 flex-1 text-[var(--nav-inactive)] hover:text-[var(--accent-active)] transition-colors relative" onclick="MyGroups.open()">
+                    <div class="relative">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <!-- Pending requests badge -->
+                        <span id="groupsNavBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">0</span>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase tracking-tight">Groups</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Group Modal (for join/create/requests) -->
+    <div id="groupModal" class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-full max-w-md max-h-[80vh] overflow-y-auto transition-colors duration-300">
+            <div id="groupModalContent">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- My Groups Full Screen (Upline + Downline) -->
+    <div id="myGroupsScreen" class="fixed inset-0 bg-[var(--bg-color)] z-50 hidden flex flex-col">
+        <!-- Header -->
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="MyGroups.close()" class="text-[var(--mission-gold)] hover:text-[var(--mission-gold)]/80">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <h2 class="text-lg font-bold text-[var(--text-color)]">My Groups</h2>
+            </div>
+            <button onclick="MyGroups.showJoinModal()" class="text-[var(--mission-gold)] text-sm font-medium">+ Join</button>
+        </div>
+        
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-6" id="myGroupsContent">
+            <!-- Upline Section -->
+            <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-[var(--mission-gold)]">⬆</span>
+                    <h3 class="text-sm font-bold text-[var(--text-color)] uppercase tracking-wider">Upline Group</h3>
+                </div>
+                <p class="text-xs text-[var(--text-muted)] -mt-1 ml-6">You are a disciple</p>
+                <div id="uplineGroupContainer">
+                    <!-- Upline group card or "Join a group" prompt -->
+                    <div class="mission-card rounded-xl p-4 border border-dashed border-[var(--card-border)]">
+                        <p class="text-[var(--text-muted)] text-sm text-center">No upline group yet</p>
+                        <button onclick="MyGroups.showJoinModal()" class="mt-3 w-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold py-2 px-4 rounded-lg text-sm">
+                            Join with Invite Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Guest Groups Section -->
+            <div id="guestGroupsSection" class="space-y-3 hidden">
+                <div class="flex items-center gap-2">
+                    <span class="text-blue-400">🎫</span>
+                    <h3 class="text-sm font-bold text-[var(--text-color)] uppercase tracking-wider">Guest Groups</h3>
+                </div>
+                <p class="text-xs text-[var(--text-muted)] -mt-1 ml-6">You are visiting as a guest</p>
+                <div id="guestGroupsContainer" class="space-y-3">
+                    <!-- Guest group cards will be rendered here -->
+                </div>
+            </div>
+            
+            <!-- Downline Section -->
+            <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-[var(--mission-gold)]">⬇</span>
+                    <h3 class="text-sm font-bold text-[var(--text-color)] uppercase tracking-wider">Downline Groups</h3>
+                </div>
+                <p class="text-xs text-[var(--text-muted)] -mt-1 ml-6">You are a discipler</p>
+                <div id="downlineGroupsContainer" class="space-y-3">
+                    <!-- Downline group cards will be rendered here -->
+                </div>
+                <button onclick="MyGroups.showCreateModal()" class="w-full mission-card rounded-xl p-4 border border-dashed border-[var(--card-border)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                    <p class="text-[var(--mission-gold)] text-sm text-center font-medium">+ Create New Group</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <!-- Training Day Modal (created dynamically by Training.js) -->
+    <div id="trainingDayModal" class="hidden"></div>
+    
+    <div id="chatModal" class="fixed inset-0 bg-[var(--bg-color)] z-50 hidden flex flex-col">
+        <!-- Chat Header -->
+        <div class="bg-[var(--nav-bg)] border-b border-[var(--nav-border)] p-4 flex items-center justify-between transition-colors duration-300">
+            <div class="flex items-center gap-3">
+                <button onclick="GroupChat.close()" class="text-amber-500 hover:text-amber-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <div>
+                    <h3 class="font-bold text-[var(--text-color)]" id="chatGroupName">Group Chat</h3>
+                    <p class="text-xs text-[var(--text-muted)]" id="chatMemberCount">0 members</p>
+                </div>
+            </div>
+            <!-- Members Button -->
+            <button onclick="GroupChat.showMembers()" class="text-amber-500 hover:text-amber-400 flex items-center gap-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <span class="text-sm font-bold">Members</span>
+            </button>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[var(--bg-color)]">
+            <p class="text-[var(--text-muted)] text-sm text-center py-8">Loading messages...</p>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="bg-[var(--nav-bg)] border-t border-[var(--nav-border)] p-4 transition-colors duration-300">
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" placeholder="Type a message..." 
+                       class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500/50"
+                       onkeypress="GroupChat.handleKeyPress(event)">
+                <button onclick="GroupChat.handleSend()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="successToast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-900/90 border border-green-500/50 text-green-200 px-6 py-3 rounded-xl shadow-xl z-50 hidden">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="font-bold text-sm">Day saved! God is pleased.</span>
+        </div>
+    </div>
+
+    <!-- Core Modules -->
+    <script src="modules/core/theme.js"></script>
+    <script src="modules/core/i18n.js"></script>
+    <script src="modules/core/scroll-handler.js"></script>
+    <script src="modules/core/discipleship-content.js"></script>
+    <script src="modules/bible/bible-loader.js"></script>
+    <script src="modules/bible/bible-picker.js"></script>
+    <script src="modules/bible/bible-reader.js"></script>
+    <script src="modules/groups/group-meeting.js"></script>
+    <script src="modules/groups/groups.js"></script>
+    <script src="modules/groups/group-chat.js"></script>
+    <script src="modules/groups/my-groups.js"></script>
+    <script src="modules/dashboard/leader-dashboard.js"></script>
+    <script src="modules/core/notifications.js"></script>
+    <script src="modules/core/push-notifications.js"></script>
+    <script src="modules/core/pwa-updater.js"></script>
+    <script src="modules/install/install-modal.js"></script>
+    <script src="modules/training/training.js"></script>
+    
+    <!-- Bible Data & Reading Plan -->
+    <script src="js/bible-data.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
+            authDomain: "shaped-by-grace.firebaseapp.com",
+            projectId: "shaped-by-grace",
+            storageBucket: "shaped-by-grace.firebasestorage.app",
+            messagingSenderId: "421948043828",
+            appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
+        };
+        
+        // VAPID Key for Web Push Notifications
+        window.FIREBASE_VAPID_KEY = 'BNcvs5HoLfqTpzfqC2WIshbnBE6SrVTGrQZOV0LEZl_Ks9bc79euFwCfBowRmnj6WDzacNy4_E7RgV7aOZG1LLM';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+        
+        // Initialize Firebase Functions
+        const functions = getFunctions(app);
+        
+        // Create callable functions for password reset
+        window.sendPasswordResetCode = httpsCallable(functions, 'sendPasswordResetCode');
+        window.verifyPasswordResetCode = httpsCallable(functions, 'verifyPasswordResetCode');
+        window.completePasswordReset = httpsCallable(functions, 'completePasswordReset');
+
+        // Make available globally
+        window.db = db;
+        window.auth = auth;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.addDoc = addDoc;
+        window.collection = collection;
+        window.query = query;
+        window.where = where;
+        window.getDocs = getDocs;
+        window.orderBy = orderBy;
+        window.limit = limit;
+        window.onSnapshot = onSnapshot;
+        window.serverTimestamp = serverTimestamp;
+        window.arrayUnion = arrayUnion;
+        window.arrayRemove = arrayRemove;
+        window.currentUser = null;
+        
+        // Initialize Firebase Messaging
+        let messaging = null;
+        try {
+            messaging = getMessaging(app);
+            window.firebaseMessaging = messaging;
+            window.getMessagingToken = getToken;
+            window.onMessagingMessage = onMessage;
+            console.log('[Firebase] Messaging initialized');
+        } catch (e) {
+            console.log('[Firebase] Messaging not available:', e.message);
+        }
+
+        const loading = document.getElementById('loading');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+
+        onAuthStateChanged(auth, async (user) => {
+            loading.classList.add('hidden');
+            
+            if (user) {
+                window.currentUser = user;
+                // Safely update user display elements (some may not exist in minimal UI)
+                const userNameEl = document.getElementById('userName');
+                const userPhotoEl = document.getElementById('userPhoto');
+                const adminPhotoEl = document.getElementById('adminPhoto');
+                const userInitialEl = document.getElementById('userInitial');
+                
+                if (userNameEl) userNameEl.textContent = user.displayName || user.email;
+                if (userPhotoEl) {
+                    userPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                    if (user.photoURL) {
+                        userPhotoEl.classList.remove('hidden');
+                        // Hide the initial badge when photo is available
+                        if (userInitialEl) userInitialEl.parentElement.classList.add('hidden');
+                    }
+                }
+                if (adminPhotoEl) adminPhotoEl.src = user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || 'User') + '&background=4a0404&color=fbbf24';
+                if (userInitialEl) userInitialEl.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+                
+                await ensureUserExists(user);
+                loginScreen.classList.add('hidden');
+                
+                // Check if should show welcome modal BEFORE showing mainApp
+                const shouldShowWelcome = !localStorage.getItem('goMission_welcomeSeen');
+                
+                if (shouldShowWelcome) {
+                    // Show welcome modal immediately, keep mainApp hidden
+                    if (typeof WelcomeModal !== 'undefined') {
+                        WelcomeModal.show();
+                    }
+                } else {
+                    // User has seen welcome, show mainApp directly
+                    mainApp.classList.remove('hidden');
+                }
+                
+                await loadUserData(user.uid);
+                initializeDevotion();
+                await loadTodaysEntry(user.uid);
+                await loadWeekProgress(user.uid);
+                
+                // Show Welcome Modal for new users (already shown above if needed)
+                // This init is now just a no-op since we handle it above
+                // if (typeof WelcomeModal !== 'undefined') {
+                //     WelcomeModal.init();
+                // }
+                
+                // Clear app badge when user opens app
+                if (typeof PushNotifications !== 'undefined') {
+                    PushNotifications.clearBadge();
+                }
+                
+                // Initialize Groups module
+                if (typeof Groups !== 'undefined') {
+                    await Groups.init();
+                    
+                    // Initialize My Groups module (Upline/Downline)
+                    if (typeof MyGroups !== 'undefined') {
+                        await MyGroups.init();
+                    }
+                    
+                    // Initialize Notifications after Groups
+                    if (typeof Notifications !== 'undefined') {
+                        await Notifications.init();
+                    }
+                    
+                    // Initialize Training module
+                    if (typeof Training !== 'undefined') {
+                        await Training.init();
+                        // Update training card verse and progress
+                        if (window.DiscipleshipContent) {
+                            const verse = window.DiscipleshipContent.getTrainingVerse();
+                            const verseText = document.getElementById('trainingVerseText');
+                            const verseRef = document.getElementById('trainingVerseRef');
+                            if (verseText) verseText.textContent = `"${verse.text}"`;
+                            if (verseRef) verseRef.textContent = `— ${verse.verse}`;
+                        }
+                        // Update progress
+                        const progress = Training.getProgressSummary();
+                        const progressEl = document.getElementById('trainingProgress');
+                        if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
+                    }
+                    
+                    // Check for join code in URL (?join=CODE)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const joinCode = urlParams.get('join');
+                    if (joinCode && !Groups.currentGroup) {
+                        // Clear the URL parameter
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        // Show join modal with pre-filled code
+                        Groups.showJoinWithCodeModal();
+                        setTimeout(() => {
+                            const codeInput = document.getElementById('groupInviteCode');
+                            if (codeInput) {
+                                codeInput.value = joinCode.toUpperCase();
+                            }
+                        }, 200);
+                    }
+                    
+                    // Initialize Push Notifications and show prompt if needed
+                    if (typeof PushNotifications !== 'undefined') {
+                        await PushNotifications.init();
+                        // Show permission prompt after a short delay
+                        setTimeout(() => {
+                            if (PushNotifications.shouldShowPrompt()) {
+                                PushNotifications.showPermissionPrompt();
+                            }
+                        }, 3000);
+                    }
+                }
+            } else {
+                window.currentUser = null;
+                loginScreen.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+            }
+        });
+
+        async function ensureUserExists(user) {
+            const userRef = doc(db, 'goMission_members', user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                await setDoc(userRef, {
+                    id: user.uid,
+                    name: user.displayName || '',
+                    email: user.email,
+                    photoURL: user.photoURL || '',
+                    stage: 'seeker',
+                    roles: { isMissionary: true, isGroupLeader: false, isTrainer: false, isShepherd: false, isWelcomeTeam: false, isAdmin: false },
+                    groupId: null,
+                    discipledBy: null,
+                    discipling: [],
+                    training: {
+                        currentPhase: 1,
+                        phases: {
+                            phase1: { status: 'enrolled', sessionsAttended: [] },
+                            phase2: { status: 'locked' },
+                            phase3: { status: 'locked' },
+                            phase4: { status: 'locked' }
+                        }
+                    },
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            }
+        }
+
+        async function loadUserData(uid) {
+            try {
+                const userRef = doc(db, 'goMission_members', uid);
+                const userDoc = await getDoc(userRef);
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    window.currentUserStage = data.stage || 'seeker';
+                    window.currentUserRoles = data.roles || {};
+                    updateJourneyDisplay(window.currentUserStage);
+                    
+                    // Show/hide leader dashboard based on roles
+                    const leaderDashboard = document.getElementById('leaderDashboardCard');
+                    if (leaderDashboard) {
+                        const isAdmin = data.roles?.isAdmin || data.email === 'michael.marga@gmail.com';
+                        const isGroupLeader = data.roles?.isGroupLeader;
+                        const isTrainer = data.roles?.isTrainer;
+                        const isShepherd = data.roles?.isShepherd;
+                        
+                        // Only show dashboard for leaders, trainers, shepherds, or admins
+                        if (isAdmin || isGroupLeader || isTrainer || isShepherd) {
+                            leaderDashboard.classList.remove('hidden');
+                        } else {
+                            leaderDashboard.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        window.updateJourneyDisplay = function(stage) {
+            const stageKeys = ['seeker', 'disciple', 'disciple-maker', 'builder', 'multiplier'];
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : (currentLanguage || 'tl');
+            const resolvedIndex = stageKeys.includes(stage) ? stageKeys.indexOf(stage) : 0;
+            const currentStageNum = resolvedIndex + 1;
+
+            // Keep existing journey text content logic, only switch title label.
+            const titleTextEl = document.getElementById('journeyTitleText');
+            if (titleTextEl) {
+                titleTextEl.textContent = lang === 'tl' ? 'Aking Paglalakbay' : 'My Journey';
+            }
+
+            // Keep line full-width so the animated glow is always visible.
+            const progressLine = document.getElementById('journeyProgressLine');
+            if (progressLine) {
+                progressLine.style.width = '100%';
+                progressLine.dataset.currentStage = String(currentStageNum);
+            }
+
+            // Update stage states (completed/current/upcoming) using existing markup.
+            const stageCards = document.querySelectorAll('#journeyStagesScroll .stage');
+            stageCards.forEach((card, idx) => {
+                card.classList.remove('completed', 'current');
+                if (idx < resolvedIndex) {
+                    card.classList.add('completed');
+                } else if (idx === resolvedIndex) {
+                    card.classList.add('current');
+                }
+            });
+
+            const currentStageCard = document.querySelector(`#journeyStagesScroll .stage[data-stage="${currentStageNum}"]`);
+            if (!currentStageCard) return;
+
+            // Move "YOU ARE HERE" badge to current stage.
+            const badge = document.getElementById('youAreHere');
+            if (badge) {
+                let badgeContainer = currentStageCard.querySelector('.you-are-here-container');
+                if (!badgeContainer) {
+                    badgeContainer = document.createElement('div');
+                    badgeContainer.className = 'you-are-here-container';
+                    currentStageCard.appendChild(badgeContainer);
+                }
+                if (badge.parentElement !== badgeContainer) {
+                    badgeContainer.appendChild(badge);
+                }
+            }
+
+            // Move CTA button to current stage card while preserving original text/behavior.
+            const ctaBtn = document.querySelector('#journeyStagesScroll .take-step-btn');
+            const currentStageContent = currentStageCard.querySelector('.stage-content');
+            if (ctaBtn && currentStageContent && ctaBtn.parentElement !== currentStageContent) {
+                currentStageContent.appendChild(ctaBtn);
+            }
+
+            // Auto-center current stage in horizontal scroll.
+            currentStageCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
+        window.loadWeekProgress = async function(uid) {
+            const weekDates = getWeekDates();
+            let savedDays = 0;
+            const dotsHtml = [];
+            
+            for (const date of weekDates) {
+                const entryRef = doc(db, 'goMission_devotions', uid + '_' + date);
+                try {
+                    const entryDoc = await getDoc(entryRef);
+                    const isSaved = entryDoc.exists();
+                    if (isSaved) savedDays++;
+                    const isToday = date === getTodayString();
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full ${isSaved ? 'bg-amber-500' : 'bg-amber-900/30'} ${isToday ? 'ring-2 ring-amber-500/50' : ''}"></div>`);
+                } catch (e) {
+                    dotsHtml.push(`<div class="w-3 h-3 rounded-full bg-amber-900/30"></div>`);
+                }
+            }
+            
+            document.getElementById('weekDots').innerHTML = dotsHtml.join('');
+            document.getElementById('weekCount').textContent = savedDays + '/7 days';
+        };
+
+        // ============================================
+        // EMAIL/PASSWORD AUTHENTICATION
+        // ============================================
+        
+        let resetEmail = '';
+        let resetCode = '';
+        
+        // Switch between Sign In, Sign Up, and Forgot Password modes
+        window.switchAuthMode = function(mode) {
+            const signInForm = document.getElementById('signInForm');
+            const signUpForm = document.getElementById('signUpForm');
+            const forgotForm = document.getElementById('forgotPasswordForm');
+            const tabSignIn = document.getElementById('tabSignIn');
+            const tabSignUp = document.getElementById('tabSignUp');
+            
+            // Hide all forms
+            signInForm.classList.add('hidden');
+            signUpForm.classList.add('hidden');
+            forgotForm.classList.add('hidden');
+            
+            // Reset tab styles
+            tabSignIn.classList.remove('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+            tabSignIn.classList.add('text-stone-400');
+            tabSignUp.classList.remove('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+            tabSignUp.classList.add('text-stone-400');
+            
+            // Clear messages
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            
+            if (mode === 'signin') {
+                signInForm.classList.remove('hidden');
+                tabSignIn.classList.add('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+                tabSignIn.classList.remove('text-stone-400');
+            } else if (mode === 'signup') {
+                signUpForm.classList.remove('hidden');
+                tabSignUp.classList.add('bg-[var(--mission-gold)]', 'text-[var(--mission-red-deep)]');
+                tabSignUp.classList.remove('text-stone-400');
+            } else if (mode === 'forgot') {
+                forgotForm.classList.remove('hidden');
+                resetForgotPassword();
+            }
+        };
+        
+        // Toggle password visibility
+        window.togglePasswordVisibility = function(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        };
+        
+        // Sign In with Email/Password
+        window.handleSignIn = async function() {
+            const email = document.getElementById('signInEmail').value.trim();
+            const password = document.getElementById('signInPassword').value;
+            
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+            
+            const btn = document.getElementById('signInBtn');
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // Success! onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Sign in error:', error);
+                let message = 'Sign in failed. ';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    message = 'Invalid email or password. Please try again.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    message = 'Too many attempts. Please try again later or reset your password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Invalid email format.';
+                } else {
+                    message = error.message || 'Unknown error occurred.';
+                }
+                showError(message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Sign In';
+            }
+        };
+        
+        // Sign Up with Email/Password
+        window.handleSignUp = async function() {
+            const name = document.getElementById('signUpName').value.trim();
+            const email = document.getElementById('signUpEmail').value.trim();
+            const password = document.getElementById('signUpPassword').value;
+            const confirmPassword = document.getElementById('signUpConfirmPassword').value;
+            
+            if (!name || !email || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            const btn = document.getElementById('signUpBtn');
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+            
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Update display name
+                await updateProfile(userCredential.user, { displayName: name });
+                // Success! onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Sign up error:', error);
+                let message = 'Sign up failed. ';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = 'An account with this email already exists. Try signing in instead.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Invalid email format.';
+                } else if (error.code === 'auth/weak-password') {
+                    message = 'Password is too weak. Please use at least 6 characters.';
+                } else {
+                    message = error.message || 'Unknown error occurred.';
+                }
+                showError(message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ Create Account';
+            }
+        };
+        
+        // Send Password Reset Code
+        window.handleSendResetCode = async function() {
+            const email = document.getElementById('forgotEmail').value.trim();
+            
+            if (!email) {
+                showError('Please enter your email address');
+                return;
+            }
+            
+            const btn = document.getElementById('sendResetCodeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            
+            try {
+                const result = await window.sendPasswordResetCode({ email });
+                resetEmail = email;
+                
+                // Show step 2
+                document.getElementById('forgotStep1').classList.add('hidden');
+                document.getElementById('forgotStep2').classList.remove('hidden');
+                document.getElementById('forgotEmailDisplay').textContent = email;
+                document.getElementById('resetCode1').focus();
+                
+                showSuccess(result.data.message || 'Verification code sent to your email');
+            } catch (error) {
+                console.error('Send reset code error:', error);
+                showError(error.message || 'Failed to send verification code. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📧 Send Verification Code';
+            }
+        };
+        
+        // Move to next code input
+        window.moveToNextResetCode = function(current, nextId) {
+            if (current.value.length === 1 && nextId) {
+                document.getElementById(nextId).focus();
+            }
+            // Auto-verify if all 6 digits entered
+            if (!nextId && current.value.length === 1) {
+                handleVerifyResetCode();
+            }
+        };
+        
+        // Verify Reset Code
+        window.handleVerifyResetCode = async function() {
+            const code = ['resetCode1', 'resetCode2', 'resetCode3', 'resetCode4', 'resetCode5', 'resetCode6']
+                .map(id => document.getElementById(id).value)
+                .join('');
+            
+            if (code.length !== 6) {
+                showError('Please enter the complete 6-digit code');
+                return;
+            }
+            
+            const btn = document.getElementById('verifyResetCodeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+            
+            try {
+                const result = await window.verifyPasswordResetCode({ email: resetEmail, code });
+                resetCode = code;
+                
+                // Show step 3
+                document.getElementById('forgotStep2').classList.add('hidden');
+                document.getElementById('forgotStep3').classList.remove('hidden');
+                document.getElementById('newPassword').focus();
+                
+                showSuccess(result.data.message || 'Code verified! Enter your new password.');
+            } catch (error) {
+                console.error('Verify code error:', error);
+                showError(error.message || 'Invalid code. Please try again.');
+                // Clear code inputs
+                ['resetCode1', 'resetCode2', 'resetCode3', 'resetCode4', 'resetCode5', 'resetCode6'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                document.getElementById('resetCode1').focus();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✓ Verify Code';
+            }
+        };
+        
+        // Complete Password Reset
+        window.handleResetPassword = async function() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmNewPassword').value;
+            
+            if (!newPassword || !confirmPassword) {
+                showError('Please enter and confirm your new password');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            const btn = document.getElementById('resetPasswordBtn');
+            btn.disabled = true;
+            btn.textContent = 'Resetting...';
+            
+            try {
+                const result = await window.completePasswordReset({ 
+                    email: resetEmail, 
+                    code: resetCode, 
+                    newPassword 
+                });
+                
+                showSuccess(result.data.message || 'Password reset successfully! You can now sign in.');
+                
+                // Go back to sign in after 2 seconds
+                setTimeout(() => {
+                    switchAuthMode('signin');
+                    document.getElementById('signInEmail').value = resetEmail;
+                    document.getElementById('signInPassword').focus();
+                }, 2000);
+            } catch (error) {
+                console.error('Reset password error:', error);
+                showError(error.message || 'Failed to reset password. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔐 Reset Password';
+            }
+        };
+        
+        // Reset forgot password form
+        window.resetForgotPassword = function() {
+            document.getElementById('forgotStep1').classList.remove('hidden');
+            document.getElementById('forgotStep2').classList.add('hidden');
+            document.getElementById('forgotStep3').classList.add('hidden');
+            document.getElementById('forgotEmail').value = '';
+            ['resetCode1', 'resetCode2', 'resetCode3', 'resetCode4', 'resetCode5', 'resetCode6'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
+            resetEmail = '';
+            resetCode = '';
+        };
+        
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+        
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        // Sign out function
+        window.handleSignOut = async function() {
+            await signOut(auth);
+        };
+
+        // Sign out button (may not exist in minimal UI - handled by menu)
+        const signOutBtn = document.getElementById('signOutBtn');
+        if (signOutBtn) {
+            signOutBtn.addEventListener('click', async () => {
+                await signOut(auth);
+            });
+        }
+    </script>
+
+    <!-- App Logic -->
+    <script>
+        // State - use i18n module for language if available
+        let currentLanguage = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+        let highlightedVerses = [];
+        let shareWithGroup = false;
+        let currentReading = null;
+
+        // Helpers
+        function getTodayString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getWeekDates() {
+            const dates = [];
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(monday);
+                date.setDate(monday.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+            return dates;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        }
+
+        // Initialize devotion - now uses BibleReader module
+        function initializeDevotion() {
+            document.getElementById('devotionDate').textContent = formatDate(new Date());
+            
+            // Default reflection question (will be replaced when verse is highlighted)
+            // BibleReader will auto-initialize and load from saved progress
+        }
+
+        // Legacy loadBiblePassage - now handled by BibleReader module
+        function loadBiblePassage() {
+            // This function is now handled by BibleReader.loadChapter()
+            // Keeping for backward compatibility
+            if (typeof BibleReader !== 'undefined' && BibleReader.currentBook) {
+                BibleReader.loadChapter(BibleReader.currentBook, BibleReader.currentChapter);
+            }
+        }
+
+        // Legacy loadCommentary - now handled by BibleReader module
+        function loadCommentary(chapter, verseRange) {
+            // This function is now handled by BibleReader.loadCommentary()
+            // Keeping for backward compatibility
+        }
+
+        // Legacy toggleHighlight - now use BibleReader.toggleHighlight()
+        window.toggleHighlight = function(verseNum) {
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.toggleHighlight(verseNum);
+            }
+        };
+
+        // Legacy toggleCommentary - commentary now always visible
+        window.toggleCommentary = function() {
+            // Commentary is now always visible when verses are highlighted
+            // This function kept for backward compatibility
+        };
+
+        // Set language - use i18n module
+        window.setLanguage = function(lang) {
+            // Use i18n module if available
+            if (typeof i18n !== 'undefined') {
+                i18n.setLang(lang);
+            } else {
+                currentLanguage = lang;
+                document.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.lang === lang);
+                });
+            }
+            loadBiblePassage();
+            // Also update Journey card language
+            if (window.currentUserStage) {
+                updateJourneyDisplay(window.currentUserStage);
+            }
+        };
+        
+        // Listen for language changes from i18n module
+        document.addEventListener('languageChanged', function(e) {
+            console.log('[Language Changed]', e.detail.lang, 'Stage:', window.currentUserStage);
+            currentLanguage = e.detail.lang;
+            // Don't call loadBiblePassage() - BibleReader handles this via its own listener
+            // which preserves highlighted verses
+            // Always update journey display on language change
+            window.updateJourneyDisplay(window.currentUserStage || 'seeker');
+        });
+
+        // Toggle commentary section (Help me understand)
+        window.toggleCommentarySection = function() {
+            const content = document.getElementById('commentaryContent');
+            const arrow = document.getElementById('commentaryArrow');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = '';
+            }
+        };
+
+        // Toggle share
+        window.toggleShare = function() {
+            shareWithGroup = !shareWithGroup;
+            document.getElementById('shareToggle').classList.toggle('active', shareWithGroup);
+        };
+
+        // Load today's entry if exists - ONLY restore highlights, not reflection text
+        window.loadTodaysEntry = async function(uid) {
+            if (!uid) return;
+            
+            // Clear reflection if element exists
+            const reflectionAnswer = document.getElementById('reflectionAnswer');
+            const saveBtnText = document.getElementById('saveBtnText');
+            if (reflectionAnswer) reflectionAnswer.value = '';
+            if (saveBtnText) saveBtnText.textContent = '💾 Save This Day';
+            
+            const today = getTodayString();
+            const entryRef = window.doc(window.db, 'goMission_devotions', uid + '_' + today);
+            
+            try {
+                const entryDoc = await window.getDoc(entryRef);
+                if (entryDoc.exists()) {
+                    const data = entryDoc.data();
+                    
+                    // Only restore highlights to BibleReader
+                    if (typeof BibleReader !== 'undefined' && data.highlightedVerses && data.highlightedVerses.length > 0) {
+                        BibleReader.highlightedVerses = data.highlightedVerses.map(v => {
+                            if (typeof v === 'object' && v.verse) return v;
+                            return { verse: v, color: 'gold' };
+                        });
+                        
+                        // Re-render to show restored highlights
+                        BibleReader.renderVerses();
+                        if (BibleReader.highlightedVerses.length > 0) {
+                            await BibleReader.loadCommentary();
+                        }
+                    }
+                    
+                    // Restore share toggle preference only
+                    shareWithGroup = data.sharedWithGroup || false;
+                    const shareToggle = document.getElementById('shareToggle');
+                    if (shareToggle) shareToggle.classList.toggle('active', shareWithGroup);
+                }
+            } catch (error) {
+                console.error('Error loading entry:', error);
+            }
+        };
+
+        // Save this day
+        window.saveThisDay = async function() {
+            if (!window.currentUser) {
+                alert('Please sign in to save your devotion.');
+                return;
+            }
+            
+            const reflection = document.getElementById('reflectionAnswer').value.trim();
+            if (!reflection) {
+                alert('Please write your reflection before saving.');
+                return;
+            }
+            
+            const btn = document.getElementById('saveDevotionBtn');
+            const btnText = document.getElementById('saveBtnText');
+            btn.disabled = true;
+            btnText.textContent = 'Saving...';
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                // Get reading info from BibleReader
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
+                // Get the reflection question (AI-generated or default)
+                const reflectionEl = document.getElementById('reflectionQuestion');
+                const question = reflectionEl ? reflectionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
+                await window.setDoc(entryRef, {
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
+                    question: question,
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    savedAt: window.serverTimestamp()
+                });
+                
+                // Show success
+                document.getElementById('successToast').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('successToast').classList.add('hidden');
+                }, 3000);
+                
+                // Clear the reflection textarea after successful save
+                document.getElementById('reflectionAnswer').value = '';
+                
+                // Reset highlights and commentary
+                if (typeof BibleReader !== 'undefined') {
+                    BibleReader.highlightedVerses = [];
+                    BibleReader.renderVerses();
+                    BibleReader.clearCommentary();
+                }
+                
+                // Hide the AI reflection card
+                const aiReflectCard = document.getElementById('aiReflectCard');
+                if (aiReflectCard) aiReflectCard.classList.add('hidden');
+                
+                // Show saved briefly, then reset to default
+                btnText.textContent = '✓ Saved!';
+                btn.disabled = false;
+                await window.loadWeekProgress(window.currentUser.uid);
+                
+                // Reset button text after 2 seconds
+                setTimeout(() => {
+                    btnText.textContent = '💾 Save This Day';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Error saving. Please try again.');
+                btnText.textContent = '💾 Save This Day';
+                btn.disabled = false;
+            }
+            
+            btn.disabled = false;
+        };
+        
+        // ====== NEW: Devotion Menu Functions ======
+        
+        // Toggle devotion menu
+        window.toggleDevotionMenu = function() {
+            const modal = document.getElementById('devotionMenuModal');
+            modal.classList.toggle('hidden');
+        };
+        
+        // Toggle main menu (header menu button)
+        window.toggleMainMenu = function() {
+            const modal = document.getElementById('mainMenuModal');
+            if (modal) {
+                // Remove modal completely so it recreates with fresh language values
+                modal.remove();
+            } else {
+                // Create menu modal with current language
+                const currentLang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl';
+                const updateInfo = (typeof AutoUpdate !== 'undefined') ? AutoUpdate.CURRENT_UPDATE : { version: '2.0.0', date: '2026-01-27' };
+                const menuHTML = `
+                    <div id="mainMenuModal" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-end p-4" onclick="if(event.target===this) toggleMainMenu()">
+                        <div class="bg-[var(--card-bg-solid)] rounded-2xl border border-[var(--card-border)] w-64 mt-16 mr-2 overflow-hidden shadow-2xl">
+                            <div class="p-4 border-b border-[var(--card-border)]">
+                                <p class="text-sm font-bold text-[var(--text-color)]">${window.currentUser?.displayName || 'User'}</p>
+                                <p class="text-xs text-[var(--text-muted)]">${window.currentUser?.email || ''}</p>
+                            </div>
+                            <div class="p-2">
+                                <button onclick="i18n.setLang(i18n.getLang() === 'en' ? 'tl' : 'en'); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">${currentLang === 'tl' ? '🇺🇸' : '🇵🇭'}</span>
+                                    <span class="text-sm text-[var(--text-color)]">${currentLang === 'tl' ? 'Switch to English' : 'Switch to Tagalog'}</span>
+                                </button>
+                                <button onclick="Theme.toggle(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">🌓</span>
+                                    <span class="text-sm text-[var(--text-color)]">Toggle Theme</span>
+                                </button>
+                                <button onclick="AutoUpdate.showUpdateDetails(); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left">
+                                    <span class="text-lg">🔄</span>
+                                    <div class="flex-1">
+                                        <span class="text-sm text-[var(--text-color)] block">${currentLang === 'tl' ? 'I-update ang App' : 'Update App'}</span>
+                                        <span class="text-[10px] text-[var(--text-muted)]">v${updateInfo.version} • ${updateInfo.date}</span>
+                                    </div>
+                                </button>
+                                <button onclick="signOut(auth); toggleMainMenu();" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left text-red-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                    </svg>
+                                    <span class="text-sm">Sign Out</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', menuHTML);
+            }
+        };
+        
+        // Toggle popup share
+        window.togglePopupShare = function() {
+            const toggle = document.getElementById('sharePopupToggle');
+            toggle.classList.toggle('active');
+        };
+        
+        // Show reflection popup (called when exiting fullscreen)
+        window.showReflectionPopup = function() {
+            const modal = document.getElementById('reflectionPopupModal');
+            
+            // Get the current reflection question from BibleReader
+            const questionEl = document.getElementById('reflectionQuestion');
+            const popupQuestionEl = document.getElementById('reflectPopupQuestion');
+            if (questionEl && popupQuestionEl) {
+                popupQuestionEl.textContent = questionEl.textContent || '"What is one thing God is inviting you to live out today?"';
+            }
+            
+            // Update language labels
+            const lang = (typeof i18n !== 'undefined') ? i18n.getLang() : 'en';
+            document.getElementById('reflectPopupTitle').textContent = lang === 'tl' ? 'PAGNILAYAN' : 'REFLECT';
+            
+            modal.classList.remove('hidden');
+        };
+        
+        // Save and continue reading
+        window.saveAndContinueReading = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup and go back to fullscreen
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reopen fullscreen
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.enterFullscreen();
+            }
+        };
+        
+        // Save and go home
+        window.saveAndGoHome = async function() {
+            const reflection = document.getElementById('reflectionPopupAnswer').value.trim();
+            
+            if (reflection) {
+                await saveReflectionFromPopup(reflection);
+            }
+            
+            // Close popup
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+            
+            // Reset highlights for next session
+            if (typeof BibleReader !== 'undefined') {
+                BibleReader.highlightedVerses = [];
+                BibleReader.renderVerses();
+            }
+            
+            // Reload week progress
+            if (window.currentUser) {
+                await window.loadWeekProgress(window.currentUser.uid);
+            }
+        };
+        
+        // Skip reflection
+        window.skipReflection = function() {
+            document.getElementById('reflectionPopupModal').classList.add('hidden');
+            document.getElementById('reflectionPopupAnswer').value = '';
+        };
+        
+        // Save reflection from popup
+        async function saveReflectionFromPopup(reflection) {
+            if (!window.currentUser || !reflection) return;
+            
+            try {
+                const today = getTodayString();
+                const entryRef = window.doc(window.db, 'goMission_devotions', window.currentUser.uid + '_' + today);
+                
+                const reading = (typeof BibleReader !== 'undefined') 
+                    ? BibleReader.getCurrentReading() 
+                    : { book: 'JHN', chapter: 1, highlightedVerses: [] };
+                
+                const questionEl = document.getElementById('reflectPopupQuestion');
+                const question = questionEl ? questionEl.textContent.replace(/[""]/g, '').trim() : '';
+                
+                const shareToggle = document.getElementById('sharePopupToggle');
+                const shareWithGroup = shareToggle?.classList.contains('active') || false;
+                
+                await window.setDoc(entryRef, {
+                    uid: window.currentUser.uid,
+                    userName: window.currentUser.displayName || '',
+                    date: today,
+                    book: reading.book,
+                    chapter: reading.chapter,
+                    highlightedVerses: reading.highlightedVerses,
+                    question: question,
+                    reflection: reflection,
+                    sharedWithGroup: shareWithGroup,
+                    language: (typeof i18n !== 'undefined') ? i18n.getLang() : 'tl',
+                    savedAt: window.serverTimestamp()
+                });
+                
+                console.log('[Devotion] Saved reflection from popup');
+            } catch (error) {
+                console.error('Error saving reflection:', error);
+            }
+        }
+        
+        // Open journal
+        window.openJournal = async function() {
+            toggleDevotionMenu(); // Close menu
+            const modal = document.getElementById('journalModal');
+            const list = document.getElementById('journalEntriesList');
+            
+            modal.classList.remove('hidden');
+            list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Loading...</p>';
+            
+            if (!window.currentUser) {
+                list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">Please sign in to view your journal.</p>';
+                return;
+            }
+            
+            try {
+                const devotionsRef = window.collection(window.db, 'goMission_devotions');
+                const q = window.query(
+                    devotionsRef,
+                    window.where('uid', '==', window.currentUser.uid),
+                    window.orderBy('savedAt', 'desc'),
+                    window.limit(30)
+                );
+                
+                const snapshot = await window.getDocs(q);
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-[var(--text-muted)] text-center py-8">No journal entries yet. Start your first devotion!</p>';
+                    return;
+                }
+                
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = new Date(data.date);
+                    const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const bookName = (typeof BibleLoader !== 'undefined') ? BibleLoader.getBookName(data.book, 'en') : data.book;
+                    
+                    html += `
+                        <div class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-amber-500 font-bold">${formattedDate}</span>
+                                <span class="text-xs text-[var(--text-muted)]">${bookName} ${data.chapter}</span>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] italic mb-2">"${data.question || ''}"</p>
+                            <p class="text-sm text-[var(--text-color)]">${data.reflection || ''}</p>
+                            ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading journal:', error);
+                list.innerHTML = '<p class="text-red-400 text-center py-8">Error loading journal. Please try again.</p>';
+            }
+        };
+        
+        // Close journal
+        window.closeJournal = function() {
+            document.getElementById('journalModal').classList.add('hidden');
+        };
+        
+        // Placeholder functions for future features
+        window.openReadingPlan = function() {
+            alert('Reading Plan feature coming soon!');
+            toggleDevotionMenu();
+        };
+        
+        window.openReadingStats = function() {
+            alert('Reading Stats feature coming soon!');
+            toggleDevotionMenu();
+        };
+
+        // ====== Toggle Other Cards Section (below Journey) ======
+        window.toggleOtherCards = function() {
+            const content = document.getElementById('otherCardsContent');
+            const chevron = document.getElementById('otherCardsChevron');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+            
+            // Save preference
+            localStorage.setItem('otherCardsExpanded', isHidden ? 'true' : 'false');
+        };
+
+        // ====== Toggle Other Features Section ======
+        window.toggleOtherFeatures = function() {
+            const content = document.getElementById('otherFeaturesContent');
+            const chevron = document.getElementById('otherFeaturesChevron');
+            const isHidden = content.classList.contains('hidden');
+            
+            if (isHidden) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+            
+            // Save preference
+            localStorage.setItem('otherFeaturesExpanded', isHidden ? 'true' : 'false');
+        };
+
+        // Initialize collapsed sections on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Other cards (below Journey) - collapsed by default, only expand if user previously expanded
+            const otherCardsExpanded = localStorage.getItem('otherCardsExpanded') === 'true';
+            if (otherCardsExpanded) {
+                document.getElementById('otherCardsContent')?.classList.remove('hidden');
+                document.getElementById('otherCardsChevron')?.classList.add('rotate-180');
+            }
+            
+            // Update label based on language
+            const lang = localStorage.getItem('goMission_language') || 'tl';
+            const label = document.getElementById('otherCardsLabel');
+            if (label) {
+                label.textContent = lang === 'tl' ? 'Iba pang Features' : 'Other Features';
+            }
+            
+            // Other features section
+            const expanded = localStorage.getItem('otherFeaturesExpanded') === 'true';
+            if (expanded) {
+                document.getElementById('otherFeaturesContent')?.classList.remove('hidden');
+                document.getElementById('otherFeaturesChevron')?.classList.add('rotate-180');
+            }
+        });
+
+        // ====== WELCOME MODAL MODULE ======
+        window.WelcomeModal = {
+            // Check if user has seen the welcome modal
+            hasSeenWelcome: function() {
+                return localStorage.getItem('goMission_welcomeSeen') === 'true';
+            },
+            
+            // Show welcome modal
+            show: function() {
+                const modal = document.getElementById('welcomeModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            },
+            
+            // Hide welcome modal
+            hide: function() {
+                const modal = document.getElementById('welcomeModal');
+                if (modal) {
+                    modal.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    modal.style.opacity = '0';
+                    modal.style.transform = 'scale(1.02)';
+                    
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        modal.style.opacity = '';
+                        modal.style.transform = '';
+                        document.body.style.overflow = '';
+                    }, 500);
+                }
+            },
+            
+            // Start journey - called when user clicks the CTA
+            startJourney: function() {
+                // Mark as seen
+                localStorage.setItem('goMission_welcomeSeen', 'true');
+                
+                // Show mainApp now that user is starting
+                const mainApp = document.getElementById('mainApp');
+                if (mainApp) mainApp.classList.remove('hidden');
+                
+                // Hide modal
+                this.hide();
+                
+                // Show affirmation toast (God sees your seeking heart)
+                setTimeout(() => {
+                    this.showAffirmation();
+                }, 600);
+            },
+            
+            // Show affirmation message
+            showAffirmation: function() {
+                const lang = window.i18n?.currentLang || localStorage.getItem('goMission_language') || 'tl';
+                const message = lang === 'tl' 
+                    ? '🌱 Nakikita ng Diyos ang iyong pusong naghahanap sa Kanya.'
+                    : '🌱 God sees your seeking heart for Him.';
+                
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-[var(--card-bg-solid)] border border-[var(--mission-gold)]/30 text-[var(--text-color)] px-6 py-4 rounded-2xl shadow-2xl z-[100] max-w-sm text-center';
+                toast.style.cssText = 'animation: fadeSlideDown 0.5s ease forwards;';
+                toast.innerHTML = `
+                    <p class="font-serif italic text-sm leading-relaxed">${message}</p>
+                `;
+                
+                document.body.appendChild(toast);
+                
+                // Remove after 4 seconds
+                setTimeout(() => {
+                    toast.style.animation = 'fadeSlideUp 0.5s ease forwards';
+                    setTimeout(() => toast.remove(), 500);
+                }, 4000);
+            },
+            
+            // Initialize - check if should show welcome
+            init: function() {
+                // Only show for authenticated users who haven't seen it
+                if (!this.hasSeenWelcome()) {
+                    // Delay slightly to ensure page is loaded
+                    setTimeout(() => this.show(), 500);
+                }
+            }
+        };
+
+        // Add animation keyframes for toast
+        const toastStyles = document.createElement('style');
+        toastStyles.textContent = `
+            @keyframes fadeSlideDown {
+                from { opacity: 0; transform: translate(-50%, -20px); }
+                to { opacity: 1; transform: translate(-50%, 0); }
+            }
+            @keyframes fadeSlideUp {
+                from { opacity: 1; transform: translate(-50%, 0); }
+                to { opacity: 0; transform: translate(-50%, -20px); }
+            }
+        `;
+        document.head.appendChild(toastStyles);
+    </script>
+
+    <!-- Journey Modules -->
+    <script src="/modules/journey/next-steps-modal.js"></script>
+    
+    <!-- Gospel Presentation Module -->
+    <script src="/modules/gospel/gospel-content.js"></script>
+    <script src="/modules/gospel/gospel-audio.js"></script>
+    <script src="/modules/gospel/gospel-presentation.js"></script>
+</body>
+</html>

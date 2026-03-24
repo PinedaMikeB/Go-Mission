@@ -290,6 +290,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /goMission_stageEncouragementRuns/{docId} {
+      allow read, write: if isAdmin();
+    }
+
     // Core app data
     match /goMission_groups/{docId} {
       allow read: if isSignedIn();

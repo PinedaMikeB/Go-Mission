@@ -1,0 +1,21 @@
+#!/bin/sh
+# Auto-push after each successful commit for this repository.
+# Disable for a single commit with: PUSH_AUTO_DISABLED=1 git commit ...
+
+if [ "${PUSH_AUTO_DISABLED:-0}" = "1" ]; then
+  exit 0
+fi
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+if [ -z "$branch" ] || [ "$branch" = "HEAD" ]; then
+  exit 0
+fi
+
+if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+  git push
+  exit 0
+fi
+
+if git remote get-url origin >/dev/null 2>&1; then
+  git push -u origin "$branch"
+fi

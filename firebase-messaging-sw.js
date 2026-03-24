@@ -15,10 +15,12 @@
 // ============================================
 // 🔥 AUTO-UPDATING VERSION - Changes every deploy
 // ============================================
-const CACHE_VERSION = 'v20260221-0110';
+const CACHE_VERSION = 'v20260315-2119';
 const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
 const PUSH_CLICK_CACHE = 'go-mission-push-state';
 const PUSH_CLICK_KEY = '/__push-click';
+const PUSH_DEDUPE_CACHE = 'go-mission-push-dedupe';
+const PUSH_DEDUPE_KEY = '/__push-dedupe';
 
 // Files to cache for offline
 const STATIC_CACHE = [
@@ -200,18 +202,104 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+function buildPushDedupKey(payload = {}) {
+    const payloadData = (payload?.data && typeof payload.data === 'object') ? payload.data : {};
+    const title = String(payload?.notification?.title || '').trim();
+    const body = String(payload?.notification?.body || '').trim();
+    const explicitId = String(
+        payloadData.notificationId ||
+        payloadData.announcementId ||
+        payloadData.eventId ||
+        ''
+    ).trim();
+
+    if (explicitId) {
+        return { key: explicitId, ttlMs: 24 * 60 * 60 * 1000 };
+    }
+
+    const fallback = [
+        String(payloadData.type || 'general').trim(),
+        title,
+        body
+    ].join('|');
+    return { key: fallback, ttlMs: 2 * 60 * 1000 };
+}
+
+async function readPushDedupState() {
+    try {
+        const cache = await caches.open(PUSH_DEDUPE_CACHE);
+        const response = await cache.match(PUSH_DEDUPE_KEY);
+        if (!response) return {};
+        return await response.json();
+    } catch (error) {
+        console.warn('[SW] Failed reading push dedupe state:', error);
+        return {};
+    }
+}
+
+async function writePushDedupState(state = {}) {
+    try {
+        const cache = await caches.open(PUSH_DEDUPE_CACHE);
+        const response = new Response(JSON.stringify(state || {}), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        await cache.put(PUSH_DEDUPE_KEY, response);
+    } catch (error) {
+        console.warn('[SW] Failed writing push dedupe state:', error);
+    }
+}
+
+async function shouldDisplayBackgroundPush(payload = {}) {
+    const { key, ttlMs } = buildPushDedupKey(payload);
+    if (!key) return true;
+
+    const now = Date.now();
+    const state = await readPushDedupState();
+    const seenAt = Number(state[key] || 0);
+    const nextState = {};
+
+    Object.entries(state || {}).forEach(([entryKey, entryValue]) => {
+        const ts = Number(entryValue || 0);
+        if (Number.isFinite(ts) && now - ts < 24 * 60 * 60 * 1000) {
+            nextState[entryKey] = ts;
+        }
+    });
+
+    if (seenAt && now - seenAt < ttlMs) {
+        return false;
+    }
+
+    nextState[key] = now;
+    await writePushDedupState(nextState);
+    return true;
+}
+
 // Background push notifications
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
     console.log('[SW] Background message:', payload);
+
+    const shouldDisplay = await shouldDisplayBackgroundPush(payload);
+    if (!shouldDisplay) {
+        console.log('[SW] Skipping duplicate background push');
+        return null;
+    }
     
     const title = payload.notification?.title || 'Go Mission';
     const body = payload.notification?.body || 'You have a new notification';
     const payloadData = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+    const notificationTag = String(
+        payloadData.notificationId ||
+        payloadData.announcementId ||
+        payloadData.eventId ||
+        payloadData.type ||
+        'default'
+    ).trim() || 'default';
     const options = {
         body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-        tag: payloadData.type || 'default',
+        tag: notificationTag,
+        renotify: false,
         data: {
             ...payloadData,
             notificationTitle: title,

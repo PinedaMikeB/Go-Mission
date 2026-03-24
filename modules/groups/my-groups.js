@@ -2790,7 +2790,8 @@ const MyGroups = {
 
         (chatsSnapshot?.docs || []).forEach((docSnap) => {
             const data = docSnap.data() || {};
-            if (String(data.type || '') !== 'devotion') return;
+            const isSharedDevotion = String(data.type || '') === 'devotion' || String(data.sharedSource || '') === 'devotion';
+            if (!isSharedDevotion) return;
 
             const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
             const senderId = String(data.senderId || devotion.uid || data.userId || '').trim();

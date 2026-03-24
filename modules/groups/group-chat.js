@@ -68,6 +68,7 @@ const GroupChat = {
   mentionPickerOpen: false,
   mentionQuery: '',
   mentionRange: null,
+  mentionInputId: 'chatInput',
   selectedMentionsByToken: {},
   pendingFocusMessageId: null,
   composerReplyTo: null,
@@ -969,12 +970,20 @@ const GroupChat = {
     if (!groupId) return;
     
     try {
+      const sharedText = this.buildSharedDevotionText(devotionData);
+      const mentions = (sharedText && /@[a-zA-Z0-9._-]{2,32}/.test(sharedText))
+        ? await this.extractMentionsFromText(sharedText)
+        : [];
       const message = {
         groupId,
         senderId: window.currentUser.uid,
         senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
         senderPhoto: window.currentUser.photoURL || '',
-        type: 'devotion',
+        type: 'text',
+        text: sharedText,
+        sharedSource: 'devotion',
+        mentions,
+        mentionedUserIds: mentions.map((mention) => mention.uid),
         devotion: {
           book: devotionData.book,
           chapter: devotionData.chapter,
@@ -1000,8 +1009,8 @@ const GroupChat = {
       await window.addDoc(window.collection(window.db, 'goMission_chats'), message);
       await this.updateGroupThreadPreview({
         groupId,
-        type: 'devotion',
-        text: 'Shared a devotion',
+        type: 'text',
+        text: sharedText,
         senderName: message.senderName
       });
       
@@ -1047,8 +1056,188 @@ const GroupChat = {
     return `${book} ${chapter}${verses}`.trim();
   },
 
+  buildSharedDevotionText(devotionData = {}) {
+    const lang = devotionData.language || (window.i18n?.getLang?.() || 'tl');
+    const labels = this.getDevotionLabels(lang);
+    const reference = this.getDevotionReference({
+      book: devotionData.book,
+      chapter: devotionData.chapter,
+      verses: devotionData.highlightedVerses || devotionData.verses || [],
+      godSaidReference: devotionData.godSaidReference || ''
+    });
+    const godSaidText = String(devotionData.godSaidText || '').trim();
+    const understandingText = String(devotionData.understandingText || devotionData.reflectionText || devotionData.reflection || '').trim();
+    const actionText = String(devotionData.actionText || devotionData.commitment || '').trim();
+    const prayerRequests = this.normalizeDevotionPrayerRequests(devotionData.prayerRequests || []);
+    const prayerText = prayerRequests.map((item) => String(item.text || '').trim()).filter(Boolean).join('\n');
+    const scriptureLine = [godSaidText ? `"${godSaidText}"` : '', reference].filter(Boolean).join(' ').trim();
+
+    return [
+      'Conversation Time',
+      '',
+      `1- ${devotionData.godSaidTitle || labels.godSaidTitle}`,
+      '',
+      scriptureLine,
+      '',
+      `2- ${devotionData.understandingTitle || devotionData.reflectionTitle || labels.understandingTitle}`,
+      '',
+      understandingText,
+      '',
+      `3- ${devotionData.actionTitle || labels.actionTitle}`,
+      '',
+      actionText,
+      '',
+      `4- ${labels.prayerRequestTitle}`,
+      '',
+      prayerText
+    ].filter((line, index, arr) => {
+      if (line) return true;
+      return index > 0 && index < arr.length - 1;
+    }).join('\n');
+  },
+
+  getRenderableMessageText(message) {
+    if (!message || typeof message !== 'object') return '';
+    if (message.type === 'devotion') {
+      const savedText = String(message.text || '').trim();
+      if (savedText && savedText !== 'Shared a devotion') return savedText;
+      if (message.devotion && typeof message.devotion === 'object') {
+        return this.buildSharedDevotionText({
+          ...message.devotion,
+          highlightedVerses: message.devotion.verses || []
+        });
+      }
+      return '';
+    }
+    return String(message.text || '').trim();
+  },
+
   formatDevotionMultiline(text) {
-    return this.escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+    return this.formatMessageRichText(String(text || ''));
+  },
+
+  parseDevotionPrayerRequestLines(text = '') {
+    return String(text || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+  },
+
+  getEditableDevotionDraft(message) {
+    const devotion = (message && typeof message.devotion === 'object') ? message.devotion : {};
+    const prayerRequests = this.normalizeDevotionPrayerRequests(devotion.prayerRequests || []);
+    return {
+      devotion,
+      prayerRequests,
+      godSaidText: String(devotion.godSaidText || '').trim(),
+      understandingText: String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim(),
+      actionText: String(devotion.actionText || devotion.commitment || '').trim(),
+      prayerRequestsText: prayerRequests
+        .map((item) => String(item.text || '').trim())
+        .filter(Boolean)
+        .join('\n')
+    };
+  },
+
+  setEditComposerMode(mode = 'text') {
+    const textSection = document.getElementById('chatEditTextSection');
+    const devotionSection = document.getElementById('chatEditDevotionSection');
+    const input = document.getElementById('chatEditInput');
+    const boldBtn = document.getElementById('chatEditBoldBtn');
+    const mentionBtn = document.getElementById('chatEditMentionBtn');
+    const isDevotion = mode === 'devotion';
+
+    if (textSection) textSection.classList.toggle('hidden', isDevotion);
+    if (devotionSection) devotionSection.classList.toggle('hidden', !isDevotion);
+    if (input) input.classList.toggle('hidden', isDevotion);
+    if (boldBtn) boldBtn.classList.toggle('hidden', isDevotion);
+    if (mentionBtn) mentionBtn.classList.toggle('hidden', isDevotion);
+
+    if (isDevotion) this.closeMentionPicker();
+  },
+
+  populateDevotionEditComposer(message) {
+    const draft = this.getEditableDevotionDraft(message);
+    const devotion = draft.devotion || {};
+    const lang = devotion.language === 'en' ? 'en' : 'tl';
+    const labels = this.getDevotionLabels(lang);
+
+    const referenceEl = document.getElementById('chatEditDevotionReference');
+    const godSaidLabel = document.getElementById('chatEditDevotionGodSaidLabel');
+    const understandingLabel = document.getElementById('chatEditDevotionUnderstandingLabel');
+    const actionLabel = document.getElementById('chatEditDevotionActionLabel');
+    const godSaidInput = document.getElementById('chatEditDevotionGodSaid');
+    const understandingInput = document.getElementById('chatEditDevotionUnderstanding');
+    const actionInput = document.getElementById('chatEditDevotionAction');
+    const prayerRequestsInput = document.getElementById('chatEditDevotionPrayerRequests');
+
+    if (referenceEl) referenceEl.textContent = this.getDevotionReference(devotion) || 'Shared Journal';
+    if (godSaidLabel) godSaidLabel.textContent = devotion.godSaidTitle || labels.godSaidTitle;
+    if (understandingLabel) understandingLabel.textContent = devotion.understandingTitle || devotion.reflectionTitle || labels.understandingTitle;
+    if (actionLabel) actionLabel.textContent = devotion.actionTitle || labels.actionTitle;
+    if (godSaidInput) godSaidInput.value = draft.godSaidText;
+    if (understandingInput) understandingInput.value = draft.understandingText;
+    if (actionInput) actionInput.value = draft.actionText;
+    if (prayerRequestsInput) prayerRequestsInput.value = draft.prayerRequestsText;
+  },
+
+  async buildEditedDevotionPayload(message) {
+    const devotion = (message && typeof message.devotion === 'object') ? { ...message.devotion } : {};
+    const currentPrayerRequests = this.normalizeDevotionPrayerRequests(devotion.prayerRequests || []);
+    const currentPrayerSupportMap = this.normalizePrayerSupportMap(devotion.prayerSupports || {});
+
+    const godSaidText = String(document.getElementById('chatEditDevotionGodSaid')?.value || '').trim();
+    const understandingText = String(document.getElementById('chatEditDevotionUnderstanding')?.value || '').trim();
+    const actionText = String(document.getElementById('chatEditDevotionAction')?.value || '').trim();
+    const prayerRequestLines = this.parseDevotionPrayerRequestLines(document.getElementById('chatEditDevotionPrayerRequests')?.value || '');
+
+    const prayerRequests = prayerRequestLines.map((text, index) => {
+      const existing = currentPrayerRequests[index] || {};
+      return {
+        id: String(existing.id || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+        text,
+        answered: !!existing.answered,
+        answeredAt: existing.answeredAt || null,
+        remarks: String(existing.remarks || '').trim()
+      };
+    });
+
+    const prayerSupports = {};
+    prayerRequests.forEach((item) => {
+      if (currentPrayerSupportMap[item.id]) {
+        prayerSupports[item.id] = currentPrayerSupportMap[item.id];
+      }
+    });
+
+    const updatedDevotion = {
+      ...devotion,
+      godSaidText,
+      understandingText,
+      reflectionText: understandingText,
+      reflection: understandingText,
+      actionText,
+      commitment: actionText,
+      prayerRequests,
+      prayerSupports
+    };
+
+    const mentionSourceText = [
+      godSaidText,
+      understandingText,
+      actionText,
+      ...prayerRequests.map((item) => item.text)
+    ].filter(Boolean).join('\n');
+    const mentions = (mentionSourceText && /@[a-zA-Z0-9._-]{2,32}/.test(mentionSourceText))
+      ? await this.extractMentionsFromText(mentionSourceText)
+      : [];
+    const previewText = this.buildMessagePreviewText({ type: 'devotion', devotion: updatedDevotion }) || 'Shared a devotion';
+
+    return {
+      text: previewText,
+      devotion: updatedDevotion,
+      mentions,
+      mentionedUserIds: mentions.map((mention) => mention.uid)
+    };
   },
 
   normalizeDevotionPrayerRequests(rawPrayerRequests) {
@@ -1269,44 +1458,23 @@ const GroupChat = {
         lastDate = dateStr;
       }
       
-      if (msg.type === 'devotion') {
-        // Devotion share
-        html += `
-          <div id="chatMessage_${msg.id}" class="group mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
-            <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
-              <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
-                   class="w-8 h-8 rounded-full flex-shrink-0">
-              <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
-                <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
-                ${this.renderForwardedFlag(msg.forwardedFrom)}
-                ${this.renderReplyBlock(msg)}
-                ${this.renderDevotionSections(msg.devotion || {}, msg.id)}
-                <p class="text-[10px] text-[var(--text-muted)] opacity-60">${timeStr}${this.renderEditedMeta(msg)}</p>
-                ${this.renderReactionControls(msg, isMe)}
-              </div>
+      html += `
+        <div id="chatMessage_${msg.id}" class="group mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
+          <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
+            <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
+                 class="w-8 h-8 rounded-full flex-shrink-0">
+            <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
+              <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
+              ${this.renderForwardedFlag(msg.forwardedFrom)}
+              ${this.renderReplyBlock(msg)}
+              ${this.renderImageContent(msg)}
+              ${this.renderMessageText(msg)}
+              <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}${this.renderEditedMeta(msg)}</p>
+              ${this.renderReactionControls(msg, isMe)}
             </div>
           </div>
-        `;
-      } else {
-        // Regular text message
-        html += `
-          <div id="chatMessage_${msg.id}" class="group mb-3 ${isMe ? 'ml-8' : 'mr-8'}">
-            <div class="flex items-start gap-2 ${isMe ? 'flex-row-reverse' : ''}">
-              <img src="${msg.senderPhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.senderName) + '&background=4a0404&color=fbbf24'}" 
-                   class="w-8 h-8 rounded-full flex-shrink-0">
-              <div class="${isMe ? 'bg-amber-500/20' : 'bg-[var(--card-bg)]'} rounded-xl p-3 max-w-[85%] border border-[var(--card-border)]">
-                <p class="text-[10px] text-[var(--text-muted)] mb-1">${isMe ? 'You' : msg.senderName}</p>
-                ${this.renderForwardedFlag(msg.forwardedFrom)}
-                ${this.renderReplyBlock(msg)}
-                ${this.renderImageContent(msg)}
-                ${this.renderMessageText(msg)}
-                <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-60">${timeStr}${this.renderEditedMeta(msg)}</p>
-                ${this.renderReactionControls(msg, isMe)}
-              </div>
-            </div>
-          </div>
-        `;
-      }
+        </div>
+      `;
     }
     
     container.innerHTML = html;
@@ -1383,7 +1551,7 @@ const GroupChat = {
    * Render message text body, skipping synthetic label for image-only messages.
    */
   renderMessageText(message) {
-    const rawText = String(message?.text || '').trim();
+    const rawText = this.getRenderableMessageText(message);
     const hasImage = !!message?.imageUrl;
     const caption = String(message?.imageCaption || '').trim();
 
@@ -1449,13 +1617,15 @@ const GroupChat = {
     const sendBtn = document.getElementById('chatSendBtn');
     const attachBtn = document.getElementById('chatAttachBtn');
     const boldBtn = document.getElementById('chatBoldBtn');
+    const mentionBtn = document.getElementById('chatMentionBtn');
     const input = document.getElementById('chatInput');
     const fullscreenSendBtn = document.getElementById('chatFullscreenSendBtn');
     const fullscreenAttachBtn = document.getElementById('chatFullscreenAttachBtn');
     const fullscreenBoldBtn = document.getElementById('chatFullscreenBoldBtn');
+    const fullscreenMentionBtn = document.getElementById('chatFullscreenMentionBtn');
     const fullscreenInput = document.getElementById('chatFullscreenInput');
 
-    [sendBtn, attachBtn, boldBtn, input, fullscreenSendBtn, fullscreenAttachBtn, fullscreenBoldBtn, fullscreenInput]
+    [sendBtn, attachBtn, boldBtn, mentionBtn, input, fullscreenSendBtn, fullscreenAttachBtn, fullscreenBoldBtn, fullscreenMentionBtn, fullscreenInput]
       .filter(Boolean)
       .forEach((el) => {
         if (isSending) {
@@ -1724,7 +1894,10 @@ const GroupChat = {
     overlay.classList.remove('hidden');
     this.isFullscreenComposerOpen = true;
     this.setComposerSendingState(!!this.isSendingMessage);
-    requestAnimationFrame(() => fullscreenInput.focus());
+    requestAnimationFrame(() => {
+      fullscreenInput.focus();
+      this.renderMentionSuggestions(fullscreenInput.value || '', fullscreenInput.selectionStart ?? fullscreenInput.value.length, 'chatFullscreenInput');
+    });
   },
 
   /**
@@ -1746,6 +1919,7 @@ const GroupChat = {
 
     overlay.classList.add('hidden');
     this.isFullscreenComposerOpen = false;
+    this.closeMentionPicker();
 
     if (!preserveFocus && input && this.shouldUseFullscreenComposer()) {
       this.suppressNextComposerFocusOverlay = true;
@@ -1763,6 +1937,7 @@ const GroupChat = {
     input.value = fullscreenInput.value || '';
     this.autoResizeComposerInput(input);
     this.handleInputChange({ target: input });
+    this.renderMentionSuggestions(fullscreenInput.value || '', fullscreenInput.selectionStart ?? fullscreenInput.value.length, 'chatFullscreenInput');
   },
 
   /**
@@ -1976,12 +2151,37 @@ const GroupChat = {
     return { query: raw.toLowerCase(), start: atIndex, end: cursor };
   },
 
+  getMentionPickerElements(inputId = 'chatInput') {
+    if (inputId === 'chatFullscreenInput') {
+      return {
+        picker: document.getElementById('chatFullscreenMentionPicker'),
+        list: document.getElementById('chatFullscreenMentionList')
+      };
+    }
+    if (inputId === 'chatEditInput') {
+      return {
+        picker: document.getElementById('chatEditMentionPicker'),
+        list: document.getElementById('chatEditMentionList')
+      };
+    }
+    return {
+      picker: document.getElementById('chatMentionPicker'),
+      list: document.getElementById('chatMentionList')
+    };
+  },
+
+  hideAllMentionPickers() {
+    ['chatMentionPicker', 'chatFullscreenMentionPicker', 'chatEditMentionPicker'].forEach((id) => {
+      const picker = document.getElementById(id);
+      if (picker) picker.classList.add('hidden');
+    });
+  },
+
   /**
    * Render mention suggestions dropdown
    */
-  async renderMentionSuggestions(text, cursorPos) {
-    const picker = document.getElementById('chatMentionPicker');
-    const list = document.getElementById('chatMentionList');
+  async renderMentionSuggestions(text, cursorPos, inputId = 'chatInput') {
+    const { picker, list } = this.getMentionPickerElements(inputId);
     if (!picker || !list) return;
 
     const mention = this.getActiveMentionQuery(text, cursorPos);
@@ -1991,7 +2191,9 @@ const GroupChat = {
     }
 
     await this.loadGroupMemberDirectory();
-    this.renderComposerPreview(text);
+    if (inputId === 'chatInput') {
+      this.renderComposerPreview(text);
+    }
     const directory = this.groupMemberDirectory || [];
     const senderId = window.currentUser?.uid;
     const query = mention.query || '';
@@ -2013,14 +2215,16 @@ const GroupChat = {
     this.mentionPickerOpen = true;
     this.mentionQuery = query;
     this.mentionRange = { start: mention.start, end: mention.end };
+    this.mentionInputId = inputId;
     this.closeComposeEmojiPicker();
+    this.hideAllMentionPickers();
     picker.classList.remove('hidden');
 
     list.innerHTML = matches.map((member) => {
       const shortName = (member.displayName || 'Member').split(/\s+/)[0] || member.displayName || 'member';
       const token = this.normalizeMentionToken(shortName) || this.normalizeMentionToken(member.aliases?.[0]) || 'member';
       return `
-        <button onclick="GroupChat.selectMention('${member.uid}', '${(member.displayName || '').replace(/'/g, "\\'")}', '${token.replace(/'/g, "\\'")}')" class="w-full text-left flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-amber-500/10 transition-colors">
+        <button onclick="GroupChat.selectMention('${member.uid}', '${(member.displayName || '').replace(/'/g, "\\'")}', '${token.replace(/'/g, "\\'")}', '${inputId}')" class="w-full text-left flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-amber-500/10 transition-colors">
           <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(member.displayName || 'Member')}&background=4a0404&color=fbbf24" class="w-8 h-8 rounded-full border border-[var(--card-border)]" alt="${this.escapeHtml(member.displayName || 'Member')}">
           <div class="min-w-0">
             <p class="text-sm text-[var(--text-color)] font-semibold truncate">${this.escapeHtml(member.displayName || 'Member')}</p>
@@ -2034,8 +2238,9 @@ const GroupChat = {
   /**
    * Insert selected mention from picker
    */
-  selectMention(uid, displayName, token) {
-    const input = document.getElementById('chatInput');
+  selectMention(uid, displayName, token, inputId = null) {
+    const targetInputId = inputId || this.mentionInputId || 'chatInput';
+    const input = document.getElementById(targetInputId);
     if (!input || !uid) return;
 
     const safeToken = this.normalizeMentionToken(token) || this.normalizeMentionToken(displayName) || 'member';
@@ -2047,7 +2252,9 @@ const GroupChat = {
     input.value = nextValue;
     input.setSelectionRange(cursorPos, cursorPos);
     input.focus();
-    this.autoResizeComposerInput(input);
+    if (targetInputId === 'chatInput') {
+      this.autoResizeComposerInput(input);
+    }
 
     this.selectedMentionsByToken[safeToken] = {
       uid,
@@ -2055,6 +2262,14 @@ const GroupChat = {
     };
 
     this.closeMentionPicker();
+    if (targetInputId === 'chatFullscreenInput') {
+      this.handleFullscreenComposerInput({ target: input });
+      return;
+    }
+    if (targetInputId === 'chatEditInput') {
+      this.handleEditComposerInput({ target: input });
+      return;
+    }
     this.renderComposerPreview(nextValue);
     this.syncComposerPreviewScroll({ target: input });
     this.syncMainInputToFullscreenComposer();
@@ -2064,11 +2279,38 @@ const GroupChat = {
    * Hide mention picker
    */
   closeMentionPicker() {
-    const picker = document.getElementById('chatMentionPicker');
-    if (picker) picker.classList.add('hidden');
+    this.hideAllMentionPickers();
     this.mentionPickerOpen = false;
     this.mentionQuery = '';
     this.mentionRange = null;
+    this.mentionInputId = 'chatInput';
+  },
+
+  insertMentionTrigger(inputId = 'chatInput') {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const value = input.value || '';
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : value.length;
+    const needsLeadingSpace = start > 0 && !/\s/.test(value.charAt(start - 1));
+    const insertion = `${needsLeadingSpace ? ' ' : ''}@`;
+    const nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`;
+    const nextPos = start + insertion.length;
+
+    input.value = nextValue;
+    input.setSelectionRange(nextPos, nextPos);
+    input.focus();
+
+    if (inputId === 'chatFullscreenInput') {
+      this.handleFullscreenComposerInput({ target: input });
+      return;
+    }
+    if (inputId === 'chatEditInput') {
+      this.handleEditComposerInput({ target: input });
+      return;
+    }
+    this.handleInputChange({ target: input });
   },
 
   /**
@@ -2234,12 +2476,12 @@ const GroupChat = {
   },
 
   /**
-   * Only allow editing for own text/image messages (including captions).
+   * Only allow editing for own text/image/devotion messages.
    */
   canEditMessage(message) {
     if (!message || typeof message !== 'object') return false;
     if (message.senderId !== window.currentUser?.uid) return false;
-    return message.type === 'text' || message.type === 'image';
+    return message.type === 'text' || message.type === 'image' || message.type === 'devotion';
   },
 
   /**
@@ -2249,6 +2491,9 @@ const GroupChat = {
     if (!message) return '';
     if (message.type === 'image') {
       return String(message.imageCaption || '').trim();
+    }
+    if (message.type === 'devotion') {
+      return this.getRenderableMessageText(message);
     }
     return String(message.text || '').trim();
   },
@@ -2267,7 +2512,7 @@ const GroupChat = {
     const message = this.messages.find((item) => item.id === messageId);
     if (!message) return;
     if (!this.canEditMessage(message)) {
-      alert('Only your text messages or photo captions can be edited.');
+      alert('Only your own messages can be edited.');
       return;
     }
 
@@ -2282,6 +2527,7 @@ const GroupChat = {
     this.editingMessageIsImage = isImage;
     this.isSavingEditMessage = false;
     this.setEditComposerBusy(false);
+    this.setEditComposerMode('text');
     title.textContent = isImage ? 'Edit Photo Caption' : 'Edit Message';
     input.value = currentValue;
     modal.classList.remove('hidden');
@@ -2297,6 +2543,8 @@ const GroupChat = {
     this.editingMessageId = null;
     this.editingMessageIsImage = false;
     this.isSavingEditMessage = false;
+    this.setEditComposerMode('text');
+    this.closeMentionPicker();
     this.setEditComposerBusy(false);
 
     if (!silent) {
@@ -2320,30 +2568,31 @@ const GroupChat = {
     }
 
     const isImage = this.editingMessageIsImage || message.type === 'image';
-    const input = document.getElementById('chatEditInput');
-    if (!input) return;
-    const nextValue = String(input.value || '');
-
-    const trimmedValue = nextValue.trim();
-
-    if (!isImage && !trimmedValue) {
-      alert('Message cannot be empty.');
-      return;
-    }
 
     try {
       this.isSavingEditMessage = true;
       this.setEditComposerBusy(true);
 
-      const mentions = (trimmedValue && /@[a-zA-Z0-9._-]{2,32}/.test(trimmedValue))
-        ? await this.extractMentionsFromText(trimmedValue)
-        : [];
       const payload = {
-        mentions,
-        mentionedUserIds: mentions.map((mention) => mention.uid),
         editedAt: window.serverTimestamp(),
         updatedAt: window.serverTimestamp()
       };
+      let previewText = '';
+
+      const input = document.getElementById('chatEditInput');
+      if (!input) return;
+      const trimmedValue = String(input.value || '').trim();
+
+      if (!isImage && !trimmedValue) {
+        alert('Message cannot be empty.');
+        return;
+      }
+
+      const mentions = (trimmedValue && /@[a-zA-Z0-9._-]{2,32}/.test(trimmedValue))
+        ? await this.extractMentionsFromText(trimmedValue)
+        : [];
+      payload.mentions = mentions;
+      payload.mentionedUserIds = mentions.map((mention) => mention.uid);
 
       if (isImage) {
         payload.imageCaption = trimmedValue;
@@ -2351,6 +2600,11 @@ const GroupChat = {
       } else {
         payload.text = trimmedValue;
       }
+      if (message.type === 'devotion') {
+        payload.type = 'text';
+        payload.sharedSource = message.sharedSource || 'devotion';
+      }
+      previewText = payload.text;
 
       await window.setDoc(
         window.doc(window.db, 'goMission_chats', messageId),
@@ -2362,10 +2616,15 @@ const GroupChat = {
       message.mentionedUserIds = payload.mentionedUserIds;
       message.editedAt = new Date();
       if (isImage) {
+        const trimmedValue = String(payload.imageCaption || '').trim();
         message.imageCaption = trimmedValue;
         message.text = trimmedValue || '📷 Photo';
       } else {
-        message.text = trimmedValue;
+        if (message.type === 'devotion') {
+          message.type = 'text';
+          message.sharedSource = payload.sharedSource || message.sharedSource || 'devotion';
+        }
+        message.text = payload.text;
       }
 
       this.renderMessages();
@@ -2376,7 +2635,7 @@ const GroupChat = {
         await this.updateGroupThreadPreview({
           groupId: this.currentGroupId || Groups.currentGroup?.id || null,
           type: message.type === 'image' ? 'image' : 'text',
-          text: trimmedValue || (isImage ? '📷 Photo' : ''),
+          text: previewText,
           senderName: message.senderName || 'Unknown'
         });
       }
@@ -2402,6 +2661,12 @@ const GroupChat = {
     }
   },
 
+  handleEditComposerInput(event) {
+    const input = event?.target || document.getElementById('chatEditInput');
+    if (!input) return;
+    this.renderMentionSuggestions(input.value || '', input.selectionStart ?? input.value.length, 'chatEditInput');
+  },
+
   /**
    * Toggle edit modal button/input state while saving.
    */
@@ -2411,8 +2676,15 @@ const GroupChat = {
     const cancelBtn = document.getElementById('chatEditCancelBtn');
     const input = document.getElementById('chatEditInput');
     const boldBtn = document.getElementById('chatEditBoldBtn');
+    const mentionBtn = document.getElementById('chatEditMentionBtn');
+    const devotionFields = [
+      document.getElementById('chatEditDevotionGodSaid'),
+      document.getElementById('chatEditDevotionUnderstanding'),
+      document.getElementById('chatEditDevotionAction'),
+      document.getElementById('chatEditDevotionPrayerRequests')
+    ];
 
-    [saveTop, saveBottom, cancelBtn, input, boldBtn].filter(Boolean).forEach((el) => {
+    [saveTop, saveBottom, cancelBtn, input, boldBtn, mentionBtn, ...devotionFields].filter(Boolean).forEach((el) => {
       if (isBusy) {
         el.setAttribute('disabled', 'disabled');
         el.classList.add('opacity-60', 'cursor-not-allowed');
@@ -2857,11 +3129,8 @@ const GroupChat = {
     if (!message || typeof message !== 'object') return '';
     let text = '';
 
-    if (message.type === 'devotion' && message.devotion) {
-      const devotion = message.devotion || {};
-      const ref = this.getDevotionReference(devotion);
-      const reflection = String(devotion.reflectionText || devotion.reflection || '').trim();
-      text = `📖 ${ref}${reflection ? ` — ${reflection}` : ''}`.trim();
+    if (message.type === 'devotion') {
+      text = this.getRenderableMessageText(message);
     } else if (typeof message.replyToText === 'string' && message.replyToText.trim()) {
       text = message.replyToText.trim();
     } else {

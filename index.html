@@ -10,7 +10,7 @@
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
         // Auto-generated build timestamp - changes on every deployment
-        const BUILD_TIMESTAMP = '1773225576000';
+        const BUILD_TIMESTAMP = '1773580759000';
         // PWAUpdater is the active updater; keep legacy updater in passive mode.
         window.GO_MISSION_DISABLE_LEGACY_SW_UPDATER = true;
     </script>
@@ -3115,6 +3115,9 @@
                     <button id="chatBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatInput')" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
                         B
                     </button>
+                    <button id="chatMentionBtn" onclick="GroupChat.insertMentionTrigger('chatInput')" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Mention someone">
+                        @
+                    </button>
                     <button id="chatAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.19-9.2a3.5 3.5 0 114.95 4.95l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.49"></path>
@@ -3158,6 +3161,12 @@
                     <div class="rounded-xl border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-xs text-[var(--text-muted)]">
                         Tap <span class="text-amber-500 font-bold">Done</span> to continue, or use the send button below to send immediately.
                     </div>
+                    <div id="chatFullscreenMentionPicker" class="hidden rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden">
+                        <div class="px-3 py-2 border-b border-[var(--card-border)] text-[11px] text-[var(--text-muted)]">Mention someone</div>
+                        <div id="chatFullscreenMentionList" class="max-h-48 overflow-y-auto p-2">
+                            <p class="text-xs text-[var(--text-muted)] text-center py-3">No matches.</p>
+                        </div>
+                    </div>
                     <textarea id="chatFullscreenInput"
                               class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Type a message..."
@@ -3166,6 +3175,9 @@
                     <div class="flex gap-2">
                         <button id="chatFullscreenBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatFullscreenInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
                             B
+                        </button>
+                        <button id="chatFullscreenMentionBtn" onclick="GroupChat.insertMentionTrigger('chatFullscreenInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Mention someone">
+                            @
                         </button>
                         <button id="chatFullscreenAttachBtn" onclick="GroupChat.openAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo or file" aria-label="Attach photo or file">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3199,13 +3211,48 @@
                     <div class="rounded-xl border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-xs text-[var(--text-muted)]">
                         Use line breaks for structure. For bold text, select words and tap <span class="font-bold text-amber-500">B</span>.
                     </div>
-                    <textarea id="chatEditInput"
-                              class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
-                              placeholder="Edit message..."
-                              onkeydown="GroupChat.handleEditComposerKeyDown(event)"></textarea>
+                    <div id="chatEditMentionPicker" class="hidden rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden">
+                        <div class="px-3 py-2 border-b border-[var(--card-border)] text-[11px] text-[var(--text-muted)]">Mention someone</div>
+                        <div id="chatEditMentionList" class="max-h-48 overflow-y-auto p-2">
+                            <p class="text-xs text-[var(--text-muted)] text-center py-3">No matches.</p>
+                        </div>
+                    </div>
+                    <div id="chatEditTextSection" class="flex-1 flex flex-col">
+                        <textarea id="chatEditInput"
+                                  class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
+                                  placeholder="Edit message..."
+                                  oninput="GroupChat.handleEditComposerInput(event)"
+                                  onkeydown="GroupChat.handleEditComposerKeyDown(event)"></textarea>
+                    </div>
+                    <div id="chatEditDevotionSection" class="hidden flex-1 overflow-y-auto rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 space-y-4">
+                        <div class="rounded-xl border border-amber-500/30 bg-amber-500/8 px-3 py-2">
+                            <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-500">Shared Journal</p>
+                            <p id="chatEditDevotionReference" class="text-sm text-[var(--text-color)] mt-1">Reference</p>
+                        </div>
+                        <div>
+                            <label id="chatEditDevotionGodSaidLabel" for="chatEditDevotionGodSaid" class="block text-[11px] font-bold uppercase tracking-[0.12em] text-amber-500 mb-1">What did God say</label>
+                            <textarea id="chatEditDevotionGodSaid" class="w-full min-h-[100px] rounded-xl border border-[var(--card-border)] bg-white px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-y" placeholder="Scripture insight..."></textarea>
+                        </div>
+                        <div>
+                            <label id="chatEditDevotionUnderstandingLabel" for="chatEditDevotionUnderstanding" class="block text-[11px] font-bold uppercase tracking-[0.12em] text-amber-500 mb-1">What is my understanding</label>
+                            <textarea id="chatEditDevotionUnderstanding" class="w-full min-h-[120px] rounded-xl border border-[var(--card-border)] bg-white px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-y" placeholder="Your reflection..."></textarea>
+                        </div>
+                        <div>
+                            <label id="chatEditDevotionActionLabel" for="chatEditDevotionAction" class="block text-[11px] font-bold uppercase tracking-[0.12em] text-amber-500 mb-1">What will I do</label>
+                            <textarea id="chatEditDevotionAction" class="w-full min-h-[100px] rounded-xl border border-[var(--card-border)] bg-white px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-y" placeholder="Action step..."></textarea>
+                        </div>
+                        <div>
+                            <label for="chatEditDevotionPrayerRequests" class="block text-[11px] font-bold uppercase tracking-[0.12em] text-amber-500 mb-1">Prayer Requests</label>
+                            <textarea id="chatEditDevotionPrayerRequests" class="w-full min-h-[120px] rounded-xl border border-[var(--card-border)] bg-white px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-y" placeholder="One prayer request per line"></textarea>
+                            <p class="text-[11px] text-[var(--text-muted)] mt-1">Put one prayer request on each line.</p>
+                        </div>
+                    </div>
                     <div class="flex gap-2">
                         <button id="chatEditBoldBtn" onclick="GroupChat.wrapSelectionWithBold('chatEditInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
                             B
+                        </button>
+                        <button id="chatEditMentionBtn" onclick="GroupChat.insertMentionTrigger('chatEditInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Mention someone">
+                            @
                         </button>
                         <button id="chatEditFooterSaveBtn" onclick="GroupChat.saveEditedMessage()" class="flex-1 h-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors">
                             Save Changes
@@ -5917,6 +5964,45 @@
             }
         }
 
+        function buildSharedDevotionChatText({
+            scriptureSection,
+            sectionLabels,
+            understandingText = '',
+            actionText = '',
+            prayerRequests = []
+        } = {}) {
+            const godSaidText = String(scriptureSection?.text || '').trim();
+            const reference = String(scriptureSection?.reference || '').trim();
+            const prayerText = (Array.isArray(prayerRequests) ? prayerRequests : [])
+                .map((item) => String(item?.text || '').trim())
+                .filter(Boolean)
+                .join('\n');
+            const scriptureLine = [godSaidText ? `"${godSaidText}"` : '', reference].filter(Boolean).join(' ').trim();
+
+            return [
+                'Conversation Time',
+                '',
+                `1- ${String(scriptureSection?.title || sectionLabels?.godSaidTitle || 'What did God say').trim()}`,
+                '',
+                scriptureLine,
+                '',
+                `2- ${String(sectionLabels?.understandingTitle || 'What is my understanding').trim()}`,
+                '',
+                String(understandingText || '').trim(),
+                '',
+                `3- ${String(sectionLabels?.actionTitle || 'What will I do').trim()}`,
+                '',
+                String(actionText || '').trim(),
+                '',
+                `4- ${String(sectionLabels?.prayerRequestTitle || 'Prayer Requests').trim()}`,
+                '',
+                prayerText
+            ].filter((line, index, arr) => {
+                if (line) return true;
+                return index > 0 && index < arr.length - 1;
+            }).join('\n');
+        }
+
         async function persistDevotionEntry({ understanding = '', action = '', reflection = '', commitment = '', prayerRequests = null, question, shareRequested, shareGroupIds = [] }) {
             const understandingText = String(understanding || reflection || '').trim();
             const actionText = String(action || commitment || '').trim();
@@ -6012,6 +6098,13 @@
                         .map(v => (typeof v === 'object' ? v.verse : v))
                         .filter(v => Number.isFinite(Number(v)))
                         .map(v => Number(v));
+                    const sharedChatText = buildSharedDevotionChatText({
+                        scriptureSection,
+                        sectionLabels,
+                        understandingText,
+                        actionText,
+                        prayerRequests: normalizedPrayerRequests
+                    });
 
                     for (const targetGroupId of targetGroupIds) {
                         await window.addDoc(window.collection(window.db, 'goMission_chats'), {
@@ -6019,7 +6112,9 @@
                             senderId: window.currentUser.uid,
                             senderName: window.currentUser.displayName || window.currentUser.email || 'Unknown',
                             senderPhoto: window.currentUser.photoURL || '',
-                            type: 'devotion',
+                            type: 'text',
+                            text: sharedChatText,
+                            sharedSource: 'devotion',
                             devotion: {
                                 book: reading.book,
                                 chapter: reading.chapter,

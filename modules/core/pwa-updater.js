@@ -4,7 +4,7 @@
  * SILENT UPDATE FLOW:
  * 1. Checks for updates every 5 minutes (silent)
  * 2. When update found → downloads new SW in background
- * 3. When user leaves app (blur/hidden) → activates new SW + clears cache
+ * 3. When user leaves app (blur/hidden) → activates new SW
  * 4. When user returns → app is already updated (seamless!)
  * 
  * NO PROMPTS - Updates happen automatically when user isn't looking
@@ -21,8 +21,7 @@ const PWAUpdater = {
     newWorker: null,
     isUpdating: false,
     reloadTimeout: null,
-    STARTUP_UPDATE_KEY: 'goMission_startupUpdateBuild',
-    
+    initialCheckScheduled: false,
     /**
      * Initialize PWA and register service worker
      */
@@ -35,8 +34,10 @@ const PWAUpdater = {
         }
         
         try {
-            // Register service worker
-            this.registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            // Bypass the browser's HTTP cache for SW script fetches so deploys are seen quickly.
+            this.registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                updateViaCache: 'none'
+            });
             console.log('[PWA] Service worker registered:', this.registration.scope);
             
             // Check for waiting SW immediately (update was downloaded in background)
@@ -44,21 +45,6 @@ const PWAUpdater = {
                 console.log('[PWA] Found waiting SW on load - update ready');
                 this.updateReady = true;
                 this.newWorker = this.registration.waiting;
-            }
-
-            // Force one immediate update check on app open, then apply instantly if waiting.
-            // This makes home-screen launches pick up latest code without waiting for blur/pagehide.
-            await this.checkForUpdates();
-            if (this.registration.waiting) {
-                this.updateReady = true;
-                this.newWorker = this.registration.waiting;
-            }
-            if (this.updateReady && this.shouldApplyStartupUpdate()) {
-                const build = this.getBuildVersion();
-                console.log('[PWA] Startup launch with waiting update - applying now for build:', build);
-                localStorage.setItem(this.STARTUP_UPDATE_KEY, build);
-                // Delay slightly so startup/auth boot can progress before a reload.
-                setTimeout(() => this.applySilentUpdate('startup'), 800);
             }
             
             // Listen for new service worker installing
@@ -152,6 +138,30 @@ const PWAUpdater = {
             console.log('[PWA] Update check failed:', error.message);
         }
     },
+
+    /**
+     * Start the first update check only after the UI is usable and the main thread settles.
+     */
+    notifyAppReady(reason = 'ui-ready') {
+        if (this.initialCheckScheduled) return;
+        this.initialCheckScheduled = true;
+
+        const runCheck = () => {
+            if (document.visibilityState !== 'visible') {
+                this.initialCheckScheduled = false;
+                return;
+            }
+            console.log('[PWA] App ready - checking for updates. reason=', reason);
+            this.checkForUpdates();
+        };
+
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(runCheck, { timeout: 5000 });
+            return;
+        }
+
+        setTimeout(runCheck, 2000);
+    },
     
     /**
      * Apply update silently (no UI, happens in background)
@@ -171,33 +181,16 @@ const PWAUpdater = {
                 return;
             }
 
-            // 1. Clear all caches first
-            if ('caches' in window) {
-                const cacheNames = await caches.keys();
-                console.log('[PWA] Clearing', cacheNames.length, 'caches');
-                await Promise.all(cacheNames.map(name => caches.delete(name)));
-            }
-            
-            // 2. Tell waiting SW to skip waiting and take over
+            // Let the next SW clean old versioned caches in its activate handler.
             waitingWorker.postMessage({ type: 'SKIP_WAITING' });
 
-            // Fallback reload only for startup apply. Background apply should be invisible.
-            if (reason === 'startup') {
-                this.reloadTimeout = setTimeout(() => {
-                    if (this.isUpdating) {
-                        console.log('[PWA] Startup fallback reload after SKIP_WAITING');
-                        window.location.reload();
-                    }
-                }, 2500);
-            } else {
-                // Avoid update lock if controllerchange is missed.
-                setTimeout(() => {
-                    if (this.isUpdating) {
-                        console.log('[PWA] controllerchange not observed, resetting update flag');
-                        this.isUpdating = false;
-                    }
-                }, 8000);
-            }
+            // Avoid update lock if controllerchange is missed.
+            setTimeout(() => {
+                if (this.isUpdating) {
+                    console.log('[PWA] controllerchange not observed, resetting update flag');
+                    this.isUpdating = false;
+                }
+            }, 8000);
             
             // Note: controllerchange event will trigger reload
             console.log('[PWA] Silent update applied - will reload on next focus');
@@ -258,33 +251,6 @@ const PWAUpdater = {
     isUpdatePending() {
         return this.updateReady;
     },
-
-    /**
-     * Current build version from index.html timestamp.
-     */
-    getBuildVersion() {
-        if (typeof BUILD_TIMESTAMP !== 'undefined' && BUILD_TIMESTAMP) {
-            return String(BUILD_TIMESTAMP);
-        }
-        return 'unknown';
-    },
-
-    /**
-     * Detect installed app mode (PWA standalone).
-     */
-    isStandaloneMode() {
-        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    },
-
-    /**
-     * Apply startup update once per build to avoid reload loops.
-     */
-    shouldApplyStartupUpdate() {
-        if (!this.isStandaloneMode()) return false;
-        const build = this.getBuildVersion();
-        return localStorage.getItem(this.STARTUP_UPDATE_KEY) !== build;
-    },
-    
     /**
      * Debug: Manually trigger update check and apply
      */

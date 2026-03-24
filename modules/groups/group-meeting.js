@@ -26,16 +26,11 @@ const GroupMeeting = {
   lastJoinArgs: null,
   presentationState: null,
   presentationDeckCache: {},
+  meetingSlidesLibraryLoaded: false,
+  meetingSlidesLibraryPromise: null,
 
   // Local-first, hybrid-ready slide deck library (host sync can plug into this later).
-  MEETING_SLIDES_LIBRARY: {
-    'idol-of-comfort': {
-      title: 'Idol of Comfort',
-      variants: {
-        tl: 'modules/groups/meeting-slides/decks/idol-of-comfort.tl.json'
-      }
-    }
-  },
+  MEETING_SLIDES_LIBRARY: {},
   
   // Jitsi configuration - self-hosted is faster
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
@@ -493,19 +488,21 @@ const GroupMeeting = {
    */
   initPresentationState() {
     let savedOpacity = 72;
+    let savedDeckId = '';
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
       const parsed = Number(raw);
       if (Number.isFinite(parsed)) {
         savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
       }
+      savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
     } catch (_) {}
 
     this.presentationState = {
       mode: 'local',        // future: 'host_synced'
       focusMode: false,     // future moderator setting
       panelOpen: false,
-      selectedDeckId: 'idol-of-comfort',
+      selectedDeckId: savedDeckId || null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       currentSlideIndex: 0,
@@ -585,6 +582,25 @@ const GroupMeeting = {
             <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
           </div>
           <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <label for="meeting-slides-topic-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Topic</label>
+              <select id="meeting-slides-topic-select"
+                      onchange="window.GroupMeeting.setSlidesDeck(this.value)"
+                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
+                <option value="">No topics yet</option>
+              </select>
+            </div>
+            <div class="w-[120px] shrink-0">
+              <label for="meeting-slides-lang-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Lang</label>
+              <select id="meeting-slides-lang-select"
+                      onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
+                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
+                <option value="tl">Tagalog</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
             <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
             <input id="meeting-slides-opacity"
                    type="range"
@@ -629,6 +645,10 @@ const GroupMeeting = {
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
 
+    this.ensureSlidesLibraryLoaded().finally(() => {
+      this.renderSlidesPanel();
+    });
+
     // Keep selector in sync with current state on first render.
     this.renderSlidesPanel();
   },
@@ -641,6 +661,65 @@ const GroupMeeting = {
     if (!el) return;
     el.textContent = text || '';
     el.style.display = text ? 'block' : 'none';
+  },
+
+  normalizeMeetingSlidesTopicId(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80);
+  },
+
+  getMeetingSlidesCatalogDocId() {
+    return 'meetingSlidesCatalog';
+  },
+
+  getSlidesLibraryEntries() {
+    return Object.entries(this.MEETING_SLIDES_LIBRARY || {})
+      .sort((a, b) => String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0])));
+  },
+
+  async ensureSlidesLibraryLoaded(force = false) {
+    if (!window.db || !window.doc || !window.getDoc) return this.MEETING_SLIDES_LIBRARY;
+    if (this.meetingSlidesLibraryLoaded && !force) return this.MEETING_SLIDES_LIBRARY;
+    if (this.meetingSlidesLibraryPromise && !force) return this.meetingSlidesLibraryPromise;
+
+    this.meetingSlidesLibraryPromise = (async () => {
+      try {
+        const snap = await window.getDoc(window.doc(window.db, 'goMission_config', this.getMeetingSlidesCatalogDocId()));
+        const data = snap.exists() ? (snap.data() || {}) : {};
+        const topics = Array.isArray(data.topics) ? data.topics : [];
+        const nextLibrary = {};
+        topics.forEach((topic) => {
+          const topicId = this.normalizeMeetingSlidesTopicId(topic?.id || topic?.deckId || topic?.title || '');
+          const title = String(topic?.title || topic?.name || topic?.deckTitle || topicId).trim();
+          if (!topicId || !title) return;
+          nextLibrary[topicId] = {
+            title,
+            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {}
+          };
+        });
+        this.MEETING_SLIDES_LIBRARY = nextLibrary;
+        this.meetingSlidesLibraryLoaded = true;
+
+        if (this.presentationState) {
+          const entries = this.getSlidesLibraryEntries();
+          const currentId = String(this.presentationState.selectedDeckId || '').trim();
+          if (!currentId || !this.MEETING_SLIDES_LIBRARY[currentId]) {
+            this.presentationState.selectedDeckId = entries[0]?.[0] || null;
+          }
+        }
+      } catch (error) {
+        console.warn('[GroupMeeting] Could not load slides topic library:', error?.message || error);
+      } finally {
+        this.meetingSlidesLibraryPromise = null;
+      }
+      return this.MEETING_SLIDES_LIBRARY;
+    })();
+
+    return this.meetingSlidesLibraryPromise;
   },
 
   /**
@@ -666,18 +745,22 @@ const GroupMeeting = {
 
   async loadSlidesDeck() {
     if (!this.presentationState) return;
+    await this.ensureSlidesLibraryLoaded();
     const state = this.presentationState;
-    const deckEntry = this.MEETING_SLIDES_LIBRARY[state.selectedDeckId];
+    const deckId = this.normalizeMeetingSlidesTopicId(state.selectedDeckId || '');
+    const deckEntry = this.MEETING_SLIDES_LIBRARY[deckId];
     const lang = state.selectedLang;
-    const path = deckEntry?.variants?.[lang] || deckEntry?.variants?.tl;
-    const configDocId = this.getMeetingSlidesConfigDocId(state.selectedDeckId, lang);
-    const fallbackConfigDocId = lang === 'tl'
+    const topicTitle = deckEntry?.title || deckId || 'Meeting Slides';
+    const staticPath = deckEntry?.variants?.[lang] || deckEntry?.variants?.tl || '';
+    const configDocId = deckId ? this.getMeetingSlidesConfigDocId(deckId, lang) : null;
+    const fallbackConfigDocId = !deckId || lang === 'tl'
       ? null
-      : this.getMeetingSlidesConfigDocId(state.selectedDeckId, 'tl');
+      : this.getMeetingSlidesConfigDocId(deckId, 'tl');
 
-    if (!path) {
-      state.error = `No slide deck available for language: ${lang}`;
+    if (!deckId || !deckEntry) {
+      state.error = 'No meeting topics uploaded yet.';
       state.deck = null;
+      state.loading = false;
       this.renderSlidesPanel();
       return;
     }
@@ -685,18 +768,23 @@ const GroupMeeting = {
     const cacheKeys = [
       configDocId ? `firestore:${configDocId}` : null,
       fallbackConfigDocId ? `firestore:${fallbackConfigDocId}` : null,
-      path ? `static:${path}` : null
+      staticPath ? `static:${staticPath}` : null
     ].filter(Boolean);
 
     for (const key of cacheKeys) {
       if (this.presentationDeckCache[key]) {
         state.deck = this.presentationDeckCache[key];
         state.error = null;
+        state.loading = false;
         state.currentSlideIndex = 0;
         this.renderSlidesPanel();
         return;
       }
     }
+
+    state.loading = true;
+    state.error = null;
+    this.renderSlidesPanel();
 
     const firestoreDeck = await this.loadSlidesDeckFromConfig(configDocId, fallbackConfigDocId);
     if (firestoreDeck) {
@@ -704,21 +792,22 @@ const GroupMeeting = {
       const deckPayload = firestoreDeck.deck || firestoreDeck;
       this.presentationDeckCache[cacheKey] = deckPayload;
       state.deck = deckPayload;
+      state.loading = false;
       state.error = null;
       state.currentSlideIndex = 0;
       this.renderSlidesPanel();
       return;
     }
 
-    state.loading = true;
-    state.error = null;
-    this.renderSlidesPanel();
-
     try {
-      const res = await fetch(path, { cache: 'no-store' });
+      if (!staticPath) {
+        throw new Error(`No slide deck published yet for "${topicTitle}" (${lang.toUpperCase()}).`);
+      }
+
+      const res = await fetch(staticPath, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const deck = await res.json();
-      this.presentationDeckCache[`static:${path}`] = deck;
+      this.presentationDeckCache[`static:${staticPath}`] = deck;
       state.deck = deck;
       state.currentSlideIndex = 0;
       state.error = null;
@@ -753,6 +842,40 @@ const GroupMeeting = {
       }
     }
     return null;
+  },
+
+  async setSlidesDeck(deckId) {
+    if (!this.presentationState) return;
+    await this.ensureSlidesLibraryLoaded();
+
+    const entries = this.getSlidesLibraryEntries();
+    const normalizedId = this.normalizeMeetingSlidesTopicId(deckId || '');
+    const nextDeckId = normalizedId && this.MEETING_SLIDES_LIBRARY[normalizedId]
+      ? normalizedId
+      : (entries[0]?.[0] || null);
+
+    this.presentationState.selectedDeckId = nextDeckId;
+    this.presentationState.deck = null;
+    this.presentationState.currentSlideIndex = 0;
+    this.presentationState.loading = false;
+    this.presentationState.error = null;
+
+    try {
+      if (nextDeckId) {
+        window.localStorage?.setItem('goMission_meetingSlidesDeckId', nextDeckId);
+      } else {
+        window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
+      }
+    } catch (_) {}
+
+    if (!nextDeckId) {
+      this.presentationState.error = 'No meeting topics uploaded yet.';
+      this.renderSlidesPanel();
+      return;
+    }
+
+    this.renderSlidesPanel();
+    await this.loadSlidesDeck();
   },
 
   setSlidesLanguage(lang) {
@@ -803,6 +926,142 @@ const GroupMeeting = {
       .replace(/'/g, '&#39;');
   },
 
+  renderMeetingSlideParagraphBlocks(paragraphs = [], options = {}) {
+    const paragraphColor = options.paragraphColor || '#1f1f1f';
+    const bulletColor = options.bulletColor || '#181818';
+    const paragraphSize = options.paragraphSize || '18px';
+    const bulletSize = options.bulletSize || paragraphSize;
+    const paragraphGap = options.paragraphGap || '12px';
+    const listGap = options.listGap || '10px';
+    const listIndent = options.listIndent || '22px';
+
+    const items = Array.isArray(paragraphs) ? paragraphs.filter((p) => String(p || '').trim()) : [];
+    if (!items.length) return '';
+
+    const blocks = [];
+    let currentListItems = [];
+
+    const flushList = () => {
+      if (!currentListItems.length) return;
+      blocks.push(
+        `<ul style="margin:0; padding-left:${listIndent}; display:flex; flex-direction:column; gap:${listGap};">${currentListItems.join('')}</ul>`
+      );
+      currentListItems = [];
+    };
+
+    items.forEach((paragraph) => {
+      const raw = String(paragraph || '').trim();
+      const bulletMatch = raw.match(/^\s*[•*-]\s+(.+)$/);
+      if (bulletMatch) {
+        currentListItems.push(
+          `<li style="color:${bulletColor}; font-size:${bulletSize}; line-height:1.45;">${this.escapeHtml(bulletMatch[1])}</li>`
+        );
+        return;
+      }
+
+      flushList();
+      blocks.push(
+        `<p style="color:${paragraphColor}; font-size:${paragraphSize}; line-height:1.52; margin:0 0 ${paragraphGap} 0;">${this.escapeHtml(raw)}</p>`
+      );
+    });
+
+    flushList();
+    return blocks.join('');
+  },
+
+  buildMeetingSlideDisclosureSections(slide) {
+    const paragraphs = Array.isArray(slide?.paragraphs) ? slide.paragraphs.filter((p) => String(p || '').trim()) : [];
+    const title = String(slide?.title || '').trim();
+    const kicker = String(slide?.kicker || '').trim();
+    const titleLooksFacilitator = /facilitator(?:'s|’s)?\s+guide/i.test(title) || /facilitator(?:'s|’s)?\s+guide/i.test(kicker);
+    const primary = [];
+    const disclosures = [];
+    let activeDisclosure = null;
+
+    const pushDisclosure = () => {
+      if (!activeDisclosure?.paragraphs?.length) return;
+      disclosures.push(activeDisclosure);
+      activeDisclosure = null;
+    };
+
+    const startDisclosure = (label, initialParagraphs = [], tone = 'facilitator') => {
+      pushDisclosure();
+      activeDisclosure = {
+        label,
+        tone,
+        paragraphs: initialParagraphs.filter(Boolean)
+      };
+    };
+
+    const classifyDisclosureLine = (paragraph) => {
+      const raw = String(paragraph || '').trim();
+      const lower = raw.toLowerCase();
+      const labelMatch = raw.match(/^([^:]{2,80}):\s*(.*)$/);
+      const label = labelMatch ? labelMatch[1].trim() : '';
+      const content = labelMatch ? labelMatch[2].trim() : '';
+
+      if (/^facilitator(?:'s|’s)?\s+guide$/i.test(label) || /^facilitator(?:'s|’s)?\s+guide:?$/i.test(raw)) {
+        return { kind: 'start', label: 'Facilitator Guide', tone: 'facilitator', content };
+      }
+      if (/^facilitator(?:'s|’s)?\s+note$/i.test(label)) {
+        return { kind: 'start', label: 'Facilitator Note', tone: 'facilitator', content };
+      }
+      if (/^(posibleng\s+sagot|possible\s+answer|suggested\s+answer|sagot)$/i.test(label)) {
+        return { kind: 'start', label: 'Suggested Answer', tone: 'answer', content };
+      }
+      if (/^(paano i-guide ang talakayan|analysis|key insight|layunin|segue sa topic|segue to the topic)$/i.test(label)) {
+        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
+      }
+      if (titleLooksFacilitator) {
+        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
+      }
+      if (activeDisclosure && /^(free from|analysis|key insight|facilitator(?:'s|’s)?\s+note|layunin)\b/i.test(lower)) {
+        return { kind: 'append', label: activeDisclosure.label, tone: activeDisclosure.tone, content: raw };
+      }
+      return null;
+    };
+
+    paragraphs.forEach((paragraph) => {
+      const disclosureLine = classifyDisclosureLine(paragraph);
+      if (!disclosureLine) {
+        if (activeDisclosure && titleLooksFacilitator) {
+          activeDisclosure.paragraphs.push(String(paragraph).trim());
+          return;
+        }
+        pushDisclosure();
+        primary.push(String(paragraph).trim());
+        return;
+      }
+
+      if (disclosureLine.kind === 'start') {
+        startDisclosure(disclosureLine.label, disclosureLine.content ? [disclosureLine.content] : [], disclosureLine.tone);
+        return;
+      }
+
+      if (!activeDisclosure) {
+        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
+      } else if (activeDisclosure.label !== disclosureLine.label && disclosureLine.kind === 'append') {
+        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
+      }
+
+      if (disclosureLine.content) {
+        activeDisclosure.paragraphs.push(disclosureLine.content);
+      }
+    });
+
+    pushDisclosure();
+
+    if (titleLooksFacilitator && !primary.length && !disclosures.length && paragraphs.length) {
+      disclosures.push({
+        label: 'Facilitator Guide',
+        tone: 'facilitator',
+        paragraphs: paragraphs.map((paragraph) => String(paragraph).trim()).filter(Boolean)
+      });
+    }
+
+    return { primary, disclosures, titleLooksFacilitator };
+  },
+
   renderSlidesPanel() {
     const state = this.presentationState;
     const panel = document.getElementById('meeting-slides-panel');
@@ -814,8 +1073,34 @@ const GroupMeeting = {
     const prevBtn = document.getElementById('meeting-slide-prev-btn');
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
+    const topicSelect = document.getElementById('meeting-slides-topic-select');
+    const langSelect = document.getElementById('meeting-slides-lang-select');
     const opacitySlider = document.getElementById('meeting-slides-opacity');
     const opacityValueEl = document.getElementById('meeting-slides-opacity-value');
+    const topicEntries = this.getSlidesLibraryEntries();
+    const hasTopics = topicEntries.length > 0;
+    const selectedDeckId = hasTopics && this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]
+      ? state.selectedDeckId
+      : (topicEntries[0]?.[0] || null);
+
+    if (selectedDeckId !== state.selectedDeckId) {
+      state.selectedDeckId = selectedDeckId;
+    }
+
+    if (topicSelect) {
+      topicSelect.innerHTML = hasTopics
+        ? topicEntries.map(([deckId, deckMeta]) => (
+            `<option value="${this.escapeHtml(deckId)}">${this.escapeHtml(deckMeta?.title || deckId)}</option>`
+          )).join('')
+        : '<option value="">No topics yet</option>';
+      topicSelect.disabled = !hasTopics;
+      topicSelect.value = selectedDeckId || '';
+    }
+
+    if (langSelect) {
+      langSelect.value = state.selectedLang === 'en' ? 'en' : 'tl';
+      langSelect.disabled = !hasTopics;
+    }
 
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
     const panelAlpha = Math.max(0.08, opacityPct / 100);
@@ -846,7 +1131,7 @@ const GroupMeeting = {
     panel.style.webkitBackdropFilter = 'none';
 
     if (titleEl) {
-      titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]?.title || 'Meeting Slides';
+      titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
     }
 
     if (state.loading) {
@@ -877,7 +1162,7 @@ const GroupMeeting = {
     if (!slides.length) {
       if (body) body.innerHTML = `
         <div style="background:rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}); border-radius:18px; border:1px solid rgba(255,255,255,0.55); padding:16px;">
-          <p style="color:#2a2a2a; font-size:14px; margin:0;">No slides available yet.</p>
+          <p style="color:#2a2a2a; font-size:14px; margin:0;">${hasTopics ? 'No slides available yet.' : 'No meeting topics published yet.'}</p>
         </div>
       `;
       if (counterEl) counterEl.textContent = '0 / 0';
@@ -889,16 +1174,7 @@ const GroupMeeting = {
     const slideIndex = Math.min(Math.max(state.currentSlideIndex || 0, 0), slides.length - 1);
     state.currentSlideIndex = slideIndex;
     const slide = slides[slideIndex];
-
-    const paragraphsHtml = (slide.paragraphs || []).map((p) => {
-      const isBullet = /^\s*[•*-]\s+/.test(p);
-      const cleaned = p.replace(/^\s*[•*-]\s+/, '');
-      return isBullet
-        ? `<li style="color:#181818; font-size:18px; line-height:1.45;">${this.escapeHtml(cleaned)}</li>`
-        : `<p style="color:#1f1f1f; font-size:18px; line-height:1.52; margin:0 0 12px 0;">${this.escapeHtml(p)}</p>`;
-    });
-
-    const hasBullets = (slide.paragraphs || []).some((p) => /^\s*[•*-]\s+/.test(p));
+    const slideSections = this.buildMeetingSlideDisclosureSections(slide);
     const kickerHtml = slide.kicker
       ? `<div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:5px 10px; font-weight:800; margin-bottom:10px;">
           <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
@@ -908,6 +1184,49 @@ const GroupMeeting = {
     const subtitleHtml = slide.subtitle
       ? `<div style="color:#5a4a3a; font-size:14px; line-height:1.4; margin-bottom:14px; font-weight:600;">${this.escapeHtml(slide.subtitle)}</div>`
       : '';
+    const primaryBodyHtml = slideSections.primary.length
+      ? this.renderMeetingSlideParagraphBlocks(slideSections.primary)
+      : (
+          slideSections.titleLooksFacilitator
+            ? `<p style="color:#6a5748; font-size:14px; line-height:1.5; margin:0 0 12px 0;">Facilitator notes are hidden by default. Expand below when you need them.</p>`
+            : ''
+        );
+    const disclosureSectionsHtml = slideSections.disclosures.map((section, idx) => {
+      const tone = section.tone === 'answer'
+        ? {
+            border: 'rgba(37, 99, 235, 0.18)',
+            background: 'rgba(237, 244, 255, 0.88)',
+            summary: '#0f3b8f',
+            badge: 'rgba(59,130,246,0.12)',
+            badgeText: '#1d4ed8'
+          }
+        : {
+            border: 'rgba(217, 119, 6, 0.18)',
+            background: 'rgba(255, 248, 235, 0.9)',
+            summary: '#8a3b13',
+            badge: 'rgba(245, 158, 11, 0.14)',
+            badgeText: '#a16207'
+          };
+      return `
+        <details style="margin-top:${idx === 0 && !primaryBodyHtml ? '0' : '14px'}; border-radius:16px; border:1px solid ${tone.border}; background:${tone.background}; overflow:hidden;">
+          <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; font-weight:800; color:${tone.summary}; font-size:13px; letter-spacing:0.01em;">
+            <span>${this.escapeHtml(section.label)}</span>
+            <span style="display:inline-flex; align-items:center; border-radius:999px; background:${tone.badge}; color:${tone.badgeText}; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:0.12em;">Tap to Expand</span>
+          </summary>
+          <div style="padding:0 14px 14px 14px; border-top:1px solid rgba(0,0,0,0.05);">
+            ${this.renderMeetingSlideParagraphBlocks(section.paragraphs, {
+              paragraphColor: '#2d241f',
+              bulletColor: '#2d241f',
+              paragraphSize: '15px',
+              bulletSize: '15px',
+              paragraphGap: '10px',
+              listGap: '8px',
+              listIndent: '20px'
+            })}
+          </div>
+        </details>
+      `;
+    }).join('');
     const bodyHtml = `
       <div style="
         position:relative;
@@ -922,9 +1241,8 @@ const GroupMeeting = {
           ${kickerHtml}
           ${titleHtml}
           ${subtitleHtml}
-          ${hasBullets
-            ? `<ul style="margin:0; padding-left:22px; display:flex; flex-direction:column; gap:10px;">${paragraphsHtml.join('')}</ul>`
-            : `<div>${paragraphsHtml.join('')}</div>`}
+          <div>${primaryBodyHtml}</div>
+          ${disclosureSectionsHtml}
         </div>
       </div>
     `;
