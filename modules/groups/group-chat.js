@@ -1267,20 +1267,31 @@ const GroupChat = {
     Object.entries(rawSupports).forEach(([prayerId, users]) => {
       const id = String(prayerId || '').trim();
       if (!id || !Array.isArray(users)) return;
-      const dedupe = new Map();
-      users.forEach((user) => {
-        const uid = String(user?.uid || '').trim();
-        if (!uid) return;
-        dedupe.set(uid, {
-          uid,
-          name: String(user?.name || 'Member').trim() || 'Member',
-          senderPhoto: String(user?.senderPhoto || '').trim(),
-          prayedAt: user?.prayedAt || null
-        });
-      });
-      if (dedupe.size > 0) normalized[id] = Array.from(dedupe.values());
+      const list = this.normalizePrayerSupportUsers(users);
+      if (list.length > 0) normalized[id] = list;
     });
     return normalized;
+  },
+
+  normalizePrayerSupportUsers(rawUsers) {
+    if (!Array.isArray(rawUsers)) return [];
+    const dedupe = new Map();
+    rawUsers.forEach((user) => {
+      const uid = String(user?.uid || user?.userId || user?.id || '').trim();
+      if (!uid) return;
+      const existing = dedupe.get(uid) || {};
+      dedupe.set(uid, {
+        uid,
+        name: String(user?.name || existing.name || 'Member').trim() || 'Member',
+        senderPhoto: String(user?.senderPhoto || existing.senderPhoto || '').trim(),
+        prayedAt: user?.prayedAt || existing.prayedAt || null
+      });
+    });
+    return Array.from(dedupe.values()).sort((a, b) => {
+      const aTime = Date.parse(a?.prayedAt || '') || 0;
+      const bTime = Date.parse(b?.prayedAt || '') || 0;
+      return bTime - aTime;
+    });
   },
 
   getPrayerSupportSummary(supportMap, prayerId) {
@@ -1292,6 +1303,152 @@ const GroupChat = {
       .map(user => String(user.name || '').trim())
       .filter(Boolean);
     return { count, isMine, names };
+  },
+
+  getMessagePrayerSupportTargets(message) {
+    if (!message || typeof message !== 'object') return [];
+
+    if (message.prayerMeta?.prayerId && String(message.prayerMeta?.mode || 'request') === 'request') {
+      return [{
+        kind: 'prayerMeta',
+        prayerId: String(message.prayerMeta.prayerId || '').trim(),
+        entryId: String(message.prayerMeta.devotionEntryId || '').trim()
+      }].filter((item) => item.prayerId);
+    }
+
+    const devotion = (message.devotion && typeof message.devotion === 'object') ? message.devotion : null;
+    const prayerRequests = devotion ? this.normalizeDevotionPrayerRequests(devotion.prayerRequests || []) : [];
+    return prayerRequests
+      .map((item) => ({
+        kind: 'devotion',
+        prayerId: String(item.id || '').trim(),
+        entryId: ''
+      }))
+      .filter((item) => item.prayerId);
+  },
+
+  canCommitPrayerSupport(message) {
+    return this.getMessagePrayerSupportTargets(message).length > 0;
+  },
+
+  getMessagePrayerSupportUsers(message) {
+    const targets = this.getMessagePrayerSupportTargets(message);
+    if (!targets.length) return [];
+
+    if (targets[0].kind === 'prayerMeta') {
+      return this.normalizePrayerSupportUsers(message.prayerSupportUsers || []);
+    }
+
+    const supportMap = this.normalizePrayerSupportMap(message?.devotion?.prayerSupports || {});
+    const merged = [];
+    targets.forEach((target) => {
+      merged.push(...(Array.isArray(supportMap[target.prayerId]) ? supportMap[target.prayerId] : []));
+    });
+    return this.normalizePrayerSupportUsers(merged);
+  },
+
+  getMessagePrayerSupportSummary(message) {
+    const users = this.getMessagePrayerSupportUsers(message);
+    const uid = window.currentUser?.uid;
+    return {
+      count: users.length,
+      isMine: !!uid && users.some((user) => user.uid === uid),
+      names: users.map((user) => String(user.name || '').trim()).filter(Boolean)
+    };
+  },
+
+  renderPrayerSupportControl(message, isMe) {
+    const targets = this.getMessagePrayerSupportTargets(message);
+    const summary = this.getMessagePrayerSupportSummary(message);
+    if (!targets.length && !summary.count) return '';
+
+    const namesPreview = summary.names.slice(0, 3).join(', ');
+    const moreCount = summary.names.length > 3 ? ` +${summary.names.length - 3}` : '';
+    const buttonHtml = (!isMe && targets.length) ? `
+      <button onclick="GroupChat.toggleMessagePrayerSupport('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border text-[11px] transition-colors ${summary.isMine ? 'border-amber-500/70 bg-amber-500/20 text-amber-500' : 'border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40'}">
+        🙏 Praying for You${summary.count > 0 ? ` (${summary.count})` : ''}
+      </button>
+    ` : '';
+    const summaryHtml = summary.count > 0 ? `
+      <p class="w-full text-[10px] text-[var(--text-muted)] ${isMe ? 'text-right' : ''}">
+        Praying: ${this.escapeHtml(namesPreview)}${this.escapeHtml(moreCount)}
+      </p>
+    ` : '';
+
+    return `${buttonHtml}${summaryHtml}`;
+  },
+
+  async toggleMessagePrayerSupport(messageId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db || !messageId) return;
+
+    const message = this.messages.find((item) => item.id === messageId);
+    if (!message) return;
+
+    const targets = this.getMessagePrayerSupportTargets(message);
+    if (!targets.length) return;
+
+    const supporter = {
+      uid,
+      name: window.currentUser.displayName || window.currentUser.email || 'Member',
+      senderPhoto: window.currentUser.photoURL || '',
+      prayedAt: new Date().toISOString()
+    };
+
+    try {
+      if (targets[0].kind === 'prayerMeta') {
+        const currentUsers = this.normalizePrayerSupportUsers(message.prayerSupportUsers || []);
+        const exists = currentUsers.some((user) => user.uid === uid);
+        const nextUsers = exists
+          ? currentUsers.filter((user) => user.uid !== uid)
+          : this.normalizePrayerSupportUsers([...currentUsers, supporter]);
+
+        await window.setDoc(
+          window.doc(window.db, 'goMission_chats', messageId),
+          {
+            prayerSupportUsers: nextUsers,
+            updatedAt: window.serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        message.prayerSupportUsers = nextUsers;
+      } else {
+        const devotion = (message.devotion && typeof message.devotion === 'object') ? message.devotion : {};
+        const supportMap = this.normalizePrayerSupportMap(devotion.prayerSupports || {});
+        const exists = this.getMessagePrayerSupportSummary(message).isMine;
+
+        targets.forEach((target) => {
+          const currentUsers = this.normalizePrayerSupportUsers(supportMap[target.prayerId] || []);
+          const nextUsers = exists
+            ? currentUsers.filter((user) => user.uid !== uid)
+            : this.normalizePrayerSupportUsers([...currentUsers, supporter]);
+          if (nextUsers.length > 0) supportMap[target.prayerId] = nextUsers;
+          else delete supportMap[target.prayerId];
+        });
+
+        const updatedDevotion = {
+          ...devotion,
+          prayerSupports: supportMap
+        };
+
+        await window.setDoc(
+          window.doc(window.db, 'goMission_chats', messageId),
+          {
+            devotion: updatedDevotion,
+            updatedAt: window.serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        message.devotion = updatedDevotion;
+      }
+
+      this.renderMessages();
+    } catch (error) {
+      console.error('[GroupChat] Error updating message prayer support:', error);
+      alert('Could not update prayer support right now.');
+    }
   },
 
   renderDevotionSections(devotion = {}, messageId = '') {
@@ -2445,6 +2602,7 @@ const GroupChat = {
     return `
       <div class="mt-2 ${isMe ? 'text-right' : ''}">
         <div class="flex items-center gap-1 flex-wrap ${isMe ? 'justify-end' : ''}">
+          ${this.renderPrayerSupportControl(message, isMe)}
           ${reactionsHtml}
           <button data-reaction-toggle="1" onclick="GroupChat.toggleReactionPicker('${message.id}')" class="inline-flex items-center justify-center h-6 px-2 rounded-full border border-[var(--card-border)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-color)] hover:border-amber-500/40">
             😊 React

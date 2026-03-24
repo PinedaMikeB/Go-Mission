@@ -738,31 +738,41 @@ const LeaderDashboard = {
       const snapshot = await window.getDocs(q);
       snapshot.docs.forEach((docSnap) => {
         const data = docSnap.data() || {};
-        if (String(data.type || '') !== 'devotion') return;
-        const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
-        const senderId = String(data.senderId || devotion.uid || '').trim();
-        if (senderId && signals[senderId]) {
-          signals[senderId].sharedDevotions += 1;
-          const understanding = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
-          const action = String(devotion.actionText || devotion.commitment || '').trim();
-          if (understanding || action) signals[senderId].sharedInsights += 1;
-          const prayerRequests = Array.isArray(devotion.prayerRequests)
-            ? devotion.prayerRequests.filter((item) => String(item?.text || '').trim())
-            : [];
-          signals[senderId].prayerRequestsShared += prayerRequests.length;
+        const isSharedDevotion = String(data.type || '') === 'devotion' || String(data.sharedSource || '') === 'devotion';
+        if (isSharedDevotion) {
+          const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
+          const senderId = String(data.senderId || devotion.uid || '').trim();
+          if (senderId && signals[senderId]) {
+            signals[senderId].sharedDevotions += 1;
+            const understanding = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
+            const action = String(devotion.actionText || devotion.commitment || '').trim();
+            if (understanding || action) signals[senderId].sharedInsights += 1;
+            const prayerRequests = Array.isArray(devotion.prayerRequests)
+              ? devotion.prayerRequests.filter((item) => String(item?.text || '').trim())
+              : [];
+            signals[senderId].prayerRequestsShared += prayerRequests.length;
+          }
+
+          const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
+            ? devotion.prayerSupports
+            : {};
+          Object.values(supportMap).forEach((supportList) => {
+            if (!Array.isArray(supportList)) return;
+            supportList.forEach((entry) => {
+              const uid = String(entry?.uid || entry?.userId || '').trim();
+              if (uid && signals[uid]) {
+                signals[uid].prayedForOthers += 1;
+              }
+            });
+          });
         }
 
-        const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
-          ? devotion.prayerSupports
-          : {};
-        Object.values(supportMap).forEach((supportList) => {
-          if (!Array.isArray(supportList)) return;
-          supportList.forEach((entry) => {
-            const uid = String(entry?.uid || entry?.userId || '').trim();
-            if (uid && signals[uid]) {
-              signals[uid].prayedForOthers += 1;
-            }
-          });
+        const messagePrayerSupport = Array.isArray(data.prayerSupportUsers) ? data.prayerSupportUsers : [];
+        messagePrayerSupport.forEach((entry) => {
+          const uid = String(entry?.uid || entry?.userId || entry?.id || '').trim();
+          if (uid && signals[uid]) {
+            signals[uid].prayedForOthers += 1;
+          }
         });
       });
     } catch (error) {

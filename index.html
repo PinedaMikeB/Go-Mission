@@ -5902,14 +5902,25 @@
                 const snapshot = await window.getDocs(chatQuery);
                 snapshot.forEach((docSnap) => {
                     const chatData = docSnap.data() || {};
-                    if (chatData.type !== 'devotion') return;
-                    const supportMap = normalizePrayerSupportMap(chatData?.devotion?.prayerSupports || {});
-                    Object.entries(supportMap).forEach(([prayerId, users]) => {
-                        const keys = prayerIdToKeys.get(String(prayerId || '').trim()) || [];
+                    const isSharedDevotion = chatData.type === 'devotion' || chatData.sharedSource === 'devotion';
+                    if (isSharedDevotion) {
+                        const supportMap = normalizePrayerSupportMap(chatData?.devotion?.prayerSupports || {});
+                        Object.entries(supportMap).forEach(([prayerId, users]) => {
+                            const keys = prayerIdToKeys.get(String(prayerId || '').trim()) || [];
+                            keys.forEach((key) => {
+                                supportByKey[key] = mergePrayerSupportUsers(supportByKey[key], users);
+                            });
+                        });
+                    }
+
+                    const metaPrayerId = String(chatData?.prayerMeta?.prayerId || '').trim();
+                    if (metaPrayerId) {
+                        const users = normalizePrayerSupportUsers(chatData?.prayerSupportUsers || []);
+                        const keys = prayerIdToKeys.get(metaPrayerId) || [];
                         keys.forEach((key) => {
                             supportByKey[key] = mergePrayerSupportUsers(supportByKey[key], users);
                         });
-                    });
+                    }
                 });
             } catch (error) {
                 console.warn('[Journal] Could not load prayer support list:', error);

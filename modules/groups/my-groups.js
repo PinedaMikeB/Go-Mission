@@ -2815,6 +2815,14 @@ const MyGroups = {
                     }
                 });
             });
+
+            const messagePrayerSupport = Array.isArray(data.prayerSupportUsers) ? data.prayerSupportUsers : [];
+            messagePrayerSupport.forEach((entry) => {
+                const uid = String(entry?.uid || entry?.userId || entry?.id || '').trim();
+                if (uid && activitySignals[uid]) {
+                    activitySignals[uid].prayedForOthers += 1;
+                }
+            });
         });
 
         const members = memberProfiles.map(({ id, data }) => {
