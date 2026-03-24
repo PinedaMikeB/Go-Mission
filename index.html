@@ -2985,6 +2985,11 @@
                         <p class="col-span-8 text-xs text-[var(--text-muted)] text-center py-4">Loading emojis...</p>
                     </div>
                 </div>
+                <div id="dmAttachmentDraft" class="hidden mb-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-2">
+                    <p class="text-xs text-[var(--text-muted)]">Photo attachment</p>
+                </div>
+                <input id="dmGalleryInput" type="file" accept="image/*" class="hidden" onchange="window.ChatApp && window.ChatApp.handleDmAttachmentSelected && window.ChatApp.handleDmAttachmentSelected(event, 'gallery')">
+                <input id="dmCameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="window.ChatApp && window.ChatApp.handleDmAttachmentSelected && window.ChatApp.handleDmAttachmentSelected(event, 'camera')">
                 <div class="flex gap-2 items-end">
                     <button id="dmEmojiToggleBtn" onclick="window.ChatApp && window.ChatApp.toggleDmEmojiPicker && window.ChatApp.toggleDmEmojiPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-lg hover:bg-amber-500/20 transition-colors" title="Add emoji" aria-label="Add emoji">
                         😊
@@ -2992,15 +2997,20 @@
                     <button id="dmBoldBtn" onclick="window.ChatApp && window.ChatApp.wrapDmSelectionWithBold && window.ChatApp.wrapDmSelectionWithBold()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text" aria-label="Bold selected text">
                         B
                     </button>
+                    <button id="dmAttachBtn" onclick="window.ChatApp && window.ChatApp.openDmAttachmentPicker && window.ChatApp.openDmAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo" aria-label="Attach photo">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.19-9.2a3.5 3.5 0 114.95 4.95l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.49"></path>
+                        </svg>
+                    </button>
                     <textarea id="dmChatInput" rows="1" placeholder="Type a message..." onkeydown="window.ChatApp && window.ChatApp.handleDmKeyDown && window.ChatApp.handleDmKeyDown(event)" oninput="window.ChatApp && window.ChatApp.handleDmInput && window.ChatApp.handleDmInput(event)" onfocus="window.ChatApp && window.ChatApp.handleDmComposerInputFocus && window.ChatApp.handleDmComposerInputFocus(event)"
                            class="flex-1 min-h-[48px] max-h-44 bg-white border border-[var(--card-border)] rounded-xl px-4 py-3 text-sm text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none overflow-y-auto"></textarea>
-                    <button id="dmChatSendBtn" onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="bg-amber-500 text-[#2a0505] px-4 rounded-xl font-bold hover:bg-amber-400 transition-colors" title="Send message" aria-label="Send message">
+                    <button id="dmChatSendBtn" onclick="window.ChatApp && window.ChatApp.sendDirectMessage && window.ChatApp.sendDirectMessage()" class="shrink-0 h-12 w-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors flex items-center justify-center" title="Send message" aria-label="Send message">
                         <span id="dmChatSendIconWrap" class="inline-flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                    </svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
                         </span>
-                </button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -3020,6 +3030,9 @@
                     <div class="rounded-xl border border-amber-500/35 bg-amber-500/8 px-3 py-2 text-xs text-[var(--text-muted)]">
                         Write the message here with room to think. Tap <span class="text-amber-500 font-bold">Done</span> to return, or send from below.
                     </div>
+                    <div id="dmFullscreenAttachmentDraft" class="hidden rounded-xl border border-amber-500/35 bg-amber-500/10 p-2">
+                        <p class="text-xs text-[var(--text-muted)]">Photo attachment</p>
+                    </div>
                     <textarea id="dmFullscreenInput"
                               class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Type a message..."
@@ -3037,6 +3050,11 @@
                         </button>
                         <button id="dmFullscreenBoldBtn" onclick="window.ChatApp && window.ChatApp.wrapDmSelectionWithBold && window.ChatApp.wrapDmSelectionWithBold('dmFullscreenInput')" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-bold text-[#8a1f04] hover:bg-amber-500/20 transition-colors" title="Bold selected text">
                             B
+                        </button>
+                        <button id="dmFullscreenAttachBtn" onclick="window.ChatApp && window.ChatApp.openDmAttachmentPicker && window.ChatApp.openDmAttachmentPicker()" class="shrink-0 h-12 w-12 rounded-xl border border-amber-500/30 bg-amber-500/10 text-[#8a1f04] hover:bg-amber-500/20 transition-colors flex items-center justify-center" title="Attach photo" aria-label="Attach photo">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.19-9.2a3.5 3.5 0 114.95 4.95l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.49"></path>
+                            </svg>
                         </button>
                         <button id="dmFullscreenSendBtn" onclick="window.ChatApp && window.ChatApp.sendFromDmFullscreenComposer && window.ChatApp.sendFromDmFullscreenComposer()" class="flex-1 h-12 rounded-xl bg-amber-500 text-[#2a0505] font-bold hover:bg-amber-400 transition-colors flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3167,6 +3185,9 @@
                             <p class="text-xs text-[var(--text-muted)] text-center py-3">No matches.</p>
                         </div>
                     </div>
+                    <div id="chatFullscreenAttachmentDraft" class="hidden rounded-xl border border-amber-500/35 bg-amber-500/10 p-2">
+                        <p class="text-xs text-[var(--text-muted)]">Photo attachment</p>
+                    </div>
                     <textarea id="chatFullscreenInput"
                               class="flex-1 min-h-[40vh] w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-4 text-base text-[#5a0505] placeholder-[#9d8b85] focus:outline-none focus:border-amber-500/50 resize-none"
                               placeholder="Type a message..."
@@ -3189,6 +3210,31 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
                             <span data-chat-send-label>Send</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chatAttachmentSheet" class="fixed inset-0 z-[180] hidden">
+            <button type="button" onclick="window.GoMissionChatAttachmentSheet && window.GoMissionChatAttachmentSheet.close && window.GoMissionChatAttachmentSheet.close()" class="absolute inset-0 bg-black/45 backdrop-blur-[1px]" aria-label="Close attachment options"></button>
+            <div class="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+                <div class="mx-auto max-w-md rounded-[28px] border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-2xl overflow-hidden">
+                    <div class="px-5 pt-5 pb-3 border-b border-[var(--card-border)]">
+                        <p id="chatAttachmentSheetTitle" class="text-base font-bold text-[var(--text-color)]">Add photo</p>
+                        <p id="chatAttachmentSheetSubtitle" class="mt-1 text-xs text-[var(--text-muted)]">Choose a photo from your library or open the camera.</p>
+                    </div>
+                    <div class="p-3 space-y-2">
+                        <button type="button" onclick="window.GoMissionChatAttachmentSheet && window.GoMissionChatAttachmentSheet.choose && window.GoMissionChatAttachmentSheet.choose('gallery')" class="w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-3 text-left hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors">
+                            <span class="block text-sm font-bold text-[var(--text-color)]">🖼 Photo Library</span>
+                            <span class="block mt-1 text-xs text-[var(--text-muted)]">Pick an image from your device.</span>
+                        </button>
+                        <button type="button" onclick="window.GoMissionChatAttachmentSheet && window.GoMissionChatAttachmentSheet.choose && window.GoMissionChatAttachmentSheet.choose('camera')" class="w-full rounded-2xl border border-[var(--card-border)] bg-white px-4 py-3 text-left hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors">
+                            <span class="block text-sm font-bold text-[var(--text-color)]">📷 Camera</span>
+                            <span class="block mt-1 text-xs text-[var(--text-muted)]">Take a fresh photo right now.</span>
+                        </button>
+                        <button type="button" onclick="window.GoMissionChatAttachmentSheet && window.GoMissionChatAttachmentSheet.close && window.GoMissionChatAttachmentSheet.close()" class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            Cancel
                         </button>
                     </div>
                 </div>
@@ -3318,9 +3364,9 @@
     <script src="modules/bible/bible-reader.js"></script>
     <script src="modules/groups/group-meeting.js?v=20260303-stage-big-layout"></script>
     <script src="modules/groups/groups.js"></script>
-    <script src="modules/groups/group-chat.js"></script>
+    <script src="modules/groups/group-chat.js?v=20260324-chat-attachments"></script>
     <script src="modules/groups/my-groups.js?v=20260314-group-identity"></script>
-    <script src="modules/chat/chat-app.js?v=20260217-messages-inbox"></script>
+    <script src="modules/chat/chat-app.js?v=20260324-chat-attachments"></script>
     <script src="modules/dashboard/leader-dashboard.js?v=20260211-quickactions"></script>
     <script src="modules/core/notifications.js"></script>
     <script src="modules/core/push-notifications.js"></script>

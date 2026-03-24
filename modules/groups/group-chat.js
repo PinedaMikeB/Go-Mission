@@ -1819,7 +1819,16 @@ const GroupChat = {
    * Open unified attachment picker (shows library/camera/file options on supported devices).
    */
   openAttachmentPicker() {
-    this.captureAttachmentFromCamera();
+    if (window.GoMissionChatAttachmentSheet?.open) {
+      window.GoMissionChatAttachmentSheet.open({
+        title: 'Add photo',
+        subtitle: 'Choose a photo from your library or open the camera.',
+        onGallery: () => this.pickAttachmentFromGallery(),
+        onCamera: () => this.captureAttachmentFromCamera()
+      });
+      return;
+    }
+    this.pickAttachmentFromGallery();
   },
 
   /**
@@ -1908,20 +1917,24 @@ const GroupChat = {
    * Render image attachment preview in composer.
    */
   renderAttachmentDraft() {
-    const container = document.getElementById('chatAttachmentDraft');
-    if (!container) return;
+    const containers = [
+      document.getElementById('chatAttachmentDraft'),
+      document.getElementById('chatFullscreenAttachmentDraft')
+    ].filter(Boolean);
+    if (!containers.length) return;
 
     if (!this.pendingAttachment?.previewUrl) {
-      container.classList.add('hidden');
-      container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Photo attachment</p>';
+      containers.forEach((container) => {
+        container.classList.add('hidden');
+        container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Photo attachment</p>';
+      });
       return;
     }
 
     const sizeKb = Math.max(1, Math.round((this.pendingAttachment.size || 0) / 1024));
     const name = this.escapeHtml(this.pendingAttachment.name || 'photo.jpg');
     const preview = this.escapeHtml(this.pendingAttachment.previewUrl);
-    container.classList.remove('hidden');
-    container.innerHTML = `
+    const cardHtml = `
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-start gap-2 min-w-0">
           <img src="${preview}" alt="${name}" class="w-14 h-14 rounded-lg object-cover border border-[var(--card-border)]">
@@ -1938,6 +1951,11 @@ const GroupChat = {
         </button>
       </div>
     `;
+
+    containers.forEach((container) => {
+      container.classList.remove('hidden');
+      container.innerHTML = cardHtml;
+    });
   },
 
   /**

@@ -3,6 +3,41 @@
  * Unified entry point for group chats and direct messages.
  */
 
+if (typeof window !== 'undefined' && !window.GoMissionChatAttachmentSheet) {
+  window.GoMissionChatAttachmentSheet = {
+    handlers: null,
+    open(config = {}) {
+      const sheet = document.getElementById('chatAttachmentSheet');
+      if (!sheet) return;
+
+      const titleEl = document.getElementById('chatAttachmentSheetTitle');
+      const subtitleEl = document.getElementById('chatAttachmentSheetSubtitle');
+      if (titleEl) titleEl.textContent = String(config.title || 'Add photo');
+      if (subtitleEl) subtitleEl.textContent = String(config.subtitle || 'Choose a photo from your library or open the camera.');
+
+      this.handlers = {
+        gallery: typeof config.onGallery === 'function' ? config.onGallery : null,
+        camera: typeof config.onCamera === 'function' ? config.onCamera : null
+      };
+      sheet.classList.remove('hidden');
+    },
+
+    close() {
+      const sheet = document.getElementById('chatAttachmentSheet');
+      if (sheet) sheet.classList.add('hidden');
+      this.handlers = null;
+    },
+
+    choose(mode) {
+      const nextHandler = this.handlers?.[mode];
+      this.close();
+      if (typeof nextHandler === 'function') {
+        nextHandler();
+      }
+    }
+  };
+}
+
 const ChatApp = {
   initialized: false,
   isOpen: false,
@@ -31,6 +66,7 @@ const ChatApp = {
   dmLastSeenAt: null,
   activeDmHeartbeatTimer: null,
   dmIsSending: false,
+  pendingDmAttachment: null,
   dmEmojiPickerOpen: false,
   dmFullscreenEmojiPickerOpen: false,
   isDmFullscreenComposerOpen: false,
@@ -692,6 +728,8 @@ const ChatApp = {
     const photo = document.getElementById('dmChatPhoto');
     const name = document.getElementById('dmChatName');
     const input = document.getElementById('dmChatInput');
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
     if (photo) photo.src = this.getMemberPhoto(peer);
     if (name) name.textContent = this.getMemberDisplayName(peer) || 'Direct Message';
     const pendingDraft = this.consumePendingDirectDraft(friendId);
@@ -711,6 +749,7 @@ const ChatApp = {
     this.setDmComposerSendingState(false);
     this.renderDmEmojiPicker();
     this.renderDmFullscreenEmojiPicker();
+    this.renderDmAttachmentDraft();
 
     const modal = document.getElementById('dmChatModal');
     if (modal) modal.classList.remove('hidden');
@@ -739,6 +778,9 @@ const ChatApp = {
     this.dmMessages = [];
     this.closeDmEmojiPicker();
     this.closeDmFullscreenEmojiPicker();
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
+    this.renderDmAttachmentDraft();
     this.dmIsSending = false;
     this.setDmComposerSendingState(false);
     this.stopDmPolling();
@@ -950,7 +992,8 @@ const ChatApp = {
       html += `
         <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
           <div class="max-w-[80%] rounded-2xl border ${isMe ? 'bg-amber-500/20 border-amber-500/30' : 'bg-[var(--card-bg)] border-[var(--card-border)]'} px-3 py-2">
-            <p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(message.text || '')}</p>
+            ${this.renderDmImageContent(message)}
+            ${this.renderDmMessageText(message)}
             <p class="text-[10px] text-[var(--text-muted)] mt-1 ${isMe ? 'text-right' : ''}">${timeLabel}</p>
           </div>
         </div>
@@ -971,7 +1014,8 @@ const ChatApp = {
     if (!input) return;
     this.syncDmFullscreenComposerToMainInput();
     const text = (input.value || '').trim();
-    if (!text) return;
+    const attachment = this.pendingDmAttachment;
+    if (!text && !attachment?.file) return;
     if (!this.activeDmThreadId || !this.activeDmPeerId) return;
     if (this.dmIsSending) return;
 
@@ -982,9 +1026,15 @@ const ChatApp = {
       this.dmIsSending = true;
       this.setDmComposerSendingState(true);
       this.closeDmEmojiPicker();
+      let imagePayload = null;
+      if (attachment?.file) {
+        imagePayload = await this.uploadDmImageAttachment(attachment.file);
+      }
       const senderName = window.currentUser.displayName || window.currentUser.email || 'User';
       const senderPhoto = window.currentUser.photoURL || '';
       const participants = [uid, this.activeDmPeerId].sort();
+      const hasImage = !!imagePayload?.url;
+      const messageText = text || (hasImage ? '📷 Photo' : '');
 
       await window.addDoc(window.collection(window.db, 'goMission_dmMessages'), {
         threadId: this.activeDmThreadId,
@@ -992,8 +1042,14 @@ const ChatApp = {
         senderId: uid,
         senderName,
         senderPhoto,
-        text,
-        type: 'text',
+        text: messageText,
+        type: hasImage ? 'image' : 'text',
+        imageUrl: imagePayload?.url || '',
+        imagePath: imagePayload?.path || '',
+        imageName: imagePayload?.name || '',
+        imageSize: imagePayload?.size || 0,
+        imageMimeType: imagePayload?.mimeType || '',
+        imageCaption: text || '',
         createdAt: window.serverTimestamp()
       });
 
@@ -1002,7 +1058,8 @@ const ChatApp = {
         {
           participants,
           pairKey: this.activeDmThreadId,
-          lastMessageText: text,
+          lastMessageText: messageText,
+          lastMessageType: hasImage ? 'image' : 'text',
           lastMessageSenderId: uid,
           lastMessageSenderName: senderName,
           lastMessageAt: window.serverTimestamp(),
@@ -1014,6 +1071,10 @@ const ChatApp = {
       input.value = '';
       this.autoResizeDmInput(input);
       this.syncMainDmInputToFullscreenComposer();
+      this.releasePendingDmAttachmentPreview();
+      this.pendingDmAttachment = null;
+      this.renderDmAttachmentDraft();
+      this.resetDmAttachmentInputs();
       await this.loadDirectMessages(true);
       await this.buildDirectThreads();
       this.renderDirect();
@@ -1207,6 +1268,178 @@ const ChatApp = {
     return withBold.replace(/\n/g, '<br>');
   },
 
+  renderDmImageContent(message) {
+    const imageUrl = String(message?.imageUrl || '').trim();
+    if (!imageUrl) return '';
+    const safeUrl = this.escapeHtml(imageUrl);
+    const altText = this.escapeHtml(message?.imageName || 'Chat image');
+    return `
+      <button onclick="window.ChatApp && window.ChatApp.openDmImagePreview && window.ChatApp.openDmImagePreview('${safeUrl}')" class="block mb-2 rounded-xl overflow-hidden border border-[var(--card-border)] bg-black/10">
+        <img src="${safeUrl}" alt="${altText}" class="max-h-64 w-full object-cover">
+      </button>
+    `;
+  },
+
+  renderDmMessageText(message) {
+    const hasImage = !!message?.imageUrl;
+    const caption = String(message?.imageCaption || '').trim();
+    if (hasImage) {
+      if (caption) {
+        return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(caption)}</p>`;
+      }
+      if (!message?.text || String(message.text).trim() === '📷 Photo') return '';
+    }
+
+    const text = String(message?.text || '').trim();
+    if (!text) return '';
+    return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(text)}</p>`;
+  },
+
+  openDmImagePreview(url) {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  },
+
+  openDmAttachmentPicker() {
+    if (window.GoMissionChatAttachmentSheet?.open) {
+      window.GoMissionChatAttachmentSheet.open({
+        title: 'Add photo',
+        subtitle: 'Choose a photo from your library or open the camera.',
+        onGallery: () => this.pickDmAttachmentFromGallery(),
+        onCamera: () => this.captureDmAttachmentFromCamera()
+      });
+      return;
+    }
+    this.pickDmAttachmentFromGallery();
+  },
+
+  pickDmAttachmentFromGallery() {
+    const input = document.getElementById('dmGalleryInput');
+    if (input) input.click();
+  },
+
+  captureDmAttachmentFromCamera() {
+    const input = document.getElementById('dmCameraInput');
+    if (input) input.click();
+  },
+
+  handleDmAttachmentSelected(event, source = 'gallery') {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      alert('Only image files are supported.');
+      this.resetDmAttachmentInputs();
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert('Image is too large. Please select a photo under 10 MB.');
+      this.resetDmAttachmentInputs();
+      return;
+    }
+
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = {
+      file,
+      source,
+      name: file.name || 'photo.jpg',
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg',
+      previewUrl: URL.createObjectURL(file)
+    };
+    this.renderDmAttachmentDraft();
+    this.resetDmAttachmentInputs();
+  },
+
+  releasePendingDmAttachmentPreview() {
+    const previewUrl = this.pendingDmAttachment?.previewUrl;
+    if (previewUrl && typeof previewUrl === 'string' && previewUrl.startsWith('blob:')) {
+      try { URL.revokeObjectURL(previewUrl); } catch (_) {}
+    }
+  },
+
+  clearDmAttachmentDraft() {
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
+    this.renderDmAttachmentDraft();
+    this.resetDmAttachmentInputs();
+  },
+
+  resetDmAttachmentInputs() {
+    const gallery = document.getElementById('dmGalleryInput');
+    const camera = document.getElementById('dmCameraInput');
+    if (gallery) gallery.value = '';
+    if (camera) camera.value = '';
+  },
+
+  renderDmAttachmentDraft() {
+    const containers = [
+      document.getElementById('dmAttachmentDraft'),
+      document.getElementById('dmFullscreenAttachmentDraft')
+    ].filter(Boolean);
+    if (!containers.length) return;
+
+    if (!this.pendingDmAttachment?.previewUrl) {
+      containers.forEach((container) => {
+        container.classList.add('hidden');
+        container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Photo attachment</p>';
+      });
+      return;
+    }
+
+    const sizeKb = Math.max(1, Math.round((this.pendingDmAttachment.size || 0) / 1024));
+    const name = this.escapeHtml(this.pendingDmAttachment.name || 'photo.jpg');
+    const preview = this.escapeHtml(this.pendingDmAttachment.previewUrl);
+    const cardHtml = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-2 min-w-0">
+          <img src="${preview}" alt="${name}" class="w-14 h-14 rounded-lg object-cover border border-[var(--card-border)]">
+          <div class="min-w-0">
+            <p class="text-[10px] font-bold text-amber-500">📷 Photo ready to send</p>
+            <p class="text-xs text-[var(--text-color)] truncate">${name}</p>
+            <p class="text-[10px] text-[var(--text-muted)]">${sizeKb} KB</p>
+          </div>
+        </div>
+        <button onclick="window.ChatApp && window.ChatApp.clearDmAttachmentDraft && window.ChatApp.clearDmAttachmentDraft()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] rounded-full p-1" title="Remove photo">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    containers.forEach((container) => {
+      container.classList.remove('hidden');
+      container.innerHTML = cardHtml;
+    });
+  },
+
+  async uploadDmImageAttachment(file) {
+    if (!file || !window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+      throw new Error('Storage is not initialized');
+    }
+    const threadId = this.activeDmThreadId || 'dm-thread';
+    const uid = window.currentUser?.uid || 'user';
+    const safeName = String(file.name || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `dm-attachments/${threadId}/${uid}/${Date.now()}_${safeName}`;
+    const ref = window.storageRef(window.storage, path);
+    const result = await window.uploadBytes(ref, file, {
+      contentType: file.type || 'image/jpeg',
+      cacheControl: 'public,max-age=3600'
+    });
+    const url = await window.getDownloadURL(result.ref);
+    return {
+      url,
+      path,
+      name: file.name || safeName,
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg'
+    };
+  },
+
   /**
    * Disable DM composer controls while a message is being sent.
    */
@@ -1215,12 +1448,14 @@ const ChatApp = {
     const sendBtn = document.getElementById('dmChatSendBtn');
     const emojiBtn = document.getElementById('dmEmojiToggleBtn');
     const boldBtn = document.getElementById('dmBoldBtn');
+    const attachBtn = document.getElementById('dmAttachBtn');
     const fullscreenInput = document.getElementById('dmFullscreenInput');
     const fullscreenSendBtn = document.getElementById('dmFullscreenSendBtn');
     const fullscreenEmojiBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
     const fullscreenBoldBtn = document.getElementById('dmFullscreenBoldBtn');
+    const fullscreenAttachBtn = document.getElementById('dmFullscreenAttachBtn');
 
-    [input, sendBtn, emojiBtn, boldBtn, fullscreenInput, fullscreenSendBtn, fullscreenEmojiBtn, fullscreenBoldBtn].filter(Boolean).forEach((el) => {
+    [input, sendBtn, emojiBtn, boldBtn, attachBtn, fullscreenInput, fullscreenSendBtn, fullscreenEmojiBtn, fullscreenBoldBtn, fullscreenAttachBtn].filter(Boolean).forEach((el) => {
       if (isSending) {
         el.setAttribute('disabled', 'disabled');
         el.classList.add('opacity-60', 'cursor-not-allowed');
