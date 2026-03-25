@@ -1200,7 +1200,7 @@ const BibleReader = {
 
     html += `
       <section class="mt-6 pt-5 border-t border-[var(--card-border)]">
-        <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
+        <label class="text-[var(--text-color)] font-bold block mb-2" style="font-size:${Math.max(baseFontPx, labelFontPx + 2)}px; line-height:1.4;">${L.numberedUnderstanding || L.yourAnswer}</label>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
                   onclick="BibleReader.openInlineFieldEditor('reflection')"
@@ -1327,7 +1327,7 @@ const BibleReader = {
 
   generateSelectedScriptureHTML({
     lang = this.getInlineUiLang(),
-    title = (lang === 'tl' ? 'Salita ng Diyos' : 'God\'s Word'),
+    title = (lang === 'tl' ? '1. Ano ang sinabi ng Diyos' : '1. What did God say'),
     labelFontPx = 14,
     baseFontPx = 16,
     metaFontPx = 12
@@ -1338,7 +1338,7 @@ const BibleReader = {
 
     return `
       <section class="mb-6 pb-5 border-b border-[var(--card-border)]">
-        <p class="text-[var(--mission-gold)] font-bold tracking-[0.18em] uppercase mb-2" style="font-size:${metaFontPx}px;">${this.escapeHTML(title)}</p>
+        <p class="text-[var(--text-color)] font-bold mb-3" style="font-size:${Math.max(baseFontPx, labelFontPx + 2)}px; line-height:1.4;">${this.escapeHTML(title)}</p>
         <p class="text-[var(--text-muted)] mb-2" style="font-size:${metaFontPx}px;">${reference}</p>
         <div class="space-y-3">
           ${verseLines.map((line) => `
@@ -1370,7 +1370,9 @@ const BibleReader = {
   getInlineUiLabels(lang = this.getInlineUiLang()) {
     const labels = {
       en: {
+        numberedGodSaid: '1. What did God say',
         yourAnswer: 'What is my understanding',
+        numberedUnderstanding: '2. What is my understanding',
         yourAnswerPlaceholder: 'Write what you learned and understood here...',
         iWill: 'What will I do',
         iWillPlaceholder: 'Write your commitment to apply this today...',
@@ -1389,7 +1391,9 @@ const BibleReader = {
         numberedAction: '3. What will I do'
       },
       tl: {
+        numberedGodSaid: '1. Ano ang sinabi ng Diyos',
         yourAnswer: 'Ano ang aking pagkaunawa',
+        numberedUnderstanding: '2. Ano ang aking pagkaunawa',
         yourAnswerPlaceholder: 'Isulat ang iyong natutunan at pagkaunawa dito...',
         iWill: 'Ano ang aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
@@ -1446,6 +1450,24 @@ const BibleReader = {
   },
 
   getInlineFieldEditorContextHTML(fieldKey, config, lang, labels) {
+    if (fieldKey === 'reflection') {
+      const reference = this.escapeHTML(this.getSelectedVerseReference(lang));
+      const verseLines = this.getSelectedVerseLines();
+      const scriptureHtml = verseLines.length
+        ? verseLines.map((line) => `
+            <p class="text-[var(--text-color)] leading-relaxed mb-2 last:mb-0" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.65;">"${this.escapeHTML(line)}"</p>
+          `).join('')
+        : '';
+      return `
+        <section class="mb-6 pb-5 border-b border-[var(--card-border)]/45">
+          <p class="text-[var(--text-color)] font-bold mb-3" style="font-size:${Math.max(18, config.fontPx + 1)}px;">${this.escapeHTML(labels.numberedGodSaid || '1. What did God say')}</p>
+          ${reference ? `<p class="text-[var(--text-muted)] mb-3" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${reference}</p>` : ''}
+          ${scriptureHtml}
+        </section>
+        <p class="text-[var(--text-color)] font-bold mb-4" style="font-size:${Math.max(18, config.fontPx + 1)}px;">${this.escapeHTML(labels.numberedUnderstanding || config.title)}</p>
+      `;
+    }
+
     if (fieldKey === 'commitment') {
       const question = this.getPrimaryReflectionQuestion();
       return `
