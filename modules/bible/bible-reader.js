@@ -1202,19 +1202,12 @@ const BibleReader = {
     html += `
       <section class="mt-6 pt-5 border-t border-[var(--card-border)]">
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
-        <button type="button"
-                onclick="BibleReader.openInlineFieldEditor('reflection')"
-                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)]/80 hover:text-[var(--mission-gold)] transition-colors"
-                style="font-size:${smallFontPx}px;">
-          <span>⤢</span>
-          <span>${L.tapToExpand}</span>
-        </button>
         <textarea id="inlineInsightReflectionInput"
                   oninput="BibleReader.setInlineReflection(this.value)"
                   onclick="BibleReader.openInlineFieldEditor('reflection')"
                   readonly
                   rows="6"
-                  class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-4"
+                  class="w-full cursor-text bg-transparent border-0 border-b border-[var(--card-border)]/15 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none mb-4"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
 
@@ -1226,19 +1219,12 @@ const BibleReader = {
         ` : ''}
 
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
-        <button type="button"
-                onclick="BibleReader.openInlineFieldEditor('commitment')"
-                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)]/80 hover:text-[var(--mission-gold)] transition-colors"
-                style="font-size:${smallFontPx}px;">
-          <span>⤢</span>
-          <span>${L.tapToExpand}</span>
-        </button>
         <textarea id="inlineInsightCommitmentInput"
                   oninput="BibleReader.setInlineCommitment(this.value)"
                   onclick="BibleReader.openInlineFieldEditor('commitment')"
                   readonly
                   rows="6"
-                  class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-4"
+                  class="w-full cursor-text bg-transparent border-0 border-b border-[var(--card-border)]/15 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none mb-4"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.iWillPlaceholder}">${commitmentValue}</textarea>
 
@@ -1250,7 +1236,7 @@ const BibleReader = {
                    oninput="BibleReader.setInlinePrayerDraft(this.value)"
                    onclick="BibleReader.openInlineFieldEditor('prayerDraft')"
                    readonly
-                   class="flex-1 bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50"
+                   class="flex-1 cursor-text bg-transparent border-0 border-b border-[var(--card-border)]/15 rounded-none px-0 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none"
                    style="font-size:${baseFontPx}px; line-height:1.45;"
                    placeholder="${L.prayerRequestsPlaceholder}"
                    value="${prayerDraftValue}">
@@ -1469,33 +1455,40 @@ const BibleReader = {
     const L = this.getInlineUiLabels(lang);
     const overlay = document.createElement('div');
     overlay.id = 'inlineFieldEditorOverlay';
-    overlay.className = 'fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-3';
+    overlay.className = 'fixed inset-0 z-[80] bg-[var(--bg-color)] flex flex-col';
+    const scripturePreview = this.generateSelectedScriptureHTML({
+      lang,
+      baseFontPx: Math.max(15, config.fontPx - 1),
+      metaFontPx: Math.max(11, config.fontPx - 5)
+    });
     overlay.innerHTML = `
-      <div class="w-full max-w-3xl h-[90vh] rounded-2xl border border-[var(--card-border)] bg-[var(--bg-color)] shadow-2xl flex flex-col">
-        <div class="flex items-center justify-between gap-3 p-3 border-b border-[var(--card-border)] bg-[var(--nav-bg)] rounded-t-2xl">
-          <div class="min-w-0">
-            <p class="text-[var(--mission-gold)] font-bold truncate" style="font-size:${Math.max(15, config.fontPx)}px;">${this.escapeHTML(config.title)}</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="BibleReader.closeInlineFieldEditor()" class="px-3 py-2 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40">
-              ${this.escapeHTML(L.fullscreenEditorExit)}
-            </button>
-            <button type="button" onclick="BibleReader.applyInlineFieldEditor()" class="px-3 py-2 rounded-lg bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold hover:opacity-90">
-              ${this.escapeHTML(L.fullscreenEditorDone)}
-            </button>
+      <div class="flex-1 min-h-0 flex flex-col">
+        <div class="sticky top-0 z-10 border-b border-[var(--card-border)]/55 bg-[var(--bg-color)]/96 backdrop-blur-sm">
+          <div class="w-full max-w-3xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
+            <div class="min-w-0">
+              <p class="text-[var(--mission-gold)] font-bold truncate" style="font-size:${Math.max(15, config.fontPx)}px;">${this.escapeHTML(config.title)}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="BibleReader.closeInlineFieldEditor()" class="px-4 py-2 rounded-full text-[var(--mission-red-deep)] border border-[var(--card-border)]/55 bg-white/45 hover:bg-white/70 transition-colors">
+                ${this.escapeHTML(L.fullscreenEditorExit)}
+              </button>
+              <button type="button" onclick="BibleReader.applyInlineFieldEditor()" class="px-4 py-2 rounded-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold hover:opacity-90 transition-opacity">
+                ${this.escapeHTML(L.fullscreenEditorDone)}
+              </button>
+            </div>
           </div>
         </div>
-        <div class="flex-1 p-3">
-          <textarea id="inlineFieldEditorTextarea"
-                    class="w-full h-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl p-4 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none"
-                    style="font-size:${config.fontPx}px; line-height:1.6;"
-                    placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(config.value)}</textarea>
+        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+          <div class="w-full max-w-3xl mx-auto pt-4">
+            ${scripturePreview}
+            <textarea id="inlineFieldEditorTextarea"
+                      class="w-full min-h-[55vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7;"
+                      placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(config.value)}</textarea>
+          </div>
         </div>
       </div>
     `;
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) this.closeInlineFieldEditor();
-    });
     document.body.appendChild(overlay);
 
     const textarea = document.getElementById('inlineFieldEditorTextarea');
