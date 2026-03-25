@@ -1271,12 +1271,6 @@ const BibleReader = {
 
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-1">
           <button type="button"
-                  onclick="BibleReader.previewInlineReflectionShare()"
-                  class="px-0 py-1 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
-                  style="font-size:${metaFontPx}px;">
-            👁 ${L.openPreview}
-          </button>
-          <button type="button"
                   onclick="BibleReader.toggleInlineShare()"
                   class="px-0 py-1 ${shareActive ? 'text-[var(--mission-gold)]' : 'text-[var(--text-color)]/80'} font-semibold hover:text-[var(--mission-gold)] transition-colors"
                   style="font-size:${metaFontPx}px;">
@@ -1285,6 +1279,16 @@ const BibleReader = {
         </div>
         <p class="text-[var(--text-muted)] mb-3 pt-3 border-t border-[var(--card-border)]/65" style="font-size:${smallFontPx}px;">${shareActive ? L.selectGroups : L.shareWithGroupHelp}</p>
         ${shareGroupPickerHtml}
+        ${shareActive ? `
+          <div class="mt-3">
+            <button type="button"
+                    onclick="BibleReader.previewInlineReflectionShare()"
+                    class="px-0 py-1 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
+                    style="font-size:${metaFontPx}px;">
+              👁 ${L.openPreview}
+            </button>
+          </div>
+        ` : ''}
 
         <button id="inlineInsightSaveBtn"
                 onclick="BibleReader.saveInlineReflection()"
@@ -1881,10 +1885,6 @@ const BibleReader = {
     const selectedGroups = preview.selectedGroups.length
       ? preview.selectedGroups.map(group => `${group.name} (${group.id})`)
       : preview.shareGroupIds;
-    const prayerItemsHtml = preview.prayerRequests.length
-      ? preview.prayerRequests.map(item => `<li class="mb-1">${this.formatInlineMultilineHtml(item.text)}</li>`).join('')
-      : `<p class="text-[var(--text-muted)] text-sm">${this.escapeHTML(L.noPrayerRequests)}</p>`;
-
     const sectionTitles = lang === 'tl'
       ? {
           scripture: 'Ano ang sinabi ng Diyos',
@@ -1896,6 +1896,26 @@ const BibleReader = {
           understanding: 'What is my understanding',
           action: 'What will I do'
         };
+    const previewLines = [
+      `${L.previewGroups}:`,
+      selectedGroups.length ? selectedGroups.join('\n') : '-',
+      '',
+      `${sectionTitles.scripture}`,
+      preview.scriptureReference || '',
+      preview.scriptureText || '',
+      '',
+      `${sectionTitles.understanding}`,
+      preview.understanding || '',
+      preview.question ? `\n${L.previewQuestion}\n${preview.question}` : '',
+      '',
+      `${sectionTitles.action}`,
+      preview.action || '',
+      '',
+      `${L.previewPrayerRequests}`,
+      preview.prayerRequests.length
+        ? preview.prayerRequests.map(item => `- ${item.text}`).join('\n')
+        : L.noPrayerRequests
+    ].filter((line, index, arr) => !(line === '' && arr[index - 1] === '')).join('\n');
 
     const overlay = document.createElement('div');
     overlay.id = 'inlineSharePreviewOverlay';
@@ -1906,41 +1926,13 @@ const BibleReader = {
           <h3 class="text-[var(--mission-gold)] font-bold" style="font-size:${Math.max(15, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(L.journalPreview)}</h3>
           <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--mission-gold)]">✕</button>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
-            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewGroups)}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(selectedGroups.join('\n') || '-')}</p>
-          </div>
-          <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.scripture)}</p>
-            <p class="text-xs text-[var(--text-muted)] mb-1">${this.escapeHTML(preview.scriptureReference || '')}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.scriptureText || '')}</p>
-          </div>
-          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
-            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.understanding)}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.understanding)}</p>
-          </div>
-          ${preview.question ? `
-            <div class="rounded-xl border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-3">
-              <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewQuestion)}</p>
-              <p class="text-sm text-[var(--text-color)] italic leading-relaxed">"${this.escapeHTML(preview.question)}"</p>
-            </div>
-          ` : ''}
-          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
-            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(sectionTitles.action)}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.action)}</p>
-          </div>
-          <div class="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
-            <p class="text-[11px] font-bold text-[var(--mission-gold)] uppercase tracking-wide mb-1">${this.escapeHTML(L.previewPrayerRequests)}</p>
-            ${preview.prayerRequests.length ? `<ul class="text-sm text-[var(--text-color)] pl-5 list-disc leading-relaxed">${prayerItemsHtml}</ul>` : prayerItemsHtml}
-          </div>
+        <div class="flex-1 overflow-y-auto p-4">
+          <div class="text-[var(--text-color)] whitespace-pre-wrap leading-relaxed"
+               style="font-size:${Math.max(14, Number(this.preferences.fontSize) || 16)}px; line-height:1.8;">${this.escapeHTML(previewLines)}</div>
         </div>
-        <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)] flex flex-col sm:flex-row gap-2 rounded-b-2xl">
-          <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="flex-1 py-3 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] font-medium hover:border-[var(--mission-gold)]/40">
+        <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)] rounded-b-2xl">
+          <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="w-full py-3 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] font-medium hover:border-[var(--mission-gold)]/40">
             ${this.escapeHTML(L.previewCancel)}
-          </button>
-          <button type="button" id="inlineSharePreviewConfirmBtn" onclick="BibleReader.confirmInlineSharePreview()" class="flex-1 py-3 rounded-lg bg-[var(--mission-red-bright)] text-white font-bold hover:bg-[#8B0000]">
-            ${this.escapeHTML(L.previewConfirm)}
           </button>
         </div>
       </div>
@@ -1967,28 +1959,6 @@ const BibleReader = {
     const overlay = document.getElementById('inlineSharePreviewOverlay');
     if (overlay) overlay.remove();
     this.pendingInlineSavePayload = null;
-  },
-
-  async confirmInlineSharePreview() {
-    const payload = this.pendingInlineSavePayload;
-    const confirmBtn = document.getElementById('inlineSharePreviewConfirmBtn');
-    const originalLabel = confirmBtn?.textContent || '';
-    if (!payload) return;
-    if (confirmBtn) {
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Saving...';
-    }
-    try {
-      await this.persistInlineReflectionPayload(payload);
-      const overlay = document.getElementById('inlineSharePreviewOverlay');
-      if (overlay) overlay.remove();
-      this.pendingInlineSavePayload = null;
-    } catch (error) {
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = originalLabel;
-      }
-    }
   },
 
   async persistInlineReflectionPayload(payload) {
@@ -2278,11 +2248,6 @@ const BibleReader = {
       shareWithGroup,
       shareGroupIds
     };
-
-    if (shareWithGroup) {
-      this.openInlineSharePreview(payload);
-      return;
-    }
 
     await this.persistInlineReflectionPayload(payload);
   },
