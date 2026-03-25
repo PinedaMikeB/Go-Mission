@@ -2577,76 +2577,88 @@
             <div id="journalModal" class="fixed inset-0 z-[55] bg-[var(--bg-color)] hidden flex flex-col">
                 <div class="journal-shell flex-1 min-h-0 flex flex-col max-w-lg mx-auto w-full">
                     <!-- Header -->
-                    <div class="journal-header flex items-center justify-between p-4 border-b border-[var(--card-border)]">
-                        <h2 class="journal-title text-lg font-bold text-amber-500 flex items-center gap-2">
-                            <span>📖</span> My Journal
-                        </h2>
-                        <button onclick="closeJournal()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Journal Tabs + Filters -->
-                    <div class="journal-filters-wrap p-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
-                        <div class="grid grid-cols-2 gap-2 mb-3">
-                            <button id="journalEntriesTabBtn"
-                                    onclick="switchJournalTab('entries')"
-                                    class="journal-action-btn w-full px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35">
-                                Entries
-                            </button>
-                            <button id="journalPrayersTabBtn"
-                                    onclick="switchJournalTab('prayers')"
-                                    class="journal-action-btn w-full px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--card-border)] text-[var(--text-color)]">
-                                Prayer Tracker
-                            </button>
+                    <div class="journal-header border-b border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,250,244,0.98),rgba(255,255,255,0.94))]">
+                        <div class="flex items-center justify-between gap-3 p-4">
+                            <h2 class="journal-title min-w-0 text-lg font-bold text-amber-500 flex items-center gap-2">
+                                <span>📖</span> My Journal
+                            </h2>
+                            <div class="flex items-center gap-2">
+                                <button id="journalEntriesTabBtn"
+                                        type="button"
+                                        title="Conversation Time"
+                                        aria-label="Conversation Time"
+                                        onclick="switchJournalTab('entries')"
+                                        class="journal-action-btn w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] shadow-[0_10px_20px_rgba(91,43,0,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--mission-gold)]/45">
+                                    📓
+                                </button>
+                                <button id="journalPrayersTabBtn"
+                                        type="button"
+                                        title="Prayer Tracker"
+                                        aria-label="Prayer Tracker"
+                                        onclick="switchJournalTab('prayers')"
+                                        class="journal-action-btn w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] shadow-[0_10px_20px_rgba(91,43,0,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--mission-gold)]/45">
+                                    🙏
+                                </button>
+                                <button id="journalSearchToggleBtn"
+                                        type="button"
+                                        title="Search"
+                                        aria-label="Search"
+                                        onclick="toggleJournalSearch()"
+                                        class="journal-action-btn w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] shadow-[0_10px_20px_rgba(91,43,0,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--mission-gold)]/45">
+                                    <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"></path>
+                                    </svg>
+                                </button>
+                                <button onclick="closeJournal()" class="w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] shadow-[0_10px_20px_rgba(91,43,0,0.06)] transition-colors hover:text-[var(--text-color)]">
+                                    <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-
-                        <div id="journalEntriesFilters">
-                            <div>
+                        <div id="journalSearchPanel" class="hidden px-4 pb-4">
+                            <div id="journalEntriesFilters">
                                 <input id="journalSearchInput"
                                        type="text"
                                        oninput="applyJournalFilters()"
                                        placeholder="Search keyword..."
-                                       class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                                       class="w-full p-3 rounded-2xl bg-white/88 border border-[var(--card-border)] text-sm text-[var(--text-color)] shadow-[0_12px_24px_rgba(91,43,0,0.05)]">
                             </div>
-                        </div>
-
-                        <div id="journalPrayerFilters" class="hidden">
-                            <div class="space-y-3">
+                            <div id="journalPrayerFilters" class="hidden">
                                 <input id="journalPrayerSearchInput"
                                        type="text"
                                        oninput="applyJournalPrayerFilters()"
                                        placeholder="Search prayer topic..."
-                                       class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                <div class="flex items-center gap-2">
-                                    <div class="grid flex-1 grid-cols-3 gap-2 rounded-full border border-[var(--card-border)] bg-white/65 p-1">
-                                        <button id="journalPrayerInProgressBtn"
-                                                type="button"
-                                                onclick="setJournalPrayerStatusFilter('in_progress')"
-                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
-                                            In Progress
-                                        </button>
-                                        <button id="journalPrayerAnsweredBtn"
-                                                type="button"
-                                                onclick="setJournalPrayerStatusFilter('answered')"
-                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
-                                            Answered
-                                        </button>
-                                        <button id="journalPrayerArchivedBtn"
-                                                type="button"
-                                                onclick="setJournalPrayerStatusFilter('archived')"
-                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
-                                            Archived
-                                        </button>
-                                    </div>
-                                    <button type="button"
-                                            onclick="openJournalPrayerComposerFromTracker()"
-                                            class="shrink-0 w-11 h-11 rounded-full bg-[linear-gradient(135deg,#ffc933,#ff9d2f)] text-[#5a2100] text-2xl leading-none shadow-[0_12px_24px_rgba(249,157,47,0.24)] hover:scale-[1.03] transition-transform">
-                                        +
+                                       class="w-full p-3 rounded-2xl bg-white/88 border border-[var(--card-border)] text-sm text-[var(--text-color)] shadow-[0_12px_24px_rgba(91,43,0,0.05)]">
+                            </div>
+                        </div>
+                        <div id="journalPrayerToolbar" class="hidden px-4 pb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="grid flex-1 grid-cols-3 gap-2 rounded-full border border-[var(--card-border)] bg-white/80 p-1 shadow-[0_12px_24px_rgba(91,43,0,0.05)]">
+                                    <button id="journalPrayerInProgressBtn"
+                                            type="button"
+                                            onclick="setJournalPrayerStatusFilter('in_progress')"
+                                            class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                        In Progress
+                                    </button>
+                                    <button id="journalPrayerAnsweredBtn"
+                                            type="button"
+                                            onclick="setJournalPrayerStatusFilter('answered')"
+                                            class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                        Answered
+                                    </button>
+                                    <button id="journalPrayerArchivedBtn"
+                                            type="button"
+                                            onclick="setJournalPrayerStatusFilter('archived')"
+                                            class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                        Archived
                                     </button>
                                 </div>
+                                <button type="button"
+                                        onclick="openJournalPrayerComposerFromTracker()"
+                                        class="shrink-0 w-11 h-11 rounded-full bg-[linear-gradient(135deg,#ffc933,#ff9d2f)] text-[#5a2100] text-2xl leading-none shadow-[0_12px_24px_rgba(249,157,47,0.24)] hover:scale-[1.03] transition-transform">
+                                    +
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -6899,6 +6911,7 @@
             filteredPrayerItems: [],
             prayerSupportByKey: {},
             viewEntryId: null,
+            searchOpen: false,
             activeTab: 'entries',
             filters: {
                 keyword: '',
@@ -7003,9 +7016,9 @@
 
         function getJournalFiltersFromInputs() {
             const keyword = String(document.getElementById('journalSearchInput')?.value || '').trim().toLowerCase();
-            const date = String(document.getElementById('journalDateFilter')?.value || '').trim();
-            const type = String(document.getElementById('journalTypeFilter')?.value || 'all');
-            const sort = String(document.getElementById('journalSortFilter')?.value || 'newest');
+            const date = '';
+            const type = 'all';
+            const sort = 'newest';
             return { keyword, date, type, sort };
         }
 
@@ -7519,31 +7532,59 @@
             journalState.activeTab = tab === 'prayers' ? 'prayers' : 'entries';
             const entriesBtn = document.getElementById('journalEntriesTabBtn');
             const prayersBtn = document.getElementById('journalPrayersTabBtn');
+            const searchPanel = document.getElementById('journalSearchPanel');
+            const searchToggleBtn = document.getElementById('journalSearchToggleBtn');
             const entriesFilters = document.getElementById('journalEntriesFilters');
             const prayerFilters = document.getElementById('journalPrayerFilters');
+            const prayerToolbar = document.getElementById('journalPrayerToolbar');
             const entriesList = document.getElementById('journalEntriesList');
             const prayersList = document.getElementById('journalPrayersList');
 
             if (journalState.activeTab === 'entries') {
-                entriesBtn?.classList.add('bg-[var(--mission-gold)]/20', 'text-[var(--mission-gold)]', 'border-[var(--mission-gold)]/35');
-                entriesBtn?.classList.remove('text-[var(--text-color)]', 'border-[var(--card-border)]');
-                prayersBtn?.classList.remove('bg-[var(--mission-gold)]/20', 'text-[var(--mission-gold)]', 'border-[var(--mission-gold)]/35');
-                prayersBtn?.classList.add('text-[var(--text-color)]', 'border-[var(--card-border)]');
+                entriesBtn?.classList.add('bg-[var(--mission-gold)]', 'text-[#5a2100]', 'border-[var(--mission-gold)]/50', 'shadow-[0_12px_24px_rgba(249,157,47,0.24)]');
+                entriesBtn?.classList.remove('text-[var(--text-muted)]', 'border-[var(--card-border)]');
+                prayersBtn?.classList.remove('bg-[var(--mission-gold)]', 'text-[#5a2100]', 'border-[var(--mission-gold)]/50', 'shadow-[0_12px_24px_rgba(249,157,47,0.24)]');
+                prayersBtn?.classList.add('text-[var(--text-muted)]', 'border-[var(--card-border)]');
                 entriesFilters?.classList.remove('hidden');
                 prayerFilters?.classList.add('hidden');
+                prayerToolbar?.classList.add('hidden');
                 entriesList?.classList.remove('hidden');
                 prayersList?.classList.add('hidden');
             } else {
-                prayersBtn?.classList.add('bg-[var(--mission-gold)]/20', 'text-[var(--mission-gold)]', 'border-[var(--mission-gold)]/35');
-                prayersBtn?.classList.remove('text-[var(--text-color)]', 'border-[var(--card-border)]');
-                entriesBtn?.classList.remove('bg-[var(--mission-gold)]/20', 'text-[var(--mission-gold)]', 'border-[var(--mission-gold)]/35');
-                entriesBtn?.classList.add('text-[var(--text-color)]', 'border-[var(--card-border)]');
+                prayersBtn?.classList.add('bg-[var(--mission-gold)]', 'text-[#5a2100]', 'border-[var(--mission-gold)]/50', 'shadow-[0_12px_24px_rgba(249,157,47,0.24)]');
+                prayersBtn?.classList.remove('text-[var(--text-muted)]', 'border-[var(--card-border)]');
+                entriesBtn?.classList.remove('bg-[var(--mission-gold)]', 'text-[#5a2100]', 'border-[var(--mission-gold)]/50', 'shadow-[0_12px_24px_rgba(249,157,47,0.24)]');
+                entriesBtn?.classList.add('text-[var(--text-muted)]', 'border-[var(--card-border)]');
                 entriesFilters?.classList.add('hidden');
                 prayerFilters?.classList.remove('hidden');
+                prayerToolbar?.classList.remove('hidden');
                 entriesList?.classList.add('hidden');
                 prayersList?.classList.remove('hidden');
             }
+            const hasSearchValue = journalState.activeTab === 'entries'
+                ? !!String(document.getElementById('journalSearchInput')?.value || '').trim()
+                : !!String(document.getElementById('journalPrayerSearchInput')?.value || '').trim();
+            searchPanel?.classList.toggle('hidden', !(journalState.searchOpen || hasSearchValue));
+            searchToggleBtn?.classList.toggle('bg-[var(--mission-gold)]', journalState.searchOpen || hasSearchValue);
+            searchToggleBtn?.classList.toggle('text-[#5a2100]', journalState.searchOpen || hasSearchValue);
+            searchToggleBtn?.classList.toggle('border-[var(--mission-gold)]/50', journalState.searchOpen || hasSearchValue);
+            searchToggleBtn?.classList.toggle('shadow-[0_12px_24px_rgba(249,157,47,0.24)]', journalState.searchOpen || hasSearchValue);
+            searchToggleBtn?.classList.toggle('text-[var(--text-muted)]', !(journalState.searchOpen || hasSearchValue));
+            searchToggleBtn?.classList.toggle('border-[var(--card-border)]', !(journalState.searchOpen || hasSearchValue));
             updateJournalPrayerStatusTabs();
+        };
+
+        window.toggleJournalSearch = function(forceOpen = null) {
+            const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !journalState.searchOpen;
+            journalState.searchOpen = nextOpen;
+            window.switchJournalTab(journalState.activeTab || 'entries');
+            if (!nextOpen) return;
+            requestAnimationFrame(() => {
+                const input = journalState.activeTab === 'entries'
+                    ? document.getElementById('journalSearchInput')
+                    : document.getElementById('journalPrayerSearchInput');
+                if (input) input.focus();
+            });
         };
 
         function updateJournalPrayerStatusTabs() {
@@ -7571,16 +7612,11 @@
 
         window.clearJournalFilters = function() {
             const searchInput = document.getElementById('journalSearchInput');
-            const dateInput = document.getElementById('journalDateFilter');
-            const typeInput = document.getElementById('journalTypeFilter');
-            const sortInput = document.getElementById('journalSortFilter');
             if (searchInput) searchInput.value = '';
-            if (dateInput) dateInput.value = '';
-            if (typeInput) typeInput.value = 'all';
-            if (sortInput) sortInput.value = 'newest';
             journalState.filters = { keyword: '', date: '', type: 'all', sort: 'newest' };
             journalState.filteredEntries = filterAndSortJournalEntries(journalState.entries, journalState.filters);
             renderJournalEntriesFromState();
+            window.switchJournalTab('entries');
         };
 
         window.applyJournalPrayerFilters = function() {
@@ -7600,6 +7636,7 @@
             journalState.filteredPrayerItems = filterAndSortJournalPrayerItems(journalState.prayerItems, journalState.prayerFilters);
             updateJournalPrayerStatusTabs();
             renderJournalPrayerTrackerFromState();
+            window.switchJournalTab('prayers');
         };
 
         window.setJournalPrayerStatusFilter = function(status) {
