@@ -1095,15 +1095,14 @@ const BibleReader = {
     }
 
     const reflectionQuestions = [];
+    const hasMultipleVerseInsights = Object.keys(verseInsights).length > 1;
     for (const [verseNum, insight] of Object.entries(verseInsights)) {
-      const verseText = this.chapterData?.verses?.[String(verseNum)] || this.chapterData?.verses?.[verseNum] || '';
       if (insight?.reflection) {
         reflectionQuestions.push(insight.reflection);
       }
       html += `
         <section class="mb-6 pb-5 border-b border-[var(--card-border)]/70 last:border-0">
-          <p class="text-[var(--mission-gold)] font-bold tracking-[0.16em] uppercase mb-2" style="font-size:${smallFontPx}px;">Verse ${verseNum}</p>
-          ${verseText ? `<p class="text-[var(--text-color)] italic mb-3" style="font-size:${headingFontPx}px; line-height:1.7;">"${this.escapeHTML(verseText)}"</p>` : ''}
+          ${hasMultipleVerseInsights ? `<p class="text-[var(--mission-gold)] font-bold tracking-[0.16em] uppercase mb-2" style="font-size:${smallFontPx}px;">Verse ${verseNum}</p>` : ''}
           <div class="space-y-4 text-[var(--text-color)]">
             <div>
               <span class="text-[var(--mission-gold)]/75 block mb-1 font-semibold" style="font-size:${metaFontPx}px;">${L.understanding}</span>
@@ -1386,7 +1385,8 @@ const BibleReader = {
         openPreview: 'Preview what to share',
         previewCancel: 'Back to edit',
         previewConfirm: 'Confirm and save',
-        noPrayerRequests: 'No prayer requests added yet.'
+        noPrayerRequests: 'No prayer requests added yet.',
+        numberedAction: '3. What will I do'
       },
       tl: {
         yourAnswer: 'Ano ang aking pagkaunawa',
@@ -1395,8 +1395,8 @@ const BibleReader = {
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
         prayerRequests: 'Mga prayer request',
         prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
-        fullscreenEditorDone: 'Tapos',
-        fullscreenEditorExit: 'Lumabas',
+        fullscreenEditorDone: 'Done',
+        fullscreenEditorExit: 'Exit',
         journalPreview: 'Preview ng ise-share',
         previewGroups: 'Ise-share sa',
         previewQuestion: 'Tanong sa Pagninilay',
@@ -1404,7 +1404,8 @@ const BibleReader = {
         openPreview: 'I-preview ang ise-share',
         previewCancel: 'Balik sa edit',
         previewConfirm: 'I-confirm at i-save',
-        noPrayerRequests: 'Wala pang nailalagay na prayer request.'
+        noPrayerRequests: 'Wala pang nailalagay na prayer request.',
+        numberedAction: '3. Ano ang aking gagawin'
       }
     };
     return labels[lang] || labels.en;
@@ -1444,6 +1445,27 @@ const BibleReader = {
     return map[fieldKey] || null;
   },
 
+  getInlineFieldEditorContextHTML(fieldKey, config, lang, labels) {
+    if (fieldKey === 'commitment') {
+      const question = this.getPrimaryReflectionQuestion();
+      return `
+        ${question ? `
+          <section class="mb-6 pb-5 border-b border-[var(--card-border)]/45">
+            <p class="text-[var(--text-color)] font-bold mb-2" style="font-size:${Math.max(15, config.fontPx - 1)}px;">${this.escapeHTML(labels.previewQuestion)}</p>
+            <p class="text-[var(--text-color)] leading-relaxed" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.6;">"${this.escapeHTML(question)}"</p>
+          </section>
+        ` : ''}
+        <p class="text-[var(--text-color)] font-bold mb-4" style="font-size:${Math.max(18, config.fontPx + 1)}px;">${this.escapeHTML(labels.numberedAction || config.title)}</p>
+      `;
+    }
+
+    return this.generateSelectedScriptureHTML({
+      lang,
+      baseFontPx: Math.max(15, config.fontPx - 1),
+      metaFontPx: Math.max(11, config.fontPx - 5)
+    });
+  },
+
   openInlineFieldEditor(fieldKey) {
     const config = this.getInlineFieldEditorConfig(fieldKey);
     if (!config) return;
@@ -1456,11 +1478,7 @@ const BibleReader = {
     const overlay = document.createElement('div');
     overlay.id = 'inlineFieldEditorOverlay';
     overlay.className = 'fixed inset-0 z-[80] bg-[var(--bg-color)] flex flex-col';
-    const scripturePreview = this.generateSelectedScriptureHTML({
-      lang,
-      baseFontPx: Math.max(15, config.fontPx - 1),
-      metaFontPx: Math.max(11, config.fontPx - 5)
-    });
+    const contextPreview = this.getInlineFieldEditorContextHTML(fieldKey, config, lang, L);
     overlay.innerHTML = `
       <div class="flex-1 min-h-0 flex flex-col">
         <div class="sticky top-0 z-10 border-b border-[var(--card-border)]/55 bg-[var(--bg-color)]/96 backdrop-blur-sm">
@@ -1480,7 +1498,7 @@ const BibleReader = {
         </div>
         <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
           <div class="w-full max-w-3xl mx-auto pt-4">
-            ${scripturePreview}
+            ${contextPreview}
             <textarea id="inlineFieldEditorTextarea"
                       class="w-full min-h-[55vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
                       style="font-size:${config.fontPx}px; line-height:1.7;"
