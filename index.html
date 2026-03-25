@@ -7473,57 +7473,21 @@
                         ? 'bg-green-100 text-green-700'
                         : 'bg-amber-100 text-amber-700';
                 return `
-                    <article class="mb-4 rounded-[24px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,248,0.98),rgba(249,238,228,0.96))] shadow-[0_12px_28px_rgba(91,43,0,0.08)] overflow-hidden">
-                        <div class="p-4">
+                    <button type="button"
+                            onclick="openJournalPrayerDetail('${entryIdForJs}', '${prayerIdForJs}')"
+                            class="w-full text-left mb-4 rounded-[24px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,248,0.98),rgba(249,238,228,0.96))] shadow-[0_12px_28px_rgba(91,43,0,0.08)] overflow-hidden hover:-translate-y-0.5 transition-transform">
+                        <div class="p-4 sm:p-5">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-[18px] font-semibold leading-tight text-[#6a2a14]">${escapeDevotionHtml(item.topic || item.title || buildPrayerTitle(item.text || ''))}</p>
-                                    <p class="mt-2 text-[15px] leading-[1.6] text-[#6b655f]">${escapeDevotionHtml(summary || '-')}</p>
+                                    <p class="text-[18px] font-semibold leading-tight text-[#6a2a14]"
+                                       style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">${escapeDevotionHtml(item.topic || item.title || buildPrayerTitle(item.text || ''))}</p>
+                                    <p class="mt-2 text-[15px] leading-[1.6] text-[#6b655f]"
+                                       style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeDevotionHtml(summary || '-')}</p>
                                 </div>
                                 <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${statusTone}">${escapeDevotionHtml(statusLabel)}</span>
                             </div>
-                            <div class="mt-4 flex items-center justify-between gap-3 text-[13px] text-[var(--text-muted)]">
-                                <span>${escapeDevotionHtml(requestedAt)}</span>
-                                <button type="button"
-                                        onclick="openJournalPrayerSupportList('${entryIdForJs}', '${prayerIdForJs}')"
-                                        class="rounded-full border border-[var(--mission-gold)]/25 bg-white/75 px-3 py-1 text-[12px] font-semibold text-[var(--mission-gold)] hover:bg-white transition-colors">
-                                    🙏 ${supportCount} ${escapeDevotionHtml(L.prayerSupportCount)}
-                                </button>
-                            </div>
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'in_progress')"
-                                        class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/45 transition-colors">
-                                    ${escapeDevotionHtml(L.moveToProgress)}
-                                </button>
-                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'answered')"
-                                        class="journal-action-btn px-3 py-2 rounded-full border border-green-200 bg-green-50 text-[11px] font-semibold text-green-700 hover:bg-green-100 transition-colors">
-                                    ${escapeDevotionHtml(L.moveToAnswered)}
-                                </button>
-                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'archived')"
-                                        class="journal-action-btn px-3 py-2 rounded-full border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700 hover:bg-stone-100 transition-colors">
-                                    ${escapeDevotionHtml(L.moveToArchived)}
-                                </button>
-                            </div>
-                            <div class="mt-3 flex flex-wrap gap-2">
-                            <button onclick="openJournalEntryFromPrayer('${entryIdForJs}')"
-                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                                📘 ${escapeDevotionHtml(L.openEntry)}
-                            </button>
-                            <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                                🙏 ${escapeDevotionHtml(L.shareRequest)}
-                            </button>
-                            <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                                🙌 ${escapeDevotionHtml(L.shareThanks)}
-                            </button>
-                            <button onclick="shareJournalPrayerThankYou('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                                💌 ${escapeDevotionHtml(L.shareThankPeople)}
-                            </button>
-                            </div>
                         </div>
-                    </article>
+                    </button>
                 `;
             }).join('');
         }
@@ -7863,13 +7827,176 @@
                 : '📖 Continue in Bible (Last verse)';
         }
 
+        function ensureJournalPrayerDetailModal() {
+            let modal = document.getElementById('journalPrayerDetailModal');
+            if (modal) return modal;
+
+            modal = document.createElement('div');
+            modal.id = 'journalPrayerDetailModal';
+            modal.className = 'fixed inset-0 z-[82] hidden items-center justify-center bg-black/55 px-4 py-4';
+            modal.innerHTML = `
+                <div class="w-full max-w-lg rounded-[32px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,247,0.99),rgba(250,240,231,0.97))] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
+                    <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--card-border)]/80">
+                        <div class="min-w-0">
+                            <p class="text-[12px] uppercase tracking-[0.18em] text-[var(--mission-gold)] font-bold">Prayer Tracker</p>
+                            <h3 id="journalPrayerDetailTitle" class="mt-1 text-[24px] leading-tight font-semibold text-[#6a2a14]"></h3>
+                        </div>
+                        <button type="button"
+                                onclick="closeJournalPrayerDetail()"
+                                class="shrink-0 w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="journalPrayerDetailBody" class="flex-1 overflow-y-auto p-5 custom-scrollbar"></div>
+                </div>
+            `;
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    window.closeJournalPrayerDetail();
+                }
+            });
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        function getJournalPrayerDetailContext(entryId, prayerId) {
+            const normalizedEntryId = String(entryId || '').trim();
+            const normalizedPrayerId = String(prayerId || '').trim();
+            if (!normalizedEntryId || !normalizedPrayerId) return null;
+            const entry = journalState.entries.find(item => String(item.id || '') === normalizedEntryId);
+            if (!entry) return null;
+            const prayerRequests = normalizePrayerRequests(entry?.data?.prayerRequests || []);
+            const prayer = prayerRequests.find(item => String(item.id || '') === normalizedPrayerId);
+            if (!prayer) return null;
+            return { entry, prayer, lang: entry?.data?.language === 'en' ? 'en' : 'tl' };
+        }
+
+        function renderOpenJournalPrayerDetailModal() {
+            const modal = document.getElementById('journalPrayerDetailModal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            const entryId = modal.dataset.entryId || '';
+            const prayerId = modal.dataset.prayerId || '';
+            const context = getJournalPrayerDetailContext(entryId, prayerId);
+            if (!context) {
+                window.closeJournalPrayerDetail();
+                return;
+            }
+
+            const { prayer, lang } = context;
+            const labels = getPrayerUiLabels(lang);
+            const status = String(prayer.status || normalizePrayerStatus(null, prayer));
+            const statusLabel = status === 'archived'
+                ? labels.statusArchived
+                : status === 'answered'
+                    ? labels.statusAnswered
+                    : labels.statusInProgress;
+            const statusTone = status === 'archived'
+                ? 'bg-stone-200 text-stone-700'
+                : status === 'answered'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700';
+            const support = getJournalPrayerSupportSummary(entryId, prayerId);
+            const titleEl = document.getElementById('journalPrayerDetailTitle');
+            const bodyEl = document.getElementById('journalPrayerDetailBody');
+            if (!titleEl || !bodyEl) return;
+
+            titleEl.textContent = prayer.topic || prayer.title || buildPrayerTitle(prayer.text || '');
+            bodyEl.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="rounded-full px-3 py-1 text-[12px] font-semibold ${statusTone}">${escapeDevotionHtml(statusLabel)}</span>
+                        <button type="button"
+                                onclick="openJournalPrayerSupportList('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
+                                class="rounded-full border border-[var(--mission-gold)]/25 bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-[var(--mission-gold)] hover:bg-white transition-colors">
+                            🙏 ${support.count} ${escapeDevotionHtml(labels.prayerSupportCount)}
+                        </button>
+                    </div>
+                    <div class="rounded-[24px] border border-[var(--card-border)] bg-white/82 p-4">
+                        <p class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold">${escapeDevotionHtml(labels.prayerDescription)}</p>
+                        <p class="mt-2 text-[17px] leading-[1.8] text-[#6b655f]">${formatDevotionMultiline(prayer.description || prayer.text || '-')}</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button"
+                                onclick="setJournalPrayerStatus('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', 'in_progress')"
+                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-3 py-2.5 text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/45 transition-colors">
+                            ${escapeDevotionHtml(labels.moveToProgress)}
+                        </button>
+                        <button type="button"
+                                onclick="setJournalPrayerStatus('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', 'answered')"
+                                class="rounded-full border border-green-200 bg-green-50 px-3 py-2.5 text-[11px] font-semibold text-green-700 hover:bg-green-100 transition-colors">
+                            ${escapeDevotionHtml(labels.moveToAnswered)}
+                        </button>
+                        <button type="button"
+                                onclick="setJournalPrayerStatus('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', 'archived')"
+                                class="rounded-full border border-stone-200 bg-stone-50 px-3 py-2.5 text-[11px] font-semibold text-stone-700 hover:bg-stone-100 transition-colors">
+                            ${escapeDevotionHtml(labels.moveToArchived)}
+                        </button>
+                    </div>
+                    <div class="rounded-[24px] border border-[var(--card-border)] bg-white/82 p-4">
+                        <label class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold block mb-2">${escapeDevotionHtml(labels.answeredDate)}</label>
+                        <input type="date"
+                               value="${escapeDevotionHtml(toDateInputValue(prayer.answeredAt))}"
+                               onchange="setJournalPrayerAnsweredDate('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', this.value)"
+                               class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-color)]">
+                        <label class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold block mt-5 mb-2">${escapeDevotionHtml(labels.remarks)}</label>
+                        <textarea rows="3"
+                                  onblur="saveJournalPrayerRemarks('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', this.value)"
+                                  class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-color)] resize-none"
+                                  placeholder="${escapeDevotionHtml(labels.remarksPlaceholder)}">${escapeDevotionHtml(prayer.remarks || '')}</textarea>
+                        <label class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold block mt-5 mb-2">${escapeDevotionHtml(labels.answerSummary)}</label>
+                        <textarea rows="3"
+                                  onblur="saveJournalPrayerAnswerSummary('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', this.value)"
+                                  class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-color)] resize-none"
+                                  placeholder="${escapeDevotionHtml(labels.answerSummaryPlaceholder)}">${escapeDevotionHtml(prayer.answerSummary || '')}</textarea>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button type="button"
+                                onclick="shareJournalPrayerRequest('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
+                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            🙏 ${escapeDevotionHtml(labels.shareRequest)}
+                        </button>
+                        <button type="button"
+                                onclick="shareJournalPrayerThanksgiving('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
+                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            🙌 ${escapeDevotionHtml(labels.shareThanks)}
+                        </button>
+                        <button type="button"
+                                onclick="shareJournalPrayerThankYou('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
+                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                            💌 ${escapeDevotionHtml(labels.shareThankPeople)}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openJournalPrayerDetail = function(entryId, prayerId) {
+            const modal = ensureJournalPrayerDetailModal();
+            modal.dataset.entryId = String(entryId || '');
+            modal.dataset.prayerId = String(prayerId || '');
+            renderOpenJournalPrayerDetailModal();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeJournalPrayerDetail = function() {
+            const modal = document.getElementById('journalPrayerDetailModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.dataset.entryId = '';
+            modal.dataset.prayerId = '';
+        };
+
         function ensureJournalPrayerSupportModal() {
             let modal = document.getElementById('journalPrayerSupportModal');
             if (modal) return modal;
 
             modal = document.createElement('div');
             modal.id = 'journalPrayerSupportModal';
-            modal.className = 'fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 px-4';
+            modal.className = 'fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 px-4';
             modal.innerHTML = `
                 <div class="w-full max-w-md rounded-3xl border border-[var(--card-border)] bg-[var(--card-bg-solid)] shadow-2xl max-h-[80vh] flex flex-col">
                     <div class="flex items-start justify-between gap-3 p-4 border-b border-[var(--card-border)]">
@@ -8005,6 +8132,7 @@
                         : null
                 }));
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
             } catch (error) {
                 console.error('[Journal] Could not update prayer tracker status:', error);
                 alert('Could not update prayer status right now.');
@@ -8125,6 +8253,7 @@
                     archivedAt: checked ? null : item.archivedAt || null
                 }));
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
             } catch (error) {
                 console.error('[Journal] Could not update prayer status:', error);
                 alert('Could not update prayer status. Please try again.');
@@ -8143,6 +8272,7 @@
                     archivedAt: answeredAtIso ? null : item.archivedAt || null
                 }));
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
             } catch (error) {
                 console.error('[Journal] Could not set answered date:', error);
                 alert('Could not update answered date. Please try again.');
@@ -8155,6 +8285,8 @@
                     ...item,
                     remarks: String(remarksValue || '').trim()
                 }));
+                await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
             } catch (error) {
                 console.error('[Journal] Could not save prayer remarks:', error);
             }
@@ -8166,6 +8298,8 @@
                     ...item,
                     answerSummary: String(answerSummaryValue || '').trim()
                 }));
+                await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
             } catch (error) {
                 console.error('[Journal] Could not save prayer answer summary:', error);
             }
@@ -8220,6 +8354,7 @@
             try {
                 await sharePrayerToGroups({ entryId, prayerId, mode: 'request' });
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
                 alert('Prayer request shared.');
             } catch (error) {
                 console.error('[Journal] Could not share prayer request:', error);
@@ -8231,6 +8366,7 @@
             try {
                 await sharePrayerToGroups({ entryId, prayerId, mode: 'testimony' });
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
                 alert('Testimony and thanksgiving shared.');
             } catch (error) {
                 console.error('[Journal] Could not share thanksgiving:', error);
@@ -8242,6 +8378,7 @@
             try {
                 await sharePrayerToGroups({ entryId, prayerId, mode: 'thanks' });
                 await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
                 alert('Thank-you message shared to people who prayed.');
             } catch (error) {
                 console.error('[Journal] Could not share thank-you:', error);
