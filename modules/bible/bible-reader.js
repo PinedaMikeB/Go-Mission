@@ -989,6 +989,7 @@ const BibleReader = {
         understanding: '📖 Understanding',
         livingItOut: '🚶 Living It Out',
         godsLove: '❤️ God\'s Love',
+        godsWord: 'God\'s Word',
         reflectionQuestion: '💭 Reflection Question',
         yourAnswer: 'What is my understanding',
         yourAnswerPlaceholder: 'Write what you learned and understood here...',
@@ -1030,6 +1031,7 @@ const BibleReader = {
         understanding: '📖 Pag-unawa',
         livingItOut: '🚶 Isabuhay',
         godsLove: '❤️ Pag-ibig ng Diyos',
+        godsWord: 'Salita ng Diyos',
         reflectionQuestion: '💭 Tanong sa Pagninilay',
         yourAnswer: 'Ano ang aking pagkaunawa',
         yourAnswerPlaceholder: 'Isulat ang iyong natutunan at pagkaunawa dito...',
@@ -1079,25 +1081,44 @@ const BibleReader = {
     if (this.inlineReflectionDraft.shareWithGroup === null) {
       this.inlineReflectionDraft.shareWithGroup = !!shareToggle?.classList.contains('active');
     }
-    
-    const noInsightsNotice = !hasVerseInsights
-      ? `<p class="text-[var(--text-muted)] italic mb-3 text-sm">${L.noInsightsSelected}${this.insightsLastError ? ` (${this.escapeHTML(this.insightsLastError)})` : ''}</p>`
-      : '';
-    let html = noInsightsNotice;
+
+    let html = this.generateSelectedScriptureHTML({
+      lang,
+      title: L.godsWord,
+      labelFontPx,
+      baseFontPx,
+      metaFontPx
+    });
+
+    if (!hasVerseInsights) {
+      html += `<p class="text-[var(--text-muted)] italic mb-4" style="font-size:${metaFontPx}px;">${L.noInsightsSelected}${this.insightsLastError ? ` (${this.escapeHTML(this.insightsLastError)})` : ''}</p>`;
+    }
+
     const reflectionQuestions = [];
     for (const [verseNum, insight] of Object.entries(verseInsights)) {
+      const verseText = this.chapterData?.verses?.[String(verseNum)] || this.chapterData?.verses?.[verseNum] || '';
       if (insight?.reflection) {
         reflectionQuestions.push(insight.reflection);
       }
       html += `
-        <div class="mb-4 pb-4 border-b border-[var(--card-border)] last:border-0">
-          <p class="text-[var(--mission-gold)] font-bold mb-2" style="font-size:${labelFontPx}px;">Verse ${verseNum}</p>
-          <div class="space-y-3 text-[var(--text-color)]">
-            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.understanding}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.understanding || ''}</p></div>
-            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.livingItOut}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.livingItOut || ''}</p></div>
-            <div><span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.godsLove}</span><p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.65;">${insight.godsLove || ''}</p></div>
+        <section class="mb-6 pb-5 border-b border-[var(--card-border)]/70 last:border-0">
+          <p class="text-[var(--mission-gold)] font-bold tracking-[0.16em] uppercase mb-2" style="font-size:${smallFontPx}px;">Verse ${verseNum}</p>
+          ${verseText ? `<p class="text-[var(--text-color)] italic mb-3" style="font-size:${headingFontPx}px; line-height:1.7;">"${this.escapeHTML(verseText)}"</p>` : ''}
+          <div class="space-y-4 text-[var(--text-color)]">
+            <div>
+              <span class="text-[var(--mission-gold)]/75 block mb-1 font-semibold" style="font-size:${metaFontPx}px;">${L.understanding}</span>
+              <p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.72;">${this.escapeHTML(insight.understanding || '')}</p>
+            </div>
+            <div>
+              <span class="text-[var(--mission-gold)]/75 block mb-1 font-semibold" style="font-size:${metaFontPx}px;">${L.livingItOut}</span>
+              <p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.72;">${this.escapeHTML(insight.livingItOut || '')}</p>
+            </div>
+            <div>
+              <span class="text-[var(--mission-gold)]/75 block mb-1 font-semibold" style="font-size:${metaFontPx}px;">${L.godsLove}</span>
+              <p class="leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.72;">${this.escapeHTML(insight.godsLove || '')}</p>
+            </div>
           </div>
-        </div>
+        </section>
       `;
     }
 
@@ -1123,13 +1144,13 @@ const BibleReader = {
     if (shareActive) {
       if (this.inlineShareTargetsLoading) {
         shareGroupPickerHtml = `
-          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
+          <div class="mt-3 pt-3 border-t border-[var(--card-border)]/65 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
             ${lang === 'tl' ? 'Naglo-load ng mga group...' : 'Loading groups...'}
           </div>
         `;
       } else if (shareTargets.length === 0) {
         shareGroupPickerHtml = `
-          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
+          <div class="mt-3 pt-3 border-t border-[var(--card-border)]/65 text-[var(--text-muted)]" style="font-size:${smallFontPx}px;">
             ${L.noShareGroups}
           </div>
         `;
@@ -1152,7 +1173,7 @@ const BibleReader = {
           const memberCount = Number(group.memberCount || 0);
           const memberText = memberCount > 0 ? ` • ${memberCount} member${memberCount === 1 ? '' : 's'}` : '';
           return `
-            <label class="flex items-start gap-2 py-1.5 cursor-pointer">
+            <label class="flex items-start gap-2 py-2 cursor-pointer border-b border-[var(--card-border)]/45 last:border-0">
               <input type="checkbox"
                      class="mt-0.5 accent-[var(--mission-gold)]"
                      onchange="BibleReader.toggleInlineShareGroup('${groupIdForJs}', this.checked)"
@@ -1167,7 +1188,7 @@ const BibleReader = {
         }).join('');
 
         shareGroupPickerHtml = `
-          <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
+          <div class="mt-3 pt-3 border-t border-[var(--card-border)]/65">
             <p class="text-[var(--text-color)] font-semibold mb-1" style="font-size:${metaFontPx}px;">${L.selectGroups}</p>
             ${selectAllRow}
             <p class="text-[var(--text-muted)] mb-2" style="font-size:${smallFontPx}px;">${shareTargets.length} ${L.availableCount}</p>
@@ -1179,11 +1200,11 @@ const BibleReader = {
     }
 
     html += `
-      <div class="mt-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
+      <section class="mt-6 pt-5 border-t border-[var(--card-border)]">
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.yourAnswer}</label>
         <button type="button"
                 onclick="BibleReader.openInlineFieldEditor('reflection')"
-                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)] hover:opacity-85"
+                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)]/80 hover:text-[var(--mission-gold)] transition-colors"
                 style="font-size:${smallFontPx}px;">
           <span>⤢</span>
           <span>${L.tapToExpand}</span>
@@ -1193,12 +1214,12 @@ const BibleReader = {
                   onclick="BibleReader.openInlineFieldEditor('reflection')"
                   readonly
                   rows="6"
-                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-4"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
 
         ${primaryQuestion ? `
-          <div class="mb-3">
+          <div class="mb-4">
             <span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.reflectionQuestion}</span>
             <p class="text-[var(--text-color)] italic" style="font-size:${headingFontPx}px; line-height:1.5;">"${this.escapeHTML(primaryQuestion)}"</p>
           </div>
@@ -1207,7 +1228,7 @@ const BibleReader = {
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
         <button type="button"
                 onclick="BibleReader.openInlineFieldEditor('commitment')"
-                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)] hover:opacity-85"
+                class="mb-2 inline-flex items-center gap-1 text-[var(--mission-gold)]/80 hover:text-[var(--mission-gold)] transition-colors"
                 style="font-size:${smallFontPx}px;">
           <span>⤢</span>
           <span>${L.tapToExpand}</span>
@@ -1217,37 +1238,37 @@ const BibleReader = {
                   onclick="BibleReader.openInlineFieldEditor('commitment')"
                   readonly
                   rows="6"
-                  class="w-full bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg p-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-3"
+                  class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50 resize-none mb-4"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.iWillPlaceholder}">${commitmentValue}</textarea>
 
-        <div class="mb-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/35 p-3">
-          <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">🙏 ${L.prayerRequests}</label>
-          <div class="flex items-center gap-2 mb-2">
+        <div class="mb-4">
+          <label class="text-[var(--mission-gold)]/80 font-semibold block mb-2" style="font-size:${labelFontPx}px;">🙏 ${L.prayerRequests}</label>
+          <div class="flex items-center gap-2 mb-3">
             <input id="inlineInsightPrayerDraftInput"
                    type="text"
                    oninput="BibleReader.setInlinePrayerDraft(this.value)"
                    onclick="BibleReader.openInlineFieldEditor('prayerDraft')"
                    readonly
-                   class="flex-1 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50"
+                   class="flex-1 bg-transparent border-0 border-b border-[var(--card-border)]/70 rounded-none px-0 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--mission-gold)]/50"
                    style="font-size:${baseFontPx}px; line-height:1.45;"
                    placeholder="${L.prayerRequestsPlaceholder}"
                    value="${prayerDraftValue}">
             <button type="button"
                     onclick="BibleReader.addInlinePrayerRequest()"
-                    class="px-3 py-2 rounded-lg border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] font-semibold hover:bg-[var(--mission-gold)]/10 transition-colors"
+                    class="px-0 py-2 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
                     style="font-size:${smallFontPx}px;">
               ${L.addPrayerRequest}
             </button>
           </div>
           ${prayerRequests.length > 0 ? `
-            <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
+            <div class="max-h-52 overflow-y-auto pr-1">
               ${prayerRequests.map((item) => {
                 const prayerId = String(item.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const createdAtLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.createdAt, lang));
                 const text = this.escapeHTML(item.text || '');
                 return `
-                  <div class="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-2.5">
+                  <div class="py-2 border-b border-[var(--card-border)]/55 last:border-0">
                     <div class="flex items-start justify-between gap-2">
                       <p class="text-[var(--text-color)] leading-snug flex-1" style="font-size:${metaFontPx}px;">${text}</p>
                       <button type="button"
@@ -1267,32 +1288,80 @@ const BibleReader = {
           `}
         </div>
 
-        <button type="button"
-                onclick="BibleReader.previewInlineReflectionShare()"
-                class="w-full mb-3 py-3 rounded-lg border border-[var(--mission-gold)]/35 bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/15 text-[var(--mission-gold)] font-semibold transition-colors"
-                style="font-size:${labelFontPx}px;">
-          👁 ${L.openPreview}
-        </button>
-
-        <div class="flex items-start gap-3 mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/40">
-          <div class="toggle-switch ${shareActive ? 'active' : ''}" id="inlineInsightShareToggle" onclick="BibleReader.toggleInlineShare()"></div>
-          <div class="flex-1">
-            <p class="text-[var(--text-color)] font-medium" style="font-size:${labelFontPx}px;">${L.shareWithGroup}</p>
-            <p class="text-[var(--text-muted)] mt-1" style="font-size:${smallFontPx}px;">${L.shareWithGroupHelp}</p>
-          </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-1">
+          <button type="button"
+                  onclick="BibleReader.previewInlineReflectionShare()"
+                  class="px-0 py-1 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
+                  style="font-size:${metaFontPx}px;">
+            👁 ${L.openPreview}
+          </button>
+          <button type="button"
+                  onclick="BibleReader.toggleInlineShare()"
+                  class="px-0 py-1 ${shareActive ? 'text-[var(--mission-gold)]' : 'text-[var(--text-color)]/80'} font-semibold hover:text-[var(--mission-gold)] transition-colors"
+                  style="font-size:${metaFontPx}px;">
+            ${shareActive ? '✓' : '+'} ${L.shareWithGroup}
+          </button>
         </div>
+        <p class="text-[var(--text-muted)] mb-3 pt-3 border-t border-[var(--card-border)]/65" style="font-size:${smallFontPx}px;">${shareActive ? L.selectGroups : L.shareWithGroupHelp}</p>
         ${shareGroupPickerHtml}
 
         <button id="inlineInsightSaveBtn"
                 onclick="BibleReader.saveInlineReflection()"
-                class="w-full py-3 rounded-lg bg-[var(--mission-red-bright)] hover:bg-[#8B0000] text-white font-bold transition-colors"
+                class="w-full py-3 rounded-full border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 hover:bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] font-bold transition-colors"
                 style="font-size:${labelFontPx}px;">
           ${L.save}
         </button>
-      </div>
+      </section>
     `;
 
     return html;
+  },
+
+  getSelectedVerseNumbers() {
+    return (this.highlightedVerses || [])
+      .map((item) => (typeof item === 'object' ? Number(item.verse) : Number(item)))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+  },
+
+  getSelectedVerseReference(lang = this.getInlineUiLang()) {
+    const verseNumbers = this.getSelectedVerseNumbers();
+    const bookName = (typeof BibleLoader !== 'undefined')
+      ? BibleLoader.getBookName(this.currentBook, this.bibleTranslation || lang)
+      : this.currentBook;
+    const referenceBase = `${bookName || this.currentBook} ${this.currentChapter}`.trim();
+    return verseNumbers.length ? `${referenceBase}:${verseNumbers.join(',')}` : referenceBase;
+  },
+
+  getSelectedVerseLines() {
+    return this.getSelectedVerseNumbers().map((verseNum) => {
+      const verseText = this.chapterData?.verses?.[String(verseNum)] || this.chapterData?.verses?.[verseNum] || '';
+      return verseText ? `${verseNum}. ${verseText}` : '';
+    }).filter(Boolean);
+  },
+
+  generateSelectedScriptureHTML({
+    lang = this.getInlineUiLang(),
+    title = (lang === 'tl' ? 'Salita ng Diyos' : 'God\'s Word'),
+    labelFontPx = 14,
+    baseFontPx = 16,
+    metaFontPx = 12
+  } = {}) {
+    const reference = this.escapeHTML(this.getSelectedVerseReference(lang));
+    const verseLines = this.getSelectedVerseLines();
+    if (!verseLines.length) return '';
+
+    return `
+      <section class="mb-6 pb-5 border-b border-[var(--card-border)]">
+        <p class="text-[var(--mission-gold)] font-bold tracking-[0.18em] uppercase mb-2" style="font-size:${metaFontPx}px;">${this.escapeHTML(title)}</p>
+        <p class="text-[var(--text-muted)] mb-2" style="font-size:${metaFontPx}px;">${reference}</p>
+        <div class="space-y-3">
+          ${verseLines.map((line) => `
+            <p class="text-[var(--text-color)] italic leading-relaxed" style="font-size:${baseFontPx}px; line-height:1.75;">"${this.escapeHTML(line)}"</p>
+          `).join('')}
+        </div>
+      </section>
+    `;
   },
 
   escapeHTML(value) {
@@ -2451,6 +2520,7 @@ const BibleReader = {
         understanding: '📖 Understanding This Verse',
         livingItOut: '🚶 Living It Out',
         godsLove: '❤️ See God\'s Love',
+        godsWord: 'God\'s Word',
         digDeeper: '📚 Dig Deeper (Tyndale)',
         noInsights: 'No insights available for this verse yet.',
         tapVerses: 'Tap verses above to see insights'
@@ -2459,6 +2529,7 @@ const BibleReader = {
         understanding: '📖 Unawain ang Talata',
         livingItOut: '🚶 Isabuhay Ito',
         godsLove: '❤️ Makita ang Pag-ibig ng Diyos',
+        godsWord: 'Salita ng Diyos',
         digDeeper: '📚 Dig Deeper (Tyndale)',
         noInsights: 'Wala pang insights para sa talatang ito.',
         tapVerses: 'I-tap ang mga talata sa itaas para makita ang insights'
@@ -2473,14 +2544,23 @@ const BibleReader = {
     commentaryContent.classList.add('hidden');
     if (commentaryArrow) commentaryArrow.style.transform = '';
     
+    const scriptureBlock = this.generateSelectedScriptureHTML({
+      lang,
+      title: L.godsWord,
+      labelFontPx: 13,
+      baseFontPx: 14,
+      metaFontPx: 11
+    });
+
     if (!this.quickInsightsData || !this.quickInsightsData.verses || Object.keys(this.quickInsightsData.verses).length === 0) {
       commentaryContent.innerHTML = `
+        ${scriptureBlock}
         <p class="text-[var(--text-muted)] italic text-sm">${L.noInsights}</p>
       `;
       return;
     }
-    
-    let html = '';
+
+    let html = scriptureBlock;
     
     // Collect reflection questions to update the REFLECT section
     const reflectionQuestions = [];
@@ -2497,24 +2577,24 @@ const BibleReader = {
       
       html += `
         <div class="mb-5 pb-4 border-b border-[var(--card-border)] last:border-0 last:pb-0 last:mb-0">
-          <p class="text-[var(--mission-gold)] font-bold text-sm mb-3">Verse ${verseNum}</p>
+          <p class="text-[var(--mission-gold)] font-bold text-[11px] uppercase tracking-[0.16em] mb-2">Verse ${verseNum}</p>
           
           <!-- Understanding -->
           <div class="mb-3">
             <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.understanding}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.understanding || ''}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.escapeHTML(insight.understanding || '')}</p>
           </div>
           
           <!-- Living It Out -->
           <div class="mb-3">
             <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.livingItOut}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.livingItOut || ''}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.escapeHTML(insight.livingItOut || '')}</p>
           </div>
           
           <!-- God's Love -->
           <div class="mb-3">
             <p class="text-[var(--mission-gold)]/80 text-xs font-semibold mb-1">${L.godsLove}</p>
-            <p class="text-sm text-[var(--text-color)] leading-relaxed">${insight.godsLove || ''}</p>
+            <p class="text-sm text-[var(--text-color)] leading-relaxed">${this.escapeHTML(insight.godsLove || '')}</p>
           </div>
           
           ${tyndaleNote ? `
