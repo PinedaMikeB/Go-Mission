@@ -1229,7 +1229,7 @@ const BibleReader = {
 
         <div class="mb-4">
           <label class="text-[var(--mission-gold)]/80 font-semibold block mb-2" style="font-size:${labelFontPx}px;">🙏 ${L.prayerRequests}</label>
-          <div class="flex items-center gap-2 mb-3">
+          <div class="mb-3">
             <input id="inlineInsightPrayerDraftInput"
                    type="text"
                    oninput="BibleReader.setInlinePrayerDraft(this.value)"
@@ -1239,12 +1239,6 @@ const BibleReader = {
                    style="font-size:${baseFontPx}px; line-height:1.45;"
                    placeholder="${L.prayerRequestsPlaceholder}"
                    value="${prayerDraftValue}">
-            <button type="button"
-                    onclick="BibleReader.addInlinePrayerRequest()"
-                    class="px-0 py-2 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
-                    style="font-size:${smallFontPx}px;">
-              ${L.addPrayerRequest}
-            </button>
           </div>
           ${prayerRequests.length > 0 ? `
             <div class="max-h-52 overflow-y-auto pr-1">
@@ -1377,6 +1371,8 @@ const BibleReader = {
         iWill: 'What will I do',
         iWillPlaceholder: 'Write your commitment to apply this today...',
         prayerRequests: 'Prayer requests',
+        previousPrayers: 'List of Previous Prayer',
+        prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
@@ -1388,7 +1384,15 @@ const BibleReader = {
         previewCancel: 'Back to edit',
         previewConfirm: 'Confirm and save',
         noPrayerRequests: 'No prayer requests added yet.',
-        numberedAction: '3. What will I do'
+        numberedAction: '3. What will I do',
+        view: 'View',
+        saveLabel: 'Save',
+        markAnswered: 'Mark as answered',
+        answeredDate: 'Date answered',
+        remarksLabel: 'Remarks',
+        remarksPlaceholder: 'Add remarks or testimony details...',
+        addedLabel: 'Added',
+        backLabel: 'Back'
       },
       tl: {
         numberedGodSaid: '1. Ano ang sinabi ng Diyos',
@@ -1398,6 +1402,8 @@ const BibleReader = {
         iWill: 'Ano ang aking gagawin',
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
         prayerRequests: 'Mga prayer request',
+        previousPrayers: 'List of Previous Prayer',
+        prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
@@ -1409,7 +1415,15 @@ const BibleReader = {
         previewCancel: 'Balik sa edit',
         previewConfirm: 'I-confirm at i-save',
         noPrayerRequests: 'Wala pang nailalagay na prayer request.',
-        numberedAction: '3. Ano ang aking gagawin'
+        numberedAction: '3. Ano ang aking gagawin',
+        view: 'View',
+        saveLabel: 'Save',
+        markAnswered: 'Markahan na sinagot',
+        answeredDate: 'Petsa ng pagsagot',
+        remarksLabel: 'Remarks',
+        remarksPlaceholder: 'Maglagay ng remarks o detalye ng patotoo...',
+        addedLabel: 'Nadagdag',
+        backLabel: 'Back'
       }
     };
     return labels[lang] || labels.en;
@@ -1493,13 +1507,25 @@ const BibleReader = {
     if (!config) return;
 
     this.closeInlineFieldEditor();
-    this.inlineEditorSession = { fieldKey };
+    this.inlineEditorSession = {
+      fieldKey,
+      prayerHistoryOpen: false,
+      prayerMode: 'compose',
+      activePrayerId: null
+    };
 
     const lang = this.getInlineUiLang();
     const L = this.getInlineUiLabels(lang);
     const overlay = document.createElement('div');
     overlay.id = 'inlineFieldEditorOverlay';
     overlay.className = 'fixed inset-0 z-[80] bg-[var(--bg-color)] flex flex-col';
+    document.body.appendChild(overlay);
+
+    if (fieldKey === 'prayerDraft') {
+      this.renderInlinePrayerEditorOverlay();
+      return;
+    }
+
     const contextPreview = this.getInlineFieldEditorContextHTML(fieldKey, config, lang, L);
     overlay.innerHTML = `
       <div class="flex-1 min-h-0 flex flex-col">
@@ -1529,7 +1555,6 @@ const BibleReader = {
         </div>
       </div>
     `;
-    document.body.appendChild(overlay);
 
     const textarea = document.getElementById('inlineFieldEditorTextarea');
     if (textarea) {
@@ -1539,17 +1564,201 @@ const BibleReader = {
     }
   },
 
+  renderInlinePrayerEditorOverlay() {
+    const session = this.inlineEditorSession;
+    const overlay = document.getElementById('inlineFieldEditorOverlay');
+    if (!session || session.fieldKey !== 'prayerDraft' || !overlay) return;
+
+    const lang = this.getInlineUiLang();
+    const L = this.getInlineUiLabels(lang);
+    const config = this.getInlineFieldEditorConfig('prayerDraft');
+    const prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
+    const isDetail = session.prayerMode === 'detail';
+    const activePrayer = prayerRequests.find((item) => String(item.id) === String(session.activePrayerId || '')) || null;
+
+    const headerHtml = isDetail ? `
+      <div class="sticky top-0 z-10 border-b border-[var(--card-border)]/55 bg-[var(--bg-color)]/96 backdrop-blur-sm">
+        <div class="w-full max-w-3xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
+          <button type="button"
+                  onclick="BibleReader.backToInlinePrayerDraft()"
+                  class="inline-flex items-center gap-2 text-[var(--mission-red-deep)] font-medium hover:opacity-80 transition-opacity">
+            <span aria-hidden="true">←</span>
+            <span>${this.escapeHTML(L.backLabel)}</span>
+          </button>
+          <button type="button"
+                  onclick="BibleReader.saveInlinePrayerRequestDetail()"
+                  class="px-4 py-2 rounded-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold hover:opacity-90 transition-opacity">
+            ${this.escapeHTML(L.saveLabel)}
+          </button>
+        </div>
+      </div>
+    ` : `
+      <div class="sticky top-0 z-10 border-b border-[var(--card-border)]/55 bg-[var(--bg-color)]/96 backdrop-blur-sm">
+        <div class="w-full max-w-3xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
+          <div class="min-w-0">
+            <p class="text-[var(--mission-gold)] font-bold truncate" style="font-size:${Math.max(15, config.fontPx)}px;">${this.escapeHTML(config.title)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="BibleReader.closeInlineFieldEditor()" class="px-4 py-2 rounded-full text-[var(--mission-red-deep)] border border-[var(--card-border)]/55 bg-white/45 hover:bg-white/70 transition-colors">
+              ${this.escapeHTML(L.fullscreenEditorExit)}
+            </button>
+            <button type="button" onclick="BibleReader.applyInlineFieldEditor()" class="px-4 py-2 rounded-full bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold hover:opacity-90 transition-opacity">
+              ${this.escapeHTML(L.fullscreenEditorDone)}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const listItemsHtml = prayerRequests.length ? prayerRequests.map((item) => {
+      const prayerId = this.escapeJS(item.id);
+      const dateLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.createdAt, lang));
+      const preview = String(item.text || '').trim();
+      const truncated = preview.length > 38 ? `${preview.slice(0, 35)}...` : preview;
+      return `
+        <div class="flex items-start justify-between gap-3 py-1">
+          <p class="min-w-0 flex-1 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.5;">${dateLabel} ${this.escapeHTML(truncated)}</p>
+          <button type="button"
+                  onclick="BibleReader.openInlinePrayerRequestDetail('${prayerId}')"
+                  class="shrink-0 text-[var(--mission-red-deep)] hover:text-[var(--mission-gold)] transition-colors"
+                  style="font-size:${Math.max(15, config.fontPx - 1)}px;">
+            ${this.escapeHTML(L.view)}
+          </button>
+        </div>
+      `;
+    }).join('') : `<p class="text-[var(--text-muted)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">${this.escapeHTML(L.noPrayerRequests)}</p>`;
+
+    const composeBody = `
+      <div class="w-full max-w-3xl mx-auto pt-4">
+        <button type="button"
+                onclick="BibleReader.toggleInlinePrayerHistory()"
+                class="w-full flex items-center justify-between gap-3 text-left text-[var(--text-color)] hover:text-[var(--mission-gold)] transition-colors"
+                style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.5;">
+          <span>${this.escapeHTML(L.previousPrayers)}</span>
+          <span aria-hidden="true">${session.prayerHistoryOpen ? '▾' : '▸'}</span>
+        </button>
+        ${session.prayerHistoryOpen ? `<div class="mt-4 space-y-2">${listItemsHtml}</div>` : ''}
+        <div class="mt-8">
+          <p class="text-[var(--text-color)] font-bold mb-4" style="font-size:${Math.max(18, config.fontPx + 1)}px;">${this.escapeHTML(L.prayerRequestSection)}</p>
+          <textarea id="inlineFieldEditorTextarea"
+                    class="w-full min-h-[48vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                    style="font-size:${config.fontPx}px; line-height:1.7;"
+                    placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(this.inlineReflectionDraft.prayerDraft || '')}</textarea>
+        </div>
+      </div>
+    `;
+
+    const detailBody = activePrayer ? `
+      <div class="w-full max-w-3xl mx-auto pt-4">
+        <p class="text-[var(--text-color)] leading-relaxed mb-3" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.65;">${this.escapeHTML(activePrayer.text || '')}</p>
+        <p class="text-[var(--text-muted)] mb-5" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.addedLabel)}: ${this.escapeHTML(this.formatInlinePrayerTimestamp(activePrayer.createdAt, lang))}</p>
+        <label class="flex items-center gap-2 mb-4 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">
+          <input id="inlinePrayerDetailAnswered" type="checkbox" class="accent-[var(--mission-gold)]" ${activePrayer.answered ? 'checked' : ''}>
+          <span>${this.escapeHTML(L.markAnswered)}</span>
+        </label>
+        <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.answeredDate)}</label>
+        <input id="inlinePrayerDetailDate"
+               type="date"
+               value="${this.escapeHTML(this.toDateInputValue(activePrayer.answeredAt))}"
+               class="w-full mb-4 bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] focus:outline-none">
+        <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.remarksLabel)}</label>
+        <textarea id="inlinePrayerDetailRemarks"
+                  class="w-full min-h-[22vh] bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                  style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.6;"
+                  placeholder="${this.escapeHTML(L.remarksPlaceholder)}">${this.escapeHTML(activePrayer.remarks || '')}</textarea>
+      </div>
+    ` : composeBody;
+
+    overlay.innerHTML = `
+      <div class="flex-1 min-h-0 flex flex-col">
+        ${headerHtml}
+        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+          ${detailBody}
+        </div>
+      </div>
+    `;
+
+    if (!isDetail) {
+      const textarea = document.getElementById('inlineFieldEditorTextarea');
+      if (textarea) {
+        textarea.focus();
+        const end = textarea.value.length;
+        textarea.setSelectionRange(end, end);
+      }
+    }
+  },
+
+  toggleInlinePrayerHistory() {
+    if (!this.inlineEditorSession || this.inlineEditorSession.fieldKey !== 'prayerDraft') return;
+    this.inlineEditorSession.prayerHistoryOpen = !this.inlineEditorSession.prayerHistoryOpen;
+    this.renderInlinePrayerEditorOverlay();
+  },
+
+  openInlinePrayerRequestDetail(prayerId) {
+    if (!this.inlineEditorSession || this.inlineEditorSession.fieldKey !== 'prayerDraft') return;
+    this.inlineEditorSession.prayerMode = 'detail';
+    this.inlineEditorSession.activePrayerId = String(prayerId || '');
+    this.renderInlinePrayerEditorOverlay();
+  },
+
+  backToInlinePrayerDraft() {
+    if (!this.inlineEditorSession || this.inlineEditorSession.fieldKey !== 'prayerDraft') return;
+    this.inlineEditorSession.prayerMode = 'compose';
+    this.inlineEditorSession.activePrayerId = null;
+    this.renderInlinePrayerEditorOverlay();
+  },
+
+  saveInlinePrayerRequestDetail() {
+    const session = this.inlineEditorSession;
+    if (!session || session.fieldKey !== 'prayerDraft' || !session.activePrayerId) return;
+
+    const answered = !!document.getElementById('inlinePrayerDetailAnswered')?.checked;
+    const answeredDateValue = String(document.getElementById('inlinePrayerDetailDate')?.value || '').trim();
+    const remarks = String(document.getElementById('inlinePrayerDetailRemarks')?.value || '').trim();
+    const answeredAt = answeredDateValue ? new Date(answeredDateValue).toISOString() : null;
+
+    this.inlineReflectionDraft.prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests).map((item) => {
+      if (String(item.id) !== String(session.activePrayerId)) return item;
+      return {
+        ...item,
+        answered,
+        answeredAt: answered ? answeredAt : null,
+        remarks
+      };
+    });
+
+    this.inlineEditorSession.prayerMode = 'compose';
+    this.inlineEditorSession.activePrayerId = null;
+    this.refreshFullscreenInsightsPanel();
+    this.renderInlinePrayerEditorOverlay();
+  },
+
   applyInlineFieldEditor() {
     const session = this.inlineEditorSession;
     const textarea = document.getElementById('inlineFieldEditorTextarea');
-    if (!session || !textarea) {
+    if (!session) {
       this.closeInlineFieldEditor();
       return;
     }
-    const value = textarea.value || '';
+    const value = textarea?.value || '';
     if (session.fieldKey === 'reflection') this.inlineReflectionDraft.reflection = value;
     if (session.fieldKey === 'commitment') this.inlineReflectionDraft.commitment = value;
-    if (session.fieldKey === 'prayerDraft') this.inlineReflectionDraft.prayerDraft = value;
+    if (session.fieldKey === 'prayerDraft') {
+      const draft = String(value || '').trim();
+      if (draft) {
+        const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
+        current.push({
+          id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          text: draft,
+          createdAt: new Date().toISOString(),
+          answered: false,
+          answeredAt: null,
+          remarks: ''
+        });
+        this.inlineReflectionDraft.prayerRequests = current;
+      }
+      this.inlineReflectionDraft.prayerDraft = '';
+    }
 
     this.closeInlineFieldEditor();
     this.refreshFullscreenInsightsPanel();
@@ -1818,6 +2027,20 @@ const BibleReader = {
       });
     } catch (error) {
       return String(value);
+    }
+  },
+
+  toDateInputValue(value) {
+    if (!value) return '';
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return '';
+      const yyyy = dt.getFullYear();
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch (error) {
+      return '';
     }
   },
 
