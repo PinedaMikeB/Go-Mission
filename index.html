@@ -2602,87 +2602,24 @@
                                 Prayer Tracker
                             </button>
                         </div>
-                        <div class="mb-3">
-                            <button id="journalContinueBibleBtn"
-                                    onclick="continueJournalToBibleLastVerse()"
-                                    class="journal-action-btn w-full px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/20 transition-colors">
-                                📖 Continue in Bible (Last verse)
-                            </button>
-                        </div>
 
                         <div id="journalEntriesFilters">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
                                 <input id="journalSearchInput"
                                        type="text"
                                        oninput="applyJournalFilters()"
                                        placeholder="Search keyword..."
                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                <input id="journalDateFilter"
-                                       type="date"
-                                       onchange="applyJournalFilters()"
-                                       class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                <select id="journalTypeFilter"
-                                        onchange="applyJournalFilters()"
-                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                    <option value="all">All entries</option>
-                                    <option value="prayers">With prayer requests</option>
-                                    <option value="answered">With answered prayers</option>
-                                    <option value="shared">Shared to groups</option>
-                                </select>
-                                <div class="flex items-center gap-2">
-                                    <select id="journalSortFilter"
-                                            onchange="applyJournalFilters()"
-                                            class="flex-1 p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                        <option value="newest">Newest first</option>
-                                        <option value="oldest">Oldest first</option>
-                                    </select>
-                                    <button onclick="clearJournalFilters()"
-                                            class="px-3 py-2.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/60 transition-colors">
-                                        Clear
-                                    </button>
-                                </div>
                             </div>
                         </div>
 
                         <div id="journalPrayerFilters" class="hidden">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
                                 <input id="journalPrayerSearchInput"
                                        type="text"
                                        oninput="applyJournalPrayerFilters()"
                                        placeholder="Search prayer, medicine, provision..."
                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                <select id="journalPrayerStatusFilter"
-                                        onchange="applyJournalPrayerFilters()"
-                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                    <option value="all">All status</option>
-                                    <option value="open">Open</option>
-                                    <option value="answered">Answered</option>
-                                </select>
-                                <select id="journalPrayerCategoryFilter"
-                                        onchange="applyJournalPrayerFilters()"
-                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                    <option value="all">All categories</option>
-                                    <option value="health">Health</option>
-                                    <option value="provision">Provision</option>
-                                    <option value="family">Family</option>
-                                    <option value="work">Work / School</option>
-                                    <option value="spiritual">Spiritual</option>
-                                    <option value="other">Other</option>
-                                </select>
-                                <div class="flex items-center gap-2">
-                                    <select id="journalPrayerSortFilter"
-                                            onchange="applyJournalPrayerFilters()"
-                                            class="flex-1 p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
-                                        <option value="newest">Newest requests</option>
-                                        <option value="oldest">Oldest requests</option>
-                                        <option value="answered_recent">Recently answered</option>
-                                        <option value="open_first">Open first</option>
-                                    </select>
-                                    <button onclick="clearJournalPrayerFilters()"
-                                            class="px-3 py-2.5 rounded-lg border border-[var(--card-border)] text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/60 transition-colors">
-                                        Clear
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
