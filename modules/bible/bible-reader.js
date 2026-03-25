@@ -1561,12 +1561,13 @@ const BibleReader = {
             </div>
           </div>
         </div>
-        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
+             style="-webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;">
           <div class="w-full max-w-3xl mx-auto pt-4">
             ${contextPreview}
             <textarea id="inlineFieldEditorTextarea"
-                      class="w-full min-h-[55vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                      style="font-size:${config.fontPx}px; line-height:1.7;"
+                      class="w-full min-h-[55vh] overflow-y-auto bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
                       placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(config.value)}</textarea>
           </div>
         </div>
@@ -1712,8 +1713,8 @@ const BibleReader = {
                    value="${this.escapeHTML(this.inlineReflectionDraft.prayerDraftTopic || '')}">
             <label class="block text-[var(--text-muted)] uppercase tracking-[0.16em] mt-6 mb-2" style="font-size:${Math.max(12, config.fontPx - 4)}px;">${this.escapeHTML(L.prayerDescription)}</label>
             <textarea id="inlinePrayerDraftDescriptionInput"
-                      class="w-full min-h-[30vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                      style="font-size:${config.fontPx}px; line-height:1.7;"
+                      class="w-full min-h-[30vh] overflow-y-auto bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
                       placeholder="${this.escapeHTML(L.prayerDescriptionPlaceholder)}">${this.escapeHTML(this.inlineReflectionDraft.prayerDraftDescription || '')}</textarea>
           </div>
         </div>
@@ -1736,8 +1737,8 @@ const BibleReader = {
                class="w-full mb-4 bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] focus:outline-none">
         <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.remarksLabel)}</label>
         <textarea id="inlinePrayerDetailRemarks"
-                  class="w-full min-h-[22vh] bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                  style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.6;"
+                  class="w-full min-h-[22vh] overflow-y-auto bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                  style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.6; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
                   placeholder="${this.escapeHTML(L.remarksPlaceholder)}">${this.escapeHTML(activePrayer.remarks || '')}</textarea>
       </div>
     ` : composeBody;
@@ -1745,7 +1746,8 @@ const BibleReader = {
     overlay.innerHTML = `
       <div class="flex-1 min-h-0 flex flex-col">
         ${headerHtml}
-        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        <div class="flex-1 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
+             style="-webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;">
           ${detailBody}
         </div>
       </div>
