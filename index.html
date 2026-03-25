@@ -7976,9 +7976,9 @@
             const modal = ensureJournalPrayerDetailModal();
             modal.dataset.entryId = String(entryId || '');
             modal.dataset.prayerId = String(prayerId || '');
-            renderOpenJournalPrayerDetailModal();
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            renderOpenJournalPrayerDetailModal();
         };
 
         window.closeJournalPrayerDetail = function() {
