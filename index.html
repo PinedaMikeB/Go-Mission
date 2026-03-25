@@ -6888,7 +6888,6 @@
             prayerItems: [],
             filteredPrayerItems: [],
             prayerSupportByKey: {},
-            editingEntryId: null,
             viewEntryId: null,
             activeTab: 'entries',
             filters: {
@@ -7079,6 +7078,62 @@
             return items;
         }
 
+        function getJournalEntryCalendarParts(dateObj, lang) {
+            if (!dateObj) {
+                return {
+                    weekday: lang === 'tl' ? 'ARW' : 'DAY',
+                    day: '--'
+                };
+            }
+            return {
+                weekday: dateObj.toLocaleDateString(lang === 'tl' ? 'fil-PH' : 'en-US', { weekday: 'short' }).toUpperCase(),
+                day: String(dateObj.getDate()).padStart(2, '0')
+            };
+        }
+
+        function formatJournalEntryHeadline(dateObj, lang) {
+            if (!dateObj) return '-';
+            return dateObj.toLocaleString(lang === 'tl' ? 'fil-PH' : 'en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function buildJournalConversationSections(entryData, lang) {
+            const sectionLabels = getDevotionSectionLabels(lang);
+            return [
+                {
+                    key: 'scripture',
+                    title: String(entryData.godSaidTitle || sectionLabels.godSaidTitle || '').trim(),
+                    reference: String(entryData.godSaidReference || buildLegacyDevotionReference(entryData, lang) || '').trim(),
+                    text: String(entryData.godSaidText || '').trim(),
+                    editable: false
+                },
+                {
+                    key: 'understanding',
+                    title: String(entryData.understandingTitle || entryData.reflectionTitle || sectionLabels.understandingTitle || '').trim(),
+                    text: String(entryData.understandingText || entryData.reflectionText || entryData.reflection || '').trim(),
+                    editable: true
+                },
+                {
+                    key: 'question',
+                    title: lang === 'tl' ? 'Tanong sa Pagninilay' : 'Reflection Question',
+                    text: String(entryData.question || '').trim(),
+                    editable: false
+                },
+                {
+                    key: 'action',
+                    title: String(entryData.actionTitle || sectionLabels.actionTitle || '').trim(),
+                    text: String(entryData.actionText || entryData.commitment || '').trim(),
+                    editable: true
+                }
+            ];
+        }
+
         function filterAndSortJournalPrayerItems(items, filters) {
             const filtered = items.filter((item) => {
                 if (filters.status === 'open' && item.answered) return false;
@@ -7204,132 +7259,118 @@
             const data = entry.data || {};
             const dateObj = entry._resolvedDate || resolveJournalEntryDate(data);
             const lang = data.language === 'en' ? 'en' : 'tl';
-            const sectionLabels = getDevotionSectionLabels(lang);
-            const scriptureTitle = data.godSaidTitle || sectionLabels.godSaidTitle;
-            const scriptureReference = data.godSaidReference || buildLegacyDevotionReference(data, lang);
-            const scriptureText = data.godSaidText || '';
-            const understandingTitle = data.understandingTitle || data.reflectionTitle || sectionLabels.understandingTitle;
-            const understandingText = data.understandingText || data.reflectionText || data.reflection || '';
-            const actionTitle = data.actionTitle || sectionLabels.actionTitle;
-            const actionText = data.actionText || data.commitment || '';
+            const conversationSections = buildJournalConversationSections(data, lang);
+            const understandingText = String(data.understandingText || data.reflectionText || data.reflection || '').trim();
+            const actionText = String(data.actionText || data.commitment || '').trim();
             const prayerRequests = normalizePrayerRequests(data?.prayerRequests || []);
-            const openPrayerCount = prayerRequests.filter(item => !item.answered).length;
-            const answeredPrayerCount = prayerRequests.filter(item => !!item.answered).length;
             const entryIdForJs = escapeJsString(entry.id);
-            const isEditing = journalState.editingEntryId === entry.id;
-            const isExpanded = isEditing || journalState.viewEntryId === entry.id;
+            const isExpanded = journalState.viewEntryId === entry.id;
             const understandingInputId = getJournalDomSafeId('journal_understanding', entry.id);
             const actionInputId = getJournalDomSafeId('journal_action', entry.id);
-            const timeInputId = getJournalDomSafeId('journal_devotion_time', entry.id);
-            const conversationTimeValue = toDateTimeLocalInputValue(data.devotionAt || dateObj);
-            const formattedDate = dateObj
-                ? dateObj.toLocaleString(lang === 'tl' ? 'fil-PH' : 'en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                })
-                : (data.date || '-');
-            const summaryLine = truncateDevotionText(understandingText || actionText || scriptureText || '', 170);
-            const continueBibleLabel = lang === 'tl' ? 'Buksan sa Bible' : 'Continue Bible';
+            const formattedDate = formatJournalEntryHeadline(dateObj, lang);
+            const calendar = getJournalEntryCalendarParts(dateObj, lang);
+            const reference = String(data.godSaidReference || buildLegacyDevotionReference(data, lang) || '').trim();
+            const prayerCountLabel = prayerRequests.length
+                ? `${prayerRequests.length} ${lang === 'tl' ? 'prayer request' : 'prayer request'}${prayerRequests.length === 1 ? '' : 's'}`
+                : (lang === 'tl' ? 'Walang prayer request' : 'No prayer requests');
 
             return `
-                <div class="journal-card p-3 sm:p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] mb-3">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-2">
-                        <div>
-                            <span class="journal-card-title text-amber-500 font-bold text-base sm:text-sm block">${escapeDevotionHtml(formattedDate)}</span>
-                            ${scriptureReference ? `<span class="text-xs text-[var(--text-muted)]">${escapeDevotionHtml(scriptureReference)}</span>` : ''}
+                <article class="journal-card mb-4 rounded-[28px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(249,243,235,0.94))] shadow-[0_18px_40px_rgba(91,43,0,0.08)] overflow-hidden">
+                    <button type="button"
+                            onclick="toggleJournalEntryDetails('${entryIdForJs}')"
+                            class="w-full text-left p-4 sm:p-5 flex items-start gap-4 hover:bg-white/35 transition-colors">
+                        <div class="shrink-0 w-[74px] rounded-[22px] border border-amber-500/20 bg-white px-2 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                            <div class="text-[10px] font-bold tracking-[0.16em] text-[var(--text-muted)]">${escapeDevotionHtml(calendar.weekday)}</div>
+                            <div class="mt-1 text-[42px] leading-none font-semibold text-[#433229]">${escapeDevotionHtml(calendar.day)}</div>
                         </div>
-                        ${isEditing ? `
-                            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                <button onclick="saveJournalEntryEdits('${entryIdForJs}')"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs bg-[var(--mission-gold)]/20 text-[var(--mission-gold)] border border-[var(--mission-gold)]/35 hover:bg-[var(--mission-gold)]/30 transition-colors">
-                                    Save
-                                </button>
-                                <button onclick="cancelJournalEntryEdit()"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                                    Cancel
-                                </button>
-                            </div>
-                        ` : `
-                            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                <button onclick="continueJournalToBibleLastVerse()"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--mission-gold)]/40 text-[var(--mission-gold)] bg-[var(--mission-gold)]/10 hover:bg-[var(--mission-gold)]/20 transition-colors">
-                                    📖 ${escapeDevotionHtml(continueBibleLabel)}
-                                </button>
-                                <button onclick="toggleJournalEntryDetails('${entryIdForJs}')"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                                    ${isExpanded ? 'Hide' : 'View'}
-                                </button>
-                                <button onclick="editJournalEntry('${entryIdForJs}')"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                                    Edit
-                                </button>
-                                <button onclick="editJournalEntryTime('${entryIdForJs}')"
-                                        class="journal-action-btn px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs border border-[var(--card-border)] text-[var(--text-color)] hover:border-[var(--mission-gold)]/40 transition-colors">
-                                    Edit time
-                                </button>
-                            </div>
-                        `}
-                    </div>
-
-                    <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <p class="text-[11px] text-[var(--text-muted)]">${escapeDevotionHtml(summaryLine || '-')}</p>
-                            <div class="flex items-center gap-1 text-[10px] shrink-0">
-                                <span class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">${openPrayerCount} open</span>
-                                <span class="px-2 py-0.5 rounded-full bg-green-500/15 text-green-500">${answeredPrayerCount} answered</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h3 class="text-[20px] sm:text-[22px] font-semibold leading-tight text-[#6b260b]">${escapeDevotionHtml(formattedDate)}</h3>
+                                    <p class="mt-1 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(reference || '-')}</p>
+                                    <p class="mt-2 text-[11px] uppercase tracking-[0.16em] text-amber-500 font-semibold">Conversation Time</p>
+                                    <p class="mt-2 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(prayerCountLabel)}</p>
+                                </div>
+                                <span class="mt-1 text-[var(--mission-gold)] text-lg">${isExpanded ? '−' : '+'}</span>
                             </div>
                         </div>
-                    </div>
+                    </button>
 
                     ${isExpanded ? `
-                        <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(scriptureTitle)}</p>
-                            ${scriptureReference ? `<p class="text-xs text-[var(--text-muted)] mb-1">${escapeDevotionHtml(scriptureReference)}</p>` : ''}
-                            ${scriptureText ? `<p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(scriptureText)}</p>` : '<p class="text-sm text-[var(--text-muted)] italic">-</p>'}
-                        </div>
+                        <div class="px-4 sm:px-5 pb-5 sm:pb-6">
+                            <div class="border-t border-[var(--card-border)]/65 pt-4 sm:pt-5">
+                                <div class="rounded-[24px] border border-[var(--card-border)]/70 bg-white/85 p-4 sm:p-5">
+                                    <div class="space-y-6">
+                                        ${conversationSections.map((section, index) => {
+                                            const title = `${index + 1}. ${section.title}`;
+                                            if (section.key === 'understanding') {
+                                                return `
+                                                    <section>
+                                                        <p class="mb-3 text-[18px] font-semibold leading-tight text-[#3f312a]">${escapeDevotionHtml(title)}</p>
+                                                        <textarea id="${understandingInputId}"
+                                                                  rows="${Math.max(5, Math.ceil((understandingText || '').length / 72) || 5)}"
+                                                                  class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                                  placeholder="${lang === 'tl' ? 'Isulat ang iyong pagkaunawa...' : 'Write your understanding...'}">${escapeDevotionHtml(understandingText)}</textarea>
+                                                    </section>
+                                                `;
+                                            }
+                                            if (section.key === 'action') {
+                                                return `
+                                                    <section>
+                                                        <p class="mb-3 text-[18px] font-semibold leading-tight text-[#3f312a]">${escapeDevotionHtml(title)}</p>
+                                                        <textarea id="${actionInputId}"
+                                                                  rows="${Math.max(5, Math.ceil((actionText || '').length / 72) || 5)}"
+                                                                  class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                                  placeholder="${lang === 'tl' ? 'Isulat ang iyong gagawin...' : 'Write what you will do...'}">${escapeDevotionHtml(actionText)}</textarea>
+                                                    </section>
+                                                `;
+                                            }
+                                            return `
+                                                <section>
+                                                    <p class="mb-3 text-[18px] font-semibold leading-tight text-[#3f312a]">${escapeDevotionHtml(title)}</p>
+                                                    ${section.reference ? `<p class="mb-2 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(section.reference)}</p>` : ''}
+                                                    <div class="text-[17px] leading-[1.75] text-[#3e3a37]">${section.text ? formatDevotionMultiline(section.text) : '<span class="text-[var(--text-muted)] italic">-</span>'}</div>
+                                                </section>
+                                            `;
+                                        }).join('')}
 
-                        ${isEditing ? `
-                            <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                                <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">Conversation time</p>
-                                <input id="${timeInputId}"
-                                       type="datetime-local"
-                                       value="${escapeDevotionHtml(conversationTimeValue)}"
-                                       class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                                        <section>
+                                            <p class="mb-3 text-[18px] font-semibold leading-tight text-[#3f312a]">5. ${escapeDevotionHtml(lang === 'tl' ? 'Mga prayer request' : 'Prayer requests')}</p>
+                                            <div class="space-y-4">
+                                                ${prayerRequests.map((item, index) => {
+                                                    const prayerInputId = getJournalDomSafeId(`journal_prayer_${index}`, entry.id);
+                                                    return `
+                                                        <div>
+                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${index + 1}</p>
+                                                            <textarea id="${prayerInputId}"
+                                                                      rows="${Math.max(2, Math.ceil((item.text || '').length / 72) || 2)}"
+                                                                      class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                                      placeholder="${lang === 'tl' ? 'Maglagay ng prayer request...' : 'Add prayer request...'}">${escapeDevotionHtml(item.text || '')}</textarea>
+                                                        </div>
+                                                    `;
+                                                }).join('')}
+                                                <div>
+                                                    <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${prayerRequests.length + 1}</p>
+                                                    <textarea id="${getJournalDomSafeId('journal_prayer_new', entry.id)}"
+                                                              rows="2"
+                                                              class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                              placeholder="${lang === 'tl' ? 'Magdagdag ng isa pang prayer request...' : 'Add another prayer request...'}"></textarea>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <div class="pt-2">
+                                            <button onclick="saveJournalEntryEdits('${entryIdForJs}')"
+                                                    class="w-full rounded-full border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 px-4 py-3 text-[15px] font-bold text-[var(--mission-red-bright)] hover:bg-[var(--mission-red-bright)]/15 transition-colors">
+                                                ${lang === 'tl' ? 'I-save ang Conversation Time' : 'Save Conversation Time'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        ` : ''}
-
-                        <div class="mb-3 p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(understandingTitle)}</p>
-                            ${isEditing ? `
-                                <textarea id="${understandingInputId}"
-                                          rows="4"
-                                          class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm resize-y"
-                                          placeholder="${lang === 'tl' ? 'Isulat ang iyong pagkaunawa...' : 'Write your understanding...'}">${escapeDevotionHtml(understandingText)}</textarea>
-                            ` : `
-                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(understandingText || '-')}</p>
-                            `}
                         </div>
-
-                        <div class="p-3 rounded-lg border border-[var(--card-border)] bg-[var(--bg-color)]/30">
-                            <p class="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-1">${escapeDevotionHtml(actionTitle)}</p>
-                            ${isEditing ? `
-                                <textarea id="${actionInputId}"
-                                          rows="4"
-                                          class="w-full p-2 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-[var(--text-color)] text-sm resize-y"
-                                          placeholder="${lang === 'tl' ? 'Isulat ang iyong gagawin...' : 'Write what you will do...'}">${escapeDevotionHtml(actionText)}</textarea>
-                            ` : `
-                                <p class="text-sm text-[var(--text-color)] leading-relaxed">${formatDevotionMultiline(actionText || '-')}</p>
-                            `}
-                        </div>
-
-                        ${renderJournalPrayerStatus(entry.id, data, lang)}
-                        ${data.sharedWithGroup ? '<span class="text-[10px] text-green-500 mt-2 block">✓ Shared with group</span>' : ''}
                     ` : ''}
-                </div>
+                </article>
             `;
         }
 
@@ -7486,26 +7527,23 @@
         window.toggleJournalEntryDetails = function(entryId) {
             const normalizedId = String(entryId || '');
             journalState.viewEntryId = journalState.viewEntryId === normalizedId ? null : normalizedId;
-            if (!journalState.viewEntryId && journalState.editingEntryId === normalizedId) {
-                journalState.editingEntryId = null;
-            }
             renderJournalEntriesFromState();
         };
 
         window.editJournalEntry = function(entryId) {
             const normalizedId = String(entryId || '');
-            journalState.editingEntryId = normalizedId;
             journalState.viewEntryId = normalizedId;
             renderJournalEntriesFromState();
         };
 
         window.editJournalEntryTime = function(entryId) {
             const normalizedId = String(entryId || '');
-            window.editJournalEntry(normalizedId);
-            const inputId = getJournalDomSafeId('journal_devotion_time', normalizedId);
+            journalState.viewEntryId = normalizedId;
+            renderJournalEntriesFromState();
+            const inputId = getJournalDomSafeId('journal_action', normalizedId);
             requestAnimationFrame(() => {
-                const timeInput = document.getElementById(inputId);
-                if (timeInput) timeInput.focus();
+                const targetInput = document.getElementById(inputId);
+                if (targetInput) targetInput.focus();
             });
         };
 
@@ -7536,7 +7574,6 @@
         window.openJournalEntryFromPrayer = function(entryId) {
             const normalizedId = String(entryId || '');
             journalState.viewEntryId = normalizedId;
-            journalState.editingEntryId = null;
             window.switchJournalTab('entries');
             renderJournalEntriesFromState();
         };
@@ -7544,13 +7581,11 @@
         window.editJournalEntryFromPrayer = function(entryId) {
             const normalizedId = String(entryId || '');
             journalState.viewEntryId = normalizedId;
-            journalState.editingEntryId = normalizedId;
             window.switchJournalTab('entries');
             renderJournalEntriesFromState();
         };
 
         window.cancelJournalEntryEdit = function() {
-            journalState.editingEntryId = null;
             renderJournalEntriesFromState();
         };
 
@@ -7560,11 +7595,8 @@
                 if (!normalizedId || !window.currentUser || !window.db) return;
                 const understandingInputId = getJournalDomSafeId('journal_understanding', normalizedId);
                 const actionInputId = getJournalDomSafeId('journal_action', normalizedId);
-                const timeInputId = getJournalDomSafeId('journal_devotion_time', normalizedId);
                 const understandingValue = String(document.getElementById(understandingInputId)?.value || '').trim();
                 const actionValue = String(document.getElementById(actionInputId)?.value || '').trim();
-                const devotionAtRaw = String(document.getElementById(timeInputId)?.value || '').trim();
-                const devotionAtIso = toIsoFromDateTimeLocal(devotionAtRaw);
 
                 if (!understandingValue) {
                     alert('Please add your understanding before saving.');
@@ -7576,6 +7608,28 @@
                 if (!entryDoc.exists()) return;
                 const entryData = entryDoc.data() || {};
                 if (entryData.uid !== window.currentUser.uid) return;
+                const existingPrayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
+                const updatedPrayerRequests = existingPrayerRequests.map((item, index) => {
+                    const prayerInputId = getJournalDomSafeId(`journal_prayer_${index}`, normalizedId);
+                    const textValue = String(document.getElementById(prayerInputId)?.value || item.text || '').trim();
+                    return {
+                        ...item,
+                        text: textValue
+                    };
+                }).filter(item => String(item.text || '').trim());
+                const newPrayerInputId = getJournalDomSafeId('journal_prayer_new', normalizedId);
+                const newPrayerText = String(document.getElementById(newPrayerInputId)?.value || '').trim();
+                if (newPrayerText) {
+                    updatedPrayerRequests.push({
+                        id: `pr_${Date.now()}`,
+                        text: newPrayerText,
+                        createdAt: new Date().toISOString(),
+                        answered: false,
+                        category: '',
+                        answerNote: '',
+                        answeredAt: ''
+                    });
+                }
 
                 await window.setDoc(entryRef, {
                     understandingText: understandingValue,
@@ -7583,13 +7637,12 @@
                     reflection: understandingValue,
                     actionText: actionValue,
                     commitment: actionValue,
-                    devotionAt: devotionAtIso || entryData.devotionAt || new Date().toISOString(),
+                    prayerRequests: updatedPrayerRequests,
                     savedAt: window.serverTimestamp()
                 }, { merge: true });
 
-                journalState.editingEntryId = null;
                 await renderJournalEntriesList();
-                alert('Journal entry updated.');
+                alert('Conversation Time updated.');
             } catch (error) {
                 console.error('[Journal] Could not save journal entry edits:', error);
                 alert('Could not save journal edits right now.');
@@ -7631,7 +7684,6 @@
                         _resolvedDate: resolveJournalEntryDate(data)
                     };
                 });
-                journalState.editingEntryId = null;
                 journalState.prayerSupportByKey = await loadJournalPrayerSupport(journalState.entries);
                 journalState.prayerItems = buildJournalPrayerItems(journalState.entries);
                 window.applyJournalFilters();
