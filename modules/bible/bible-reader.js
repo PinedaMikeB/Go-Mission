@@ -30,6 +30,8 @@ const BibleReader = {
   },
   inlineShareTargets: [],
   inlineShareTargetsLoading: false,
+  inlinePrayerHistoryItems: [],
+  inlinePrayerHistoryLoading: false,
   inlineEditorSession: null,
   pendingInlineSavePayload: null,
   commentaryRequestId: 0,
@@ -1374,6 +1376,7 @@ const BibleReader = {
         previousPrayers: 'List of Previous Prayer',
         prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
+        previousPrayersLoading: 'Loading previous prayers...',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
         journalPreview: 'Share Preview',
@@ -1405,6 +1408,7 @@ const BibleReader = {
         previousPrayers: 'List of Previous Prayer',
         prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
+        previousPrayersLoading: 'Loading previous prayers...',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
         journalPreview: 'Preview ng ise-share',
@@ -1523,6 +1527,7 @@ const BibleReader = {
 
     if (fieldKey === 'prayerDraft') {
       this.renderInlinePrayerEditorOverlay();
+      this.ensureInlinePrayerHistoryLoaded();
       return;
     }
 
@@ -1564,6 +1569,41 @@ const BibleReader = {
     }
   },
 
+  async ensureInlinePrayerHistoryLoaded(force = false) {
+    if (!force && this.inlinePrayerHistoryItems.length > 0) return;
+    if (this.inlinePrayerHistoryLoading) return;
+    if (typeof window.getPrayerTrackerItems !== 'function') {
+      this.inlinePrayerHistoryItems = [];
+      return;
+    }
+
+    this.inlinePrayerHistoryLoading = true;
+    this.renderInlinePrayerEditorOverlay();
+
+    try {
+      const items = await window.getPrayerTrackerItems();
+      this.inlinePrayerHistoryItems = Array.isArray(items)
+        ? items.map((item) => ({
+            entryId: String(item.entryId || ''),
+            prayerId: String(item.prayerId || ''),
+            title: String(item.title || '').trim(),
+            text: String(item.text || '').trim(),
+            reference: String(item.reference || '').trim(),
+            requestedDate: item.requestedDate || item.createdAt || null,
+            answered: !!item.answered,
+            answeredDate: item.answeredDate || item.answeredAt || null,
+            remarks: String(item.remarks || '').trim()
+          }))
+        : [];
+    } catch (error) {
+      console.error('[BibleReader] Could not load prayer history:', error);
+      this.inlinePrayerHistoryItems = [];
+    } finally {
+      this.inlinePrayerHistoryLoading = false;
+      this.renderInlinePrayerEditorOverlay();
+    }
+  },
+
   renderInlinePrayerEditorOverlay() {
     const session = this.inlineEditorSession;
     const overlay = document.getElementById('inlineFieldEditorOverlay');
@@ -1572,9 +1612,9 @@ const BibleReader = {
     const lang = this.getInlineUiLang();
     const L = this.getInlineUiLabels(lang);
     const config = this.getInlineFieldEditorConfig('prayerDraft');
-    const prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
+    const historyItems = Array.isArray(this.inlinePrayerHistoryItems) ? [...this.inlinePrayerHistoryItems] : [];
     const isDetail = session.prayerMode === 'detail';
-    const activePrayer = prayerRequests.find((item) => String(item.id) === String(session.activePrayerId || '')) || null;
+    const activePrayer = historyItems.find((item) => `${item.entryId}::${item.prayerId}` === String(session.activePrayerId || '')) || null;
 
     const headerHtml = isDetail ? `
       <div class="sticky top-0 z-10 border-b border-[var(--card-border)]/55 bg-[var(--bg-color)]/96 backdrop-blur-sm">
@@ -1610,16 +1650,18 @@ const BibleReader = {
       </div>
     `;
 
-    const listItemsHtml = prayerRequests.length ? prayerRequests.map((item) => {
-      const prayerId = this.escapeJS(item.id);
-      const dateLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.createdAt, lang));
+    const listItemsHtml = this.inlinePrayerHistoryLoading
+      ? `<p class="text-[var(--text-muted)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">${this.escapeHTML(L.previousPrayersLoading)}</p>`
+      : historyItems.length ? historyItems.map((item) => {
+      const prayerKey = this.escapeJS(`${item.entryId}::${item.prayerId}`);
+      const dateLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.requestedDate, lang));
       const preview = String(item.text || '').trim();
       const truncated = preview.length > 38 ? `${preview.slice(0, 35)}...` : preview;
       return `
         <div class="flex items-start justify-between gap-3 py-1">
           <p class="min-w-0 flex-1 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.5;">${dateLabel} ${this.escapeHTML(truncated)}</p>
           <button type="button"
-                  onclick="BibleReader.openInlinePrayerRequestDetail('${prayerId}')"
+                  onclick="BibleReader.openInlinePrayerRequestDetail('${prayerKey}')"
                   class="shrink-0 text-[var(--mission-red-deep)] hover:text-[var(--mission-gold)] transition-colors"
                   style="font-size:${Math.max(15, config.fontPx - 1)}px;">
             ${this.escapeHTML(L.view)}
@@ -1651,7 +1693,7 @@ const BibleReader = {
     const detailBody = activePrayer ? `
       <div class="w-full max-w-3xl mx-auto pt-4">
         <p class="text-[var(--text-color)] leading-relaxed mb-3" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.65;">${this.escapeHTML(activePrayer.text || '')}</p>
-        <p class="text-[var(--text-muted)] mb-5" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.addedLabel)}: ${this.escapeHTML(this.formatInlinePrayerTimestamp(activePrayer.createdAt, lang))}</p>
+        <p class="text-[var(--text-muted)] mb-5" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.addedLabel)}: ${this.escapeHTML(this.formatInlinePrayerTimestamp(activePrayer.requestedDate, lang))}</p>
         <label class="flex items-center gap-2 mb-4 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">
           <input id="inlinePrayerDetailAnswered" type="checkbox" class="accent-[var(--mission-gold)]" ${activePrayer.answered ? 'checked' : ''}>
           <span>${this.escapeHTML(L.markAnswered)}</span>
@@ -1659,7 +1701,7 @@ const BibleReader = {
         <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.answeredDate)}</label>
         <input id="inlinePrayerDetailDate"
                type="date"
-               value="${this.escapeHTML(this.toDateInputValue(activePrayer.answeredAt))}"
+               value="${this.escapeHTML(this.toDateInputValue(activePrayer.answeredDate))}"
                class="w-full mb-4 bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] focus:outline-none">
         <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.remarksLabel)}</label>
         <textarea id="inlinePrayerDetailRemarks"
@@ -1708,24 +1750,39 @@ const BibleReader = {
     this.renderInlinePrayerEditorOverlay();
   },
 
-  saveInlinePrayerRequestDetail() {
+  async saveInlinePrayerRequestDetail() {
     const session = this.inlineEditorSession;
     if (!session || session.fieldKey !== 'prayerDraft' || !session.activePrayerId) return;
+
+    const [entryId, prayerId] = String(session.activePrayerId || '').split('::');
+    if (!entryId || !prayerId || typeof window.updatePrayerTrackerItem !== 'function') return;
 
     const answered = !!document.getElementById('inlinePrayerDetailAnswered')?.checked;
     const answeredDateValue = String(document.getElementById('inlinePrayerDetailDate')?.value || '').trim();
     const remarks = String(document.getElementById('inlinePrayerDetailRemarks')?.value || '').trim();
-    const answeredAt = answeredDateValue ? new Date(answeredDateValue).toISOString() : null;
+    const answeredAt = answeredDateValue ? `${answeredDateValue}T12:00:00.000Z` : null;
 
-    this.inlineReflectionDraft.prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests).map((item) => {
-      if (String(item.id) !== String(session.activePrayerId)) return item;
-      return {
-        ...item,
+    try {
+      await window.updatePrayerTrackerItem({
+        entryId,
+        prayerId,
         answered,
         answeredAt: answered ? answeredAt : null,
         remarks
-      };
-    });
+      });
+      this.inlinePrayerHistoryItems = this.inlinePrayerHistoryItems.map((item) => {
+        if (String(item.entryId) !== String(entryId) || String(item.prayerId) !== String(prayerId)) return item;
+        return {
+          ...item,
+          answered,
+          answeredDate: answered ? answeredAt : null,
+          remarks
+        };
+      });
+    } catch (error) {
+      console.error('[BibleReader] Could not save prayer detail:', error);
+      return;
+    }
 
     this.inlineEditorSession.prayerMode = 'compose';
     this.inlineEditorSession.activePrayerId = null;
@@ -2979,6 +3036,8 @@ const BibleReader = {
     this.inlineReflectionDraft.shareGroupIds = [];
     this.inlineShareTargets = [];
     this.inlineShareTargetsLoading = false;
+    this.inlinePrayerHistoryItems = [];
+    this.inlinePrayerHistoryLoading = false;
     this.insightsLoading = false;
     this.insightsLastError = null;
     this.commentaryRequestId += 1;

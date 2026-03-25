@@ -7938,6 +7938,49 @@
             }
         };
 
+        window.getPrayerTrackerItems = async function() {
+            if (!window.currentUser || !window.db) return [];
+            try {
+                const devotionsRef = window.collection(window.db, 'goMission_devotions');
+                const q = window.query(
+                    devotionsRef,
+                    window.where('uid', '==', window.currentUser.uid),
+                    window.limit(250)
+                );
+                const snapshot = await window.getDocs(q);
+                const entries = snapshot.docs.map((docSnap) => {
+                    const data = docSnap.data() || {};
+                    return {
+                        id: docSnap.id,
+                        data,
+                        _resolvedDate: resolveJournalEntryDate(data)
+                    };
+                });
+                return buildJournalPrayerItems(entries).sort((a, b) => {
+                    const aTime = a?.requestedDate?.getTime?.() || 0;
+                    const bTime = b?.requestedDate?.getTime?.() || 0;
+                    return bTime - aTime;
+                });
+            } catch (error) {
+                console.error('[Journal] Could not load prayer tracker items for insights:', error);
+                return [];
+            }
+        };
+
+        window.updatePrayerTrackerItem = async function({ entryId, prayerId, answered = false, answeredAt = null, remarks = '' } = {}) {
+            if (!entryId || !prayerId) return null;
+            const result = await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                ...item,
+                answered: !!answered,
+                answeredAt: answered ? (answeredAt || item.answeredAt || new Date().toISOString()) : null,
+                remarks: String(remarks || '').trim()
+            }));
+            if (result && document.getElementById('journalModal') && !document.getElementById('journalModal').classList.contains('hidden')) {
+                await renderJournalEntriesList();
+            }
+            return result;
+        };
+
         window.shareJournalPrayerRequest = async function(entryId, prayerId) {
             try {
                 await sharePrayerToGroups({ entryId, prayerId, mode: 'request' });
