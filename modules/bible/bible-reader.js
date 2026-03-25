@@ -1010,8 +1010,10 @@ const BibleReader = {
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
         openPreview: 'Preview what to share',
-        previewCancel: 'Back to edit',
+        previewCancel: 'Save',
         previewConfirm: 'Confirm and save',
+        viewReflection: '👁 View Reflection',
+        saveSuccess: 'Conversation time saved successfully.',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
         shareWithGroup: 'Share with my groups',
@@ -1052,8 +1054,10 @@ const BibleReader = {
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
         openPreview: 'I-preview ang ise-share',
-        previewCancel: 'Balik sa edit',
+        previewCancel: 'I-save',
         previewConfirm: 'I-confirm at i-save',
+        viewReflection: '👁 Tingnan ang Reflection',
+        saveSuccess: 'Matagumpay na na-save ang conversation time.',
         fullscreenEditorDone: 'Tapos',
         fullscreenEditorExit: 'Lumabas',
         shareWithGroup: 'I-share sa aking mga group',
@@ -1277,16 +1281,6 @@ const BibleReader = {
             ${shareActive ? '✓' : '+'} ${L.shareWithGroup}
           </button>
         </div>
-        ${shareActive ? `
-          <div class="mb-3">
-            <button type="button"
-                    onclick="BibleReader.previewInlineReflectionShare()"
-                    class="px-0 py-1 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
-                    style="font-size:${metaFontPx}px;">
-              👁 ${L.openPreview}
-            </button>
-          </div>
-        ` : ''}
         <p class="text-[var(--text-muted)] mb-3 pt-3 border-t border-[var(--card-border)]/65" style="font-size:${smallFontPx}px;">${shareActive ? L.selectGroups : L.shareWithGroupHelp}</p>
         ${shareGroupPickerHtml}
 
@@ -1294,7 +1288,7 @@ const BibleReader = {
                 onclick="BibleReader.saveInlineReflection()"
                 class="w-full py-3 rounded-full border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 hover:bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] font-bold transition-colors"
                 style="font-size:${labelFontPx}px;">
-          ${L.save}
+          ${L.viewReflection || L.save}
         </button>
       </section>
     `;
@@ -1388,8 +1382,10 @@ const BibleReader = {
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
         openPreview: 'Preview what to share',
-        previewCancel: 'Back to edit',
+        previewCancel: 'Save',
         previewConfirm: 'Confirm and save',
+        viewReflection: '👁 View Reflection',
+        saveSuccess: 'Conversation time saved successfully.',
         noPrayerRequests: 'No prayer requests added yet.',
         numberedAction: '3. What will I do',
         view: 'View',
@@ -1420,8 +1416,10 @@ const BibleReader = {
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
         openPreview: 'I-preview ang ise-share',
-        previewCancel: 'Balik sa edit',
+        previewCancel: 'I-save',
         previewConfirm: 'I-confirm at i-save',
+        viewReflection: '👁 Tingnan ang Reflection',
+        saveSuccess: 'Matagumpay na na-save ang conversation time.',
         noPrayerRequests: 'Wala pang nailalagay na prayer request.',
         numberedAction: '3. Ano ang aking gagawin',
         view: 'View',
@@ -1931,7 +1929,7 @@ const BibleReader = {
                style="font-size:${Math.max(14, Number(this.preferences.fontSize) || 16)}px; line-height:1.8;">${this.escapeHTML(previewLines)}</div>
         </div>
         <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)] rounded-b-2xl">
-          <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="w-full py-3 rounded-lg border border-[var(--card-border)] text-[var(--text-color)] font-medium hover:border-[var(--mission-gold)]/40">
+          <button type="button" id="inlineSharePreviewSaveBtn" onclick="BibleReader.saveInlineSharePreview()" class="w-full py-3 rounded-lg border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] font-bold hover:bg-[var(--mission-red-bright)]/15">
             ${this.escapeHTML(L.previewCancel)}
           </button>
         </div>
@@ -1961,12 +1959,24 @@ const BibleReader = {
     this.pendingInlineSavePayload = null;
   },
 
+  async saveInlineSharePreview() {
+    const payload = this.pendingInlineSavePayload;
+    if (!payload) return;
+    await this.persistInlineReflectionPayload(payload);
+  },
+
   async persistInlineReflectionPayload(payload) {
     const saveBtn = document.getElementById('inlineInsightSaveBtn');
     const originalLabel = saveBtn?.innerHTML || '💾 Save Reflection';
+    const previewSaveBtn = document.getElementById('inlineSharePreviewSaveBtn');
+    const originalPreviewLabel = previewSaveBtn?.innerHTML || 'Save';
     if (saveBtn) {
       saveBtn.disabled = true;
       saveBtn.innerHTML = 'Saving...';
+    }
+    if (previewSaveBtn) {
+      previewSaveBtn.disabled = true;
+      previewSaveBtn.innerHTML = 'Saving...';
     }
 
     try {
@@ -1984,16 +1994,21 @@ const BibleReader = {
         shareGroupIds: payload.shareGroupIds
       });
 
-      if (result?.missingGroup) {
-        alert('No mission group found. Your reflection was saved to Journal but not shared to group.');
-      }
-
       if (result?.saved) {
+        const lang = this.getInlineUiLang();
+        const L = this.getInlineUiLabels(lang);
         this.inlineReflectionDraft.reflection = '';
         this.inlineReflectionDraft.commitment = '';
         this.inlineReflectionDraft.prayerRequests = [];
         this.inlineReflectionDraft.prayerDraft = '';
+        this.closeInlineSharePreview();
         this.refreshFullscreenInsightsPanel();
+        alert(result?.missingGroup
+          ? (lang === 'tl'
+            ? 'Na-save ang conversation time sa Journal pero walang group na mapag-share-an ngayon.'
+            : 'Conversation time was saved to Journal, but no group was available to share with right now.')
+          : (L.saveSuccess || 'Conversation time saved successfully.'));
+        this.exitFullscreen();
       }
     } catch (error) {
       console.error('[BibleReader] Could not save inline reflection:', error);
@@ -2003,6 +2018,10 @@ const BibleReader = {
       if (saveBtn) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalLabel;
+      }
+      if (previewSaveBtn) {
+        previewSaveBtn.disabled = false;
+        previewSaveBtn.innerHTML = originalPreviewLabel;
       }
     }
   },
@@ -2249,7 +2268,7 @@ const BibleReader = {
       shareGroupIds
     };
 
-    await this.persistInlineReflectionPayload(payload);
+    this.openInlineSharePreview(payload);
   },
 
   /**
