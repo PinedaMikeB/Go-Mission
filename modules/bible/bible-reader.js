@@ -24,7 +24,8 @@ const BibleReader = {
     reflection: '',
     commitment: '',
     prayerRequests: [],
-    prayerDraft: '',
+    prayerDraftTopic: '',
+    prayerDraftDescription: '',
     shareWithGroup: null,
     shareGroupIds: []
   },
@@ -999,6 +1000,10 @@ const BibleReader = {
         iWillPlaceholder: 'Write your commitment to apply this today...',
         prayerRequests: 'Prayer requests',
         prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
+        prayerTopic: 'Prayer Topic',
+        prayerDescription: 'Description',
+        prayerTopicPlaceholder: 'Example: SEO Ranking for Printer Rental',
+        prayerDescriptionPlaceholder: 'We are now at top 6 and praying to reach number 1.',
         addPrayerRequest: 'Add',
         noPrayerRequests: 'No prayer requests added yet.',
         addedLabel: 'Added',
@@ -1043,6 +1048,10 @@ const BibleReader = {
         iWillPlaceholder: 'Isulat ang commitment mo kung paano mo ito isasabuhay ngayon...',
         prayerRequests: 'Mga prayer request',
         prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
+        prayerTopic: 'Prayer Topic',
+        prayerDescription: 'Description',
+        prayerTopicPlaceholder: 'Halimbawa: SEO Ranking for Printer Rental',
+        prayerDescriptionPlaceholder: 'Nasa top 6 na kami at ipinapanalangin naming maabot ang number 1.',
         addPrayerRequest: 'Idagdag',
         noPrayerRequests: 'Wala pang nailalagay na prayer request.',
         addedLabel: 'Nagdagdag',
@@ -1129,7 +1138,8 @@ const BibleReader = {
 
     const reflectionValue = this.escapeHTML(this.inlineReflectionDraft.reflection || '');
     const commitmentValue = this.escapeHTML(this.inlineReflectionDraft.commitment || '');
-    const prayerDraftValue = this.escapeHTML(this.inlineReflectionDraft.prayerDraft || '');
+    const prayerDraftTopicValue = this.escapeHTML(this.inlineReflectionDraft.prayerDraftTopic || '');
+    const prayerDraftDescriptionValue = this.escapeHTML(this.inlineReflectionDraft.prayerDraftDescription || '');
     const prayerRequests = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
     const shareActive = !!this.inlineReflectionDraft.shareWithGroup;
     const shareTargets = Array.isArray(this.inlineShareTargets) ? this.inlineShareTargets : [];
@@ -1226,27 +1236,28 @@ const BibleReader = {
 
         <div class="mb-4">
           <label class="text-[var(--mission-gold)]/80 font-semibold block mb-2" style="font-size:${labelFontPx}px;">🙏 ${L.prayerRequests}</label>
-          <div class="mb-3">
-            <input id="inlineInsightPrayerDraftInput"
-                   type="text"
-                   oninput="BibleReader.setInlinePrayerDraft(this.value)"
-                   onclick="BibleReader.openInlineFieldEditor('prayerDraft')"
-                   readonly
-                   class="flex-1 cursor-text bg-transparent border-0 border-b border-[var(--card-border)]/15 rounded-none px-0 py-2 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none"
-                   style="font-size:${baseFontPx}px; line-height:1.45;"
-                   placeholder="${L.prayerRequestsPlaceholder}"
-                   value="${prayerDraftValue}">
-          </div>
+          <button type="button"
+                  onclick="BibleReader.openInlineFieldEditor('prayerDraft')"
+                  class="w-full text-left rounded-[22px] border border-[var(--card-border)]/70 bg-[linear-gradient(180deg,rgba(255,250,244,0.88),rgba(255,255,255,0.96))] px-4 py-4 shadow-[0_12px_28px_rgba(91,43,0,0.06)] hover:border-[var(--mission-gold)]/40 transition-colors">
+            <p class="text-[var(--text-muted)] uppercase tracking-[0.16em] mb-2" style="font-size:${smallFontPx}px;">${L.prayerTopic}</p>
+            <p class="text-[var(--text-color)] font-semibold" style="font-size:${Math.max(baseFontPx + 1, 17)}px; line-height:1.4;">${prayerDraftTopicValue || this.escapeHTML(L.prayerTopicPlaceholder)}</p>
+            <p class="text-[var(--text-muted)] uppercase tracking-[0.16em] mt-4 mb-2" style="font-size:${smallFontPx}px;">${L.prayerDescription}</p>
+            <p class="text-[var(--text-color)]" style="font-size:${baseFontPx}px; line-height:1.6;">${prayerDraftDescriptionValue || this.escapeHTML(L.prayerDescriptionPlaceholder)}</p>
+          </button>
           ${prayerRequests.length > 0 ? `
-            <div class="max-h-52 overflow-y-auto pr-1">
+            <div class="max-h-52 overflow-y-auto pr-1 mt-4 space-y-3">
               ${prayerRequests.map((item) => {
                 const prayerId = String(item.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const createdAtLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.createdAt, lang));
-                const text = this.escapeHTML(item.text || '');
+                const topic = this.escapeHTML(item.topic || item.title || '');
+                const description = this.escapeHTML(item.description || item.text || '');
                 return `
-                  <div class="py-2 border-b border-[var(--card-border)]/55 last:border-0">
+                  <div class="rounded-[18px] border border-[var(--card-border)]/60 bg-white/82 px-4 py-3">
                     <div class="flex items-start justify-between gap-2">
-                      <p class="text-[var(--text-color)] leading-snug flex-1" style="font-size:${metaFontPx}px;">${text}</p>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-[var(--text-color)] font-semibold leading-snug" style="font-size:${Math.max(metaFontPx + 1, 14)}px;">${topic}</p>
+                        <p class="text-[var(--text-muted)] mt-1 leading-snug" style="font-size:${metaFontPx}px;">${description}</p>
+                      </div>
                       <button type="button"
                               onclick="BibleReader.removeInlinePrayerRequest('${prayerId}')"
                               class="text-[var(--text-muted)] hover:text-[var(--mission-red-bright)] transition-colors"
@@ -1365,6 +1376,10 @@ const BibleReader = {
         previousPrayers: 'List of Previous Prayer',
         prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Add one prayer request (example: Salvation for my husband Marko Junior)',
+        prayerTopic: 'Prayer Topic',
+        prayerDescription: 'Description',
+        prayerTopicPlaceholder: 'Example: SEO Ranking for Printer Rental',
+        prayerDescriptionPlaceholder: 'We are now at top 6 and praying to reach number 1.',
         previousPrayersLoading: 'Loading previous prayers...',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
@@ -1399,6 +1414,10 @@ const BibleReader = {
         previousPrayers: 'List of Previous Prayer',
         prayerRequestSection: '4. Prayer Request',
         prayerRequestsPlaceholder: 'Magdagdag ng isang kahilingan sa panalangin (hal: Kaligtasan ng asawa kong si Marko Junior)',
+        prayerTopic: 'Prayer Topic',
+        prayerDescription: 'Description',
+        prayerTopicPlaceholder: 'Halimbawa: SEO Ranking for Printer Rental',
+        prayerDescriptionPlaceholder: 'Nasa top 6 na kami at ipinapanalangin naming maabot ang number 1.',
         previousPrayersLoading: 'Loading previous prayers...',
         fullscreenEditorDone: 'Done',
         fullscreenEditorExit: 'Exit',
@@ -1451,8 +1470,8 @@ const BibleReader = {
       },
       prayerDraft: {
         title: L.prayerRequests,
-        placeholder: L.prayerRequestsPlaceholder,
-        value: this.inlineReflectionDraft.prayerDraft || '',
+        placeholder: L.prayerDescriptionPlaceholder,
+        value: this.inlineReflectionDraft.prayerDraftDescription || '',
         rows: 10,
         fontPx: baseFontPx
       }
@@ -1579,6 +1598,8 @@ const BibleReader = {
         ? items.map((item) => ({
             entryId: String(item.entryId || ''),
             prayerId: String(item.prayerId || ''),
+            topic: String(item.topic || item.title || '').trim(),
+            description: String(item.description || item.text || '').trim(),
             title: String(item.title || '').trim(),
             text: String(item.text || '').trim(),
             reference: String(item.reference || '').trim(),
@@ -1648,17 +1669,23 @@ const BibleReader = {
       : historyItems.length ? historyItems.map((item) => {
       const prayerKey = this.escapeJS(`${item.entryId}::${item.prayerId}`);
       const dateLabel = this.escapeHTML(this.formatInlinePrayerTimestamp(item.requestedDate, lang));
-      const preview = String(item.text || '').trim();
+      const preview = String(item.description || item.text || '').trim();
       const truncated = preview.length > 38 ? `${preview.slice(0, 35)}...` : preview;
       return `
-        <div class="flex items-start justify-between gap-3 py-1">
-          <p class="min-w-0 flex-1 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.5;">${dateLabel} ${this.escapeHTML(truncated)}</p>
-          <button type="button"
-                  onclick="BibleReader.openInlinePrayerRequestDetail('${prayerKey}')"
-                  class="shrink-0 text-[var(--mission-red-deep)] hover:text-[var(--mission-gold)] transition-colors"
-                  style="font-size:${Math.max(15, config.fontPx - 1)}px;">
-            ${this.escapeHTML(L.view)}
-          </button>
+        <div class="rounded-[18px] border border-[var(--card-border)]/55 bg-white/75 px-4 py-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="text-[var(--text-color)] font-semibold" style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.4;">${this.escapeHTML(item.topic || item.title || truncated || '-')}</p>
+              <p class="text-[var(--text-muted)] mt-1" style="font-size:${Math.max(14, config.fontPx - 2)}px; line-height:1.5;">${this.escapeHTML(truncated)}</p>
+              <p class="text-[var(--text-muted)] mt-2" style="font-size:${Math.max(13, config.fontPx - 3)}px;">${dateLabel}</p>
+            </div>
+            <button type="button"
+                    onclick="BibleReader.openInlinePrayerRequestDetail('${prayerKey}')"
+                    class="shrink-0 text-[var(--mission-red-deep)] hover:text-[var(--mission-gold)] transition-colors"
+                    style="font-size:${Math.max(15, config.fontPx - 1)}px;">
+              ${this.escapeHTML(L.view)}
+            </button>
+          </div>
         </div>
       `;
     }).join('') : `<p class="text-[var(--text-muted)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">${this.escapeHTML(L.noPrayerRequests)}</p>`;
@@ -1675,17 +1702,28 @@ const BibleReader = {
         ${session.prayerHistoryOpen ? `<div class="mt-4 space-y-2">${listItemsHtml}</div>` : ''}
         <div class="mt-8">
           <p class="text-[var(--text-color)] font-bold mb-4" style="font-size:${Math.max(18, config.fontPx + 1)}px;">${this.escapeHTML(L.prayerRequestSection)}</p>
-          <textarea id="inlineFieldEditorTextarea"
-                    class="w-full min-h-[48vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                    style="font-size:${config.fontPx}px; line-height:1.7;"
-                    placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(this.inlineReflectionDraft.prayerDraft || '')}</textarea>
+          <div class="rounded-[24px] border border-[var(--card-border)]/65 bg-[linear-gradient(180deg,rgba(255,250,244,0.88),rgba(255,255,255,0.96))] p-5">
+            <label class="block text-[var(--text-muted)] uppercase tracking-[0.16em] mb-2" style="font-size:${Math.max(12, config.fontPx - 4)}px;">${this.escapeHTML(L.prayerTopic)}</label>
+            <input id="inlinePrayerDraftTopicInput"
+                   type="text"
+                   class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/65 px-0 py-2 text-[var(--text-color)] font-semibold focus:outline-none"
+                   style="font-size:${Math.max(18, config.fontPx + 1)}px; line-height:1.4;"
+                   placeholder="${this.escapeHTML(L.prayerTopicPlaceholder)}"
+                   value="${this.escapeHTML(this.inlineReflectionDraft.prayerDraftTopic || '')}">
+            <label class="block text-[var(--text-muted)] uppercase tracking-[0.16em] mt-6 mb-2" style="font-size:${Math.max(12, config.fontPx - 4)}px;">${this.escapeHTML(L.prayerDescription)}</label>
+            <textarea id="inlinePrayerDraftDescriptionInput"
+                      class="w-full min-h-[30vh] bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7;"
+                      placeholder="${this.escapeHTML(L.prayerDescriptionPlaceholder)}">${this.escapeHTML(this.inlineReflectionDraft.prayerDraftDescription || '')}</textarea>
+          </div>
         </div>
       </div>
     `;
 
     const detailBody = activePrayer ? `
       <div class="w-full max-w-3xl mx-auto pt-4">
-        <p class="text-[var(--text-color)] leading-relaxed mb-3" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.65;">${this.escapeHTML(activePrayer.text || '')}</p>
+        <p class="text-[var(--text-color)] font-semibold mb-2" style="font-size:${Math.max(20, config.fontPx + 2)}px; line-height:1.4;">${this.escapeHTML(activePrayer.topic || activePrayer.title || '')}</p>
+        <p class="text-[var(--text-color)] leading-relaxed mb-3" style="font-size:${Math.max(17, config.fontPx)}px; line-height:1.65;">${this.escapeHTML(activePrayer.description || activePrayer.text || '')}</p>
         <p class="text-[var(--text-muted)] mb-5" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.addedLabel)}: ${this.escapeHTML(this.formatInlinePrayerTimestamp(activePrayer.requestedDate, lang))}</p>
         <label class="flex items-center gap-2 mb-4 text-[var(--text-color)]" style="font-size:${Math.max(15, config.fontPx - 1)}px;">
           <input id="inlinePrayerDetailAnswered" type="checkbox" class="accent-[var(--mission-gold)]" ${activePrayer.answered ? 'checked' : ''}>
@@ -1714,11 +1752,11 @@ const BibleReader = {
     `;
 
     if (!isDetail) {
-      const textarea = document.getElementById('inlineFieldEditorTextarea');
-      if (textarea) {
-        textarea.focus();
-        const end = textarea.value.length;
-        textarea.setSelectionRange(end, end);
+      const input = document.getElementById('inlinePrayerDraftTopicInput') || document.getElementById('inlinePrayerDraftDescriptionInput');
+      if (input) {
+        input.focus();
+        const end = input.value.length;
+        input.setSelectionRange?.(end, end);
       }
     }
   },
@@ -1794,20 +1832,26 @@ const BibleReader = {
     if (session.fieldKey === 'reflection') this.inlineReflectionDraft.reflection = value;
     if (session.fieldKey === 'commitment') this.inlineReflectionDraft.commitment = value;
     if (session.fieldKey === 'prayerDraft') {
-      const draft = String(value || '').trim();
-      if (draft) {
+      const topic = String(document.getElementById('inlinePrayerDraftTopicInput')?.value || '').trim();
+      const description = String(document.getElementById('inlinePrayerDraftDescriptionInput')?.value || '').trim();
+      if (topic || description) {
         const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
         current.push({
           id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          text: draft,
+          topic: topic || this.buildPrayerTopicFromText(description),
+          title: topic || this.buildPrayerTopicFromText(description),
+          description: description || topic,
+          text: description || topic,
           createdAt: new Date().toISOString(),
+          status: 'in_progress',
           answered: false,
           answeredAt: null,
           remarks: ''
         });
         this.inlineReflectionDraft.prayerRequests = current;
       }
-      this.inlineReflectionDraft.prayerDraft = '';
+      this.inlineReflectionDraft.prayerDraftTopic = '';
+      this.inlineReflectionDraft.prayerDraftDescription = '';
     }
 
     this.closeInlineFieldEditor();
@@ -1894,7 +1938,10 @@ const BibleReader = {
       : `<p class="mt-3 text-[var(--text-muted)]">-</p>`;
     const prayerRequestsHtml = preview.prayerRequests.length
       ? `<div class="mt-3 space-y-2">${preview.prayerRequests.map((item, index) => `
-          <p class="text-[var(--text-color)] leading-relaxed"><span class="font-semibold">${index + 1}.</span> ${this.formatInlineMultilineHtml(item.text)}</p>
+          <div class="text-[var(--text-color)] leading-relaxed">
+            <p><span class="font-semibold">${index + 1}. ${this.escapeHTML(item.topic || item.title || '-')}</span></p>
+            <p class="mt-1">${this.formatInlineMultilineHtml(item.description || item.text || '')}</p>
+          </div>
         `).join('')}</div>`
       : `<p class="mt-3 text-[var(--text-muted)]">${this.escapeHTML(L.noPrayerRequests)}</p>`;
     const previewContentHtml = `
@@ -2021,7 +2068,8 @@ const BibleReader = {
         this.inlineReflectionDraft.reflection = '';
         this.inlineReflectionDraft.commitment = '';
         this.inlineReflectionDraft.prayerRequests = [];
-        this.inlineReflectionDraft.prayerDraft = '';
+        this.inlineReflectionDraft.prayerDraftTopic = '';
+        this.inlineReflectionDraft.prayerDraftDescription = '';
         this.closeInlineSharePreview();
         this.refreshFullscreenInsightsPanel();
         alert(result?.missingGroup
@@ -2055,8 +2103,18 @@ const BibleReader = {
     this.inlineReflectionDraft.commitment = value || '';
   },
 
-  setInlinePrayerDraft(value) {
-    this.inlineReflectionDraft.prayerDraft = value || '';
+  setInlinePrayerDraftTopic(value) {
+    this.inlineReflectionDraft.prayerDraftTopic = value || '';
+  },
+
+  setInlinePrayerDraftDescription(value) {
+    this.inlineReflectionDraft.prayerDraftDescription = value || '';
+  },
+
+  buildPrayerTopicFromText(value) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+    return text.length > 56 ? `${text.slice(0, 53).trim()}...` : text;
   },
 
   normalizeInlinePrayerRequests(prayerRequests) {
@@ -2064,14 +2122,19 @@ const BibleReader = {
     const seen = new Set();
     const normalized = [];
     prayerRequests.forEach((item) => {
-      const text = String(item?.text || '').trim();
-      if (!text) return;
+      const description = String(item?.description ?? item?.text ?? '').trim();
+      const topic = String(item?.topic ?? item?.title ?? '').trim() || this.buildPrayerTopicFromText(description);
+      if (!topic && !description) return;
       const id = String(item?.id || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
       if (seen.has(id)) return;
       seen.add(id);
       normalized.push({
         id,
-        text,
+        topic,
+        title: topic,
+        description,
+        text: description || topic,
+        status: String(item?.status || 'in_progress'),
         createdAt: item?.createdAt || new Date().toISOString(),
         answered: !!item?.answered,
         answeredAt: item?.answeredAt || null,
@@ -2112,19 +2175,25 @@ const BibleReader = {
   },
 
   addInlinePrayerRequest() {
-    const draft = String(this.inlineReflectionDraft.prayerDraft || '').trim();
-    if (!draft) return;
+    const topic = String(this.inlineReflectionDraft.prayerDraftTopic || '').trim();
+    const description = String(this.inlineReflectionDraft.prayerDraftDescription || '').trim();
+    if (!topic && !description) return;
     const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
     current.push({
       id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      text: draft,
+      topic: topic || this.buildPrayerTopicFromText(description),
+      title: topic || this.buildPrayerTopicFromText(description),
+      description: description || topic,
+      text: description || topic,
       createdAt: new Date().toISOString(),
+      status: 'in_progress',
       answered: false,
       answeredAt: null,
       remarks: ''
     });
     this.inlineReflectionDraft.prayerRequests = current;
-    this.inlineReflectionDraft.prayerDraft = '';
+    this.inlineReflectionDraft.prayerDraftTopic = '';
+    this.inlineReflectionDraft.prayerDraftDescription = '';
     this.refreshFullscreenInsightsPanel();
   },
 
@@ -2138,12 +2207,17 @@ const BibleReader = {
 
   getInlinePrayerRequestsForSave() {
     const current = this.normalizeInlinePrayerRequests(this.inlineReflectionDraft.prayerRequests);
-    const pendingDraft = String(this.inlineReflectionDraft.prayerDraft || '').trim();
-    if (!pendingDraft) return current;
+    const pendingTopic = String(this.inlineReflectionDraft.prayerDraftTopic || '').trim();
+    const pendingDescription = String(this.inlineReflectionDraft.prayerDraftDescription || '').trim();
+    if (!pendingTopic && !pendingDescription) return current;
     current.push({
       id: `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      text: pendingDraft,
+      topic: pendingTopic || this.buildPrayerTopicFromText(pendingDescription),
+      title: pendingTopic || this.buildPrayerTopicFromText(pendingDescription),
+      description: pendingDescription || pendingTopic,
+      text: pendingDescription || pendingTopic,
       createdAt: new Date().toISOString(),
+      status: 'in_progress',
       answered: false,
       answeredAt: null,
       remarks: ''
@@ -3036,7 +3110,8 @@ const BibleReader = {
     this.inlineReflectionDraft.reflection = '';
     this.inlineReflectionDraft.commitment = '';
     this.inlineReflectionDraft.prayerRequests = [];
-    this.inlineReflectionDraft.prayerDraft = '';
+    this.inlineReflectionDraft.prayerDraftTopic = '';
+    this.inlineReflectionDraft.prayerDraftDescription = '';
     this.inlineReflectionDraft.shareWithGroup = null;
     this.inlineReflectionDraft.shareGroupIds = [];
     this.inlineShareTargets = [];
