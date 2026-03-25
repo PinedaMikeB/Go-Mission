@@ -1127,7 +1127,6 @@ const BibleReader = {
       `;
     }
 
-    const primaryQuestion = reflectionQuestions[0] || '';
     const reflectionValue = this.escapeHTML(this.inlineReflectionDraft.reflection || '');
     const commitmentValue = this.escapeHTML(this.inlineReflectionDraft.commitment || '');
     const prayerDraftValue = this.escapeHTML(this.inlineReflectionDraft.prayerDraft || '');
@@ -1215,14 +1214,6 @@ const BibleReader = {
                   class="w-full cursor-text bg-transparent border-0 border-b border-[var(--card-border)]/15 rounded-none px-0 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none mb-4"
                   style="font-size:${baseFontPx}px; line-height:1.6;"
                   placeholder="${L.yourAnswerPlaceholder}">${reflectionValue}</textarea>
-
-        ${primaryQuestion ? `
-          <div class="mb-4">
-            <span class="text-[var(--mission-gold)]/70 block mb-1" style="font-size:${metaFontPx}px;">${L.reflectionQuestion}</span>
-            <p class="text-[var(--text-color)] italic" style="font-size:${headingFontPx}px; line-height:1.5;">"${this.escapeHTML(primaryQuestion)}"</p>
-          </div>
-        ` : ''}
-
         <label class="text-[var(--mission-gold)]/80 font-semibold block mb-1" style="font-size:${labelFontPx}px;">${L.iWill}</label>
         <textarea id="inlineInsightCommitmentInput"
                   oninput="BibleReader.setInlineCommitment(this.value)"
