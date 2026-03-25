@@ -1277,10 +1277,8 @@ const BibleReader = {
             ${shareActive ? '✓' : '+'} ${L.shareWithGroup}
           </button>
         </div>
-        <p class="text-[var(--text-muted)] mb-3 pt-3 border-t border-[var(--card-border)]/65" style="font-size:${smallFontPx}px;">${shareActive ? L.selectGroups : L.shareWithGroupHelp}</p>
-        ${shareGroupPickerHtml}
         ${shareActive ? `
-          <div class="mt-3">
+          <div class="mb-3">
             <button type="button"
                     onclick="BibleReader.previewInlineReflectionShare()"
                     class="px-0 py-1 text-[var(--mission-gold)] font-semibold hover:opacity-80 transition-colors"
@@ -1289,6 +1287,8 @@ const BibleReader = {
             </button>
           </div>
         ` : ''}
+        <p class="text-[var(--text-muted)] mb-3 pt-3 border-t border-[var(--card-border)]/65" style="font-size:${smallFontPx}px;">${shareActive ? L.selectGroups : L.shareWithGroupHelp}</p>
+        ${shareGroupPickerHtml}
 
         <button id="inlineInsightSaveBtn"
                 onclick="BibleReader.saveInlineReflection()"
