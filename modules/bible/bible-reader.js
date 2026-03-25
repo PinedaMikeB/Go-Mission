@@ -1881,39 +1881,69 @@ const BibleReader = {
     const lang = preview.lang;
     const L = preview.labels;
     const selectedGroups = preview.selectedGroups.length
-      ? preview.selectedGroups.map(group => `${group.name} (${group.id})`)
+      ? preview.selectedGroups.map(group => group.name || 'Mission Group')
       : preview.shareGroupIds;
     const sectionTitles = lang === 'tl'
       ? {
           scripture: 'Ano ang sinabi ng Diyos',
           understanding: 'Ano ang aking pagkaunawa',
-          action: 'Ano ang aking gagawin'
+          action: 'Ano ang aking gagawin',
+          conversationTime: 'Conversation Time'
         }
       : {
           scripture: 'What did God say',
           understanding: 'What is my understanding',
-          action: 'What will I do'
+          action: 'What will I do',
+          conversationTime: 'Conversation Time'
         };
-    const previewLines = [
-      `${L.previewGroups}:`,
-      selectedGroups.length ? selectedGroups.join('\n') : '-',
-      '',
-      `${sectionTitles.scripture}`,
-      preview.scriptureReference || '',
-      preview.scriptureText || '',
-      '',
-      `${sectionTitles.understanding}`,
-      preview.understanding || '',
-      preview.question ? `\n${L.previewQuestion}\n${preview.question}` : '',
-      '',
-      `${sectionTitles.action}`,
-      preview.action || '',
-      '',
-      `${L.previewPrayerRequests}`,
-      preview.prayerRequests.length
-        ? preview.prayerRequests.map(item => `- ${item.text}`).join('\n')
-        : L.noPrayerRequests
-    ].filter((line, index, arr) => !(line === '' && arr[index - 1] === '')).join('\n');
+    const numberedGroupsHtml = selectedGroups.length
+      ? `<ol class="mt-3 space-y-1 pl-6 list-decimal text-[var(--text-color)]">${selectedGroups.map(name => `
+          <li class="leading-relaxed">${this.escapeHTML(name)}</li>
+        `).join('')}</ol>`
+      : `<p class="mt-3 text-[var(--text-muted)]">-</p>`;
+    const prayerRequestsHtml = preview.prayerRequests.length
+      ? `<div class="mt-3 space-y-2">${preview.prayerRequests.map((item, index) => `
+          <p class="text-[var(--text-color)] leading-relaxed"><span class="font-semibold">${index + 1}.</span> ${this.formatInlineMultilineHtml(item.text)}</p>
+        `).join('')}</div>`
+      : `<p class="mt-3 text-[var(--text-muted)]">${this.escapeHTML(L.noPrayerRequests)}</p>`;
+    const previewContentHtml = `
+      <div class="space-y-8 text-[var(--text-color)]">
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(L.previewGroups)}:</p>
+          ${numberedGroupsHtml}
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(sectionTitles.conversationTime)}</p>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">1. ${this.escapeHTML(sectionTitles.scripture)}</p>
+          <p class="mt-3 text-[var(--text-muted)]">${this.escapeHTML(preview.scriptureReference || '')}</p>
+          <div class="mt-2 text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.scriptureText || '')}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">2. ${this.escapeHTML(sectionTitles.understanding)}</p>
+          <div class="mt-3 text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.understanding || '')}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">3. ${this.escapeHTML(L.previewQuestion)}</p>
+          <div class="mt-3 text-[var(--text-color)] leading-relaxed">${preview.question ? this.formatInlineMultilineHtml(preview.question) : `<span class="text-[var(--text-muted)]">-</span>`}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">4. ${this.escapeHTML(sectionTitles.action)}</p>
+          <div class="mt-3 text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.action || '')}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">5. ${this.escapeHTML(L.previewPrayerRequests)}</p>
+          ${prayerRequestsHtml}
+        </section>
+      </div>
+    `;
 
     const overlay = document.createElement('div');
     overlay.id = 'inlineSharePreviewOverlay';
@@ -1925,8 +1955,8 @@ const BibleReader = {
           <button type="button" onclick="BibleReader.closeInlineSharePreview()" class="p-2 rounded-full bg-[var(--input-bg)] text-[var(--text-muted)] hover:text-[var(--mission-gold)]">✕</button>
         </div>
         <div class="flex-1 overflow-y-auto p-4">
-          <div class="text-[var(--text-color)] whitespace-pre-wrap leading-relaxed"
-               style="font-size:${Math.max(14, Number(this.preferences.fontSize) || 16)}px; line-height:1.8;">${this.escapeHTML(previewLines)}</div>
+          <div class="leading-relaxed"
+               style="font-size:${Math.max(14, Number(this.preferences.fontSize) || 16)}px; line-height:1.8;">${previewContentHtml}</div>
         </div>
         <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)] rounded-b-2xl">
           <button type="button" id="inlineSharePreviewSaveBtn" onclick="BibleReader.saveInlineSharePreview()" class="w-full py-3 rounded-lg border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 text-[var(--mission-red-bright)] font-bold hover:bg-[var(--mission-red-bright)]/15">
