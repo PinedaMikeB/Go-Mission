@@ -2614,12 +2614,39 @@
                         </div>
 
                         <div id="journalPrayerFilters" class="hidden">
-                            <div>
+                            <div class="space-y-3">
                                 <input id="journalPrayerSearchInput"
                                        type="text"
                                        oninput="applyJournalPrayerFilters()"
-                                       placeholder="Search prayer, medicine, provision..."
+                                       placeholder="Search prayer topic..."
                                        class="w-full p-2.5 rounded-lg bg-[var(--input-bg)] border border-[var(--card-border)] text-sm text-[var(--text-color)]">
+                                <div class="flex items-center gap-2">
+                                    <div class="grid flex-1 grid-cols-3 gap-2 rounded-full border border-[var(--card-border)] bg-white/65 p-1">
+                                        <button id="journalPrayerInProgressBtn"
+                                                type="button"
+                                                onclick="setJournalPrayerStatusFilter('in_progress')"
+                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                            In Progress
+                                        </button>
+                                        <button id="journalPrayerAnsweredBtn"
+                                                type="button"
+                                                onclick="setJournalPrayerStatusFilter('answered')"
+                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                            Answered
+                                        </button>
+                                        <button id="journalPrayerArchivedBtn"
+                                                type="button"
+                                                onclick="setJournalPrayerStatusFilter('archived')"
+                                                class="rounded-full px-2 py-2 text-[11px] font-semibold text-[var(--text-muted)] transition-colors">
+                                            Archived
+                                        </button>
+                                    </div>
+                                    <button type="button"
+                                            onclick="openJournalPrayerComposerFromTracker()"
+                                            class="shrink-0 w-11 h-11 rounded-full bg-[linear-gradient(135deg,#ffc933,#ff9d2f)] text-[#5a2100] text-2xl leading-none shadow-[0_12px_24px_rgba(249,157,47,0.24)] hover:scale-[1.03] transition-transform">
+                                        +
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5517,15 +5544,26 @@
             if (lang === 'en') {
                 return {
                     statusOpen: 'Pending',
+                    statusInProgress: 'In progress',
                     statusAnswered: 'Answered',
+                    statusArchived: 'Archived',
                     addedAt: 'Added',
                     markAnswered: 'Mark answered',
                     markPending: 'Mark pending',
+                    moveToProgress: 'Move to in progress',
+                    moveToAnswered: 'Move to answered',
+                    moveToArchived: 'Archive',
                     answeredDate: 'Answered date',
                     remarks: 'Remarks',
                     remarksPlaceholder: 'Add remarks or testimony details...',
                     answerSummary: 'Answer summary',
                     answerSummaryPlaceholder: 'What answer did God provide? Add key details for follow-up.',
+                    prayerTopic: 'Prayer topic',
+                    prayerDescription: 'Description',
+                    prayerTopicPlaceholder: 'Example: SEO ranking for printer rental',
+                    prayerDescriptionPlaceholder: 'Describe what you are asking God for...',
+                    previousPrayers: 'List of previous prayer',
+                    addPrayerDirect: 'Add prayer',
                     shareRequest: 'Share prayer request',
                     shareThanks: 'Share testimony & thanks',
                     shareThankPeople: 'Thank people who prayed',
@@ -5551,15 +5589,26 @@
 
             return {
                 statusOpen: 'Naghihintay',
+                statusInProgress: 'In progress',
                 statusAnswered: 'Sinagot',
+                statusArchived: 'Archived',
                 addedAt: 'Nagdagdag',
                 markAnswered: 'Markahan na sinagot',
                 markPending: 'Markahan na pending',
+                moveToProgress: 'Ibalik sa in progress',
+                moveToAnswered: 'Markahan na sinagot',
+                moveToArchived: 'I-archive',
                 answeredDate: 'Petsa ng pagsagot',
                 remarks: 'Mga tala',
                 remarksPlaceholder: 'Maglagay ng remarks o detalye ng patotoo...',
                 answerSummary: 'Buod ng sagot',
                 answerSummaryPlaceholder: 'Ano ang naging sagot ng Diyos? Ilagay ang detalye para sa follow-up.',
+                prayerTopic: 'Prayer topic',
+                prayerDescription: 'Description',
+                prayerTopicPlaceholder: 'Halimbawa: SEO ranking for printer rental',
+                prayerDescriptionPlaceholder: 'Ilarawan ang partikular mong ipinapanalangin...',
+                previousPrayers: 'Listahan ng mga naunang panalangin',
+                addPrayerDirect: 'Magdagdag',
                 shareRequest: 'I-share ang prayer request',
                 shareThanks: 'Ibahagi ang patotoo at pasasalamat',
                 shareThankPeople: 'Magpasalamat sa mga nanalangin',
@@ -5581,6 +5630,14 @@
                 categorySpiritual: 'Espiritwal',
                 categoryOther: 'Iba pa'
             };
+        }
+
+        function normalizePrayerStatus(rawStatus, fallback = {}) {
+            const status = String(rawStatus || '').trim().toLowerCase();
+            if (['in_progress', 'answered', 'archived'].includes(status)) return status;
+            if (fallback.archivedAt) return 'archived';
+            if (fallback.answered || fallback.answeredAt) return 'answered';
+            return 'in_progress';
         }
 
         function normalizePrayerCategory(category, text = '') {
@@ -5698,24 +5755,32 @@
             const normalized = [];
             const seenIds = new Set();
             (Array.isArray(prayerRequests) ? prayerRequests : []).forEach((rawItem) => {
-                const text = String(rawItem?.text || '').trim();
-                if (!text) return;
                 const rawId = String(rawItem?.id || '').trim();
                 const id = rawId || `prayer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
                 if (seenIds.has(id)) return;
                 seenIds.add(id);
 
                 const existing = existingMap.get(id) || {};
+                const description = String(rawItem?.description ?? rawItem?.text ?? existing.description ?? existing.text ?? '').trim();
+                const topic = String(rawItem?.topic ?? rawItem?.title ?? existing.topic ?? existing.title ?? '').trim() || buildPrayerTitle(description);
+                if (!topic && !description) return;
                 const createdAt = rawItem?.createdAt || existing.createdAt || new Date().toISOString();
-                const answered = typeof rawItem?.answered === 'boolean'
+                const answeredFallback = typeof rawItem?.answered === 'boolean'
                     ? rawItem.answered
                     : !!existing.answered;
-                const answeredAt = answered
-                    ? (rawItem?.answeredAt || existing.answeredAt || new Date().toISOString())
-                    : null;
+                const archivedAt = rawItem?.archivedAt || existing.archivedAt || null;
+                const answeredAtSource = rawItem?.answeredAt || existing.answeredAt || null;
+                const status = normalizePrayerStatus(rawItem?.status ?? existing.status, {
+                    answered: answeredFallback,
+                    answeredAt: answeredAtSource,
+                    archivedAt
+                });
+                const answered = status === 'answered' || (status === 'archived' && answeredFallback);
+                const answeredAt = status === 'answered'
+                    ? (answeredAtSource || new Date().toISOString())
+                    : (answered ? answeredAtSource : null);
                 const remarks = String(rawItem?.remarks ?? existing.remarks ?? '').trim();
-                const title = String(rawItem?.title ?? existing.title ?? buildPrayerTitle(text)).trim() || buildPrayerTitle(text);
-                const category = normalizePrayerCategory(rawItem?.category ?? existing.category, text);
+                const category = normalizePrayerCategory(rawItem?.category ?? existing.category, `${topic} ${description}`);
                 const sharedGroupIds = Array.isArray(rawItem?.sharedGroupIds)
                     ? [...new Set(rawItem.sharedGroupIds.map(idValue => String(idValue || '').trim()).filter(Boolean))]
                     : (Array.isArray(existing.sharedGroupIds)
@@ -5727,12 +5792,16 @@
 
                 normalized.push({
                     id,
-                    title,
-                    text,
+                    topic,
+                    description,
+                    title: topic,
+                    text: description || topic,
+                    status,
                     category,
                     createdAt,
                     answered,
                     answeredAt,
+                    archivedAt: status === 'archived' ? (archivedAt || new Date().toISOString()) : null,
                     remarks,
                     answerSummary,
                     thankYouMessage,
@@ -5752,9 +5821,13 @@
             return normalized
                 .map(item => ({
                     id: item.id,
+                    topic: item.topic || '',
+                    description: item.description || '',
                     text: item.text,
+                    status: item.status || 'in_progress',
                     answered: !!item.answered,
                     answeredAt: item.answeredAt || null,
+                    archivedAt: item.archivedAt || null,
                     remarks: item.remarks || '',
                     answerSummary: item.answerSummary || '',
                     title: item.title || '',
@@ -6835,8 +6908,7 @@
             },
             prayerFilters: {
                 keyword: '',
-                status: 'all',
-                category: 'all',
+                status: 'in_progress',
                 sort: 'newest'
             }
         };
@@ -6939,10 +7011,9 @@
 
         function getJournalPrayerFiltersFromInputs() {
             const keyword = String(document.getElementById('journalPrayerSearchInput')?.value || '').trim().toLowerCase();
-            const status = String(document.getElementById('journalPrayerStatusFilter')?.value || 'all');
-            const category = String(document.getElementById('journalPrayerCategoryFilter')?.value || 'all');
-            const sort = String(document.getElementById('journalPrayerSortFilter')?.value || 'newest');
-            return { keyword, status, category, sort };
+            const status = String(journalState.prayerFilters?.status || 'in_progress');
+            const sort = String(journalState.prayerFilters?.sort || 'newest');
+            return { keyword, status, sort };
         }
 
         function matchJournalTypeFilter(entryData, type) {
@@ -6993,6 +7064,7 @@
                 prayerRequests.forEach((prayerItem) => {
                     const requestedDate = resolveFirestoreDate(prayerItem.createdAt) || entryDate || new Date(0);
                     const answeredDate = resolveFirestoreDate(prayerItem.answeredAt);
+                    const support = getJournalPrayerSupportSummary(entry.id, prayerItem.id);
                     items.push({
                         entryId: String(entry.id || ''),
                         prayerId: String(prayerItem.id || ''),
@@ -7001,14 +7073,19 @@
                         entryDate,
                         requestedDate,
                         answeredDate,
+                        archivedAt: resolveFirestoreDate(prayerItem.archivedAt),
+                        status: String(prayerItem.status || normalizePrayerStatus(null, prayerItem)),
                         answered: !!prayerItem.answered,
-                        title: String(prayerItem.title || buildPrayerTitle(prayerItem.text || '')).trim(),
-                        text: String(prayerItem.text || '').trim(),
-                        category: normalizePrayerCategory(prayerItem.category, prayerItem.text || ''),
+                        title: String(prayerItem.topic || prayerItem.title || buildPrayerTitle(prayerItem.text || '')).trim(),
+                        topic: String(prayerItem.topic || prayerItem.title || buildPrayerTitle(prayerItem.text || '')).trim(),
+                        text: String(prayerItem.description || prayerItem.text || '').trim(),
+                        description: String(prayerItem.description || prayerItem.text || '').trim(),
+                        category: normalizePrayerCategory(prayerItem.category, `${prayerItem.topic || prayerItem.title || ''} ${prayerItem.description || prayerItem.text || ''}`),
                         remarks: String(prayerItem.remarks || '').trim(),
                         answerSummary: String(prayerItem.answerSummary || '').trim(),
                         thankYouSharedAt: prayerItem.thankYouSharedAt || null,
-                        sharedCount: Array.isArray(prayerItem.sharedGroupIds) ? prayerItem.sharedGroupIds.length : 0
+                        sharedCount: Array.isArray(prayerItem.sharedGroupIds) ? prayerItem.sharedGroupIds.length : 0,
+                        supportCount: support.count
                     });
                 });
             });
@@ -7073,13 +7150,14 @@
 
         function filterAndSortJournalPrayerItems(items, filters) {
             const filtered = items.filter((item) => {
-                if (filters.status === 'open' && item.answered) return false;
-                if (filters.status === 'answered' && !item.answered) return false;
-                if (filters.category && filters.category !== 'all' && item.category !== filters.category) return false;
+                const status = String(item.status || normalizePrayerStatus(null, item));
+                if (filters.status === 'in_progress' && status !== 'in_progress') return false;
+                if (filters.status === 'answered' && status !== 'answered') return false;
+                if (filters.status === 'archived' && status !== 'archived') return false;
                 if (filters.keyword) {
                     const blob = [
-                        item.title || '',
-                        item.text || '',
+                        item.topic || item.title || '',
+                        item.description || item.text || '',
                         item.remarks || '',
                         item.answerSummary || '',
                         item.reference || ''
@@ -7204,6 +7282,7 @@
             const isExpanded = journalState.viewEntryId === entry.id;
             const understandingInputId = getJournalDomSafeId('journal_understanding', entry.id);
             const actionInputId = getJournalDomSafeId('journal_action', entry.id);
+            const prayerLabels = getPrayerUiLabels(lang);
             const formattedDate = formatJournalEntryHeadline(dateObj, lang);
             const calendar = getJournalEntryCalendarParts(dateObj, lang);
             const reference = String(data.godSaidReference || buildLegacyDevotionReference(data, lang) || '').trim();
@@ -7272,27 +7351,53 @@
                                         }).join('')}
 
                                         <section>
-                                            <p class="mb-3 text-[18px] font-semibold leading-tight text-[#3f312a]">5. ${escapeDevotionHtml(lang === 'tl' ? 'Mga prayer request' : 'Prayer requests')}</p>
-                                            <div class="space-y-4">
+                                            <div class="rounded-[22px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,250,244,0.88),rgba(255,255,255,0.96))] p-4">
+                                                <p class="mb-4 text-[18px] font-semibold leading-tight text-[#3f312a]">5. ${escapeDevotionHtml(lang === 'tl' ? 'Mga prayer request' : 'Prayer requests')}</p>
+                                                ${prayerRequests.length ? `
+                                                    <p class="mb-3 text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)]">${escapeDevotionHtml(prayerLabels.previousPrayers)}</p>
+                                                ` : ''}
+                                                <div class="space-y-4">
                                                 ${prayerRequests.map((item, index) => {
-                                                    const prayerInputId = getJournalDomSafeId(`journal_prayer_${index}`, entry.id);
+                                                    const prayerTopicInputId = getJournalDomSafeId(`journal_prayer_topic_${index}`, entry.id);
+                                                    const prayerDescInputId = getJournalDomSafeId(`journal_prayer_desc_${index}`, entry.id);
+                                                    const status = String(item.status || normalizePrayerStatus(null, item));
+                                                    const statusLabel = status === 'archived'
+                                                        ? prayerLabels.statusArchived
+                                                        : status === 'answered'
+                                                            ? prayerLabels.statusAnswered
+                                                            : prayerLabels.statusInProgress;
                                                     return `
-                                                        <div>
-                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${index + 1}</p>
-                                                            <textarea id="${prayerInputId}"
-                                                                      rows="${Math.max(2, Math.ceil((item.text || '').length / 72) || 2)}"
-                                                                      class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
-                                                                      placeholder="${lang === 'tl' ? 'Maglagay ng prayer request...' : 'Add prayer request...'}">${escapeDevotionHtml(item.text || '')}</textarea>
+                                                        <div class="rounded-[20px] border border-[var(--card-border)] bg-white/92 p-4 shadow-[0_8px_20px_rgba(91,43,0,0.05)]">
+                                                            <div class="mb-3 flex items-center justify-between gap-3">
+                                                                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${index + 1}. ${escapeDevotionHtml(prayerLabels.prayerTopic)}</p>
+                                                                <span class="rounded-full px-3 py-1 text-[10px] font-semibold ${status === 'archived' ? 'bg-stone-200 text-stone-700' : status === 'answered' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${escapeDevotionHtml(statusLabel)}</span>
+                                                            </div>
+                                                            <input id="${prayerTopicInputId}"
+                                                                   type="text"
+                                                                   value="${escapeDevotionHtml(item.topic || item.title || '')}"
+                                                                   class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 px-0 py-2 text-[19px] font-semibold text-[#6a2a14] placeholder:text-[var(--text-muted)] focus:outline-none"
+                                                                   placeholder="${escapeDevotionHtml(prayerLabels.prayerTopicPlaceholder)}">
+                                                            <p class="mt-4 mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${escapeDevotionHtml(prayerLabels.prayerDescription)}</p>
+                                                            <textarea id="${prayerDescInputId}"
+                                                                      rows="${Math.max(3, Math.ceil(((item.description || item.text || '').length) / 72) || 3)}"
+                                                                      class="w-full bg-transparent border-0 p-0 text-[16px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                                      placeholder="${escapeDevotionHtml(prayerLabels.prayerDescriptionPlaceholder)}">${escapeDevotionHtml(item.description || item.text || '')}</textarea>
                                                         </div>
                                                     `;
                                                 }).join('')}
-                                                <div>
-                                                    <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${prayerRequests.length + 1}</p>
-                                                    <textarea id="${getJournalDomSafeId('journal_prayer_new', entry.id)}"
-                                                              rows="2"
-                                                              class="w-full bg-transparent border-0 p-0 text-[17px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
-                                                              placeholder="${lang === 'tl' ? 'Magdagdag ng isa pang prayer request...' : 'Add another prayer request...'}"></textarea>
+                                                <div class="rounded-[20px] border border-dashed border-[var(--mission-gold)]/40 bg-white/78 p-4">
+                                                    <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${prayerRequests.length + 1}. ${escapeDevotionHtml(prayerLabels.prayerTopic)}</p>
+                                                    <input id="${getJournalDomSafeId('journal_prayer_new_topic', entry.id)}"
+                                                           type="text"
+                                                           class="w-full bg-transparent border-0 border-b border-[var(--card-border)]/70 px-0 py-2 text-[19px] font-semibold text-[#6a2a14] placeholder:text-[var(--text-muted)] focus:outline-none"
+                                                           placeholder="${escapeDevotionHtml(prayerLabels.prayerTopicPlaceholder)}">
+                                                    <p class="mt-4 mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-500/80">${escapeDevotionHtml(prayerLabels.prayerDescription)}</p>
+                                                    <textarea id="${getJournalDomSafeId('journal_prayer_new_desc', entry.id)}"
+                                                              rows="3"
+                                                              class="w-full bg-transparent border-0 p-0 text-[16px] leading-[1.75] text-[#7a1f12] placeholder:text-[var(--text-muted)] focus:outline-none resize-y"
+                                                              placeholder="${escapeDevotionHtml(prayerLabels.prayerDescriptionPlaceholder)}"></textarea>
                                                 </div>
+                                            </div>
                                             </div>
                                         </section>
 
@@ -7340,53 +7445,72 @@
             list.innerHTML = journalState.filteredPrayerItems.map((item) => {
                 const entryIdForJs = escapeJsString(item.entryId);
                 const prayerIdForJs = escapeJsString(item.prayerId);
-                const statusLabel = item.answered ? L.statusAnswered : L.statusOpen;
-                const categoryLabel = getPrayerCategoryLabel(item.category, item.lang);
+                const status = String(item.status || normalizePrayerStatus(null, item));
+                const statusLabel = status === 'archived'
+                    ? L.statusArchived
+                    : status === 'answered'
+                        ? L.statusAnswered
+                        : L.statusInProgress;
                 const requestedAt = formatPrayerTimestamp(item.requestedDate, item.lang);
-                const answeredAt = item.answeredDate ? formatPrayerTimestamp(item.answeredDate, item.lang) : '';
-                const summary = truncateDevotionText(item.text || '', 220);
+                const summary = truncateDevotionText(item.description || item.text || '', 120);
+                const supportCount = Number(item.supportCount || 0);
+                const statusTone = status === 'archived'
+                    ? 'bg-stone-200 text-stone-700'
+                    : status === 'answered'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-amber-100 text-amber-700';
                 return `
-                    <div class="mb-3 p-3 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]">
-                        <div class="flex items-start justify-between gap-2">
-                            <div>
-                                <p class="text-sm font-semibold text-[var(--text-color)]">${escapeDevotionHtml(item.title || buildPrayerTitle(item.text || ''))}</p>
-                                <p class="text-xs text-[var(--text-muted)] mt-0.5">${escapeDevotionHtml(item.reference || '-')}</p>
+                    <article class="mb-4 rounded-[24px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,248,0.98),rgba(249,238,228,0.96))] shadow-[0_12px_28px_rgba(91,43,0,0.08)] overflow-hidden">
+                        <div class="p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[18px] font-semibold leading-tight text-[#6a2a14]">${escapeDevotionHtml(item.topic || item.title || buildPrayerTitle(item.text || ''))}</p>
+                                    <p class="mt-2 text-[15px] leading-[1.6] text-[#6b655f]">${escapeDevotionHtml(summary || '-')}</p>
+                                </div>
+                                <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${statusTone}">${escapeDevotionHtml(statusLabel)}</span>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[var(--mission-gold)]/15 text-[var(--mission-gold)]">${escapeDevotionHtml(categoryLabel)}</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full ${item.answered ? 'bg-green-500/20 text-green-500' : 'bg-amber-500/20 text-amber-500'}">${escapeDevotionHtml(statusLabel)}</span>
+                            <div class="mt-4 flex items-center justify-between gap-3 text-[13px] text-[var(--text-muted)]">
+                                <span>${escapeDevotionHtml(requestedAt)}</span>
+                                <button type="button"
+                                        onclick="openJournalPrayerSupportList('${entryIdForJs}', '${prayerIdForJs}')"
+                                        class="rounded-full border border-[var(--mission-gold)]/25 bg-white/75 px-3 py-1 text-[12px] font-semibold text-[var(--mission-gold)] hover:bg-white transition-colors">
+                                    🙏 ${supportCount} ${escapeDevotionHtml(L.prayerSupportCount)}
+                                </button>
                             </div>
-                        </div>
-                        <p class="text-sm text-[var(--text-color)] mt-2 leading-relaxed">${formatDevotionMultiline(summary || '-')}</p>
-                        <p class="text-[11px] text-[var(--text-muted)] mt-2">${escapeDevotionHtml(L.addedAt)}: ${escapeDevotionHtml(requestedAt)}</p>
-                        ${answeredAt ? `<p class="text-[11px] text-green-500 mt-1">${escapeDevotionHtml(L.answeredDate)}: ${escapeDevotionHtml(answeredAt)}</p>` : ''}
-                        ${item.remarks ? `<p class="text-[11px] text-[var(--text-muted)] mt-1">${escapeDevotionHtml(item.remarks)}</p>` : ''}
-                        ${item.answerSummary ? `<p class="text-[11px] text-green-500 mt-1">${escapeDevotionHtml(L.answerSummary)}: ${escapeDevotionHtml(item.answerSummary)}</p>` : ''}
-                        ${item.thankYouSharedAt ? `<p class="text-[11px] text-green-500 mt-1">${escapeDevotionHtml(L.thankYouSharedAt)}: ${escapeDevotionHtml(formatPrayerTimestamp(item.thankYouSharedAt, item.lang))}</p>` : ''}
-                        ${renderJournalPrayerSupportSummary(item.entryId, item.prayerId, item.lang)}
-                        <div class="mt-2 flex flex-wrap gap-2">
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'in_progress')"
+                                        class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/45 transition-colors">
+                                    ${escapeDevotionHtml(L.moveToProgress)}
+                                </button>
+                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'answered')"
+                                        class="journal-action-btn px-3 py-2 rounded-full border border-green-200 bg-green-50 text-[11px] font-semibold text-green-700 hover:bg-green-100 transition-colors">
+                                    ${escapeDevotionHtml(L.moveToAnswered)}
+                                </button>
+                                <button onclick="setJournalPrayerStatus('${entryIdForJs}', '${prayerIdForJs}', 'archived')"
+                                        class="journal-action-btn px-3 py-2 rounded-full border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700 hover:bg-stone-100 transition-colors">
+                                    ${escapeDevotionHtml(L.moveToArchived)}
+                                </button>
+                            </div>
+                            <div class="mt-3 flex flex-wrap gap-2">
                             <button onclick="openJournalEntryFromPrayer('${entryIdForJs}')"
-                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 📘 ${escapeDevotionHtml(L.openEntry)}
                             </button>
-                            <button onclick="editJournalEntryFromPrayer('${entryIdForJs}')"
-                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                                ✏️ ${escapeDevotionHtml(L.editEntry)}
-                            </button>
                             <button onclick="shareJournalPrayerRequest('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙏 ${escapeDevotionHtml(L.shareRequest)}
                             </button>
                             <button onclick="shareJournalPrayerThanksgiving('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 🙌 ${escapeDevotionHtml(L.shareThanks)}
                             </button>
                             <button onclick="shareJournalPrayerThankYou('${entryIdForJs}', '${prayerIdForJs}')"
-                                    class="journal-action-btn px-2.5 py-1.5 rounded-lg border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
+                                    class="journal-action-btn px-3 py-2 rounded-full border border-[var(--card-border)] text-[11px] font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                                 💌 ${escapeDevotionHtml(L.shareThankPeople)}
                             </button>
+                            </div>
                         </div>
-                    </div>
+                    </article>
                 `;
             }).join('');
         }
@@ -7419,7 +7543,25 @@
                 entriesList?.classList.add('hidden');
                 prayersList?.classList.remove('hidden');
             }
+            updateJournalPrayerStatusTabs();
         };
+
+        function updateJournalPrayerStatusTabs() {
+            const activeStatus = String(journalState.prayerFilters?.status || 'in_progress');
+            [
+                ['journalPrayerInProgressBtn', 'in_progress'],
+                ['journalPrayerAnsweredBtn', 'answered'],
+                ['journalPrayerArchivedBtn', 'archived']
+            ].forEach(([id, status]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const active = activeStatus === status;
+                btn.classList.toggle('bg-[var(--mission-gold)]', active);
+                btn.classList.toggle('text-[#5a2100]', active);
+                btn.classList.toggle('shadow-[0_8px_18px_rgba(249,157,47,0.24)]', active);
+                btn.classList.toggle('text-[var(--text-muted)]', !active);
+            });
+        }
 
         window.applyJournalFilters = function() {
             journalState.filters = getJournalFiltersFromInputs();
@@ -7442,23 +7584,47 @@
         };
 
         window.applyJournalPrayerFilters = function() {
-            journalState.prayerFilters = getJournalPrayerFiltersFromInputs();
+            journalState.prayerFilters = {
+                ...journalState.prayerFilters,
+                ...getJournalPrayerFiltersFromInputs()
+            };
             journalState.filteredPrayerItems = filterAndSortJournalPrayerItems(journalState.prayerItems, journalState.prayerFilters);
+            updateJournalPrayerStatusTabs();
             renderJournalPrayerTrackerFromState();
         };
 
         window.clearJournalPrayerFilters = function() {
             const searchInput = document.getElementById('journalPrayerSearchInput');
-            const statusInput = document.getElementById('journalPrayerStatusFilter');
-            const categoryInput = document.getElementById('journalPrayerCategoryFilter');
-            const sortInput = document.getElementById('journalPrayerSortFilter');
             if (searchInput) searchInput.value = '';
-            if (statusInput) statusInput.value = 'all';
-            if (categoryInput) categoryInput.value = 'all';
-            if (sortInput) sortInput.value = 'newest';
-            journalState.prayerFilters = { keyword: '', status: 'all', category: 'all', sort: 'newest' };
+            journalState.prayerFilters = { keyword: '', status: 'in_progress', sort: 'newest' };
             journalState.filteredPrayerItems = filterAndSortJournalPrayerItems(journalState.prayerItems, journalState.prayerFilters);
+            updateJournalPrayerStatusTabs();
             renderJournalPrayerTrackerFromState();
+        };
+
+        window.setJournalPrayerStatusFilter = function(status) {
+            journalState.prayerFilters = {
+                ...journalState.prayerFilters,
+                status: ['in_progress', 'answered', 'archived'].includes(String(status)) ? String(status) : 'in_progress'
+            };
+            window.applyJournalPrayerFilters();
+        };
+
+        window.openJournalPrayerComposerFromTracker = function() {
+            const latestEntry = [...(journalState.entries || [])]
+                .sort((a, b) => (b?._resolvedDate?.getTime?.() || 0) - (a?._resolvedDate?.getTime?.() || 0))[0];
+            if (!latestEntry?.id) {
+                alert('Create a Conversation Time entry first before adding a prayer request.');
+                return;
+            }
+            journalState.viewEntryId = String(latestEntry.id);
+            window.switchJournalTab('entries');
+            renderJournalEntriesFromState();
+            requestAnimationFrame(() => {
+                const topicInputId = getJournalDomSafeId('journal_prayer_new_topic', latestEntry.id);
+                const topicInput = document.getElementById(topicInputId);
+                if (topicInput) topicInput.focus();
+            });
         };
 
         window.toggleJournalEntryDetails = function(entryId) {
@@ -7547,20 +7713,36 @@
                 if (entryData.uid !== window.currentUser.uid) return;
                 const existingPrayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
                 const updatedPrayerRequests = existingPrayerRequests.map((item, index) => {
-                    const prayerInputId = getJournalDomSafeId(`journal_prayer_${index}`, normalizedId);
-                    const textValue = String(document.getElementById(prayerInputId)?.value || item.text || '').trim();
+                    const prayerTopicInputId = getJournalDomSafeId(`journal_prayer_topic_${index}`, normalizedId);
+                    const prayerDescInputId = getJournalDomSafeId(`journal_prayer_desc_${index}`, normalizedId);
+                    const topicValue = String(document.getElementById(prayerTopicInputId)?.value || item.topic || item.title || '').trim();
+                    const descValue = String(document.getElementById(prayerDescInputId)?.value || item.description || item.text || '').trim();
+                    const topic = topicValue || buildPrayerTitle(descValue);
+                    const description = descValue || topicValue;
                     return {
                         ...item,
-                        text: textValue
+                        topic,
+                        title: topic,
+                        description,
+                        text: description || topic,
+                        status: String(item.status || normalizePrayerStatus(null, item))
                     };
-                }).filter(item => String(item.text || '').trim());
-                const newPrayerInputId = getJournalDomSafeId('journal_prayer_new', normalizedId);
-                const newPrayerText = String(document.getElementById(newPrayerInputId)?.value || '').trim();
-                if (newPrayerText) {
+                }).filter(item => String(item.topic || item.title || '').trim() || String(item.description || item.text || '').trim());
+                const newPrayerTopicInputId = getJournalDomSafeId('journal_prayer_new_topic', normalizedId);
+                const newPrayerDescInputId = getJournalDomSafeId('journal_prayer_new_desc', normalizedId);
+                const newPrayerTopic = String(document.getElementById(newPrayerTopicInputId)?.value || '').trim();
+                const newPrayerDesc = String(document.getElementById(newPrayerDescInputId)?.value || '').trim();
+                if (newPrayerTopic || newPrayerDesc) {
+                    const topic = newPrayerTopic || buildPrayerTitle(newPrayerDesc);
+                    const description = newPrayerDesc || newPrayerTopic;
                     updatedPrayerRequests.push({
                         id: `pr_${Date.now()}`,
-                        text: newPrayerText,
+                        topic,
+                        title: topic,
+                        description,
+                        text: description || topic,
                         createdAt: new Date().toISOString(),
+                        status: 'in_progress',
                         answered: false,
                         category: '',
                         answerNote: '',
@@ -7771,6 +7953,27 @@
             return [...new Set(targetGroupIds)];
         }
 
+        window.setJournalPrayerStatus = async function(entryId, prayerId, status) {
+            try {
+                const normalizedStatus = ['in_progress', 'answered', 'archived'].includes(String(status)) ? String(status) : 'in_progress';
+                await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
+                    ...item,
+                    status: normalizedStatus,
+                    answered: normalizedStatus === 'answered' ? true : (normalizedStatus === 'archived' ? !!item.answered : false),
+                    answeredAt: normalizedStatus === 'answered'
+                        ? (item.answeredAt || new Date().toISOString())
+                        : (normalizedStatus === 'in_progress' ? null : item.answeredAt || null),
+                    archivedAt: normalizedStatus === 'archived'
+                        ? (item.archivedAt || new Date().toISOString())
+                        : null
+                }));
+                await renderJournalEntriesList();
+            } catch (error) {
+                console.error('[Journal] Could not update prayer tracker status:', error);
+                alert('Could not update prayer status right now.');
+            }
+        };
+
         async function sharePrayerToGroups({ entryId, prayerId, mode = 'request' }) {
             const entryRef = window.doc(window.db, 'goMission_devotions', String(entryId));
             const entryDoc = await window.getDoc(entryRef);
@@ -7879,8 +8082,10 @@
             try {
                 await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
                     ...item,
+                    status: checked ? 'answered' : 'in_progress',
                     answered: !!checked,
-                    answeredAt: checked ? (item.answeredAt || new Date().toISOString()) : null
+                    answeredAt: checked ? (item.answeredAt || new Date().toISOString()) : null,
+                    archivedAt: checked ? null : item.archivedAt || null
                 }));
                 await renderJournalEntriesList();
             } catch (error) {
@@ -7895,8 +8100,10 @@
                 const answeredAtIso = normalizedDate ? `${normalizedDate}T12:00:00.000Z` : null;
                 await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
                     ...item,
+                    status: answeredAtIso ? 'answered' : 'in_progress',
                     answered: !!answeredAtIso,
-                    answeredAt: answeredAtIso
+                    answeredAt: answeredAtIso,
+                    archivedAt: answeredAtIso ? null : item.archivedAt || null
                 }));
                 await renderJournalEntriesList();
             } catch (error) {
@@ -7960,8 +8167,10 @@
             if (!entryId || !prayerId) return null;
             const result = await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
                 ...item,
+                status: answered ? 'answered' : 'in_progress',
                 answered: !!answered,
                 answeredAt: answered ? (answeredAt || item.answeredAt || new Date().toISOString()) : null,
+                archivedAt: answered ? null : item.archivedAt || null,
                 remarks: String(remarks || '').trim()
             }));
             if (result && document.getElementById('journalModal') && !document.getElementById('journalModal').classList.contains('hidden')) {
