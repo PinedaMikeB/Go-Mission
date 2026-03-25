@@ -7477,7 +7477,9 @@
                     <button type="button"
                             data-entry-id="${entryIdForJs}"
                             data-prayer-id="${prayerIdForJs}"
-                            class="js-journal-prayer-card w-full cursor-pointer text-left mb-4 rounded-[24px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,248,0.98),rgba(249,238,228,0.96))] shadow-[0_12px_28px_rgba(91,43,0,0.08)] overflow-hidden hover:-translate-y-0.5 active:scale-[0.995] transition-transform">
+                            onclick="window.handleJournalPrayerCardActivate(event, this)"
+                            onpointerup="window.handleJournalPrayerCardActivate(event, this)"
+                            class="js-journal-prayer-card w-full cursor-pointer touch-manipulation text-left mb-4 rounded-[24px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,248,0.98),rgba(249,238,228,0.96))] shadow-[0_12px_28px_rgba(91,43,0,0.08)] overflow-hidden hover:-translate-y-0.5 active:scale-[0.995] transition-transform">
                         <div class="p-4 sm:p-5">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
@@ -7540,6 +7542,28 @@
             updateJournalPrayerStatusTabs();
         };
 
+        window.handleJournalPrayerCardActivate = function(event, card) {
+            const targetCard = card?.closest?.('.js-journal-prayer-card') || null;
+            if (!targetCard) return;
+            const targetType = String(event?.type || '');
+            const activationKey = `${targetCard.getAttribute('data-entry-id') || ''}:${targetCard.getAttribute('data-prayer-id') || ''}`;
+            const now = Date.now();
+            const lastKey = window.__lastJournalPrayerActivationKey || '';
+            const lastAt = Number(window.__lastJournalPrayerActivationAt || 0);
+            if (activationKey && activationKey === lastKey && now - lastAt < 350) return;
+            if (targetType === 'keydown') {
+                const key = event?.key || '';
+                if (key !== 'Enter' && key !== ' ') return;
+                event.preventDefault();
+            }
+            window.__lastJournalPrayerActivationKey = activationKey;
+            window.__lastJournalPrayerActivationAt = now;
+            const entryId = targetCard.getAttribute('data-entry-id') || '';
+            const prayerId = targetCard.getAttribute('data-prayer-id') || '';
+            if (!entryId || !prayerId) return;
+            window.openJournalPrayerDetail(entryId, prayerId);
+        };
+
         function bindJournalPrayerCardEvents() {
             const list = document.getElementById('journalPrayersList');
             if (!list || list.dataset.cardEventsBound === 'true') return;
@@ -7547,21 +7571,19 @@
             list.addEventListener('click', (event) => {
                 const card = event.target.closest('.js-journal-prayer-card');
                 if (!card) return;
-                const entryId = card.getAttribute('data-entry-id') || '';
-                const prayerId = card.getAttribute('data-prayer-id') || '';
-                if (!entryId || !prayerId) return;
-                window.openJournalPrayerDetail(entryId, prayerId);
+                window.handleJournalPrayerCardActivate(event, card);
+            });
+
+            list.addEventListener('pointerup', (event) => {
+                const card = event.target.closest('.js-journal-prayer-card');
+                if (!card) return;
+                window.handleJournalPrayerCardActivate(event, card);
             });
 
             list.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
                 const card = event.target.closest('.js-journal-prayer-card');
                 if (!card) return;
-                event.preventDefault();
-                const entryId = card.getAttribute('data-entry-id') || '';
-                const prayerId = card.getAttribute('data-prayer-id') || '';
-                if (!entryId || !prayerId) return;
-                window.openJournalPrayerDetail(entryId, prayerId);
+                window.handleJournalPrayerCardActivate(event, card);
             });
 
             list.dataset.cardEventsBound = 'true';
