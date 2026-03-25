@@ -1566,8 +1566,8 @@ const BibleReader = {
           <div class="w-full max-w-3xl mx-auto pt-4">
             ${contextPreview}
             <textarea id="inlineFieldEditorTextarea"
-                      class="w-full min-h-[55vh] overflow-y-auto bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                      style="font-size:${config.fontPx}px; line-height:1.7; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
+                      class="w-full min-h-[55vh] overflow-hidden bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7;"
                       placeholder="${this.escapeHTML(config.placeholder)}">${this.escapeHTML(config.value)}</textarea>
           </div>
         </div>
@@ -1576,6 +1576,7 @@ const BibleReader = {
 
     const textarea = document.getElementById('inlineFieldEditorTextarea');
     if (textarea) {
+      this.setupInlineEditorAutoGrow(['inlineFieldEditorTextarea']);
       textarea.focus();
       const end = textarea.value.length;
       textarea.setSelectionRange(end, end);
@@ -1713,8 +1714,8 @@ const BibleReader = {
                    value="${this.escapeHTML(this.inlineReflectionDraft.prayerDraftTopic || '')}">
             <label class="block text-[var(--text-muted)] uppercase tracking-[0.16em] mt-6 mb-2" style="font-size:${Math.max(12, config.fontPx - 4)}px;">${this.escapeHTML(L.prayerDescription)}</label>
             <textarea id="inlinePrayerDraftDescriptionInput"
-                      class="w-full min-h-[30vh] overflow-y-auto bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                      style="font-size:${config.fontPx}px; line-height:1.7; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
+                      class="w-full min-h-[30vh] overflow-hidden bg-transparent border-0 rounded-none px-0 py-0 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                      style="font-size:${config.fontPx}px; line-height:1.7;"
                       placeholder="${this.escapeHTML(L.prayerDescriptionPlaceholder)}">${this.escapeHTML(this.inlineReflectionDraft.prayerDraftDescription || '')}</textarea>
           </div>
         </div>
@@ -1737,8 +1738,8 @@ const BibleReader = {
                class="w-full mb-4 bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] focus:outline-none">
         <label class="block text-[var(--text-muted)] mb-2" style="font-size:${Math.max(14, config.fontPx - 2)}px;">${this.escapeHTML(L.remarksLabel)}</label>
         <textarea id="inlinePrayerDetailRemarks"
-                  class="w-full min-h-[22vh] overflow-y-auto bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
-                  style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.6; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;"
+                  class="w-full min-h-[22vh] overflow-hidden bg-transparent border border-[var(--card-border)]/35 rounded-xl px-4 py-3 text-[var(--text-color)] placeholder-[var(--text-muted)] focus:outline-none resize-none"
+                  style="font-size:${Math.max(15, config.fontPx - 1)}px; line-height:1.6;"
                   placeholder="${this.escapeHTML(L.remarksPlaceholder)}">${this.escapeHTML(activePrayer.remarks || '')}</textarea>
       </div>
     ` : composeBody;
@@ -1754,13 +1755,41 @@ const BibleReader = {
     `;
 
     if (!isDetail) {
+      this.setupInlineEditorAutoGrow(['inlinePrayerDraftDescriptionInput']);
       const input = document.getElementById('inlinePrayerDraftTopicInput') || document.getElementById('inlinePrayerDraftDescriptionInput');
       if (input) {
         input.focus();
         const end = input.value.length;
         input.setSelectionRange?.(end, end);
       }
+    } else {
+      this.setupInlineEditorAutoGrow(['inlinePrayerDetailRemarks']);
     }
+  },
+
+  syncInlineEditorTextareaHeight(textarea) {
+    if (!textarea) return;
+    const minHeightPx = Number(textarea.dataset.minHeightPx || 0);
+    textarea.style.height = 'auto';
+    const nextHeight = Math.max(minHeightPx, textarea.scrollHeight);
+    textarea.style.height = `${nextHeight}px`;
+  },
+
+  setupInlineEditorAutoGrow(textareaIds = []) {
+    textareaIds.forEach((id) => {
+      const textarea = document.getElementById(id);
+      if (!textarea) return;
+      if (!textarea.dataset.minHeightPx) {
+        textarea.dataset.minHeightPx = String(Math.max(textarea.clientHeight || 0, 120));
+      }
+      if (textarea.dataset.autoGrowBound !== 'true') {
+        const resize = () => this.syncInlineEditorTextareaHeight(textarea);
+        textarea.addEventListener('input', resize);
+        textarea.addEventListener('focus', resize);
+        textarea.dataset.autoGrowBound = 'true';
+      }
+      this.syncInlineEditorTextareaHeight(textarea);
+    });
   },
 
   toggleInlinePrayerHistory() {
