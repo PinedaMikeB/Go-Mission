@@ -8005,27 +8005,12 @@
                                   onblur="saveJournalPrayerRemarks('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', this.value)"
                                   class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-color)] resize-none"
                                   placeholder="${escapeDevotionHtml(labels.remarksPlaceholder)}">${escapeDevotionHtml(prayer.remarks || '')}</textarea>
-                        <label class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold block mt-5 mb-2">${escapeDevotionHtml(labels.answerSummary)}</label>
-                        <textarea rows="3"
-                                  onblur="saveJournalPrayerAnswerSummary('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}', this.value)"
-                                  class="w-full rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-color)] resize-none"
-                                  placeholder="${escapeDevotionHtml(labels.answerSummaryPlaceholder)}">${escapeDevotionHtml(prayer.answerSummary || '')}</textarea>
                     </div>
                     <div class="grid grid-cols-1 gap-2">
                         <button type="button"
-                                onclick="shareJournalPrayerRequest('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
-                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                            🙏 ${escapeDevotionHtml(labels.shareRequest)}
-                        </button>
-                        <button type="button"
-                                onclick="shareJournalPrayerThanksgiving('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
+                                onclick="openJournalPrayerShareModal('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
                                 class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
                             🙌 ${escapeDevotionHtml(labels.shareThanks)}
-                        </button>
-                        <button type="button"
-                                onclick="shareJournalPrayerThankYou('${escapeJsString(entryId)}', '${escapeJsString(prayerId)}')"
-                                class="rounded-full border border-[var(--card-border)] bg-white/82 px-4 py-3 text-sm font-semibold text-[var(--text-color)] hover:border-[var(--mission-gold)]/50 transition-colors">
-                            💌 ${escapeDevotionHtml(labels.shareThankPeople)}
                         </button>
                     </div>
                 </div>
@@ -8152,6 +8137,206 @@
             modal.classList.remove('flex');
         };
 
+        function ensureJournalPrayerShareModal() {
+            let modal = document.getElementById('journalPrayerShareModal');
+            if (modal) {
+                if (modal.parentElement !== document.body) {
+                    document.body.appendChild(modal);
+                }
+                modal.style.zIndex = '10030';
+                modal.style.pointerEvents = 'auto';
+                return modal;
+            }
+
+            modal = document.createElement('div');
+            modal.id = 'journalPrayerShareModal';
+            modal.className = 'fixed inset-0 hidden items-center justify-center bg-black/55 px-4 py-4';
+            modal.style.zIndex = '10030';
+            modal.style.pointerEvents = 'auto';
+            modal.innerHTML = `
+                <div class="w-full max-w-lg rounded-[30px] border border-[var(--card-border)] bg-[linear-gradient(180deg,rgba(255,251,247,0.99),rgba(250,240,231,0.97))] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
+                    <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--card-border)]/80">
+                        <div class="min-w-0">
+                            <p class="text-[12px] uppercase tracking-[0.18em] text-[var(--mission-gold)] font-bold">Share Testimony</p>
+                            <h3 id="journalPrayerShareTitle" class="mt-1 text-[22px] leading-tight font-semibold text-[#6a2a14]"></h3>
+                        </div>
+                        <button type="button"
+                                onclick="closeJournalPrayerShareModal()"
+                                class="shrink-0 w-11 h-11 rounded-full border border-[var(--card-border)] bg-white/75 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
+                            <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                        <div class="rounded-[24px] border border-[var(--card-border)] bg-white/82 p-4 mb-4">
+                            <p class="text-[12px] uppercase tracking-[0.16em] text-[var(--text-muted)] font-semibold">Testimony preview</p>
+                            <p id="journalPrayerSharePreview" class="mt-3 whitespace-pre-wrap text-[15px] leading-[1.7] text-[#6b655f]"></p>
+                        </div>
+                        <div class="rounded-[24px] border border-[var(--card-border)] bg-white/82 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-[15px] font-semibold text-[#6a2a14]">Choose group(s) to share with</p>
+                                <label class="inline-flex items-center gap-2 text-sm text-[var(--text-color)]">
+                                    <input id="journalPrayerShareSelectAll" type="checkbox" onchange="toggleJournalPrayerShareSelectAll(this.checked)" class="accent-[var(--mission-gold)]">
+                                    <span>Select all groups</span>
+                                </label>
+                            </div>
+                            <p id="journalPrayerShareCount" class="mt-3 text-sm text-[var(--text-muted)]"></p>
+                            <div id="journalPrayerShareGroups" class="mt-4 space-y-3"></div>
+                        </div>
+                    </div>
+                    <div class="border-t border-[var(--card-border)]/80 px-5 py-4 bg-white/55">
+                        <button id="journalPrayerShareConfirmBtn"
+                                type="button"
+                                onclick="confirmJournalPrayerShareModal()"
+                                class="w-full rounded-full bg-[var(--mission-gold)] px-4 py-3 text-sm font-bold text-[var(--mission-red-deep)] shadow-[0_14px_28px_rgba(249,157,47,0.25)] hover:opacity-90 transition-opacity">
+                            🙌 Share testimony & thanks
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    window.closeJournalPrayerShareModal();
+                }
+            });
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        function updateJournalPrayerShareSelectionSummary() {
+            const modal = document.getElementById('journalPrayerShareModal');
+            if (!modal) return;
+            const countEl = document.getElementById('journalPrayerShareCount');
+            const selectAllEl = document.getElementById('journalPrayerShareSelectAll');
+            const checkboxes = Array.from(document.querySelectorAll('.journal-prayer-share-checkbox'));
+            const selectedCount = checkboxes.filter(input => input.checked).length;
+            const totalCount = checkboxes.length;
+            if (countEl) {
+                countEl.textContent = `${totalCount} available group(s) • ${selectedCount} selected`;
+            }
+            if (selectAllEl) {
+                selectAllEl.checked = totalCount > 0 && selectedCount === totalCount;
+                selectAllEl.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+            }
+        }
+
+        window.toggleJournalPrayerShareSelectAll = function(checked) {
+            document.querySelectorAll('.journal-prayer-share-checkbox').forEach((input) => {
+                input.checked = !!checked;
+            });
+            updateJournalPrayerShareSelectionSummary();
+        };
+
+        window.closeJournalPrayerShareModal = function() {
+            const modal = document.getElementById('journalPrayerShareModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.dataset.entryId = '';
+            modal.dataset.prayerId = '';
+        };
+
+        window.openJournalPrayerShareModal = async function(entryId, prayerId) {
+            try {
+                const context = getJournalPrayerDetailContext(entryId, prayerId);
+                if (!context) return;
+                const { entry, prayer, lang } = context;
+                const remarks = String(prayer.remarks || '').trim();
+                if (!remarks) {
+                    alert(lang === 'tl'
+                        ? 'Maglagay muna ng remarks o testimony details bago mag-share.'
+                        : 'Please add remarks or testimony details before sharing.');
+                    return;
+                }
+                if (!prayer.answered && !prayer.answeredAt) {
+                    alert(lang === 'tl'
+                        ? 'Markahan muna itong sinagot bago ibahagi ang patotoo.'
+                        : 'Please mark this prayer as answered before sharing testimony.');
+                    return;
+                }
+
+                const modal = ensureJournalPrayerShareModal();
+                const titleEl = document.getElementById('journalPrayerShareTitle');
+                const previewEl = document.getElementById('journalPrayerSharePreview');
+                const groupsEl = document.getElementById('journalPrayerShareGroups');
+                if (!titleEl || !previewEl || !groupsEl) return;
+
+                const groups = await resolveShareableGroups();
+                const preferredGroupIds = Array.isArray(prayer.sharedGroupIds) && prayer.sharedGroupIds.length
+                    ? prayer.sharedGroupIds.map(id => String(id || '').trim()).filter(Boolean)
+                    : (Array.isArray(entry?.data?.sharedGroupIds)
+                        ? entry.data.sharedGroupIds.map(id => String(id || '').trim()).filter(Boolean)
+                        : []);
+                const selectedGroupIds = preferredGroupIds.length
+                    ? new Set(preferredGroupIds)
+                    : new Set(groups.slice(0, 1).map(group => String(group.id || '').trim()).filter(Boolean));
+                const testimonyText = buildPrayerShareText({
+                    entryData: entry.data,
+                    prayerItem: prayer,
+                    mode: 'testimony',
+                    lang
+                });
+
+                modal.dataset.entryId = String(entryId || '');
+                modal.dataset.prayerId = String(prayerId || '');
+                titleEl.textContent = prayer.topic || prayer.title || buildPrayerTitle(prayer.text || '');
+                previewEl.textContent = testimonyText;
+                groupsEl.innerHTML = groups.map((group) => {
+                    const groupId = String(group.id || '').trim();
+                    const checked = selectedGroupIds.has(groupId) ? 'checked' : '';
+                    return `
+                        <label class="flex items-start gap-3 rounded-[20px] border border-[var(--card-border)] bg-white/82 px-4 py-3 cursor-pointer hover:border-[var(--mission-gold)]/40 transition-colors">
+                            <input type="checkbox"
+                                   class="journal-prayer-share-checkbox mt-1 accent-[var(--mission-gold)]"
+                                   value="${escapeDevotionHtml(groupId)}"
+                                   onchange="updateJournalPrayerShareSelectionSummary()"
+                                   ${checked}>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[15px] font-semibold text-[#6a2a14]">${escapeDevotionHtml(group.name || 'Group')}</p>
+                                <p class="mt-1 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(group.type || 'Mission group')} • ${escapeDevotionHtml(String(group.memberCount || 0))} members</p>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+                updateJournalPrayerShareSelectionSummary();
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } catch (error) {
+                console.error('[Journal] Could not open prayer share modal:', error);
+                alert('Could not open share modal right now.');
+            }
+        };
+
+        window.confirmJournalPrayerShareModal = async function() {
+            const modal = document.getElementById('journalPrayerShareModal');
+            if (!modal) return;
+            const entryId = String(modal.dataset.entryId || '').trim();
+            const prayerId = String(modal.dataset.prayerId || '').trim();
+            const targetGroupIds = Array.from(document.querySelectorAll('.journal-prayer-share-checkbox:checked'))
+                .map(input => String(input.value || '').trim())
+                .filter(Boolean);
+            if (!entryId || !prayerId) return;
+            if (!targetGroupIds.length) {
+                alert('Please select at least one group.');
+                return;
+            }
+            const confirmBtn = document.getElementById('journalPrayerShareConfirmBtn');
+            if (confirmBtn) confirmBtn.disabled = true;
+            try {
+                await sharePrayerToGroups({ entryId, prayerId, mode: 'testimony', targetGroupIds });
+                await renderJournalEntriesList();
+                renderOpenJournalPrayerDetailModal();
+                closeJournalPrayerShareModal();
+                alert('Testimony and thanksgiving shared.');
+            } catch (error) {
+                console.error('[Journal] Could not share testimony from modal:', error);
+                alert(error?.message || 'Could not share testimony right now.');
+            } finally {
+                if (confirmBtn) confirmBtn.disabled = false;
+            }
+        };
+
         async function updatePrayerRequestInJournal(entryId, prayerId, mutator) {
             if (!window.currentUser || !window.db || !entryId || !prayerId) return null;
             const entryRef = window.doc(window.db, 'goMission_devotions', String(entryId));
@@ -8213,7 +8398,42 @@
             }
         };
 
-        async function sharePrayerToGroups({ entryId, prayerId, mode = 'request' }) {
+        function buildPrayerShareText({ entryData, prayerItem, mode = 'request', lang = 'tl' }) {
+            const scriptureReference = entryData.godSaidReference || buildLegacyDevotionReference(entryData, lang);
+            const heading = mode === 'testimony'
+                ? (lang === 'tl' ? '🙌 Patotoo at Pasasalamat' : '🙌 Testimony and Thanksgiving')
+                : mode === 'thanks'
+                    ? (lang === 'tl' ? '💌 Salamat sa inyong panalangin' : '💌 Thank you for praying')
+                    : (lang === 'tl' ? '🙏 Prayer Request' : '🙏 Prayer Request');
+            const bodyLines = [
+                heading,
+                scriptureReference ? `${lang === 'tl' ? 'Talata' : 'Scripture'}: ${scriptureReference}` : '',
+                prayerItem.title ? `${lang === 'tl' ? 'Paksa' : 'Title'}: ${prayerItem.title}` : '',
+                `${lang === 'tl' ? 'Panalangin' : 'Prayer'}: ${prayerItem.text}`
+            ];
+            if (mode === 'testimony') {
+                const remarks = String(prayerItem.remarks || '').trim();
+                if (remarks) {
+                    bodyLines.push(`${lang === 'tl' ? 'Patotoo' : 'Testimony'}: ${remarks}`);
+                }
+            } else if (prayerItem.remarks) {
+                bodyLines.push(`${lang === 'tl' ? 'Remarks' : 'Remarks'}: ${prayerItem.remarks}`);
+            }
+            if (prayerItem.category) {
+                bodyLines.push(`${lang === 'tl' ? 'Kategorya' : 'Category'}: ${getPrayerCategoryLabel(prayerItem.category, lang)}`);
+            }
+            if ((mode === 'testimony' || mode === 'thanks') && prayerItem.answeredAt) {
+                bodyLines.push(`${lang === 'tl' ? 'Sinagot noong' : 'Answered on'}: ${formatPrayerTimestamp(prayerItem.answeredAt, lang)}`);
+            }
+            if (mode === 'thanks') {
+                bodyLines.push(lang === 'tl'
+                    ? 'Maraming salamat sa inyong mga panalangin at pag-alalay.'
+                    : 'Thank you for your prayers and support.');
+            }
+            return bodyLines.filter(Boolean).join('\n');
+        }
+
+        async function sharePrayerToGroups({ entryId, prayerId, mode = 'request', targetGroupIds = null }) {
             const entryRef = window.doc(window.db, 'goMission_devotions', String(entryId));
             const entryDoc = await window.getDoc(entryRef);
             if (!entryDoc.exists()) throw new Error('Devotion entry not found.');
@@ -8228,50 +8448,18 @@
                 throw new Error('Please mark this prayer as answered first.');
             }
 
-            const targetGroupIds = await resolvePrayerShareGroups(entryData);
-            if (!targetGroupIds.length) {
+            const resolvedTargetGroupIds = Array.isArray(targetGroupIds) && targetGroupIds.length
+                ? [...new Set(targetGroupIds.map(id => String(id || '').trim()).filter(Boolean))]
+                : await resolvePrayerShareGroups(entryData);
+            if (!resolvedTargetGroupIds.length) {
                 throw new Error('No mission group found for sharing.');
             }
 
             const lang = entryData.language === 'en' ? 'en' : 'tl';
-            const scriptureReference = entryData.godSaidReference || buildLegacyDevotionReference(entryData, lang);
             const senderName = window.currentUser.displayName || window.currentUser.email || 'Unknown';
-            const heading = mode === 'testimony'
-                ? (lang === 'tl' ? '🙌 Patotoo at Pasasalamat' : '🙌 Testimony and Thanksgiving')
-                : mode === 'thanks'
-                    ? (lang === 'tl' ? '💌 Salamat sa inyong panalangin' : '💌 Thank you for praying')
-                    : (lang === 'tl' ? '🙏 Prayer Request' : '🙏 Prayer Request');
-            const bodyLines = [
-                heading,
-                scriptureReference ? `${lang === 'tl' ? 'Talata' : 'Scripture'}: ${scriptureReference}` : '',
-                `${lang === 'tl' ? 'Panalangin' : 'Prayer'}: ${prayerItem.text}`
-            ];
-            if (prayerItem.title) {
-                bodyLines.push(`${lang === 'tl' ? 'Paksa' : 'Title'}: ${prayerItem.title}`);
-            }
-            if (prayerItem.category) {
-                bodyLines.push(`${lang === 'tl' ? 'Kategorya' : 'Category'}: ${getPrayerCategoryLabel(prayerItem.category, lang)}`);
-            }
-            if (prayerItem.remarks) {
-                bodyLines.push(`${lang === 'tl' ? 'Remarks' : 'Remarks'}: ${prayerItem.remarks}`);
-            }
-            if (mode === 'testimony' && prayerItem.answeredAt) {
-                bodyLines.push(`${lang === 'tl' ? 'Sinagot noong' : 'Answered on'}: ${formatPrayerTimestamp(prayerItem.answeredAt, lang)}`);
-            }
-            if ((mode === 'testimony' || mode === 'thanks') && prayerItem.answerSummary) {
-                bodyLines.push(`${lang === 'tl' ? 'Buod ng sagot' : 'Answer summary'}: ${prayerItem.answerSummary}`);
-            }
-            if (mode === 'thanks') {
-                bodyLines.push(lang === 'tl'
-                    ? 'Maraming salamat sa inyong mga panalangin at pag-alalay.'
-                    : 'Thank you for your prayers and support.');
-                if (prayerItem.answeredAt) {
-                    bodyLines.push(`${lang === 'tl' ? 'Sinagot noong' : 'Answered on'}: ${formatPrayerTimestamp(prayerItem.answeredAt, lang)}`);
-                }
-            }
-            const chatText = bodyLines.filter(Boolean).join('\n');
+            const chatText = buildPrayerShareText({ entryData, prayerItem, mode, lang });
 
-            for (const groupId of targetGroupIds) {
+            for (const groupId of resolvedTargetGroupIds) {
                 await window.addDoc(window.collection(window.db, 'goMission_chats'), {
                     groupId,
                     senderId: window.currentUser.uid,
@@ -8291,7 +8479,7 @@
             const nowIso = new Date().toISOString();
             const mergedSharedGroupIds = [...new Set([
                 ...(Array.isArray(prayerItem.sharedGroupIds) ? prayerItem.sharedGroupIds : []),
-                ...targetGroupIds
+                ...resolvedTargetGroupIds
             ])];
 
             await updatePrayerRequestInJournal(entryId, prayerId, (item) => ({
@@ -8312,7 +8500,7 @@
                         testimonySharedAt: mode === 'testimony' ? nowIso : prayerItem.testimonySharedAt
                     },
                     devotionEntry: entryData,
-                    targetGroupIds
+                    targetGroupIds: resolvedTargetGroupIds
                 });
             }
         }
