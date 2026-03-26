@@ -8408,6 +8408,8 @@
                 bodyLines.push(`${lang === 'tl' ? 'Remarks' : 'Remarks'}: ${prayerItem.remarks}`);
             }
             if (prayerItem.category) {
+                bodyLines.push(`${lang === 'tl' ? 'Category' : 'Category'}: ${prayerItem.category}`);
+            }
             if ((mode === 'testimony' || mode === 'thanks') && prayerItem.answeredAt) {
                 bodyLines.push(`${lang === 'tl' ? 'Sinagot noong' : 'Answered on'}: ${formatPrayerTimestamp(prayerItem.answeredAt, lang)}`);
             }
