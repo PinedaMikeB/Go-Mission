@@ -6,43 +6,38 @@
     <title>Go Mission | Seeker Placement Workflow</title>
     <meta
         name="description"
-        content="Interactive animated presentation of the Go Mission seeker placement workflow."
+        content="Minimal animated workflow page for Go Mission seeker placement."
     >
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Cormorant+Garamond:wght@500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap"
         rel="stylesheet"
     >
     <style>
         :root {
-            --bg: #f8efe1;
-            --bg-deep: #fffaf2;
-            --paper: rgba(255, 251, 245, 0.72);
-            --paper-solid: #fffaf3;
-            --ink: #31150d;
-            --ink-soft: #6b4b3d;
-            --line: rgba(99, 54, 32, 0.14);
-            --gold: #f0b35a;
-            --gold-soft: rgba(240, 179, 90, 0.24);
-            --burnt: #c7582f;
+            --bg: #f7efe2;
+            --bg-soft: #fff8ef;
+            --ink: #321911;
+            --muted: #7a5b50;
+            --line: rgba(86, 44, 25, 0.12);
             --wine: #6f1d1b;
-            --leaf: #3f765d;
-            --sky: #2f667a;
-            --shadow: 0 28px 80px rgba(82, 40, 22, 0.13);
-            --radius-xl: 34px;
+            --burnt: #c75a31;
+            --gold: #efb150;
+            --seeker: #d57441;
+            --admin: #7f2f28;
+            --management: #36718a;
+            --group: #46795f;
+            --card: rgba(255, 251, 245, 0.88);
+            --shadow: 0 26px 70px rgba(88, 45, 24, 0.12);
+            --radius-xl: 32px;
             --radius-lg: 24px;
             --radius-md: 18px;
-            --max-width: 1380px;
-            --transition: 240ms ease;
+            --transition: 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
         }
 
         * {
             box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
         }
 
         body {
@@ -51,56 +46,46 @@
             font-family: "Manrope", sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at 0% 0%, rgba(240, 179, 90, 0.32), transparent 28%),
-                radial-gradient(circle at 100% 20%, rgba(199, 88, 47, 0.18), transparent 24%),
-                linear-gradient(180deg, #fff8ef 0%, #f8efe1 44%, #f3e6d7 100%);
+                radial-gradient(circle at top left, rgba(239, 177, 80, 0.28), transparent 24%),
+                radial-gradient(circle at right 20%, rgba(111, 29, 27, 0.12), transparent 20%),
+                linear-gradient(180deg, #fff8ef 0%, #f7efe2 52%, #f3e5d6 100%);
             overflow-x: hidden;
         }
 
-        body::before,
-        body::after {
+        body::before {
             content: "";
             position: fixed;
             inset: 0;
             pointer-events: none;
-            z-index: -1;
-        }
-
-        body::before {
-            opacity: 0.16;
+            opacity: 0.14;
             background-image:
-                linear-gradient(rgba(111, 29, 27, 0.035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(111, 29, 27, 0.035) 1px, transparent 1px);
-            background-size: 28px 28px;
-            mask-image: radial-gradient(circle at center, black, transparent 76%);
+                linear-gradient(rgba(111, 29, 27, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(111, 29, 27, 0.04) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(circle at center, black, transparent 78%);
         }
 
-        body::after {
-            background:
-                radial-gradient(circle at 20% 14%, rgba(63, 118, 93, 0.1), transparent 24%),
-                radial-gradient(circle at 78% 84%, rgba(47, 102, 122, 0.1), transparent 26%);
-        }
-
-        h1, h2, h3, h4, p {
+        h1, h2, p {
             margin: 0;
         }
 
         button {
             font: inherit;
             border: 0;
-            cursor: pointer;
             background: none;
+            cursor: pointer;
         }
 
         .page {
-            width: min(calc(100% - 28px), var(--max-width));
+            width: min(calc(100% - 24px), 1240px);
             margin: 0 auto;
-            padding: 22px 0 60px;
+            padding: 18px 0 42px;
         }
 
-        .glass {
-            border: 1px solid rgba(111, 29, 27, 0.12);
-            background: linear-gradient(180deg, rgba(255, 253, 248, 0.82), rgba(255, 249, 241, 0.72));
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-xl);
+            background: linear-gradient(180deg, rgba(255, 252, 247, 0.86), rgba(255, 249, 241, 0.72));
             box-shadow: var(--shadow);
             backdrop-filter: blur(16px);
         }
@@ -108,46 +93,32 @@
         .hero {
             position: relative;
             overflow: hidden;
-            border-radius: 38px;
-            padding: 34px;
-        }
-
-        .hero::before {
-            content: "";
-            position: absolute;
-            width: 440px;
-            height: 440px;
-            right: -160px;
-            top: -180px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(240, 179, 90, 0.42), transparent 68%);
+            padding: 28px;
         }
 
         .hero::after {
             content: "";
             position: absolute;
-            width: 320px;
-            height: 320px;
-            left: -120px;
-            bottom: -160px;
+            width: 260px;
+            height: 260px;
+            right: -80px;
+            top: -110px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(63, 118, 93, 0.24), transparent 72%);
+            background: radial-gradient(circle, rgba(239, 177, 80, 0.35), transparent 70%);
         }
 
         .hero-grid {
             position: relative;
             display: grid;
-            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-            gap: 26px;
+            grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+            gap: 20px;
             align-items: center;
         }
 
         .eyebrow,
-        .section-label,
-        .step-pill,
-        .role-chip,
-        .metric-label,
-        .legend-key {
+        .stage-number,
+        .role-pill,
+        .mini-label {
             font-family: "Bebas Neue", sans-serif;
             letter-spacing: 0.12em;
         }
@@ -155,12 +126,12 @@
         .eyebrow {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
+            gap: 8px;
+            padding: 8px 12px;
             border-radius: 999px;
             background: rgba(111, 29, 27, 0.08);
             color: var(--wine);
-            font-size: 0.98rem;
+            font-size: 0.95rem;
         }
 
         .eyebrow::before {
@@ -169,561 +140,415 @@
             height: 10px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--burnt), var(--gold));
-            box-shadow: 0 0 0 6px rgba(199, 88, 47, 0.08);
         }
 
-        .hero-copy h1 {
-            margin-top: 18px;
+        .hero h1 {
+            margin-top: 14px;
             font-family: "Bebas Neue", sans-serif;
-            font-size: clamp(3.4rem, 8vw, 6.7rem);
+            font-size: clamp(3.4rem, 7vw, 6.2rem);
             line-height: 0.9;
-            letter-spacing: 0.03em;
-            max-width: 10ch;
+            letter-spacing: 0.04em;
+            max-width: 9ch;
         }
 
-        .hero-copy p {
-            margin-top: 18px;
-            max-width: 64ch;
-            line-height: 1.75;
-            color: var(--ink-soft);
-            font-size: 1.04rem;
+        .hero p {
+            margin-top: 14px;
+            max-width: 48ch;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 1rem;
         }
 
         .hero-actions {
-            margin-top: 24px;
+            margin-top: 20px;
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .primary-btn,
-        .secondary-btn {
-            padding: 14px 20px;
+        .btn {
+            padding: 13px 18px;
             border-radius: 999px;
             transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
         }
 
-        .primary-btn {
-            background: linear-gradient(135deg, var(--wine), var(--burnt));
-            color: #fff7ef;
-            box-shadow: 0 18px 34px rgba(111, 29, 27, 0.22);
-        }
-
-        .secondary-btn {
-            background: rgba(255, 251, 245, 0.82);
-            border: 1px solid rgba(111, 29, 27, 0.12);
-            color: var(--wine);
-        }
-
-        .primary-btn:hover,
-        .secondary-btn:hover,
-        .filter-btn:hover,
-        .story-card:hover {
+        .btn:hover {
             transform: translateY(-2px);
         }
 
-        .hero-panel {
-            position: relative;
-            padding: 26px;
-            border-radius: 28px;
-            background: linear-gradient(180deg, rgba(255, 252, 247, 0.78), rgba(246, 235, 217, 0.92));
-            border: 1px solid rgba(111, 29, 27, 0.1);
-            overflow: hidden;
+        .btn-primary {
+            background: linear-gradient(135deg, var(--wine), var(--burnt));
+            color: #fff8ef;
+            box-shadow: 0 16px 36px rgba(111, 29, 27, 0.22);
         }
 
-        .hero-panel::before {
-            content: "";
-            position: absolute;
-            inset: 18px;
-            border-radius: 24px;
-            border: 1px dashed rgba(111, 29, 27, 0.12);
-            pointer-events: none;
+        .btn-secondary {
+            background: rgba(255, 252, 247, 0.9);
+            color: var(--wine);
+            border: 1px solid var(--line);
         }
 
-        .orbit {
-            position: relative;
-            width: 210px;
-            height: 210px;
-            margin: 0 auto;
-        }
-
-        .orbit-ring {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            border: 1px solid rgba(111, 29, 27, 0.14);
-            animation: spin 18s linear infinite;
-        }
-
-        .orbit-ring.two {
-            inset: 22px;
-            border-style: dashed;
-            animation-direction: reverse;
-            animation-duration: 24s;
-        }
-
-        .orbit-ring.three {
-            inset: 46px;
-            border-color: rgba(63, 118, 93, 0.24);
-            animation-duration: 14s;
-        }
-
-        .logo-core {
-            position: absolute;
-            inset: 50%;
-            width: 104px;
-            height: 104px;
-            transform: translate(-50%, -50%);
-            display: grid;
-            place-items: center;
-            border-radius: 30px;
-            background: linear-gradient(135deg, rgba(111, 29, 27, 0.96), rgba(199, 88, 47, 0.92));
-            box-shadow: 0 24px 44px rgba(111, 29, 27, 0.24);
-        }
-
-        .logo-core img {
-            width: 64px;
-            height: 64px;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
-        }
-
-        .orbit-dot {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 18px;
-            height: 18px;
-            margin: -9px;
-            border-radius: 50%;
-            transform-origin: 0 0;
-            animation: orbit 8s linear infinite;
-        }
-
-        .orbit-dot.one {
-            background: var(--gold);
-            transform: rotate(0deg) translateX(104px);
-        }
-
-        .orbit-dot.two {
-            background: var(--leaf);
-            animation-duration: 11s;
-            animation-direction: reverse;
-            transform: rotate(120deg) translateX(78px);
-        }
-
-        .orbit-dot.three {
-            background: var(--sky);
-            animation-duration: 9s;
-            transform: rotate(220deg) translateX(54px);
-        }
-
-        .hero-panel-copy {
-            margin-top: 24px;
+        .hero-side {
             display: grid;
             gap: 12px;
         }
 
-        .hero-panel-copy h2 {
-            font-family: "Cormorant Garamond", serif;
-            font-size: 2rem;
-            line-height: 1;
-        }
-
-        .hero-panel-copy p {
-            line-height: 1.65;
-            color: var(--ink-soft);
-        }
-
-        .metrics {
-            margin-top: 22px;
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .metric {
+        .mission-card,
+        .legend-card {
             padding: 18px;
-            border-radius: var(--radius-md);
-            background: rgba(255, 252, 247, 0.82);
+            border-radius: var(--radius-lg);
+            background: rgba(255, 251, 245, 0.82);
             border: 1px solid rgba(111, 29, 27, 0.08);
         }
 
-        .metric strong {
-            display: block;
+        .mission-card h2 {
             font-family: "Bebas Neue", sans-serif;
             font-size: 2rem;
-            letter-spacing: 0.08em;
-            color: var(--wine);
-        }
-
-        .metric-label {
-            display: block;
-            margin-top: 6px;
-            font-size: 0.95rem;
-            color: var(--burnt);
-        }
-
-        .metric p {
-            margin-top: 6px;
-            color: var(--ink-soft);
-            font-size: 0.92rem;
-            line-height: 1.55;
-        }
-
-        .section {
-            margin-top: 24px;
-            padding: 28px;
-            border-radius: 32px;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: end;
-            justify-content: space-between;
-            gap: 18px;
-            margin-bottom: 22px;
-        }
-
-        .section-label {
-            color: var(--burnt);
-            font-size: 0.95rem;
-        }
-
-        .section-header h2 {
-            margin-top: 8px;
-            font-family: "Bebas Neue", sans-serif;
-            font-size: clamp(2.2rem, 5vw, 4rem);
+            letter-spacing: 0.06em;
             line-height: 0.92;
-            letter-spacing: 0.05em;
         }
 
-        .section-header p {
-            max-width: 52ch;
-            line-height: 1.7;
-            color: var(--ink-soft);
-        }
-
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .filter-btn {
-            padding: 12px 16px;
-            border-radius: 999px;
-            border: 1px solid rgba(111, 29, 27, 0.1);
-            background: rgba(255, 251, 245, 0.78);
-            color: var(--ink);
-            transition: all var(--transition);
-        }
-
-        .filter-btn.active {
-            background: linear-gradient(135deg, var(--wine), var(--burnt));
-            color: #fff7ef;
-            box-shadow: 0 16px 30px rgba(111, 29, 27, 0.18);
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1.38fr) minmax(300px, 0.82fr);
-            gap: 20px;
-            align-items: start;
-        }
-
-        .story-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .story-card {
-            position: relative;
-            padding: 20px 20px 18px;
-            border-radius: 24px;
-            background: rgba(255, 252, 247, 0.86);
-            border: 1px solid rgba(111, 29, 27, 0.08);
-            box-shadow: 0 20px 36px rgba(88, 44, 22, 0.08);
-            transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition), opacity var(--transition), filter var(--transition);
-            cursor: pointer;
-            opacity: 0.54;
-            filter: saturate(0.84);
-        }
-
-        .story-card.visible {
-            opacity: 1;
-            filter: none;
-        }
-
-        .story-card.active {
-            border-color: rgba(240, 179, 90, 0.48);
-            box-shadow: 0 28px 50px rgba(111, 29, 27, 0.14);
-            transform: translateY(-3px);
-        }
-
-        .story-card.hidden-by-filter {
-            display: none;
-        }
-
-        .story-card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            background: linear-gradient(135deg, rgba(240, 179, 90, 0.07), transparent 42%, rgba(63, 118, 93, 0.05));
-            pointer-events: none;
-        }
-
-        .step-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .step-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--wine);
-            font-size: 0.95rem;
-        }
-
-        .step-pill::before {
-            content: "";
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: currentColor;
-            opacity: 0.8;
-        }
-
-        .step-time {
-            padding: 7px 10px;
-            border-radius: 999px;
-            background: rgba(111, 29, 27, 0.06);
-            color: var(--ink-soft);
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
-
-        .story-card h3 {
-            margin-top: 16px;
-            font-size: 1.08rem;
-            line-height: 1.4;
-        }
-
-        .story-card p {
+        .mission-card p,
+        .legend-card p {
             margin-top: 10px;
-            color: var(--ink-soft);
-            line-height: 1.65;
+            color: var(--muted);
+            line-height: 1.55;
             font-size: 0.95rem;
-        }
-
-        .story-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 14px;
-        }
-
-        .story-meta span {
-            padding: 8px 10px;
-            border-radius: 999px;
-            background: rgba(255, 247, 234, 0.86);
-            border: 1px solid rgba(111, 29, 27, 0.08);
-            color: var(--ink-soft);
-            font-size: 0.82rem;
-        }
-
-        .focus-panel {
-            position: sticky;
-            top: 20px;
-            padding: 22px;
-            border-radius: 26px;
-            background: linear-gradient(180deg, rgba(255, 252, 247, 0.9), rgba(247, 237, 219, 0.88));
-            border: 1px solid rgba(111, 29, 27, 0.1);
-            box-shadow: 0 22px 46px rgba(88, 44, 22, 0.1);
-        }
-
-        .focus-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            align-items: start;
-        }
-
-        .focus-header h3 {
-            font-family: "Cormorant Garamond", serif;
-            font-size: 2.1rem;
-            line-height: 0.98;
-        }
-
-        .focus-role {
-            display: inline-flex;
-            padding: 8px 12px;
-            border-radius: 999px;
-            color: #fff8ef;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .focus-body {
-            margin-top: 18px;
-            display: grid;
-            gap: 14px;
-        }
-
-        .focus-body p {
-            line-height: 1.7;
-            color: var(--ink-soft);
-        }
-
-        .focus-block {
-            padding: 14px 16px;
-            border-radius: 18px;
-            background: rgba(255, 251, 245, 0.78);
-            border: 1px solid rgba(111, 29, 27, 0.08);
-        }
-
-        .focus-block strong {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 0.92rem;
-            color: var(--wine);
-        }
-
-        .legend {
-            margin-top: 18px;
-            display: grid;
-            gap: 10px;
         }
 
         .legend-row {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
         }
 
-        .legend-key {
-            min-width: 74px;
-            color: var(--wine);
-            font-size: 0.84rem;
-        }
-
-        .legend-bar {
-            flex: 1;
-            height: 10px;
-            border-radius: 999px;
-            background: rgba(111, 29, 27, 0.08);
-            overflow: hidden;
-        }
-
-        .legend-fill {
-            height: 100%;
-            border-radius: inherit;
-            background: linear-gradient(90deg, var(--burnt), var(--gold));
-        }
-
-        .role-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .role-card {
-            padding: 20px;
-            border-radius: 24px;
-            border: 1px solid rgba(111, 29, 27, 0.08);
-            background: rgba(255, 252, 247, 0.82);
-            box-shadow: 0 18px 36px rgba(88, 44, 22, 0.07);
-        }
-
-        .role-chip {
+        .legend-chip,
+        .tag {
             display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: rgba(255, 247, 235, 0.92);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            color: var(--muted);
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        .legend-chip::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            margin-right: 8px;
+            border-radius: 50%;
+            background: var(--dot);
+        }
+
+        .workflow {
+            margin-top: 20px;
+            padding: 24px;
+        }
+
+        .workflow-head {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .workflow-head h2 {
+            font-family: "Bebas Neue", sans-serif;
+            font-size: clamp(2.4rem, 5vw, 4.4rem);
+            line-height: 0.92;
+            letter-spacing: 0.05em;
+        }
+
+        .workflow-head p {
+            color: var(--muted);
+            max-width: 32ch;
+            line-height: 1.5;
+            font-size: 0.96rem;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .control {
+            padding: 11px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 251, 245, 0.86);
+            color: var(--ink);
+            transition: all var(--transition);
+        }
+
+        .control.active {
+            background: linear-gradient(135deg, var(--wine), var(--burnt));
+            color: #fff8ef;
+            box-shadow: 0 14px 28px rgba(111, 29, 27, 0.18);
+        }
+
+        .stage-shell {
+            position: relative;
+            min-height: 470px;
+            overflow: hidden;
+            border-radius: 30px;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(239, 177, 80, 0.12), transparent 35%),
+                linear-gradient(180deg, rgba(255, 252, 247, 0.9), rgba(251, 243, 232, 0.76));
+            border: 1px solid rgba(111, 29, 27, 0.08);
+        }
+
+        .stage-shell::before {
+            content: "";
+            position: absolute;
+            left: 8%;
+            right: 8%;
+            top: 50%;
+            height: 4px;
+            transform: translateY(-50%);
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(111, 29, 27, 0.08), rgba(199, 90, 49, 0.28), rgba(70, 121, 95, 0.2));
+        }
+
+        .arrow-band {
+            position: absolute;
+            inset: 50% 10% auto 10%;
+            height: 0;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .arrow {
+            position: absolute;
+            top: -16px;
+            width: 90px;
+            height: 32px;
+            opacity: 0.14;
+            transition: opacity var(--transition), transform var(--transition);
+        }
+
+        .arrow::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 16px;
+            top: 14px;
+            height: 4px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(199, 90, 49, 0.8), rgba(239, 177, 80, 0.92));
+        }
+
+        .arrow::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 8px;
+            width: 14px;
+            height: 14px;
+            border-top: 4px solid rgba(239, 177, 80, 0.96);
+            border-right: 4px solid rgba(239, 177, 80, 0.96);
+            transform: rotate(45deg);
+        }
+
+        .arrow.active {
+            opacity: 1;
+            animation: arrowPulse 1.2s ease-in-out infinite;
+        }
+
+        .stage-track {
+            position: relative;
+            height: 100%;
+        }
+
+        .stage-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: min(340px, calc(100% - 32px));
+            padding: 22px;
+            border-radius: 28px;
+            background: var(--card);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            box-shadow: 0 22px 50px rgba(88, 45, 24, 0.1);
+            transform-origin: center;
+            transition: transform var(--transition), opacity var(--transition), filter var(--transition), box-shadow var(--transition);
+            cursor: pointer;
+        }
+
+        .stage-card.active {
+            box-shadow: 0 32px 70px rgba(88, 45, 24, 0.15);
+        }
+
+        .stage-card[data-pos="-2"] {
+            transform: translate(-154%, -50%) scale(0.78);
+            opacity: 0;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        .stage-card[data-pos="-1"] {
+            transform: translate(-112%, -50%) scale(0.9);
+            opacity: 0.46;
+        }
+
+        .stage-card[data-pos="0"] {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            z-index: 4;
+        }
+
+        .stage-card[data-pos="1"] {
+            transform: translate(12%, -50%) scale(0.9);
+            opacity: 0.46;
+        }
+
+        .stage-card[data-pos="2"] {
+            transform: translate(54%, -50%) scale(0.78);
+            opacity: 0;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        .stage-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .stage-number {
+            color: var(--wine);
+            font-size: 1.1rem;
+        }
+
+        .role-pill {
             padding: 8px 12px;
             border-radius: 999px;
             color: #fff8ef;
             font-size: 0.88rem;
         }
 
-        .role-card h3 {
-            margin-top: 14px;
-            font-size: 1.08rem;
+        .stage-card h3 {
+            margin-top: 18px;
+            font-size: 1.55rem;
+            line-height: 1.08;
         }
 
-        .role-card p {
-            margin-top: 10px;
-            line-height: 1.65;
-            color: var(--ink-soft);
-            font-size: 0.94rem;
+        .stage-card p {
+            margin-top: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+            font-size: 0.96rem;
         }
 
-        .role-card ul {
-            margin: 14px 0 0;
-            padding-left: 18px;
-            color: var(--ink-soft);
-            line-height: 1.65;
+        .stage-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .stage-footer {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px dashed rgba(111, 29, 27, 0.12);
+        }
+
+        .mini-label {
+            color: var(--burnt);
+            font-size: 0.88rem;
+        }
+
+        .mini-copy {
+            display: block;
+            margin-top: 6px;
             font-size: 0.92rem;
+            color: var(--ink);
+            font-weight: 700;
         }
 
-        .standards {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
+        .stage-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 18px;
         }
 
-        .standard-card {
-            position: relative;
-            overflow: hidden;
-            padding: 22px;
-            border-radius: 24px;
-            border: 1px solid rgba(111, 29, 27, 0.08);
-            background: rgba(255, 252, 247, 0.84);
+        .nav-group,
+        .dots {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        .standard-card::after {
-            content: "";
-            position: absolute;
-            inset: auto -40px -42px auto;
-            width: 130px;
-            height: 130px;
+        .nav-btn {
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(240, 179, 90, 0.2), transparent 72%);
+            display: grid;
+            place-items: center;
+            background: rgba(255, 251, 245, 0.92);
+            border: 1px solid var(--line);
+            color: var(--wine);
+            font-size: 1.3rem;
         }
 
-        .standard-card strong {
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: rgba(111, 29, 27, 0.18);
+            transition: transform var(--transition), background var(--transition);
+        }
+
+        .dot.active {
+            background: linear-gradient(135deg, var(--burnt), var(--gold));
+            transform: scale(1.35);
+        }
+
+        .strip {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .strip-card {
+            padding: 16px;
+            border-radius: 22px;
+            background: rgba(255, 251, 245, 0.82);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+        }
+
+        .strip-card strong {
             display: block;
             font-family: "Bebas Neue", sans-serif;
-            font-size: 2rem;
+            font-size: 1.5rem;
             letter-spacing: 0.08em;
             color: var(--wine);
         }
 
-        .standard-card h3 {
-            margin-top: 10px;
-            font-size: 1rem;
-        }
-
-        .standard-card p {
-            margin-top: 10px;
-            color: var(--ink-soft);
-            line-height: 1.65;
-            font-size: 0.94rem;
-        }
-
-        .footer {
-            margin-top: 20px;
-            text-align: center;
-            color: var(--ink-soft);
-            font-size: 0.94rem;
+        .strip-card span {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
         }
 
         .reveal {
             opacity: 0;
-            transform: translateY(18px);
+            transform: translateY(16px);
             transition: opacity 700ms ease, transform 700ms ease;
         }
 
@@ -732,647 +557,378 @@
             transform: translateY(0);
         }
 
-        .tint-seeker { color: #c7582f; }
-        .tint-admin { color: #6f1d1b; }
-        .tint-management { color: #2f667a; }
-        .tint-group { color: #3f765d; }
+        .seeker { background: linear-gradient(135deg, var(--seeker), #e19151); }
+        .admin { background: linear-gradient(135deg, var(--admin), #9f4237); }
+        .management { background: linear-gradient(135deg, var(--management), #5a98b0); }
+        .group { background: linear-gradient(135deg, var(--group), #68a47f); }
 
-        .bg-seeker { background: linear-gradient(135deg, #c7582f, #e19046); }
-        .bg-admin { background: linear-gradient(135deg, #6f1d1b, #97372a); }
-        .bg-management { background: linear-gradient(135deg, #2f667a, #5e97aa); }
-        .bg-group { background: linear-gradient(135deg, #3f765d, #5c9a78); }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes arrowPulse {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(8px); }
         }
 
-        @keyframes orbit {
-            to { transform: rotate(360deg) translateX(104px); }
-        }
-
-        @media (max-width: 1140px) {
-            .hero-grid,
-            .layout {
+        @media (max-width: 1000px) {
+            .hero-grid {
                 grid-template-columns: 1fr;
             }
 
-            .story-grid,
-            .role-grid,
-            .standards {
+            .strip {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .focus-panel {
-                position: static;
             }
         }
 
         @media (max-width: 760px) {
             .page {
-                width: min(calc(100% - 16px), var(--max-width));
+                width: min(calc(100% - 14px), 1240px);
                 padding-top: 10px;
-                padding-bottom: 36px;
             }
 
             .hero,
-            .section {
-                padding: 20px 16px;
-                border-radius: 26px;
+            .workflow {
+                padding: 18px 16px;
             }
 
-            .metrics,
-            .story-grid,
-            .role-grid,
-            .standards {
-                grid-template-columns: 1fr;
-            }
-
-            .section-header {
+            .workflow-head {
                 flex-direction: column;
                 align-items: start;
             }
 
             .hero-actions,
-            .toolbar {
+            .controls {
                 width: 100%;
             }
 
-            .primary-btn,
-            .secondary-btn,
-            .filter-btn {
+            .btn,
+            .control {
                 width: 100%;
-                justify-content: center;
                 text-align: center;
+            }
+
+            .stage-shell {
+                min-height: 440px;
+            }
+
+            .stage-card {
+                width: calc(100% - 26px);
+            }
+
+            .stage-card[data-pos="-1"],
+            .stage-card[data-pos="1"] {
+                opacity: 0.14;
+            }
+
+            .strip {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
     <main class="page">
-        <section class="hero glass reveal">
+        <section class="panel hero reveal">
             <div class="hero-grid">
-                <div class="hero-copy">
-                    <div class="eyebrow">Interactive ministry workflow presentation</div>
-                    <h1 id="pageTitle">Seeker Placement Workflow</h1>
-                    <p id="pageIntro"></p>
+                <div>
+                    <div class="eyebrow">Animated workflow</div>
+                    <h1>From Click To Community</h1>
+                    <p id="heroText"></p>
                     <div class="hero-actions">
-                        <button id="autoplayBtn" class="primary-btn" type="button">Start Auto Walkthrough</button>
-                        <button id="jumpBtn" class="secondary-btn" type="button">Jump To Workflow</button>
+                        <button id="playBtn" class="btn btn-primary" type="button">Start Motion</button>
+                        <button id="nextBtn" class="btn btn-secondary" type="button">Next Stage</button>
                     </div>
-                    <div class="metrics" id="metrics"></div>
                 </div>
 
-                <aside class="hero-panel">
-                    <div class="orbit" aria-hidden="true">
-                        <div class="orbit-ring"></div>
-                        <div class="orbit-ring two"></div>
-                        <div class="orbit-ring three"></div>
-                        <div class="logo-core">
-                            <img src="Go Mission Logo.png" alt="Go Mission logo">
-                        </div>
-                        <div class="orbit-dot one"></div>
-                        <div class="orbit-dot two"></div>
-                        <div class="orbit-dot three"></div>
-                    </div>
-                    <div class="hero-panel-copy">
-                        <h2>Fast response. Clear placement. Weekly discipleship.</h2>
-                        <p id="missionStatement"></p>
-                    </div>
-                </aside>
+                <div class="hero-side">
+                    <article class="mission-card">
+                        <h2>ONE GOAL</h2>
+                        <p>Get the seeker into the right group fast, share the gospel within 24 hours, then move into weekly discipleship.</p>
+                    </article>
+                    <article class="legend-card">
+                        <div class="mini-label">Roles</div>
+                        <div class="legend-row" id="legend"></div>
+                    </article>
+                </div>
             </div>
         </section>
 
-        <section class="section glass reveal" id="workflowSection">
-            <div class="section-header">
+        <section class="panel workflow reveal">
+            <div class="workflow-head">
                 <div>
-                    <div class="section-label">Journey view</div>
-                    <h2>From click to community</h2>
+                    <div class="mini-label">Stage flow</div>
+                    <h2>Simple Visual Workflow</h2>
                 </div>
-                <p>
-                    Click any card to spotlight it. Use the role filters to isolate one team.
-                    The autoplay button turns the page into a guided presentation.
-                </p>
+                <p>Cards slide. Arrows pulse. Click a stage to focus it.</p>
             </div>
 
-            <div class="toolbar" id="filters"></div>
+            <div class="controls" id="filters"></div>
 
-            <div class="layout" style="margin-top: 18px;">
-                <div class="story-grid" id="storyGrid"></div>
-
-                <aside class="focus-panel" id="focusPanel">
-                    <div class="focus-header">
-                        <div>
-                            <div class="section-label">Current focus</div>
-                            <h3 id="focusTitle"></h3>
-                        </div>
-                        <div class="focus-role" id="focusRole"></div>
-                    </div>
-                    <div class="focus-body">
-                        <p id="focusSummary"></p>
-                        <div class="focus-block">
-                            <strong>Key output</strong>
-                            <span id="focusOutput"></span>
-                        </div>
-                        <div class="focus-block">
-                            <strong>Timing expectation</strong>
-                            <span id="focusTiming"></span>
-                        </div>
-                        <div class="focus-block">
-                            <strong>Why it matters</strong>
-                            <span id="focusImportance"></span>
-                        </div>
-                    </div>
-                    <div class="legend" id="legend"></div>
-                </aside>
+            <div class="stage-shell">
+                <div class="arrow-band" id="arrows"></div>
+                <div class="stage-track" id="stageTrack"></div>
             </div>
-        </section>
 
-        <section class="section glass reveal">
-            <div class="section-header">
-                <div>
-                    <div class="section-label">Role collaboration</div>
-                    <h2>Who owns each move</h2>
+            <div class="stage-nav">
+                <div class="nav-group">
+                    <button class="nav-btn" id="prevBtn" type="button" aria-label="Previous stage">&#8592;</button>
+                    <button class="nav-btn" id="forwardBtn" type="button" aria-label="Next stage">&#8594;</button>
                 </div>
-                <p>
-                    These role cards make the workflow easier to review with leaders,
-                    admins, and management during planning or alignment meetings.
-                </p>
+                <div class="dots" id="dots"></div>
             </div>
-            <div class="role-grid" id="roleGrid"></div>
-        </section>
 
-        <section class="section glass reveal">
-            <div class="section-header">
-                <div>
-                    <div class="section-label">Operational standards</div>
-                    <h2>Non-negotiables</h2>
-                </div>
-                <p>
-                    These are the ministry standards that keep the workflow pastoral,
-                    responsive, and consistent.
-                </p>
-            </div>
-            <div class="standards" id="standards"></div>
+            <div class="strip" id="strip"></div>
         </section>
-
-        <div class="footer">
-            Edit the workflow data directly inside this HTML file to collaborate on wording, roles, timing, and outputs.
-        </div>
     </main>
 
     <script>
-        const presentation = {
-            title: "Seeker Placement Workflow",
-            intro:
-                "This shareable page shows how a seeker moves from a YouTube invitation into Messenger, into the right discipleship group, into a gospel conversation within 24 hours, and then into regular weekly mission group life through the Go Mission app.",
-            missionStatement:
-                "The goal is not only to collect information. The goal is to guide a real person from interest to gospel response to steady weekly discipleship without losing momentum between handoffs.",
-            metrics: [
-                {
-                    value: "24 Hours",
-                    label: "Gospel target",
-                    detail: "The gospel should be shared within one day after the seeker is placed in the matched group chat."
-                },
-                {
-                    value: "4 Roles",
-                    label: "Team alignment",
-                    detail: "Seeker, Admin, Management, and Group Leader or Members each have a clear responsibility."
-                },
-                {
-                    value: "9 Fields",
-                    label: "Intake details",
-                    detail: "Name, email, mobile, church, age, gender, marital status, preferred day, and preferred time."
-                }
-            ],
+        const data = {
+            hero: "A clean one-page presentation of the seeker journey.",
             roles: {
-                seeker: {
-                    label: "Seeker",
-                    className: "bg-seeker",
-                    tintClass: "tint-seeker",
-                    summary: "Responds to the invitation, provides details, receives the gospel, and enters weekly discipleship.",
-                    responsibilities: [
-                        "Watch the vlog and click the description link.",
-                        "Respond in Messenger and provide intake details.",
-                        "Install the app and join the weekly meeting rhythm."
-                    ]
-                },
-                admin: {
-                    label: "Admin",
-                    className: "bg-admin",
-                    tintClass: "tint-admin",
-                    summary: "Carries the first human response and makes sure the seeker is placed in the right group quickly.",
-                    responsibilities: [
-                        "Welcome the seeker in Messenger.",
-                        "Collect and organize seeker details.",
-                        "Send the details for recording and place the seeker in the correct GC."
-                    ]
-                },
-                management: {
-                    label: "Management",
-                    className: "bg-management",
-                    tintClass: "tint-management",
-                    summary: "Owns the record of the seeker so the ministry can track continuity and follow-through.",
-                    responsibilities: [
-                        "Receive the intake handoff from admin.",
-                        "Record seeker information accurately.",
-                        "Support continuity and accountability across the funnel."
-                    ]
-                },
-                group: {
-                    label: "Group Leader / Members",
-                    className: "bg-group",
-                    tintClass: "tint-group",
-                    summary: "Receives the seeker, shares the gospel within the target time, and helps start discipleship life.",
-                    responsibilities: [
-                        "Receive the seeker in the matched GC.",
-                        "Share the gospel within 24 hours.",
-                        "Guide the seeker toward app use and weekly participation."
-                    ]
-                }
+                seeker: { label: "Seeker", className: "seeker", color: "var(--seeker)" },
+                admin: { label: "Admin", className: "admin", color: "var(--admin)" },
+                management: { label: "Management", className: "management", color: "var(--management)" },
+                group: { label: "Group Leader / Members", className: "group", color: "var(--group)" }
             },
-            workflow: [
+            stages: [
                 {
-                    id: "step-1",
                     number: "01",
                     role: "seeker",
-                    title: "Watch the YouTube vlog",
-                    summary: "The seeker first encounters the invitation through your YouTube content.",
-                    output: "Interest is created and the call to action is seen.",
-                    timing: "Start of journey",
-                    why: "This is the top of the funnel. The invitation has to feel simple and immediate.",
-                    tags: ["YouTube", "Invitation", "Top of funnel"]
+                    title: "YouTube vlog",
+                    text: "Seeker sees the invitation.",
+                    tags: ["Video", "Link"],
+                    note: "Start"
                 },
                 {
-                    id: "step-2",
                     number: "02",
                     role: "seeker",
-                    title: "Click the link in the description",
-                    summary: "The seeker follows the call to action and enters the response channel.",
-                    output: "The seeker lands in Facebook Messenger.",
-                    timing: "Immediate",
-                    why: "A direct path removes friction and keeps momentum high.",
-                    tags: ["Link", "Response", "Messenger"]
+                    title: "Click link",
+                    text: "Seeker opens Facebook Messenger.",
+                    tags: ["Messenger", "Direct"],
+                    note: "Immediate"
                 },
                 {
-                    id: "step-3",
                     number: "03",
                     role: "admin",
-                    title: "Admin starts the Messenger conversation",
-                    summary: "Admin welcomes the seeker and begins the pastoral intake conversation.",
-                    output: "A human connection is established quickly.",
-                    timing: "As soon as the message arrives",
-                    why: "Fast human response increases trust and lowers drop-off.",
-                    tags: ["Welcome", "First contact", "Human response"]
+                    title: "Admin chat",
+                    text: "Admin welcomes and asks for details.",
+                    tags: ["Name", "Schedule"],
+                    note: "Intake"
                 },
                 {
-                    id: "step-4",
                     number: "04",
-                    role: "admin",
-                    title: "Admin collects seeker details",
-                    summary: "Admin asks for name, email, mobile, church, age, gender, marital status, preferred day, and preferred time.",
-                    output: "The intake record is complete enough for routing.",
-                    timing: "During initial conversation",
-                    why: "Complete intake prevents confusion when routing to the right group.",
-                    tags: ["Intake", "Scheduling", "Profile"]
+                    role: "management",
+                    title: "Record details",
+                    text: "Management logs the seeker.",
+                    tags: ["Record", "Tracking"],
+                    note: "Handoff"
                 },
                 {
-                    id: "step-5",
                     number: "05",
-                    role: "management",
-                    title: "Details are sent to mission group management",
-                    summary: "Admin forwards the seeker information for official ministry recording.",
-                    output: "Management receives the full seeker profile.",
-                    timing: "Right after intake is complete",
-                    why: "Recording protects continuity and reduces the risk of losing the contact.",
-                    tags: ["Handoff", "Recording", "Accountability"]
-                },
-                {
-                    id: "step-6",
-                    number: "06",
-                    role: "management",
-                    title: "Mission group management records the seeker",
-                    summary: "Management logs the seeker so the journey is visible and trackable.",
-                    output: "The ministry has a system of record for this seeker.",
-                    timing: "Immediately after handoff",
-                    why: "Recording makes follow-up measurable and dependable.",
-                    tags: ["Database", "Tracking", "Continuity"]
-                },
-                {
-                    id: "step-7",
-                    number: "07",
                     role: "admin",
-                    title: "Admin places the seeker in the correct Messenger GC",
-                    summary: "The seeker is added to the group chat that matches the preferred day and time.",
-                    output: "The seeker lands in the right discipleship context.",
-                    timing: "As soon as management recording is done",
-                    why: "Correct placement raises the chance of immediate and ongoing engagement.",
-                    tags: ["Placement", "Group chat", "Schedule match"]
+                    title: "Place in GC",
+                    text: "Admin adds seeker to the matched group chat.",
+                    tags: ["Group Chat", "Preferred Time"],
+                    note: "Routing"
                 },
                 {
-                    id: "step-8",
+                    number: "06",
+                    role: "group",
+                    title: "Share gospel",
+                    text: "Leader or member shares within 24 hours.",
+                    tags: ["24 Hours", "Care"],
+                    note: "Priority"
+                },
+                {
+                    number: "07",
+                    role: "group",
+                    title: "Install app",
+                    text: "Team guides the seeker into Go Mission.",
+                    tags: ["App", "Next Step"],
+                    note: "Onboarding"
+                },
+                {
                     number: "08",
-                    role: "group",
-                    title: "Leader or available member shares the gospel",
-                    summary: "Once the seeker is in the matched GC, the leader or any available member initiates the gospel conversation.",
-                    output: "The seeker hears the gospel clearly and personally.",
-                    timing: "Within 24 hours",
-                    why: "This is the most important spiritual handoff in the workflow.",
-                    tags: ["Gospel", "Care", "Conversation"]
-                },
-                {
-                    id: "step-9",
-                    number: "09",
-                    role: "group",
-                    title: "Admin or team guides app installation",
-                    summary: "After sharing the gospel, the seeker is helped to install the Go Mission app.",
-                    output: "The seeker now has access to the digital discipleship environment.",
-                    timing: "After the gospel conversation",
-                    why: "App onboarding turns a one-time contact into a repeatable discipleship pathway.",
-                    tags: ["App", "Onboarding", "Next step"]
-                },
-                {
-                    id: "step-10",
-                    number: "10",
                     role: "seeker",
-                    title: "Seeker joins the weekly mission group meeting",
-                    summary: "The seeker enters the recurring discipleship rhythm and begins group life.",
-                    output: "The journey continues beyond first response into community.",
-                    timing: "Weekly ongoing rhythm",
-                    why: "The workflow succeeds when the seeker becomes part of a stable discipleship gathering.",
-                    tags: ["Weekly", "Belonging", "Discipleship"]
+                    title: "Join weekly meeting",
+                    text: "Seeker enters weekly discipleship.",
+                    tags: ["Weekly", "Community"],
+                    note: "Ongoing"
                 }
             ],
-            standards: [
-                {
-                    value: "Respond fast",
-                    title: "Do not leave the seeker waiting",
-                    detail: "The earlier the human response, the better the conversion from inquiry to conversation."
-                },
-                {
-                    value: "Place accurately",
-                    title: "Match the group to preferred schedule",
-                    detail: "Wrong placement creates friction and delays the gospel conversation."
-                },
-                {
-                    value: "Disciple weekly",
-                    title: "Move beyond one-time contact",
-                    detail: "The process should lead to a sustainable weekly discipleship habit, not only a single chat."
-                }
+            strip: [
+                { title: "24 Hours", text: "Gospel sharing target" },
+                { title: "Right GC", text: "Match day and time" },
+                { title: "Simple Intake", text: "Only needed details" },
+                { title: "Weekly Rhythm", text: "Move into group life" }
             ]
         };
 
-        const metricsEl = document.getElementById("metrics");
-        const filtersEl = document.getElementById("filters");
-        const storyGridEl = document.getElementById("storyGrid");
-        const roleGridEl = document.getElementById("roleGrid");
-        const standardsEl = document.getElementById("standards");
-        const legendEl = document.getElementById("legend");
-        const autoplayBtn = document.getElementById("autoplayBtn");
-        const jumpBtn = document.getElementById("jumpBtn");
+        const heroText = document.getElementById("heroText");
+        const legend = document.getElementById("legend");
+        const filters = document.getElementById("filters");
+        const stageTrack = document.getElementById("stageTrack");
+        const arrows = document.getElementById("arrows");
+        const dots = document.getElementById("dots");
+        const strip = document.getElementById("strip");
+        const playBtn = document.getElementById("playBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        const prevBtn = document.getElementById("prevBtn");
+        const forwardBtn = document.getElementById("forwardBtn");
 
-        const focusEls = {
-            title: document.getElementById("focusTitle"),
-            role: document.getElementById("focusRole"),
-            summary: document.getElementById("focusSummary"),
-            output: document.getElementById("focusOutput"),
-            timing: document.getElementById("focusTiming"),
-            why: document.getElementById("focusImportance")
-        };
-
-        document.getElementById("pageTitle").textContent = presentation.title;
-        document.getElementById("pageIntro").textContent = presentation.intro;
-        document.getElementById("missionStatement").textContent = presentation.missionStatement;
+        heroText.textContent = data.hero;
 
         let activeFilter = "all";
-        let activeStepId = presentation.workflow[0].id;
-        let autoplayTimer = null;
+        let activeIndex = 0;
+        let autoplay = null;
 
-        function metricMarkup(metric) {
-            return `
-                <article class="metric">
-                    <strong>${metric.value}</strong>
-                    <span class="metric-label">${metric.label}</span>
-                    <p>${metric.detail}</p>
-                </article>
-            `;
+        function visibleStages() {
+            return data.stages.filter((stage) => activeFilter === "all" || stage.role === activeFilter);
         }
 
-        function filterMarkup(key, label, active) {
-            return `
-                <button class="filter-btn ${active ? "active" : ""}" data-filter="${key}" type="button">
-                    ${label}
-                </button>
-            `;
+        function roleMarkup(role) {
+            return `<span class="legend-chip" style="--dot:${role.color}">${role.label}</span>`;
         }
 
-        function storyCardMarkup(step) {
-            const role = presentation.roles[step.role];
+        function filterMarkup(key, label) {
+            const active = activeFilter === key ? "active" : "";
+            return `<button class="control ${active}" type="button" data-filter="${key}">${label}</button>`;
+        }
+
+        function stageMarkup(stage, position, absoluteIndex) {
+            const role = data.roles[stage.role];
             return `
-                <article class="story-card reveal ${activeStepId === step.id ? "active" : ""}" data-role="${step.role}" data-step-id="${step.id}" tabindex="0">
-                    <div class="step-top">
-                        <div class="step-pill ${role.tintClass}">${step.number} ${role.label}</div>
-                        <div class="step-time">${step.timing}</div>
+                <article class="stage-card ${position === 0 ? "active" : ""}" data-pos="${position}" data-index="${absoluteIndex}">
+                    <div class="stage-top">
+                        <span class="stage-number">${stage.number}</span>
+                        <span class="role-pill ${role.className}">${role.label}</span>
                     </div>
-                    <h3>${step.title}</h3>
-                    <p>${step.summary}</p>
-                    <div class="story-meta">
-                        ${step.tags.map((tag) => `<span>${tag}</span>`).join("")}
+                    <h3>${stage.title}</h3>
+                    <p>${stage.text}</p>
+                    <div class="stage-tags">
+                        ${stage.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
+                    </div>
+                    <div class="stage-footer">
+                        <span class="mini-label">Focus</span>
+                        <span class="mini-copy">${stage.note}</span>
                     </div>
                 </article>
             `;
         }
 
-        function roleCardMarkup(roleKey, role) {
-            return `
-                <article class="role-card reveal">
-                    <div class="role-chip ${role.className}">${role.label}</div>
-                    <h3>${role.summary}</h3>
-                    <ul>
-                        ${role.responsibilities.map((item) => `<li>${item}</li>`).join("")}
-                    </ul>
-                </article>
-            `;
-        }
-
-        function standardMarkup(item) {
-            return `
-                <article class="standard-card reveal">
-                    <strong>${item.value}</strong>
-                    <h3>${item.title}</h3>
-                    <p>${item.detail}</p>
-                </article>
-            `;
-        }
-
-        function renderMetrics() {
-            metricsEl.innerHTML = presentation.metrics.map(metricMarkup).join("");
+        function renderLegend() {
+            legend.innerHTML = Object.values(data.roles).map(roleMarkup).join("");
         }
 
         function renderFilters() {
-            const roleButtons = Object.entries(presentation.roles).map(([key, role]) =>
-                filterMarkup(key, role.label, activeFilter === key)
-            );
-            filtersEl.innerHTML = [
-                filterMarkup("all", "All Roles", activeFilter === "all"),
-                ...roleButtons
+            filters.innerHTML = [
+                filterMarkup("all", "All"),
+                ...Object.entries(data.roles).map(([key, role]) => filterMarkup(key, role.label))
             ].join("");
         }
 
-        function renderStoryCards() {
-            storyGridEl.innerHTML = presentation.workflow.map(storyCardMarkup).join("");
-
-            storyGridEl.querySelectorAll(".story-card").forEach((card) => {
-                const role = card.dataset.role;
-                if (activeFilter !== "all" && role !== activeFilter) {
-                    card.classList.add("hidden-by-filter");
-                }
-
-                card.addEventListener("click", () => setActiveStep(card.dataset.stepId));
-                card.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setActiveStep(card.dataset.stepId);
-                    }
-                });
-            });
-
-            revealOnScroll();
-        }
-
-        function renderRoles() {
-            roleGridEl.innerHTML = Object.entries(presentation.roles)
-                .map(([roleKey, role]) => roleCardMarkup(roleKey, role))
-                .join("");
-        }
-
-        function renderStandards() {
-            standardsEl.innerHTML = presentation.standards.map(standardMarkup).join("");
-        }
-
-        function getVisibleSteps() {
-            return presentation.workflow.filter((step) => activeFilter === "all" || step.role === activeFilter);
-        }
-
-        function setActiveStep(stepId) {
-            activeStepId = stepId;
-            updateFocus();
-            updateCardState();
-        }
-
-        function updateCardState() {
-            storyGridEl.querySelectorAll(".story-card").forEach((card) => {
-                card.classList.toggle("active", card.dataset.stepId === activeStepId);
-                if (!card.classList.contains("hidden-by-filter")) {
-                    requestAnimationFrame(() => card.classList.add("visible"));
-                }
-            });
-        }
-
-        function updateFocus() {
-            const step = presentation.workflow.find((item) => item.id === activeStepId) || presentation.workflow[0];
-            const role = presentation.roles[step.role];
-
-            focusEls.title.textContent = `${step.number} ${step.title}`;
-            focusEls.role.textContent = role.label;
-            focusEls.role.className = `focus-role ${role.className}`;
-            focusEls.summary.textContent = step.summary;
-            focusEls.output.textContent = step.output;
-            focusEls.timing.textContent = step.timing;
-            focusEls.why.textContent = step.why;
-
-            const visibleSteps = getVisibleSteps();
-            const currentIndex = Math.max(visibleSteps.findIndex((item) => item.id === step.id), 0);
-            const progress = visibleSteps.length > 1
-                ? Math.round((currentIndex / (visibleSteps.length - 1)) * 100)
-                : 100;
-
-            legendEl.innerHTML = `
-                <div class="legend-row">
-                    <div class="legend-key">Role</div>
-                    <div>${role.label}</div>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-key">Step</div>
-                    <div>${currentIndex + 1} of ${visibleSteps.length}</div>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-key">Progress</div>
-                    <div class="legend-bar"><div class="legend-fill" style="width:${progress}%"></div></div>
-                </div>
-            `;
-        }
-
-        function applyFilter(filter) {
-            activeFilter = filter;
-            renderFilters();
-            renderStoryCards();
-
-            const visibleSteps = getVisibleSteps();
-            if (!visibleSteps.some((step) => step.id === activeStepId)) {
-                activeStepId = visibleSteps[0]?.id || presentation.workflow[0].id;
-            }
-
-            updateFocus();
-            updateCardState();
-        }
-
-        function revealOnScroll() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("in-view");
-                    }
-                });
-            }, { threshold: 0.16 });
-
-            document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
-        }
-
-        function toggleAutoplay() {
-            if (autoplayTimer) {
-                clearInterval(autoplayTimer);
-                autoplayTimer = null;
-                autoplayBtn.textContent = "Start Auto Walkthrough";
+        function renderArrows(count) {
+            if (count <= 1) {
+                arrows.innerHTML = "";
                 return;
             }
 
-            const walk = () => {
-                const visibleSteps = getVisibleSteps();
-                const currentIndex = visibleSteps.findIndex((step) => step.id === activeStepId);
-                const nextStep = visibleSteps[(currentIndex + 1) % visibleSteps.length];
-                if (nextStep) {
-                    setActiveStep(nextStep.id);
-                    document.querySelector(`[data-step-id="${nextStep.id}"]`)?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "nearest"
-                    });
-                }
-            };
-
-            autoplayBtn.textContent = "Stop Auto Walkthrough";
-            autoplayTimer = setInterval(walk, 2600);
-            walk();
+            arrows.innerHTML = Array.from({ length: count - 1 }, (_, index) => {
+                const left = `${(index + 0.5) * (100 / count)}%`;
+                const active = index === activeIndex ? "active" : "";
+                return `<div class="arrow ${active}" style="left:${left}"></div>`;
+            }).join("");
         }
 
-        filtersEl.addEventListener("click", (event) => {
-            const target = event.target.closest("[data-filter]");
-            if (!target) return;
-            applyFilter(target.dataset.filter);
+        function renderDots(stages) {
+            dots.innerHTML = stages.map((_, index) => `<span class="dot ${index === activeIndex ? "active" : ""}"></span>`).join("");
+        }
+
+        function renderStages() {
+            const stages = visibleStages();
+            if (!stages.length) return;
+
+            if (activeIndex >= stages.length) {
+                activeIndex = 0;
+            }
+
+            stageTrack.innerHTML = stages
+                .map((stage, index) => {
+                    const delta = index - activeIndex;
+                    const pos = Math.max(-2, Math.min(2, delta));
+                    return stageMarkup(stage, pos, index);
+                })
+                .join("");
+
+            stageTrack.querySelectorAll(".stage-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    activeIndex = Number(card.dataset.index);
+                    renderStages();
+                });
+            });
+
+            renderArrows(stages.length);
+            renderDots(stages);
+        }
+
+        function renderStrip() {
+            strip.innerHTML = data.strip.map((item) => `
+                <article class="strip-card">
+                    <strong>${item.title}</strong>
+                    <span>${item.text}</span>
+                </article>
+            `).join("");
+        }
+
+        function nextStage() {
+            const stages = visibleStages();
+            activeIndex = (activeIndex + 1) % stages.length;
+            renderStages();
+        }
+
+        function prevStage() {
+            const stages = visibleStages();
+            activeIndex = (activeIndex - 1 + stages.length) % stages.length;
+            renderStages();
+        }
+
+        function toggleAutoplay() {
+            if (autoplay) {
+                clearInterval(autoplay);
+                autoplay = null;
+                playBtn.textContent = "Start Motion";
+                return;
+            }
+
+            playBtn.textContent = "Stop Motion";
+            autoplay = setInterval(nextStage, 2200);
+        }
+
+        filters.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-filter]");
+            if (!button) return;
+            activeFilter = button.dataset.filter;
+            activeIndex = 0;
+            renderFilters();
+            renderStages();
         });
 
-        autoplayBtn.addEventListener("click", toggleAutoplay);
-        jumpBtn.addEventListener("click", () => {
-            document.getElementById("workflowSection").scrollIntoView({ behavior: "smooth" });
-        });
+        playBtn.addEventListener("click", toggleAutoplay);
+        nextBtn.addEventListener("click", nextStage);
+        prevBtn.addEventListener("click", prevStage);
+        forwardBtn.addEventListener("click", nextStage);
 
-        renderMetrics();
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("in-view");
+                }
+            });
+        }, { threshold: 0.18 });
+
+        document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+
+        renderLegend();
         renderFilters();
-        renderStoryCards();
-        renderRoles();
-        renderStandards();
-        updateFocus();
-        updateCardState();
-        revealOnScroll();
+        renderStages();
+        renderStrip();
     </script>
 </body>
 </html>
