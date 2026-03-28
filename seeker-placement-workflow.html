@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Mission | Seeker Placement Workflow</title>
+    <meta
+        name="description"
+        content="Interactive animated presentation of the Go Mission seeker placement workflow."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Cormorant+Garamond:wght@500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet"
+    >
+    <style>
+        :root {
+            --bg: #f8efe1;
+            --bg-deep: #fffaf2;
+            --paper: rgba(255, 251, 245, 0.72);
+            --paper-solid: #fffaf3;
+            --ink: #31150d;
+            --ink-soft: #6b4b3d;
+            --line: rgba(99, 54, 32, 0.14);
+            --gold: #f0b35a;
+            --gold-soft: rgba(240, 179, 90, 0.24);
+            --burnt: #c7582f;
+            --wine: #6f1d1b;
+            --leaf: #3f765d;
+            --sky: #2f667a;
+            --shadow: 0 28px 80px rgba(82, 40, 22, 0.13);
+            --radius-xl: 34px;
+            --radius-lg: 24px;
+            --radius-md: 18px;
+            --max-width: 1380px;
+            --transition: 240ms ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Manrope", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 0% 0%, rgba(240, 179, 90, 0.32), transparent 28%),
+                radial-gradient(circle at 100% 20%, rgba(199, 88, 47, 0.18), transparent 24%),
+                linear-gradient(180deg, #fff8ef 0%, #f8efe1 44%, #f3e6d7 100%);
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body::before {
+            opacity: 0.16;
+            background-image:
+                linear-gradient(rgba(111, 29, 27, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(111, 29, 27, 0.035) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: radial-gradient(circle at center, black, transparent 76%);
+        }
+
+        body::after {
+            background:
+                radial-gradient(circle at 20% 14%, rgba(63, 118, 93, 0.1), transparent 24%),
+                radial-gradient(circle at 78% 84%, rgba(47, 102, 122, 0.1), transparent 26%);
+        }
+
+        h1, h2, h3, h4, p {
+            margin: 0;
+        }
+
+        button {
+            font: inherit;
+            border: 0;
+            cursor: pointer;
+            background: none;
+        }
+
+        .page {
+            width: min(calc(100% - 28px), var(--max-width));
+            margin: 0 auto;
+            padding: 22px 0 60px;
+        }
+
+        .glass {
+            border: 1px solid rgba(111, 29, 27, 0.12);
+            background: linear-gradient(180deg, rgba(255, 253, 248, 0.82), rgba(255, 249, 241, 0.72));
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            border-radius: 38px;
+            padding: 34px;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            width: 440px;
+            height: 440px;
+            right: -160px;
+            top: -180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(240, 179, 90, 0.42), transparent 68%);
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            left: -120px;
+            bottom: -160px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(63, 118, 93, 0.24), transparent 72%);
+        }
+
+        .hero-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+            gap: 26px;
+            align-items: center;
+        }
+
+        .eyebrow,
+        .section-label,
+        .step-pill,
+        .role-chip,
+        .metric-label,
+        .legend-key {
+            font-family: "Bebas Neue", sans-serif;
+            letter-spacing: 0.12em;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(111, 29, 27, 0.08);
+            color: var(--wine);
+            font-size: 0.98rem;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--burnt), var(--gold));
+            box-shadow: 0 0 0 6px rgba(199, 88, 47, 0.08);
+        }
+
+        .hero-copy h1 {
+            margin-top: 18px;
+            font-family: "Bebas Neue", sans-serif;
+            font-size: clamp(3.4rem, 8vw, 6.7rem);
+            line-height: 0.9;
+            letter-spacing: 0.03em;
+            max-width: 10ch;
+        }
+
+        .hero-copy p {
+            margin-top: 18px;
+            max-width: 64ch;
+            line-height: 1.75;
+            color: var(--ink-soft);
+            font-size: 1.04rem;
+        }
+
+        .hero-actions {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .primary-btn,
+        .secondary-btn {
+            padding: 14px 20px;
+            border-radius: 999px;
+            transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--wine), var(--burnt));
+            color: #fff7ef;
+            box-shadow: 0 18px 34px rgba(111, 29, 27, 0.22);
+        }
+
+        .secondary-btn {
+            background: rgba(255, 251, 245, 0.82);
+            border: 1px solid rgba(111, 29, 27, 0.12);
+            color: var(--wine);
+        }
+
+        .primary-btn:hover,
+        .secondary-btn:hover,
+        .filter-btn:hover,
+        .story-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .hero-panel {
+            position: relative;
+            padding: 26px;
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(255, 252, 247, 0.78), rgba(246, 235, 217, 0.92));
+            border: 1px solid rgba(111, 29, 27, 0.1);
+            overflow: hidden;
+        }
+
+        .hero-panel::before {
+            content: "";
+            position: absolute;
+            inset: 18px;
+            border-radius: 24px;
+            border: 1px dashed rgba(111, 29, 27, 0.12);
+            pointer-events: none;
+        }
+
+        .orbit {
+            position: relative;
+            width: 210px;
+            height: 210px;
+            margin: 0 auto;
+        }
+
+        .orbit-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1px solid rgba(111, 29, 27, 0.14);
+            animation: spin 18s linear infinite;
+        }
+
+        .orbit-ring.two {
+            inset: 22px;
+            border-style: dashed;
+            animation-direction: reverse;
+            animation-duration: 24s;
+        }
+
+        .orbit-ring.three {
+            inset: 46px;
+            border-color: rgba(63, 118, 93, 0.24);
+            animation-duration: 14s;
+        }
+
+        .logo-core {
+            position: absolute;
+            inset: 50%;
+            width: 104px;
+            height: 104px;
+            transform: translate(-50%, -50%);
+            display: grid;
+            place-items: center;
+            border-radius: 30px;
+            background: linear-gradient(135deg, rgba(111, 29, 27, 0.96), rgba(199, 88, 47, 0.92));
+            box-shadow: 0 24px 44px rgba(111, 29, 27, 0.24);
+        }
+
+        .logo-core img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .orbit-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 18px;
+            height: 18px;
+            margin: -9px;
+            border-radius: 50%;
+            transform-origin: 0 0;
+            animation: orbit 8s linear infinite;
+        }
+
+        .orbit-dot.one {
+            background: var(--gold);
+            transform: rotate(0deg) translateX(104px);
+        }
+
+        .orbit-dot.two {
+            background: var(--leaf);
+            animation-duration: 11s;
+            animation-direction: reverse;
+            transform: rotate(120deg) translateX(78px);
+        }
+
+        .orbit-dot.three {
+            background: var(--sky);
+            animation-duration: 9s;
+            transform: rotate(220deg) translateX(54px);
+        }
+
+        .hero-panel-copy {
+            margin-top: 24px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .hero-panel-copy h2 {
+            font-family: "Cormorant Garamond", serif;
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .hero-panel-copy p {
+            line-height: 1.65;
+            color: var(--ink-soft);
+        }
+
+        .metrics {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .metric {
+            padding: 18px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 252, 247, 0.82);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+        }
+
+        .metric strong {
+            display: block;
+            font-family: "Bebas Neue", sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.08em;
+            color: var(--wine);
+        }
+
+        .metric-label {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.95rem;
+            color: var(--burnt);
+        }
+
+        .metric p {
+            margin-top: 6px;
+            color: var(--ink-soft);
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        .section {
+            margin-top: 24px;
+            padding: 28px;
+            border-radius: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .section-label {
+            color: var(--burnt);
+            font-size: 0.95rem;
+        }
+
+        .section-header h2 {
+            margin-top: 8px;
+            font-family: "Bebas Neue", sans-serif;
+            font-size: clamp(2.2rem, 5vw, 4rem);
+            line-height: 0.92;
+            letter-spacing: 0.05em;
+        }
+
+        .section-header p {
+            max-width: 52ch;
+            line-height: 1.7;
+            color: var(--ink-soft);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 12px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(111, 29, 27, 0.1);
+            background: rgba(255, 251, 245, 0.78);
+            color: var(--ink);
+            transition: all var(--transition);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--wine), var(--burnt));
+            color: #fff7ef;
+            box-shadow: 0 16px 30px rgba(111, 29, 27, 0.18);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.38fr) minmax(300px, 0.82fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .story-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .story-card {
+            position: relative;
+            padding: 20px 20px 18px;
+            border-radius: 24px;
+            background: rgba(255, 252, 247, 0.86);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            box-shadow: 0 20px 36px rgba(88, 44, 22, 0.08);
+            transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition), opacity var(--transition), filter var(--transition);
+            cursor: pointer;
+            opacity: 0.54;
+            filter: saturate(0.84);
+        }
+
+        .story-card.visible {
+            opacity: 1;
+            filter: none;
+        }
+
+        .story-card.active {
+            border-color: rgba(240, 179, 90, 0.48);
+            box-shadow: 0 28px 50px rgba(111, 29, 27, 0.14);
+            transform: translateY(-3px);
+        }
+
+        .story-card.hidden-by-filter {
+            display: none;
+        }
+
+        .story-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(240, 179, 90, 0.07), transparent 42%, rgba(63, 118, 93, 0.05));
+            pointer-events: none;
+        }
+
+        .step-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .step-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--wine);
+            font-size: 0.95rem;
+        }
+
+        .step-pill::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.8;
+        }
+
+        .step-time {
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: rgba(111, 29, 27, 0.06);
+            color: var(--ink-soft);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .story-card h3 {
+            margin-top: 16px;
+            font-size: 1.08rem;
+            line-height: 1.4;
+        }
+
+        .story-card p {
+            margin-top: 10px;
+            color: var(--ink-soft);
+            line-height: 1.65;
+            font-size: 0.95rem;
+        }
+
+        .story-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .story-meta span {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(255, 247, 234, 0.86);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            color: var(--ink-soft);
+            font-size: 0.82rem;
+        }
+
+        .focus-panel {
+            position: sticky;
+            top: 20px;
+            padding: 22px;
+            border-radius: 26px;
+            background: linear-gradient(180deg, rgba(255, 252, 247, 0.9), rgba(247, 237, 219, 0.88));
+            border: 1px solid rgba(111, 29, 27, 0.1);
+            box-shadow: 0 22px 46px rgba(88, 44, 22, 0.1);
+        }
+
+        .focus-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .focus-header h3 {
+            font-family: "Cormorant Garamond", serif;
+            font-size: 2.1rem;
+            line-height: 0.98;
+        }
+
+        .focus-role {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            color: #fff8ef;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .focus-body {
+            margin-top: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .focus-body p {
+            line-height: 1.7;
+            color: var(--ink-soft);
+        }
+
+        .focus-block {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255, 251, 245, 0.78);
+            border: 1px solid rgba(111, 29, 27, 0.08);
+        }
+
+        .focus-block strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.92rem;
+            color: var(--wine);
+        }
+
+        .legend {
+            margin-top: 18px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-key {
+            min-width: 74px;
+            color: var(--wine);
+            font-size: 0.84rem;
+        }
+
+        .legend-bar {
+            flex: 1;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(111, 29, 27, 0.08);
+            overflow: hidden;
+        }
+
+        .legend-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--burnt), var(--gold));
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .role-card {
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            background: rgba(255, 252, 247, 0.82);
+            box-shadow: 0 18px 36px rgba(88, 44, 22, 0.07);
+        }
+
+        .role-chip {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            color: #fff8ef;
+            font-size: 0.88rem;
+        }
+
+        .role-card h3 {
+            margin-top: 14px;
+            font-size: 1.08rem;
+        }
+
+        .role-card p {
+            margin-top: 10px;
+            line-height: 1.65;
+            color: var(--ink-soft);
+            font-size: 0.94rem;
+        }
+
+        .role-card ul {
+            margin: 14px 0 0;
+            padding-left: 18px;
+            color: var(--ink-soft);
+            line-height: 1.65;
+            font-size: 0.92rem;
+        }
+
+        .standards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .standard-card {
+            position: relative;
+            overflow: hidden;
+            padding: 22px;
+            border-radius: 24px;
+            border: 1px solid rgba(111, 29, 27, 0.08);
+            background: rgba(255, 252, 247, 0.84);
+        }
+
+        .standard-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -40px -42px auto;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(240, 179, 90, 0.2), transparent 72%);
+        }
+
+        .standard-card strong {
+            display: block;
+            font-family: "Bebas Neue", sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.08em;
+            color: var(--wine);
+        }
+
+        .standard-card h3 {
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+
+        .standard-card p {
+            margin-top: 10px;
+            color: var(--ink-soft);
+            line-height: 1.65;
+            font-size: 0.94rem;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: var(--ink-soft);
+            font-size: 0.94rem;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 700ms ease, transform 700ms ease;
+        }
+
+        .reveal.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tint-seeker { color: #c7582f; }
+        .tint-admin { color: #6f1d1b; }
+        .tint-management { color: #2f667a; }
+        .tint-group { color: #3f765d; }
+
+        .bg-seeker { background: linear-gradient(135deg, #c7582f, #e19046); }
+        .bg-admin { background: linear-gradient(135deg, #6f1d1b, #97372a); }
+        .bg-management { background: linear-gradient(135deg, #2f667a, #5e97aa); }
+        .bg-group { background: linear-gradient(135deg, #3f765d, #5c9a78); }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes orbit {
+            to { transform: rotate(360deg) translateX(104px); }
+        }
+
+        @media (max-width: 1140px) {
+            .hero-grid,
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .story-grid,
+            .role-grid,
+            .standards {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .focus-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .page {
+                width: min(calc(100% - 16px), var(--max-width));
+                padding-top: 10px;
+                padding-bottom: 36px;
+            }
+
+            .hero,
+            .section {
+                padding: 20px 16px;
+                border-radius: 26px;
+            }
+
+            .metrics,
+            .story-grid,
+            .role-grid,
+            .standards {
+                grid-template-columns: 1fr;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: start;
+            }
+
+            .hero-actions,
+            .toolbar {
+                width: 100%;
+            }
+
+            .primary-btn,
+            .secondary-btn,
+            .filter-btn {
+                width: 100%;
+                justify-content: center;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="hero glass reveal">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <div class="eyebrow">Interactive ministry workflow presentation</div>
+                    <h1 id="pageTitle">Seeker Placement Workflow</h1>
+                    <p id="pageIntro"></p>
+                    <div class="hero-actions">
+                        <button id="autoplayBtn" class="primary-btn" type="button">Start Auto Walkthrough</button>
+                        <button id="jumpBtn" class="secondary-btn" type="button">Jump To Workflow</button>
+                    </div>
+                    <div class="metrics" id="metrics"></div>
+                </div>
+
+                <aside class="hero-panel">
+                    <div class="orbit" aria-hidden="true">
+                        <div class="orbit-ring"></div>
+                        <div class="orbit-ring two"></div>
+                        <div class="orbit-ring three"></div>
+                        <div class="logo-core">
+                            <img src="Go Mission Logo.png" alt="Go Mission logo">
+                        </div>
+                        <div class="orbit-dot one"></div>
+                        <div class="orbit-dot two"></div>
+                        <div class="orbit-dot three"></div>
+                    </div>
+                    <div class="hero-panel-copy">
+                        <h2>Fast response. Clear placement. Weekly discipleship.</h2>
+                        <p id="missionStatement"></p>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="section glass reveal" id="workflowSection">
+            <div class="section-header">
+                <div>
+                    <div class="section-label">Journey view</div>
+                    <h2>From click to community</h2>
+                </div>
+                <p>
+                    Click any card to spotlight it. Use the role filters to isolate one team.
+                    The autoplay button turns the page into a guided presentation.
+                </p>
+            </div>
+
+            <div class="toolbar" id="filters"></div>
+
+            <div class="layout" style="margin-top: 18px;">
+                <div class="story-grid" id="storyGrid"></div>
+
+                <aside class="focus-panel" id="focusPanel">
+                    <div class="focus-header">
+                        <div>
+                            <div class="section-label">Current focus</div>
+                            <h3 id="focusTitle"></h3>
+                        </div>
+                        <div class="focus-role" id="focusRole"></div>
+                    </div>
+                    <div class="focus-body">
+                        <p id="focusSummary"></p>
+                        <div class="focus-block">
+                            <strong>Key output</strong>
+                            <span id="focusOutput"></span>
+                        </div>
+                        <div class="focus-block">
+                            <strong>Timing expectation</strong>
+                            <span id="focusTiming"></span>
+                        </div>
+                        <div class="focus-block">
+                            <strong>Why it matters</strong>
+                            <span id="focusImportance"></span>
+                        </div>
+                    </div>
+                    <div class="legend" id="legend"></div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="section glass reveal">
+            <div class="section-header">
+                <div>
+                    <div class="section-label">Role collaboration</div>
+                    <h2>Who owns each move</h2>
+                </div>
+                <p>
+                    These role cards make the workflow easier to review with leaders,
+                    admins, and management during planning or alignment meetings.
+                </p>
+            </div>
+            <div class="role-grid" id="roleGrid"></div>
+        </section>
+
+        <section class="section glass reveal">
+            <div class="section-header">
+                <div>
+                    <div class="section-label">Operational standards</div>
+                    <h2>Non-negotiables</h2>
+                </div>
+                <p>
+                    These are the ministry standards that keep the workflow pastoral,
+                    responsive, and consistent.
+                </p>
+            </div>
+            <div class="standards" id="standards"></div>
+        </section>
+
+        <div class="footer">
+            Edit the workflow data directly inside this HTML file to collaborate on wording, roles, timing, and outputs.
+        </div>
+    </main>
+
+    <script>
+        const presentation = {
+            title: "Seeker Placement Workflow",
+            intro:
+                "This shareable page shows how a seeker moves from a YouTube invitation into Messenger, into the right discipleship group, into a gospel conversation within 24 hours, and then into regular weekly mission group life through the Go Mission app.",
+            missionStatement:
+                "The goal is not only to collect information. The goal is to guide a real person from interest to gospel response to steady weekly discipleship without losing momentum between handoffs.",
+            metrics: [
+                {
+                    value: "24 Hours",
+                    label: "Gospel target",
+                    detail: "The gospel should be shared within one day after the seeker is placed in the matched group chat."
+                },
+                {
+                    value: "4 Roles",
+                    label: "Team alignment",
+                    detail: "Seeker, Admin, Management, and Group Leader or Members each have a clear responsibility."
+                },
+                {
+                    value: "9 Fields",
+                    label: "Intake details",
+                    detail: "Name, email, mobile, church, age, gender, marital status, preferred day, and preferred time."
+                }
+            ],
+            roles: {
+                seeker: {
+                    label: "Seeker",
+                    className: "bg-seeker",
+                    tintClass: "tint-seeker",
+                    summary: "Responds to the invitation, provides details, receives the gospel, and enters weekly discipleship.",
+                    responsibilities: [
+                        "Watch the vlog and click the description link.",
+                        "Respond in Messenger and provide intake details.",
+                        "Install the app and join the weekly meeting rhythm."
+                    ]
+                },
+                admin: {
+                    label: "Admin",
+                    className: "bg-admin",
+                    tintClass: "tint-admin",
+                    summary: "Carries the first human response and makes sure the seeker is placed in the right group quickly.",
+                    responsibilities: [
+                        "Welcome the seeker in Messenger.",
+                        "Collect and organize seeker details.",
+                        "Send the details for recording and place the seeker in the correct GC."
+                    ]
+                },
+                management: {
+                    label: "Management",
+                    className: "bg-management",
+                    tintClass: "tint-management",
+                    summary: "Owns the record of the seeker so the ministry can track continuity and follow-through.",
+                    responsibilities: [
+                        "Receive the intake handoff from admin.",
+                        "Record seeker information accurately.",
+                        "Support continuity and accountability across the funnel."
+                    ]
+                },
+                group: {
+                    label: "Group Leader / Members",
+                    className: "bg-group",
+                    tintClass: "tint-group",
+                    summary: "Receives the seeker, shares the gospel within the target time, and helps start discipleship life.",
+                    responsibilities: [
+                        "Receive the seeker in the matched GC.",
+                        "Share the gospel within 24 hours.",
+                        "Guide the seeker toward app use and weekly participation."
+                    ]
+                }
+            },
+            workflow: [
+                {
+                    id: "step-1",
+                    number: "01",
+                    role: "seeker",
+                    title: "Watch the YouTube vlog",
+                    summary: "The seeker first encounters the invitation through your YouTube content.",
+                    output: "Interest is created and the call to action is seen.",
+                    timing: "Start of journey",
+                    why: "This is the top of the funnel. The invitation has to feel simple and immediate.",
+                    tags: ["YouTube", "Invitation", "Top of funnel"]
+                },
+                {
+                    id: "step-2",
+                    number: "02",
+                    role: "seeker",
+                    title: "Click the link in the description",
+                    summary: "The seeker follows the call to action and enters the response channel.",
+                    output: "The seeker lands in Facebook Messenger.",
+                    timing: "Immediate",
+                    why: "A direct path removes friction and keeps momentum high.",
+                    tags: ["Link", "Response", "Messenger"]
+                },
+                {
+                    id: "step-3",
+                    number: "03",
+                    role: "admin",
+                    title: "Admin starts the Messenger conversation",
+                    summary: "Admin welcomes the seeker and begins the pastoral intake conversation.",
+                    output: "A human connection is established quickly.",
+                    timing: "As soon as the message arrives",
+                    why: "Fast human response increases trust and lowers drop-off.",
+                    tags: ["Welcome", "First contact", "Human response"]
+                },
+                {
+                    id: "step-4",
+                    number: "04",
+                    role: "admin",
+                    title: "Admin collects seeker details",
+                    summary: "Admin asks for name, email, mobile, church, age, gender, marital status, preferred day, and preferred time.",
+                    output: "The intake record is complete enough for routing.",
+                    timing: "During initial conversation",
+                    why: "Complete intake prevents confusion when routing to the right group.",
+                    tags: ["Intake", "Scheduling", "Profile"]
+                },
+                {
+                    id: "step-5",
+                    number: "05",
+                    role: "management",
+                    title: "Details are sent to mission group management",
+                    summary: "Admin forwards the seeker information for official ministry recording.",
+                    output: "Management receives the full seeker profile.",
+                    timing: "Right after intake is complete",
+                    why: "Recording protects continuity and reduces the risk of losing the contact.",
+                    tags: ["Handoff", "Recording", "Accountability"]
+                },
+                {
+                    id: "step-6",
+                    number: "06",
+                    role: "management",
+                    title: "Mission group management records the seeker",
+                    summary: "Management logs the seeker so the journey is visible and trackable.",
+                    output: "The ministry has a system of record for this seeker.",
+                    timing: "Immediately after handoff",
+                    why: "Recording makes follow-up measurable and dependable.",
+                    tags: ["Database", "Tracking", "Continuity"]
+                },
+                {
+                    id: "step-7",
+                    number: "07",
+                    role: "admin",
+                    title: "Admin places the seeker in the correct Messenger GC",
+                    summary: "The seeker is added to the group chat that matches the preferred day and time.",
+                    output: "The seeker lands in the right discipleship context.",
+                    timing: "As soon as management recording is done",
+                    why: "Correct placement raises the chance of immediate and ongoing engagement.",
+                    tags: ["Placement", "Group chat", "Schedule match"]
+                },
+                {
+                    id: "step-8",
+                    number: "08",
+                    role: "group",
+                    title: "Leader or available member shares the gospel",
+                    summary: "Once the seeker is in the matched GC, the leader or any available member initiates the gospel conversation.",
+                    output: "The seeker hears the gospel clearly and personally.",
+                    timing: "Within 24 hours",
+                    why: "This is the most important spiritual handoff in the workflow.",
+                    tags: ["Gospel", "Care", "Conversation"]
+                },
+                {
+                    id: "step-9",
+                    number: "09",
+                    role: "group",
+                    title: "Admin or team guides app installation",
+                    summary: "After sharing the gospel, the seeker is helped to install the Go Mission app.",
+                    output: "The seeker now has access to the digital discipleship environment.",
+                    timing: "After the gospel conversation",
+                    why: "App onboarding turns a one-time contact into a repeatable discipleship pathway.",
+                    tags: ["App", "Onboarding", "Next step"]
+                },
+                {
+                    id: "step-10",
+                    number: "10",
+                    role: "seeker",
+                    title: "Seeker joins the weekly mission group meeting",
+                    summary: "The seeker enters the recurring discipleship rhythm and begins group life.",
+                    output: "The journey continues beyond first response into community.",
+                    timing: "Weekly ongoing rhythm",
+                    why: "The workflow succeeds when the seeker becomes part of a stable discipleship gathering.",
+                    tags: ["Weekly", "Belonging", "Discipleship"]
+                }
+            ],
+            standards: [
+                {
+                    value: "Respond fast",
+                    title: "Do not leave the seeker waiting",
+                    detail: "The earlier the human response, the better the conversion from inquiry to conversation."
+                },
+                {
+                    value: "Place accurately",
+                    title: "Match the group to preferred schedule",
+                    detail: "Wrong placement creates friction and delays the gospel conversation."
+                },
+                {
+                    value: "Disciple weekly",
+                    title: "Move beyond one-time contact",
+                    detail: "The process should lead to a sustainable weekly discipleship habit, not only a single chat."
+                }
+            ]
+        };
+
+        const metricsEl = document.getElementById("metrics");
+        const filtersEl = document.getElementById("filters");
+        const storyGridEl = document.getElementById("storyGrid");
+        const roleGridEl = document.getElementById("roleGrid");
+        const standardsEl = document.getElementById("standards");
+        const legendEl = document.getElementById("legend");
+        const autoplayBtn = document.getElementById("autoplayBtn");
+        const jumpBtn = document.getElementById("jumpBtn");
+
+        const focusEls = {
+            title: document.getElementById("focusTitle"),
+            role: document.getElementById("focusRole"),
+            summary: document.getElementById("focusSummary"),
+            output: document.getElementById("focusOutput"),
+            timing: document.getElementById("focusTiming"),
+            why: document.getElementById("focusImportance")
+        };
+
+        document.getElementById("pageTitle").textContent = presentation.title;
+        document.getElementById("pageIntro").textContent = presentation.intro;
+        document.getElementById("missionStatement").textContent = presentation.missionStatement;
+
+        let activeFilter = "all";
+        let activeStepId = presentation.workflow[0].id;
+        let autoplayTimer = null;
+
+        function metricMarkup(metric) {
+            return `
+                <article class="metric">
+                    <strong>${metric.value}</strong>
+                    <span class="metric-label">${metric.label}</span>
+                    <p>${metric.detail}</p>
+                </article>
+            `;
+        }
+
+        function filterMarkup(key, label, active) {
+            return `
+                <button class="filter-btn ${active ? "active" : ""}" data-filter="${key}" type="button">
+                    ${label}
+                </button>
+            `;
+        }
+
+        function storyCardMarkup(step) {
+            const role = presentation.roles[step.role];
+            return `
+                <article class="story-card reveal ${activeStepId === step.id ? "active" : ""}" data-role="${step.role}" data-step-id="${step.id}" tabindex="0">
+                    <div class="step-top">
+                        <div class="step-pill ${role.tintClass}">${step.number} ${role.label}</div>
+                        <div class="step-time">${step.timing}</div>
+                    </div>
+                    <h3>${step.title}</h3>
+                    <p>${step.summary}</p>
+                    <div class="story-meta">
+                        ${step.tags.map((tag) => `<span>${tag}</span>`).join("")}
+                    </div>
+                </article>
+            `;
+        }
+
+        function roleCardMarkup(roleKey, role) {
+            return `
+                <article class="role-card reveal">
+                    <div class="role-chip ${role.className}">${role.label}</div>
+                    <h3>${role.summary}</h3>
+                    <ul>
+                        ${role.responsibilities.map((item) => `<li>${item}</li>`).join("")}
+                    </ul>
+                </article>
+            `;
+        }
+
+        function standardMarkup(item) {
+            return `
+                <article class="standard-card reveal">
+                    <strong>${item.value}</strong>
+                    <h3>${item.title}</h3>
+                    <p>${item.detail}</p>
+                </article>
+            `;
+        }
+
+        function renderMetrics() {
+            metricsEl.innerHTML = presentation.metrics.map(metricMarkup).join("");
+        }
+
+        function renderFilters() {
+            const roleButtons = Object.entries(presentation.roles).map(([key, role]) =>
+                filterMarkup(key, role.label, activeFilter === key)
+            );
+            filtersEl.innerHTML = [
+                filterMarkup("all", "All Roles", activeFilter === "all"),
+                ...roleButtons
+            ].join("");
+        }
+
+        function renderStoryCards() {
+            storyGridEl.innerHTML = presentation.workflow.map(storyCardMarkup).join("");
+
+            storyGridEl.querySelectorAll(".story-card").forEach((card) => {
+                const role = card.dataset.role;
+                if (activeFilter !== "all" && role !== activeFilter) {
+                    card.classList.add("hidden-by-filter");
+                }
+
+                card.addEventListener("click", () => setActiveStep(card.dataset.stepId));
+                card.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setActiveStep(card.dataset.stepId);
+                    }
+                });
+            });
+
+            revealOnScroll();
+        }
+
+        function renderRoles() {
+            roleGridEl.innerHTML = Object.entries(presentation.roles)
+                .map(([roleKey, role]) => roleCardMarkup(roleKey, role))
+                .join("");
+        }
+
+        function renderStandards() {
+            standardsEl.innerHTML = presentation.standards.map(standardMarkup).join("");
+        }
+
+        function getVisibleSteps() {
+            return presentation.workflow.filter((step) => activeFilter === "all" || step.role === activeFilter);
+        }
+
+        function setActiveStep(stepId) {
+            activeStepId = stepId;
+            updateFocus();
+            updateCardState();
+        }
+
+        function updateCardState() {
+            storyGridEl.querySelectorAll(".story-card").forEach((card) => {
+                card.classList.toggle("active", card.dataset.stepId === activeStepId);
+                if (!card.classList.contains("hidden-by-filter")) {
+                    requestAnimationFrame(() => card.classList.add("visible"));
+                }
+            });
+        }
+
+        function updateFocus() {
+            const step = presentation.workflow.find((item) => item.id === activeStepId) || presentation.workflow[0];
+            const role = presentation.roles[step.role];
+
+            focusEls.title.textContent = `${step.number} ${step.title}`;
+            focusEls.role.textContent = role.label;
+            focusEls.role.className = `focus-role ${role.className}`;
+            focusEls.summary.textContent = step.summary;
+            focusEls.output.textContent = step.output;
+            focusEls.timing.textContent = step.timing;
+            focusEls.why.textContent = step.why;
+
+            const visibleSteps = getVisibleSteps();
+            const currentIndex = Math.max(visibleSteps.findIndex((item) => item.id === step.id), 0);
+            const progress = visibleSteps.length > 1
+                ? Math.round((currentIndex / (visibleSteps.length - 1)) * 100)
+                : 100;
+
+            legendEl.innerHTML = `
+                <div class="legend-row">
+                    <div class="legend-key">Role</div>
+                    <div>${role.label}</div>
+                </div>
+                <div class="legend-row">
+                    <div class="legend-key">Step</div>
+                    <div>${currentIndex + 1} of ${visibleSteps.length}</div>
+                </div>
+                <div class="legend-row">
+                    <div class="legend-key">Progress</div>
+                    <div class="legend-bar"><div class="legend-fill" style="width:${progress}%"></div></div>
+                </div>
+            `;
+        }
+
+        function applyFilter(filter) {
+            activeFilter = filter;
+            renderFilters();
+            renderStoryCards();
+
+            const visibleSteps = getVisibleSteps();
+            if (!visibleSteps.some((step) => step.id === activeStepId)) {
+                activeStepId = visibleSteps[0]?.id || presentation.workflow[0].id;
+            }
+
+            updateFocus();
+            updateCardState();
+        }
+
+        function revealOnScroll() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("in-view");
+                    }
+                });
+            }, { threshold: 0.16 });
+
+            document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+        }
+
+        function toggleAutoplay() {
+            if (autoplayTimer) {
+                clearInterval(autoplayTimer);
+                autoplayTimer = null;
+                autoplayBtn.textContent = "Start Auto Walkthrough";
+                return;
+            }
+
+            const walk = () => {
+                const visibleSteps = getVisibleSteps();
+                const currentIndex = visibleSteps.findIndex((step) => step.id === activeStepId);
+                const nextStep = visibleSteps[(currentIndex + 1) % visibleSteps.length];
+                if (nextStep) {
+                    setActiveStep(nextStep.id);
+                    document.querySelector(`[data-step-id="${nextStep.id}"]`)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest"
+                    });
+                }
+            };
+
+            autoplayBtn.textContent = "Stop Auto Walkthrough";
+            autoplayTimer = setInterval(walk, 2600);
+            walk();
+        }
+
+        filtersEl.addEventListener("click", (event) => {
+            const target = event.target.closest("[data-filter]");
+            if (!target) return;
+            applyFilter(target.dataset.filter);
+        });
+
+        autoplayBtn.addEventListener("click", toggleAutoplay);
+        jumpBtn.addEventListener("click", () => {
+            document.getElementById("workflowSection").scrollIntoView({ behavior: "smooth" });
+        });
+
+        renderMetrics();
+        renderFilters();
+        renderStoryCards();
+        renderRoles();
+        renderStandards();
+        updateFocus();
+        updateCardState();
+        revealOnScroll();
+    </script>
+</body>
+</html>
