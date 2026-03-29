@@ -559,17 +559,17 @@ const GroupMeeting = {
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="window.GroupMeeting.toggleSlidesPanel()"
-                    id="meeting-slides-toggle-btn"
-                    class="px-3 py-1.5 rounded-full font-bold transition-all"
-                    style="font-size:13px; background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
-              🗂 Slides
-            </button>
             <button onclick="window.GroupMeeting.toggleSlidesSettings()"
                     id="meeting-slides-settings-btn"
                     class="rounded-full font-bold transition-all flex items-center justify-center"
                     style="width:34px; height:34px; font-size:16px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color: #f4d7a2; box-shadow: 0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08); border: 1px solid rgba(242, 184, 94, 0.22);">
               ⚙
+            </button>
+            <button onclick="window.GroupMeeting.toggleSlidesPanel()"
+                    id="meeting-slides-toggle-btn"
+                    class="px-3 py-1.5 rounded-full font-bold transition-all"
+                    style="font-size:13px; background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
+              🗂 Slides
             </button>
             <button onclick="window.GroupMeeting.leaveMeeting()" 
                     class="px-3 py-1.5 rounded-full font-bold transition-colors"
@@ -1582,14 +1582,18 @@ const GroupMeeting = {
         : '0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08)';
     }
     if (titleEl) {
-      titleEl.style.color = '#f7f3ea';
-      titleEl.style.fontWeight = '700';
-      titleEl.style.letterSpacing = '0.01em';
+      titleEl.style.color = '#f8e3b4';
+      titleEl.style.fontWeight = '800';
+      titleEl.style.fontSize = isNarrowMobile ? '22px' : '16px';
+      titleEl.style.letterSpacing = '-0.01em';
+      titleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
     }
     if (settingsTitleEl) {
-      settingsTitleEl.style.color = '#f7f3ea';
-      settingsTitleEl.style.fontWeight = '700';
-      settingsTitleEl.style.letterSpacing = '0.01em';
+      settingsTitleEl.style.color = '#f8e3b4';
+      settingsTitleEl.style.fontWeight = '800';
+      settingsTitleEl.style.fontSize = isNarrowMobile ? '22px' : '16px';
+      settingsTitleEl.style.letterSpacing = '-0.01em';
+      settingsTitleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
     }
     if (counterEl) {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
@@ -1792,10 +1796,12 @@ const GroupMeeting = {
     if (prevBtn) {
       prevBtn.style.background = slideIndex <= 0
         ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
-        : 'linear-gradient(180deg, rgba(101,75,57,0.94), rgba(70,50,38,0.92))';
-      prevBtn.style.color = slideIndex <= 0 ? 'rgba(247,230,201,0.45)' : '#f8e7cc';
-      prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.18)';
-      prevBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+        : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
+      prevBtn.style.color = slideIndex <= 0 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
+      prevBtn.style.boxShadow = slideIndex <= 0
+        ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
+        : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
     if (nextBtn) {
       nextBtn.style.background = slideIndex >= slides.length - 1
