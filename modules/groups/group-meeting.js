@@ -926,6 +926,83 @@ const GroupMeeting = {
       .replace(/'/g, '&#39;');
   },
 
+  isMeetingSlideSectionHeading(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    if (/^LIFE APPLICATION AND MISSIONAL GUIDE/i.test(normalized)) return false;
+    return /^[IVXLCDM]+\.\s+[A-Z0-9][A-Z0-9 /&,'’().:-]+$/i.test(normalized);
+  },
+
+  isMeetingSlideKeyPointMarker(text) {
+    return /^[IVXLCDM]+\.\s+KEY POINT\s+\d+\s*$/i.test(String(text || '').trim());
+  },
+
+  isMeetingSlideScriptureReference(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    return /^(?:[1-3]\s+)?[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'-]*(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'-]*){0,4}\s+\d{1,3}:\d{1,3}(?:\s*[-–]\s*\d{1,3})?$/i.test(normalized);
+  },
+
+  isMeetingSlideVerseText(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    return /^[“"'‘]/.test(normalized) || /^\(?\d{1,3}\)?\s+\S+/.test(normalized);
+  },
+
+  normalizeMeetingSlideLabel(text) {
+    const raw = String(text || '').trim().replace(/\s+/g, ' ');
+    const normalized = raw.replace(/:\s*$/, '');
+    if (!normalized) return null;
+
+    if (/^Title$/i.test(normalized)) return { label: 'Title', kind: 'meta' };
+    if (/^Bible Study Series$/i.test(normalized)) return { label: 'Bible Study Series', kind: 'meta' };
+    if (/^Important Note$/i.test(normalized)) return { label: 'Important Note', kind: 'note' };
+    if (/^Thankfulness Sharing$/i.test(normalized)) return { label: 'Thankfulness Sharing', kind: 'prompt' };
+    if (/^Memorable Conversation with the Lord$/i.test(normalized)) return { label: 'Memorable Conversation with the Lord', kind: 'prompt' };
+    if (/^Missional Follow-up$/i.test(normalized)) return { label: 'Missional Follow-up', kind: 'prompt' };
+    if (/^Group Prayer$/i.test(normalized)) return { label: 'Group Prayer', kind: 'prompt' };
+    if (/^Paliwanag$/i.test(normalized)) return { label: 'Paliwanag', kind: 'explanation' };
+    if (/^Supporting Verse$/i.test(normalized)) return { label: 'Supporting Verse', kind: 'scripture' };
+    if (/^Summary of the point$/i.test(normalized)) return { label: 'Summary of the point', kind: 'summary' };
+    if (/^(Sagot|Suggested Answer|Possible Answer|Posibleng Sagot)$/i.test(normalized)) return { label: 'Sagot', kind: 'answer' };
+    if (/^Guide for Facilitator$/i.test(normalized)) return { label: 'Guide for Facilitator', kind: 'facilitator' };
+    if (/^Facilitator Note$/i.test(normalized)) return { label: 'Facilitator Note', kind: 'facilitator-note' };
+    if (/^Individual Missional Response$/i.test(normalized)) return { label: 'Individual Missional Response', kind: 'response' };
+    if (/^Group Missional Response$/i.test(normalized)) return { label: 'Group Missional Response', kind: 'response' };
+    if (/^Recording and Follow-up$/i.test(normalized)) return { label: 'Recording and Follow-up', kind: 'response' };
+
+    const questionMatch = normalized.match(/^(Tanong\s*\d+)(?::\s*(.+))?$/i);
+    if (questionMatch) {
+      return {
+        label: questionMatch[2] ? `${questionMatch[1]}: ${questionMatch[2]}` : questionMatch[1],
+        kind: 'question'
+      };
+    }
+
+    return null;
+  },
+
+  parseMeetingSlideLabelLine(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return null;
+
+    const direct = this.normalizeMeetingSlideLabel(raw);
+    if (direct) {
+      return { info: direct, inlineBody: '' };
+    }
+
+    const pairMatch = raw.match(/^([^:]{2,80}):\s*(.+)$/);
+    if (!pairMatch) return null;
+
+    const info = this.normalizeMeetingSlideLabel(pairMatch[1]);
+    if (!info) return null;
+
+    return {
+      info,
+      inlineBody: String(pairMatch[2] || '').trim()
+    };
+  },
+
   renderMeetingSlideParagraphBlocks(paragraphs = [], options = {}) {
     const paragraphColor = options.paragraphColor || '#1f1f1f';
     const bulletColor = options.bulletColor || '#181818';
@@ -969,97 +1046,316 @@ const GroupMeeting = {
     return blocks.join('');
   },
 
-  buildMeetingSlideDisclosureSections(slide) {
+  buildMeetingSlideContentBlocks(slide) {
     const paragraphs = Array.isArray(slide?.paragraphs) ? slide.paragraphs.filter((p) => String(p || '').trim()) : [];
-    const title = String(slide?.title || '').trim();
-    const kicker = String(slide?.kicker || '').trim();
-    const titleLooksFacilitator = /facilitator(?:'s|’s)?\s+guide/i.test(title) || /facilitator(?:'s|’s)?\s+guide/i.test(kicker);
-    const primary = [];
-    const disclosures = [];
-    let activeDisclosure = null;
+    const blocks = [];
+    let currentSection = null;
+    let currentLabelBlock = null;
+    let currentBodyParagraphs = [];
 
-    const pushDisclosure = () => {
-      if (!activeDisclosure?.paragraphs?.length) return;
-      disclosures.push(activeDisclosure);
-      activeDisclosure = null;
+    const pushNode = (node) => {
+      if (!node) return;
+      if (currentSection) {
+        currentSection.items.push(node);
+      } else {
+        blocks.push(node);
+      }
     };
 
-    const startDisclosure = (label, initialParagraphs = [], tone = 'facilitator') => {
-      pushDisclosure();
-      activeDisclosure = {
-        label,
-        tone,
-        paragraphs: initialParagraphs.filter(Boolean)
+    const flushBody = () => {
+      if (!currentBodyParagraphs.length) return;
+      pushNode({
+        type: 'body',
+        paragraphs: [...currentBodyParagraphs]
+      });
+      currentBodyParagraphs = [];
+    };
+
+    const flushLabelBlock = () => {
+      if (!currentLabelBlock) return;
+      pushNode(currentLabelBlock);
+      currentLabelBlock = null;
+    };
+
+    const pushSectionIfNeeded = () => {
+      if (!currentSection) return;
+      blocks.push(currentSection);
+      currentSection = null;
+    };
+
+    const startSection = (heading) => {
+      flushLabelBlock();
+      flushBody();
+      pushSectionIfNeeded();
+      currentSection = {
+        type: 'section',
+        heading,
+        items: []
       };
     };
 
-    const classifyDisclosureLine = (paragraph) => {
-      const raw = String(paragraph || '').trim();
-      const lower = raw.toLowerCase();
-      const labelMatch = raw.match(/^([^:]{2,80}):\s*(.*)$/);
-      const label = labelMatch ? labelMatch[1].trim() : '';
-      const content = labelMatch ? labelMatch[2].trim() : '';
+    const appendToLabelBlock = (text) => {
+      const raw = String(text || '').trim();
+      if (!raw) return;
+      if (!currentLabelBlock) {
+        currentBodyParagraphs.push(raw);
+        return;
+      }
 
-      if (/^facilitator(?:'s|’s)?\s+guide$/i.test(label) || /^facilitator(?:'s|’s)?\s+guide:?$/i.test(raw)) {
-        return { kind: 'start', label: 'Facilitator Guide', tone: 'facilitator', content };
+      if (currentLabelBlock.kind === 'scripture' && !currentLabelBlock.reference && this.isMeetingSlideScriptureReference(raw)) {
+        currentLabelBlock.reference = raw;
+        return;
       }
-      if (/^facilitator(?:'s|’s)?\s+note$/i.test(label)) {
-        return { kind: 'start', label: 'Facilitator Note', tone: 'facilitator', content };
+      if (currentLabelBlock.kind === 'scripture' && (this.isMeetingSlideVerseText(raw) || currentLabelBlock.verses.length)) {
+        currentLabelBlock.verses.push(raw);
+        return;
       }
-      if (/^(posibleng\s+sagot|possible\s+answer|suggested\s+answer|sagot)$/i.test(label)) {
-        return { kind: 'start', label: 'Suggested Answer', tone: 'answer', content };
-      }
-      if (/^(paano i-guide ang talakayan|analysis|key insight|layunin|segue sa topic|segue to the topic)$/i.test(label)) {
-        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
-      }
-      if (titleLooksFacilitator) {
-        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
-      }
-      if (activeDisclosure && /^(free from|analysis|key insight|facilitator(?:'s|’s)?\s+note|layunin)\b/i.test(lower)) {
-        return { kind: 'append', label: activeDisclosure.label, tone: activeDisclosure.tone, content: raw };
-      }
-      return null;
+
+      currentLabelBlock.body.push(raw);
+    };
+
+    const startLabelBlock = (info, inlineBody = '') => {
+      flushBody();
+      flushLabelBlock();
+      currentLabelBlock = {
+        type: 'label',
+        kind: info.kind,
+        label: info.label,
+        body: [],
+        reference: '',
+        verses: []
+      };
+      if (inlineBody) appendToLabelBlock(inlineBody);
     };
 
     paragraphs.forEach((paragraph) => {
-      const disclosureLine = classifyDisclosureLine(paragraph);
-      if (!disclosureLine) {
-        if (activeDisclosure && titleLooksFacilitator) {
-          activeDisclosure.paragraphs.push(String(paragraph).trim());
-          return;
-        }
-        pushDisclosure();
-        primary.push(String(paragraph).trim());
+      const raw = String(paragraph || '').trim();
+      if (!raw) return;
+
+      if (this.isMeetingSlideSectionHeading(raw)) {
+        startSection(raw);
         return;
       }
 
-      if (disclosureLine.kind === 'start') {
-        startDisclosure(disclosureLine.label, disclosureLine.content ? [disclosureLine.content] : [], disclosureLine.tone);
+      const parsedLabel = this.parseMeetingSlideLabelLine(raw);
+      if (parsedLabel) {
+        startLabelBlock(parsedLabel.info, parsedLabel.inlineBody);
         return;
       }
 
-      if (!activeDisclosure) {
-        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
-      } else if (activeDisclosure.label !== disclosureLine.label && disclosureLine.kind === 'append') {
-        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
+      if (currentLabelBlock) {
+        appendToLabelBlock(raw);
+        return;
       }
 
-      if (disclosureLine.content) {
-        activeDisclosure.paragraphs.push(disclosureLine.content);
-      }
+      currentBodyParagraphs.push(raw);
     });
 
-    pushDisclosure();
+    flushLabelBlock();
+    flushBody();
+    pushSectionIfNeeded();
 
-    if (titleLooksFacilitator && !primary.length && !disclosures.length && paragraphs.length) {
-      disclosures.push({
-        label: 'Facilitator Guide',
-        tone: 'facilitator',
-        paragraphs: paragraphs.map((paragraph) => String(paragraph).trim()).filter(Boolean)
-      });
-    }
+    return blocks;
+  },
 
-    return { primary, disclosures, titleLooksFacilitator };
+  getMeetingSlideLabelTone(kind = 'default') {
+    const tones = {
+      meta: {
+        background: 'rgba(255, 252, 246, 0.92)',
+        border: 'rgba(186, 135, 78, 0.18)',
+        labelBg: 'rgba(122, 79, 38, 0.1)',
+        labelColor: '#7a4f26',
+        bodyColor: '#30261d',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.14em'
+      },
+      note: {
+        background: 'rgba(255, 248, 235, 0.95)',
+        border: 'rgba(217, 119, 6, 0.18)',
+        labelBg: 'rgba(245, 158, 11, 0.14)',
+        labelColor: '#8a3b13',
+        bodyColor: '#35261a',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.13em'
+      },
+      prompt: {
+        background: 'rgba(255, 251, 245, 0.96)',
+        border: 'rgba(145, 92, 44, 0.14)',
+        labelBg: 'rgba(125, 80, 41, 0.1)',
+        labelColor: '#6f4623',
+        bodyColor: '#2e241c',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      explanation: {
+        background: 'rgba(255, 248, 240, 0.96)',
+        border: 'rgba(199, 109, 61, 0.18)',
+        labelBg: 'rgba(191, 88, 42, 0.12)',
+        labelColor: '#8c3517',
+        bodyColor: '#2e241d',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      scripture: {
+        background: 'rgba(252, 247, 237, 0.98)',
+        border: 'rgba(196, 144, 74, 0.22)',
+        labelBg: 'rgba(217, 119, 6, 0.12)',
+        labelColor: '#7a4b12',
+        bodyColor: '#38271a',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.14em'
+      },
+      question: {
+        background: 'rgba(255, 245, 238, 0.96)',
+        border: 'rgba(208, 102, 63, 0.18)',
+        labelBg: 'rgba(192, 79, 47, 0.12)',
+        labelColor: '#8b2e1d',
+        bodyColor: '#2d231c',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      answer: {
+        background: 'rgba(239, 246, 255, 0.96)',
+        border: 'rgba(59, 130, 246, 0.18)',
+        labelBg: 'rgba(59, 130, 246, 0.12)',
+        labelColor: '#1d4ed8',
+        bodyColor: '#1f3557',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      facilitator: {
+        background: 'rgba(255, 248, 235, 0.96)',
+        border: 'rgba(217, 119, 6, 0.18)',
+        labelBg: 'rgba(245, 158, 11, 0.14)',
+        labelColor: '#9a4e12',
+        bodyColor: '#3a2a1d',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      'facilitator-note': {
+        background: 'rgba(255, 246, 240, 0.96)',
+        border: 'rgba(234, 88, 12, 0.18)',
+        labelBg: 'rgba(234, 88, 12, 0.12)',
+        labelColor: '#9a3412',
+        bodyColor: '#3b271b',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      summary: {
+        background: 'rgba(247, 244, 237, 0.98)',
+        border: 'rgba(104, 86, 67, 0.18)',
+        labelBg: 'rgba(82, 68, 55, 0.1)',
+        labelColor: '#5b4737',
+        bodyColor: '#2f241b',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      response: {
+        background: 'rgba(245, 249, 255, 0.96)',
+        border: 'rgba(96, 165, 250, 0.18)',
+        labelBg: 'rgba(59, 130, 246, 0.1)',
+        labelColor: '#1d4ed8',
+        bodyColor: '#243b5a',
+        bodySize: '15px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      default: {
+        background: 'rgba(255, 251, 245, 0.94)',
+        border: 'rgba(150, 110, 67, 0.14)',
+        labelBg: 'rgba(115, 83, 54, 0.1)',
+        labelColor: '#6b4e38',
+        bodyColor: '#2f261f',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      }
+    };
+    return tones[kind] || tones.default;
+  },
+
+  renderMeetingSlideLabelBlock(block, options = {}) {
+    const tone = this.getMeetingSlideLabelTone(block.kind);
+    const isScripture = block.kind === 'scripture';
+    const bodyHtml = block.body.length
+      ? this.renderMeetingSlideParagraphBlocks(block.body, {
+          paragraphColor: tone.bodyColor,
+          bulletColor: tone.bodyColor,
+          paragraphSize: tone.bodySize,
+          bulletSize: tone.bodySize,
+          paragraphGap: '10px',
+          listGap: '8px',
+          listIndent: '20px'
+        })
+      : '';
+    const referenceHtml = block.reference
+      ? `<div style="margin-top:12px; color:#8a4b14; font-size:12px; line-height:1.35; font-weight:900; letter-spacing:0.14em; text-transform:uppercase;">${this.escapeHtml(block.reference)}</div>`
+      : '';
+    const versesHtml = block.verses.length
+      ? block.verses.map((verse) => (
+          `<p style="margin:10px 0 0 0; color:#3a2617; font-size:16px; line-height:1.72; font-style:italic; font-weight:600;">${this.escapeHtml(verse)}</p>`
+        )).join('')
+      : '';
+    const labelMarginBottom = isScripture || bodyHtml ? '10px' : '0';
+
+    return `
+      <div style="border-radius:15px; border:1px solid ${tone.border}; background:${tone.background}; padding:12px 13px 13px 13px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);">
+        <div style="display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:999px; background:${tone.labelBg}; color:${tone.labelColor}; padding:6px 10px; font-size:11px; line-height:1.2; font-weight:900; text-transform:${tone.labelTransform}; letter-spacing:${tone.labelSpacing}; margin-bottom:${labelMarginBottom};">${this.escapeHtml(block.label)}</div>
+        ${isScripture ? `<div>${referenceHtml}${versesHtml}${bodyHtml ? `<div style="margin-top:12px;">${bodyHtml}</div>` : ''}</div>` : bodyHtml}
+      </div>
+    `;
+  },
+
+  renderMeetingSlideContentBlocks(blocks = [], options = {}) {
+    const depth = Number(options.depth || 0);
+    const items = Array.isArray(blocks) ? blocks : [];
+    if (!items.length) return '';
+
+    return items.map((block, idx) => {
+      const marginTop = idx === 0 ? '0' : (block.type === 'section' ? '18px' : '12px');
+      if (block.type === 'section') {
+        return `
+          <section style="margin-top:${marginTop}; border-radius:18px; border:1px solid rgba(191, 126, 63, 0.18); background:linear-gradient(180deg, rgba(255,250,244,0.96), rgba(255,245,234,0.92)); padding:14px 14px 15px 14px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.55);">
+            <div style="margin-bottom:${block.items.length ? '12px' : '0'};">
+              <div style="color:#2b1d13; font-size:${depth > 0 ? '15px' : '17px'}; line-height:1.08; font-weight:900; letter-spacing:-0.015em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
+            </div>
+            <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1 })}</div>
+          </section>
+        `;
+      }
+
+      if (block.type === 'label') {
+        return `<div style="margin-top:${marginTop};">${this.renderMeetingSlideLabelBlock(block, { depth })}</div>`;
+      }
+
+      if (block.type === 'body') {
+        return `
+          <div style="margin-top:${marginTop};">
+            ${this.renderMeetingSlideParagraphBlocks(block.paragraphs, {
+              paragraphColor: depth > 0 ? '#35281e' : '#2d241c',
+              bulletColor: depth > 0 ? '#35281e' : '#2d241c',
+              paragraphSize: depth > 0 ? '15px' : '16px',
+              bulletSize: depth > 0 ? '15px' : '16px',
+              paragraphGap: depth > 0 ? '10px' : '12px',
+              listGap: '8px',
+              listIndent: '20px'
+            })}
+          </div>
+        `;
+      }
+
+      return '';
+    }).join('');
   },
 
   renderSlidesPanel() {
@@ -1106,8 +1402,8 @@ const GroupMeeting = {
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
-    // Opacity slider now controls the white reading surface transparency.
-    const noteSurfaceAlpha = Math.min(0.9, Math.max(0.46, 0.35 + (opacityPct / 100) * 0.55));
+    // Keep the reading surface substantially opaque so live video does not bleed through the text.
+    const noteSurfaceAlpha = Math.min(0.98, Math.max(0.84, 0.76 + (opacityPct / 100) * 0.2));
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
     if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
@@ -1174,64 +1470,51 @@ const GroupMeeting = {
     const slideIndex = Math.min(Math.max(state.currentSlideIndex || 0, 0), slides.length - 1);
     state.currentSlideIndex = slideIndex;
     const slide = slides[slideIndex];
-    const slideSections = this.buildMeetingSlideDisclosureSections(slide);
+    const slideBlocks = this.buildMeetingSlideContentBlocks(slide);
+    const explicitEyebrow = String(slide.eyebrow || slide.sectionLabel || slide.overline || '').trim();
+    const titleRaw = String(slide.title || '').trim() || 'Slide';
+    const subtitleRaw = String(slide.subtitle || '').trim();
+    const titleIsMarker = this.isMeetingSlideKeyPointMarker(titleRaw);
+    const subtitleIsSectionMarker = this.isMeetingSlideKeyPointMarker(subtitleRaw) || this.isMeetingSlideSectionHeading(subtitleRaw);
+    const eyebrowText = explicitEyebrow || (titleIsMarker && subtitleRaw ? titleRaw : (subtitleIsSectionMarker ? subtitleRaw : ''));
+    const displayTitle = titleIsMarker && subtitleRaw ? subtitleRaw : titleRaw;
+    const displaySubtitle = !eyebrowText && subtitleRaw ? subtitleRaw : '';
+    const isKeyPointSlide = this.isMeetingSlideKeyPointMarker(eyebrowText);
+    const titleFontSize = isKeyPointSlide
+      ? 'clamp(31px, 6.6vw, 46px)'
+      : (slide.type === 'title' ? 'clamp(25px, 5.8vw, 38px)' : 'clamp(24px, 5.9vw, 37px)');
     const kickerHtml = slide.kicker
       ? `<div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:5px 10px; font-weight:800; margin-bottom:10px;">
           <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
         </div>`
       : '';
-    const titleHtml = `<div style="color:#141414; font-size:clamp(24px,5.8vw,38px); line-height:1.02; font-weight:900; letter-spacing:-0.01em; margin-bottom:${slide.subtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(slide.title || 'Slide')}</div>`;
-    const subtitleHtml = slide.subtitle
-      ? `<div style="color:#5a4a3a; font-size:14px; line-height:1.4; margin-bottom:14px; font-weight:600;">${this.escapeHtml(slide.subtitle)}</div>`
+    const eyebrowHtml = eyebrowText
+      ? `<div style="display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:999px; background:rgba(129, 66, 23, 0.08); color:#8c4317; border:1px solid rgba(209, 146, 76, 0.24); padding:6px 11px; font-size:11px; line-height:1.2; letter-spacing:0.14em; text-transform:uppercase; font-weight:900; margin-bottom:12px;">${this.escapeHtml(eyebrowText)}</div>`
       : '';
-    const primaryBodyHtml = slideSections.primary.length
-      ? this.renderMeetingSlideParagraphBlocks(slideSections.primary)
+    const titleHtml = `<div style="color:#141414; font-size:${titleFontSize}; line-height:${isKeyPointSlide ? '0.95' : '1.02'}; font-weight:900; letter-spacing:${isKeyPointSlide ? '-0.03em' : '-0.015em'}; margin-bottom:${displaySubtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(displayTitle)}</div>`;
+    const subtitleHtml = displaySubtitle
+      ? `<div style="color:#5a4737; font-size:${slide.type === 'title' ? '18px' : '14px'}; line-height:1.45; margin-bottom:15px; font-weight:${slide.type === 'title' ? '700' : '600'};">${this.escapeHtml(displaySubtitle)}</div>`
       : '';
-    const disclosureSectionsHtml = slideSections.disclosures.map((section, idx) => {
-      const tone = section.tone === 'answer'
-        ? {
-            border: 'rgba(37, 99, 235, 0.18)',
-            background: 'rgba(237, 244, 255, 0.88)',
-            summary: '#0f3b8f'
-          }
-        : {
-            border: 'rgba(217, 119, 6, 0.18)',
-            background: 'rgba(255, 248, 235, 0.9)',
-            summary: '#8a3b13'
-          };
-      return `
-        <div style="margin-top:${idx === 0 && !primaryBodyHtml ? '0' : '14px'}; border-radius:16px; border:1px solid ${tone.border}; background:${tone.background}; overflow:hidden;">
-          <div style="padding:12px 14px; font-weight:800; color:${tone.summary}; font-size:13px; letter-spacing:0.01em;">${this.escapeHtml(section.label)}</div>
-          <div style="padding:0 14px 14px 14px; border-top:1px solid rgba(0,0,0,0.05);">
-            ${this.renderMeetingSlideParagraphBlocks(section.paragraphs, {
-              paragraphColor: '#2d241f',
-              bulletColor: '#2d241f',
-              paragraphSize: '15px',
-              bulletSize: '15px',
-              paragraphGap: '10px',
-              listGap: '8px',
-              listIndent: '20px'
-            })}
-          </div>
-        </div>
-      `;
-    }).join('');
+    const structuredContentHtml = this.renderMeetingSlideContentBlocks(slideBlocks);
     const bodyHtml = `
       <div style="
         position:relative;
         border-radius:18px;
         border:1px solid rgba(255,255,255,0.55);
         background:
-          linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.4, noteSurfaceAlpha - 0.08).toFixed(2)}));
+          linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.86, noteSurfaceAlpha - 0.04).toFixed(2)})),
+          radial-gradient(circle at top right, rgba(245,158,11,0.1), transparent 36%),
+          radial-gradient(circle at bottom left, rgba(220,38,38,0.05), transparent 42%);
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         padding:18px 18px 16px 18px;">
         <div style="position:absolute; left:0; top:14px; bottom:14px; width:5px; border-radius:5px; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
-        <div style="padding-left:12px;">
+        <div style="position:absolute; right:-18px; bottom:-18px; width:132px; height:132px; border-radius:50%; background:radial-gradient(circle, rgba(245,158,11,0.14), rgba(245,158,11,0.04) 58%, transparent 74%); filter:blur(1px); pointer-events:none;"></div>
+        <div style="position:relative; z-index:1; padding-left:12px;">
           ${kickerHtml}
+          ${eyebrowHtml}
           ${titleHtml}
           ${subtitleHtml}
-          <div>${primaryBodyHtml}</div>
-          ${disclosureSectionsHtml}
+          <div>${structuredContentHtml}</div>
         </div>
       </div>
     `;
