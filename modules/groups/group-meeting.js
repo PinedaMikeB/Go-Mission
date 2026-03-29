@@ -499,7 +499,7 @@ const GroupMeeting = {
       savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
       const rawFontScale = Number(window.localStorage?.getItem('goMission_meetingSlidesFontScale'));
       if (Number.isFinite(rawFontScale)) {
-        savedFontScale = Math.min(1.35, Math.max(0.95, rawFontScale));
+        savedFontScale = Math.min(1.35, Math.max(1.125, rawFontScale));
       }
     } catch (_) {}
 
@@ -507,6 +507,7 @@ const GroupMeeting = {
       mode: 'local',        // future: 'host_synced'
       focusMode: false,     // future moderator setting
       panelOpen: false,
+      settingsOpen: false,
       selectedDeckId: savedDeckId || null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
@@ -560,13 +561,19 @@ const GroupMeeting = {
           <div class="flex items-center gap-2 shrink-0">
             <button onclick="window.GroupMeeting.toggleSlidesPanel()"
                     id="meeting-slides-toggle-btn"
-                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-all"
-                    style="background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
+                    class="px-3 py-1.5 rounded-full font-bold transition-all"
+                    style="font-size:13px; background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
               🗂 Slides
             </button>
+            <button onclick="window.GroupMeeting.toggleSlidesSettings()"
+                    id="meeting-slides-settings-btn"
+                    class="rounded-full font-bold transition-all flex items-center justify-center"
+                    style="width:34px; height:34px; font-size:16px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color: #f4d7a2; box-shadow: 0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08); border: 1px solid rgba(242, 184, 94, 0.22);">
+              ⚙
+            </button>
             <button onclick="window.GroupMeeting.leaveMeeting()" 
-                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-colors"
-                    style="background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 6px 14px rgba(210, 22, 22, 0.28);">
+                    class="px-3 py-1.5 rounded-full font-bold transition-colors"
+                    style="font-size:13px; background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 6px 14px rgba(210, 22, 22, 0.28);">
               ✕ Leave
             </button>
           </div>
@@ -587,58 +594,9 @@ const GroupMeeting = {
             </div>
             <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
           </div>
-          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
-            <div class="flex-1 min-w-0">
-              <label for="meeting-slides-topic-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Topic</label>
-              <select id="meeting-slides-topic-select"
-                      onchange="window.GroupMeeting.setSlidesDeck(this.value)"
-                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
-                <option value="">No topics yet</option>
-              </select>
-            </div>
-            <div class="w-[120px] shrink-0">
-              <label for="meeting-slides-lang-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Lang</label>
-              <select id="meeting-slides-lang-select"
-                      onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
-                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
-                <option value="tl">Tagalog</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-          </div>
-          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
-            <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
-            <input id="meeting-slides-opacity"
-                   type="range"
-                   min="20"
-                   max="95"
-                   step="1"
-                   value="72"
-                   oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
-                   class="flex-1 accent-amber-400">
-            <span id="meeting-slides-opacity-value"
-                  class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
-          </div>
-          <div class="px-4 py-2 border-t border-white/10 flex items-center justify-between gap-3">
-            <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Text</span>
-            <div class="flex items-center gap-2">
-              <button onclick="window.GroupMeeting.decreaseSlidesFontSize()"
-                      id="meeting-slides-font-decrease"
-                      class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm font-bold">
-                A-
-              </button>
-              <span id="meeting-slides-font-value"
-                    class="text-xs font-bold text-amber-200 min-w-[52px] text-center">18px</span>
-              <button onclick="window.GroupMeeting.increaseSlidesFontSize()"
-                      id="meeting-slides-font-increase"
-                      class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm font-bold">
-                A+
-              </button>
-            </div>
-          </div>
         </div>
 
-        <div id="meeting-slides-panel-body" class="mt-2 px-4 py-4 min-h-[240px] max-h-[55vh] overflow-y-auto">
+        <div id="meeting-slides-panel-body" class="mt-2 px-0 py-0 min-h-[240px] max-h-[55vh] overflow-y-auto">
           <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
         </div>
 
@@ -654,6 +612,76 @@ const GroupMeeting = {
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
             Next →
           </button>
+        </div>
+      </div>
+
+      <div id="meeting-slides-settings-panel"
+           class="hidden absolute z-[10002] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4">
+        <div id="meeting-slides-settings-card" class="rounded-2xl border border-white/10 shadow-xl overflow-hidden">
+          <div class="px-4 py-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
+              <p id="meeting-slides-settings-deck-title" class="text-white font-bold text-sm truncate">Loading…</p>
+            </div>
+            <button onclick="window.GroupMeeting.toggleSlidesSettings(false)"
+                    class="rounded-full font-bold transition-all flex items-center justify-center"
+                    style="width:30px; height:30px; font-size:14px; background: rgba(255,255,255,0.08); color:#f7e9cc; border:1px solid rgba(255,255,255,0.08);">
+              ✕
+            </button>
+          </div>
+          <div class="px-4 pb-4 flex flex-col gap-3">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <label for="meeting-slides-topic-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Topic</label>
+                <select id="meeting-slides-topic-select"
+                        onchange="window.GroupMeeting.setSlidesDeck(this.value)"
+                        class="w-full rounded-xl text-sm px-3 py-2.5">
+                  <option value="">No topics yet</option>
+                </select>
+              </div>
+              <div style="width:112px;" class="shrink-0">
+                <label for="meeting-slides-lang-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Lang</label>
+                <select id="meeting-slides-lang-select"
+                        onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
+                        class="w-full rounded-xl text-sm px-3 py-2.5">
+                  <option value="tl">Tagalog</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
+              <input id="meeting-slides-opacity"
+                     type="range"
+                     min="20"
+                     max="95"
+                     step="1"
+                     value="72"
+                     oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
+                     class="flex-1 accent-amber-400">
+              <span id="meeting-slides-opacity-value"
+                    class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Text</span>
+              <div class="flex items-center gap-2">
+                <button onclick="window.GroupMeeting.decreaseSlidesFontSize()"
+                        id="meeting-slides-font-decrease"
+                        class="px-3 py-1.5 rounded-full font-bold"
+                        style="font-size:13px;">
+                  A-
+                </button>
+                <span id="meeting-slides-font-value"
+                      class="text-xs font-bold text-amber-200 min-w-[52px] text-center">18px</span>
+                <button onclick="window.GroupMeeting.increaseSlidesFontSize()"
+                        id="meeting-slides-font-increase"
+                        class="px-3 py-1.5 rounded-full font-bold"
+                        style="font-size:13px;">
+                  A+
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -757,12 +785,36 @@ const GroupMeeting = {
       : !this.presentationState.panelOpen;
 
     this.presentationState.panelOpen = nextOpen;
+    if (!nextOpen) {
+      this.presentationState.settingsOpen = false;
+    }
     panel.classList.toggle('hidden', !nextOpen);
 
     if (nextOpen && !this.presentationState.deck && !this.presentationState.loading) {
       await this.loadSlidesDeck();
     }
 
+    this.renderSlidesPanel();
+  },
+
+  async toggleSlidesSettings(forceOpen) {
+    if (!this.presentationState) return;
+    const panel = document.getElementById('meeting-slides-panel');
+    const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+    const nextOpen = typeof forceOpen === 'boolean'
+      ? forceOpen
+      : !this.presentationState.settingsOpen;
+
+    if (nextOpen && !this.presentationState.panelOpen) {
+      this.presentationState.panelOpen = true;
+      if (panel) panel.classList.remove('hidden');
+      if (!this.presentationState.deck && !this.presentationState.loading) {
+        await this.loadSlidesDeck();
+      }
+    }
+
+    this.presentationState.settingsOpen = nextOpen;
+    if (settingsPanel) settingsPanel.classList.toggle('hidden', !nextOpen);
     this.renderSlidesPanel();
   },
 
@@ -1453,10 +1505,14 @@ const GroupMeeting = {
 
     const body = document.getElementById('meeting-slides-panel-body');
     const titleEl = document.getElementById('meeting-slides-deck-title');
+    const settingsTitleEl = document.getElementById('meeting-slides-settings-deck-title');
     const counterEl = document.getElementById('meeting-slide-counter');
     const prevBtn = document.getElementById('meeting-slide-prev-btn');
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
+    const settingsToggleBtn = document.getElementById('meeting-slides-settings-btn');
+    const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+    const settingsCard = document.getElementById('meeting-slides-settings-card');
     const topicSelect = document.getElementById('meeting-slides-topic-select');
     const langSelect = document.getElementById('meeting-slides-lang-select');
     const opacitySlider = document.getElementById('meeting-slides-opacity');
@@ -1498,6 +1554,8 @@ const GroupMeeting = {
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
+    const controlBackground = 'linear-gradient(180deg, rgba(43,30,24,0.96), rgba(24,16,13,0.94))';
+    const controlBorder = 'rgba(236, 186, 104, 0.22)';
     // Keep the reading surface substantially opaque so live video does not bleed through the text.
     const noteSurfaceAlpha = isNarrowMobile
       ? Math.min(0.99, Math.max(0.93, 0.88 + (opacityPct / 100) * 0.08))
@@ -1513,10 +1571,25 @@ const GroupMeeting = {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
       toggleBtn.classList.toggle('text-amber-200', !!state.panelOpen);
     }
+    if (settingsToggleBtn) {
+      settingsToggleBtn.style.color = state.settingsOpen ? '#22140c' : '#f4d7a2';
+      settingsToggleBtn.style.background = state.settingsOpen
+        ? 'linear-gradient(135deg, #f2bf61, #d98b31)'
+        : 'linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98))';
+      settingsToggleBtn.style.borderColor = state.settingsOpen ? 'rgba(255,255,255,0.14)' : 'rgba(242, 184, 94, 0.22)';
+      settingsToggleBtn.style.boxShadow = state.settingsOpen
+        ? '0 6px 16px rgba(217, 139, 49, 0.24), inset 0 1px 0 rgba(255,255,255,0.28)'
+        : '0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08)';
+    }
     if (titleEl) {
       titleEl.style.color = '#f7f3ea';
       titleEl.style.fontWeight = '700';
       titleEl.style.letterSpacing = '0.01em';
+    }
+    if (settingsTitleEl) {
+      settingsTitleEl.style.color = '#f7f3ea';
+      settingsTitleEl.style.fontWeight = '700';
+      settingsTitleEl.style.letterSpacing = '0.01em';
     }
     if (counterEl) {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
@@ -1527,7 +1600,7 @@ const GroupMeeting = {
     panel.style.backdropFilter = 'none';
     panel.style.webkitBackdropFilter = 'none';
     panel.style.position = isNarrowMobile ? 'fixed' : '';
-    panel.style.top = isNarrowMobile ? '92px' : '';
+    panel.style.top = isNarrowMobile ? '96px' : '';
     panel.style.left = isNarrowMobile ? '12px' : '';
     panel.style.right = isNarrowMobile ? '12px' : '';
     panel.style.bottom = isNarrowMobile ? '76px' : '';
@@ -1535,9 +1608,50 @@ const GroupMeeting = {
     panel.style.maxHeight = isNarrowMobile ? `calc(${Math.round(viewportHeight || 0)}px - 168px)` : '';
     panel.style.contain = isNarrowMobile ? 'layout paint style' : '';
     panel.style.transform = isNarrowMobile ? 'translateZ(0)' : '';
+    panel.style.overflowX = 'hidden';
+
+    if (settingsPanel) {
+      settingsPanel.classList.toggle('hidden', !state.settingsOpen);
+      settingsPanel.style.position = isNarrowMobile ? 'fixed' : '';
+      settingsPanel.style.top = isNarrowMobile ? '96px' : '';
+      settingsPanel.style.left = isNarrowMobile ? '12px' : '';
+      settingsPanel.style.right = isNarrowMobile ? '12px' : '';
+      settingsPanel.style.width = isNarrowMobile ? 'auto' : '';
+      settingsPanel.style.maxWidth = isNarrowMobile ? '' : '440px';
+      settingsPanel.style.overflowX = 'hidden';
+    }
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
+    }
+    if (settingsTitleEl) {
+      settingsTitleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
+    }
+
+    const selectBaseStyles = (el) => {
+      if (!el) return;
+      el.style.color = '#f7ecda';
+      el.style.background = controlBackground;
+      el.style.border = `1px solid ${controlBorder}`;
+      el.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+      el.style.outline = 'none';
+      el.style.minHeight = isNarrowMobile ? '44px' : '42px';
+      el.style.fontWeight = '600';
+    };
+    selectBaseStyles(topicSelect);
+    selectBaseStyles(langSelect);
+
+    if (fontDecreaseBtn) {
+      fontDecreaseBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
+      fontDecreaseBtn.style.color = fontScale <= 0.95 ? 'rgba(244,222,191,0.34)' : '#f6e4c7';
+      fontDecreaseBtn.style.border = `1px solid ${controlBorder}`;
+      fontDecreaseBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+    }
+    if (fontIncreaseBtn) {
+      fontIncreaseBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
+      fontIncreaseBtn.style.color = fontScale >= 1.35 ? 'rgba(244,222,191,0.34)' : '#f6e4c7';
+      fontIncreaseBtn.style.border = `1px solid ${controlBorder}`;
+      fontIncreaseBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
     }
 
     if (state.loading) {
@@ -1609,6 +1723,9 @@ const GroupMeeting = {
     const bodyHtml = `
       <div style="
         position:relative;
+        width:100%;
+        box-sizing:border-box;
+        overflow:hidden;
         border-radius:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};
         border:1px solid rgba(255,255,255,0.55);
         background:
@@ -1639,12 +1756,13 @@ const GroupMeeting = {
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
       body.style.overflowY = 'auto';
+      body.style.overflowX = 'hidden';
       body.style.overscrollBehavior = 'contain';
       body.style.webkitOverflowScrolling = 'touch';
       body.style.scrollbarGutter = 'stable';
       body.style.maxHeight = '';
       body.style.minHeight = isNarrowMobile ? '0' : '';
-      body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('12px', { fontScale })} ${this.scaleMeetingSlidePx('4px', { fontScale })} ${this.scaleMeetingSlidePx('16px', { fontScale })} ${this.scaleMeetingSlidePx('4px', { fontScale })}` : '';
+      body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`;
     }
 
     const topbar = document.getElementById('meeting-slides-topbar');
@@ -1656,16 +1774,42 @@ const GroupMeeting = {
       topbar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
       topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
     }
+    if (settingsCard) {
+      settingsCard.style.background = 'linear-gradient(180deg, rgba(20,14,12,0.9), rgba(28,18,14,0.88))';
+      settingsCard.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha + 0.04).toFixed(2)})`;
+      settingsCard.style.backdropFilter = `blur(${isNarrowMobile ? 14 : 12}px)`;
+      settingsCard.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 14 : 12}px)`;
+      settingsCard.style.boxShadow = '0 18px 34px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)';
+    }
     if (bottombar) {
       bottombar.style.flexShrink = '0';
-      bottombar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.07, chromeAlpha * 0.9).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.75).toFixed(2)}))`;
-      bottombar.style.borderColor = `rgba(255,255,255,${Math.min(0.14, borderAlpha).toFixed(2)})`;
-      bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
-      bottombar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+      bottombar.style.background = 'linear-gradient(180deg, rgba(28,20,16,0.94), rgba(43,30,24,0.9))';
+      bottombar.style.borderColor = 'rgba(236, 186, 104, 0.16)';
+      bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
+      bottombar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
+      bottombar.style.boxShadow = '0 14px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)';
+    }
+    if (prevBtn) {
+      prevBtn.style.background = slideIndex <= 0
+        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        : 'linear-gradient(180deg, rgba(101,75,57,0.94), rgba(70,50,38,0.92))';
+      prevBtn.style.color = slideIndex <= 0 ? 'rgba(247,230,201,0.45)' : '#f8e7cc';
+      prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.18)';
+      prevBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+    }
+    if (nextBtn) {
+      nextBtn.style.background = slideIndex >= slides.length - 1
+        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
+      nextBtn.style.color = slideIndex >= slides.length - 1 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      nextBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
+      nextBtn.style.boxShadow = slideIndex >= slides.length - 1
+        ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
+        : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
 
     if (isNarrowMobile && body && topbar && bottombar) {
-      const availableBodyHeight = Math.max(220, viewportHeight - 92 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 22);
+      const availableBodyHeight = Math.max(220, viewportHeight - 96 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 18);
       body.style.maxHeight = `${Math.round(availableBodyHeight)}px`;
     }
   },
