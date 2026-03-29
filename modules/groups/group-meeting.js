@@ -1186,33 +1186,22 @@ const GroupMeeting = {
       : '';
     const primaryBodyHtml = slideSections.primary.length
       ? this.renderMeetingSlideParagraphBlocks(slideSections.primary)
-      : (
-          slideSections.titleLooksFacilitator
-            ? `<p style="color:#6a5748; font-size:14px; line-height:1.5; margin:0 0 12px 0;">Facilitator notes are hidden by default. Expand below when you need them.</p>`
-            : ''
-        );
+      : '';
     const disclosureSectionsHtml = slideSections.disclosures.map((section, idx) => {
       const tone = section.tone === 'answer'
         ? {
             border: 'rgba(37, 99, 235, 0.18)',
             background: 'rgba(237, 244, 255, 0.88)',
-            summary: '#0f3b8f',
-            badge: 'rgba(59,130,246,0.12)',
-            badgeText: '#1d4ed8'
+            summary: '#0f3b8f'
           }
         : {
             border: 'rgba(217, 119, 6, 0.18)',
             background: 'rgba(255, 248, 235, 0.9)',
-            summary: '#8a3b13',
-            badge: 'rgba(245, 158, 11, 0.14)',
-            badgeText: '#a16207'
+            summary: '#8a3b13'
           };
       return `
-        <details style="margin-top:${idx === 0 && !primaryBodyHtml ? '0' : '14px'}; border-radius:16px; border:1px solid ${tone.border}; background:${tone.background}; overflow:hidden;">
-          <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; font-weight:800; color:${tone.summary}; font-size:13px; letter-spacing:0.01em;">
-            <span>${this.escapeHtml(section.label)}</span>
-            <span style="display:inline-flex; align-items:center; border-radius:999px; background:${tone.badge}; color:${tone.badgeText}; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:0.12em;">Tap to Expand</span>
-          </summary>
+        <div style="margin-top:${idx === 0 && !primaryBodyHtml ? '0' : '14px'}; border-radius:16px; border:1px solid ${tone.border}; background:${tone.background}; overflow:hidden;">
+          <div style="padding:12px 14px; font-weight:800; color:${tone.summary}; font-size:13px; letter-spacing:0.01em;">${this.escapeHtml(section.label)}</div>
           <div style="padding:0 14px 14px 14px; border-top:1px solid rgba(0,0,0,0.05);">
             ${this.renderMeetingSlideParagraphBlocks(section.paragraphs, {
               paragraphColor: '#2d241f',
@@ -1224,7 +1213,7 @@ const GroupMeeting = {
               listIndent: '20px'
             })}
           </div>
-        </details>
+        </div>
       `;
     }).join('');
     const bodyHtml = `
