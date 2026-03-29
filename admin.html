@@ -9032,6 +9032,45 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return String(filename || '').replace(/\.[^.]+$/, '').trim();
     }
 
+    function applyMeetingSlidesSuggestedTopic({ title = '', topicId = '' } = {}) {
+      const selectedTopicId = getMeetingSlidesSelectedTopicId();
+      if (selectedTopicId) return;
+
+      const titleInput = document.getElementById('meetingSlidesTopicTitle');
+      const idInput = document.getElementById('meetingSlidesTopicId');
+      if (!titleInput || !idInput || idInput.disabled) return;
+
+      if (!String(titleInput.value || '').trim() && title) {
+        titleInput.value = String(title || '').trim();
+      }
+      if (!String(idInput.value || '').trim() && topicId) {
+        idInput.value = normalizeMeetingSlidesTopicId(topicId);
+      }
+    }
+
+    async function suggestMeetingSlidesTopicFromUpload(file) {
+      const baseName = fileBaseNameWithoutExtension(file?.name || '');
+      if (!file) return { title: '', topicId: '' };
+
+      if (/\.json$/i.test(file.name)) {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(await file.text());
+        } catch (error) {
+          throw new Error(`Could not parse JSON file: ${error.message}`);
+        }
+
+        const sourceDeck = Array.isArray(parsed) ? { slides: parsed } : parsed;
+        const title = String(sourceDeck?.title || baseName || '').trim();
+        const topicId = normalizeMeetingSlidesTopicId(sourceDeck?.id || title || baseName);
+        return { title, topicId, parsedDeck: parsed };
+      }
+
+      const title = String(baseName || '').trim();
+      const topicId = normalizeMeetingSlidesTopicId(title);
+      return { title, topicId };
+    }
+
     function normalizeMeetingSlidesUploadedDeck(rawDeck, { deckId, language, filename, displayTitle } = {}) {
       const sourceDeck = Array.isArray(rawDeck) ? { slides: rawDeck } : rawDeck;
       if (!sourceDeck || typeof sourceDeck !== 'object') {
@@ -9185,18 +9224,9 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const fileInput = document.getElementById('meetingSlidesDocxFile');
       const file = fileInput?.files?.[0];
       const language = document.getElementById('meetingSlidesLanguage').value;
-      const { topicId, title } = getMeetingSlidesTopicFormState();
 
       if (!file) {
         setInlineStatus('meetingSlidesStatus', 'Choose a .docx or .json file first.', 'warn');
-        return;
-      }
-      if (!title) {
-        setInlineStatus('meetingSlidesStatus', 'Enter a topic title first.', 'warn');
-        return;
-      }
-      if (!topicId) {
-        setInlineStatus('meetingSlidesStatus', 'Enter a valid topic ID first.', 'warn');
         return;
       }
       if (!/\.(docx|json)$/i.test(file.name)) {
@@ -9209,24 +9239,40 @@ match /goMission/watch-series-covers/{allPaths=**} {
       setInlineStatus('meetingSlidesStatus', isJsonUpload ? 'Validating JSON deck and preparing meeting slides...' : 'Parsing DOCX and building meeting slides...', 'info');
 
       try {
+        const topicSuggestion = await suggestMeetingSlidesTopicFromUpload(file);
+        applyMeetingSlidesSuggestedTopic(topicSuggestion);
+
+        const formState = getMeetingSlidesTopicFormState();
+        const resolvedTitle = String(formState.title || topicSuggestion.title || '').trim();
+        const resolvedTopicId = normalizeMeetingSlidesTopicId(formState.topicId || topicSuggestion.topicId || resolvedTitle);
+
+        if (!resolvedTitle) {
+          setInlineStatus('meetingSlidesStatus', 'Enter a topic title first.', 'warn');
+          return;
+        }
+        if (!resolvedTopicId) {
+          setInlineStatus('meetingSlidesStatus', 'Enter a valid topic ID first.', 'warn');
+          return;
+        }
+
         const deck = isJsonUpload
-          ? normalizeMeetingSlidesUploadedDeck(JSON.parse(await file.text()), {
-              deckId: topicId,
+          ? normalizeMeetingSlidesUploadedDeck(topicSuggestion.parsedDeck, {
+              deckId: resolvedTopicId,
               language,
               filename: file.name,
-              displayTitle: title
+              displayTitle: resolvedTitle
             })
           : buildMeetingSlidesDeck(await extractStructuredDocxParagraphsFromFile(file), {
-              deckId: topicId,
+              deckId: resolvedTopicId,
               language,
               filename: file.name,
-              displayTitle: title
+              displayTitle: resolvedTitle
             });
 
         renderMeetingSlidesPreview(deck);
-        await publishMeetingSlidesDeck(deck, { topicId, title, language, file });
+        await publishMeetingSlidesDeck(deck, { topicId: resolvedTopicId, title: resolvedTitle, language, file });
 
-        setInlineStatus('meetingSlidesStatus', `Published "${deck.title}" (${deck.slides.length} slides) from ${isJsonUpload ? 'JSON' : 'DOCX'} to topic "${title}" [${language.toUpperCase()}].`, 'success');
+        setInlineStatus('meetingSlidesStatus', `Published "${deck.title}" (${deck.slides.length} slides) from ${isJsonUpload ? 'JSON' : 'DOCX'} to topic "${resolvedTitle}" [${language.toUpperCase()}].`, 'success');
         await loadPublishedMeetingSlidesDeck();
       } catch (error) {
         console.error('[MeetingSlidesAdmin] Publish failed:', error);
@@ -9788,11 +9834,18 @@ match /goMission/watch-series-covers/{allPaths=**} {
         const normalized = normalizeMeetingSlidesTopicId(idInput.value);
         if (idInput.value !== normalized) idInput.value = normalized;
       });
-      document.getElementById('meetingSlidesDocxFile').addEventListener('change', () => {
+      document.getElementById('meetingSlidesDocxFile').addEventListener('change', async () => {
         const file = document.getElementById('meetingSlidesDocxFile')?.files?.[0];
         if (!file) return;
         const fileKind = /\.json$/i.test(file.name) ? 'JSON deck' : (/\.docx$/i.test(file.name) ? 'DOCX guide' : 'file');
-        setInlineStatus('meetingSlidesStatus', `Selected ${fileKind}: ${file.name}`, 'info');
+        try {
+          const topicSuggestion = await suggestMeetingSlidesTopicFromUpload(file);
+          applyMeetingSlidesSuggestedTopic(topicSuggestion);
+          const hasSuggestedTitle = !!String(topicSuggestion.title || '').trim();
+          setInlineStatus('meetingSlidesStatus', hasSuggestedTitle ? `Selected ${fileKind}: ${file.name}. Topic set to "${topicSuggestion.title}".` : `Selected ${fileKind}: ${file.name}`, 'info');
+        } catch (error) {
+          setInlineStatus('meetingSlidesStatus', `Selected ${fileKind}: ${file.name}. ${error.message}`, 'warn');
+        }
       });
 
       document.getElementById('lookupRoleBtn').addEventListener('click', lookupRoleUser);
