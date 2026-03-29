@@ -1849,8 +1849,8 @@
         </div>
 
         <div class="col-6 panel" data-admin-tab="content">
-          <h2>Meeting Slides (DOCX Upload)</h2>
-          <p class="sub">Upload a facilitator guide <code>.docx</code>, save it as a reusable topic, and keep older topics available in the meeting slides selector.</p>
+          <h2>Meeting Slides Upload</h2>
+          <p class="sub">Upload a facilitator guide <code>.docx</code> or a custom meeting slides <code>.json</code>, save it as a reusable topic, and keep older topics available in the meeting slides selector.</p>
           <div class="row">
             <div>
               <label for="meetingSlidesTopicSelect">Topic library</label>
@@ -1880,11 +1880,11 @@
             </div>
           </div>
           <div style="margin-top:10px;">
-            <label for="meetingSlidesDocxFile">DOCX file</label>
-            <input id="meetingSlidesDocxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+            <label for="meetingSlidesDocxFile">Source file</label>
+            <input id="meetingSlidesDocxFile" type="file" accept=".docx,.json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json">
           </div>
           <div class="actions">
-            <button id="publishMeetingSlidesBtn">Parse + Publish to Meeting Slides</button>
+            <button id="publishMeetingSlidesBtn">Upload + Publish to Meeting Slides</button>
             <button id="reloadMeetingSlidesBtn" class="secondary">Reload Published Deck</button>
           </div>
           <div id="meetingSlidesStatus" class="small"></div>
@@ -9028,6 +9028,104 @@ match /goMission/watch-series-covers/{allPaths=**} {
       };
     }
 
+    function fileBaseNameWithoutExtension(filename) {
+      return String(filename || '').replace(/\.[^.]+$/, '').trim();
+    }
+
+    function normalizeMeetingSlidesUploadedDeck(rawDeck, { deckId, language, filename, displayTitle } = {}) {
+      const sourceDeck = Array.isArray(rawDeck) ? { slides: rawDeck } : rawDeck;
+      if (!sourceDeck || typeof sourceDeck !== 'object') {
+        throw new Error('JSON must contain a deck object or an array of slides.');
+      }
+
+      const rawSlides = Array.isArray(sourceDeck.slides) ? sourceDeck.slides : null;
+      if (!rawSlides || !rawSlides.length) {
+        throw new Error('JSON deck must include a non-empty "slides" array.');
+      }
+
+      const normalizedSlides = rawSlides.map((slide, index) => {
+        if (!slide || typeof slide !== 'object') {
+          throw new Error(`Slide ${index + 1} must be an object.`);
+        }
+
+        const rawParagraphs = [];
+        const paragraphSources = [
+          slide.paragraphs,
+          slide.content,
+          slide.body,
+          slide.notes
+        ];
+
+        paragraphSources.forEach((value) => {
+          if (Array.isArray(value)) {
+            value.forEach((entry) => rawParagraphs.push(entry));
+            return;
+          }
+          if (value != null) rawParagraphs.push(value);
+        });
+
+        const paragraphs = rawParagraphs
+          .flatMap((entry) => {
+            if (Array.isArray(entry)) return entry;
+            if (entry && typeof entry === 'object' && entry.text != null) return [entry.text];
+            return [entry];
+          })
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean)
+          .flatMap((entry) => splitMeetingSlidesLongParagraph(entry));
+
+        const title = String(slide.title || slide.heading || slide.name || '').trim() || `Slide ${index + 1}`;
+        const subtitle = String(slide.subtitle || slide.subheading || '').trim();
+        const kicker = String(slide.kicker || slide.label || '').trim();
+
+        return {
+          id: String(slide.id || `slide-${index + 1}`).trim() || `slide-${index + 1}`,
+          type: String(slide.type || (index === 0 ? 'title' : 'content')).trim() === 'title' ? 'title' : 'content',
+          kicker,
+          title,
+          subtitle,
+          paragraphs
+        };
+      });
+
+      return {
+        version: Number(sourceDeck.version) > 0 ? Number(sourceDeck.version) : 1,
+        id: deckId,
+        title: String(displayTitle || '').trim() || String(sourceDeck.title || fileBaseNameWithoutExtension(filename) || 'Meeting Slides').trim(),
+        language,
+        source: {
+          ...(sourceDeck.source && typeof sourceDeck.source === 'object' ? sourceDeck.source : {}),
+          type: String(sourceDeck?.source?.type || 'json').trim() || 'json',
+          filename: filename || sourceDeck?.source?.filename || 'uploaded.json'
+        },
+        generatedAt: sourceDeck.generatedAt || new Date().toISOString(),
+        slides: normalizedSlides
+      };
+    }
+
+    async function publishMeetingSlidesDeck(deck, { topicId, title, language, file } = {}) {
+      const sourceFilename = file?.name || deck?.source?.filename || 'uploaded.json';
+      const docId = meetingSlidesConfigDocId(topicId, language);
+
+      await setDoc(doc(db, 'goMission_config', docId), {
+        type: 'meetingSlidesDeck',
+        deckId: topicId,
+        language,
+        deck,
+        sourceFilename,
+        sourceSize: file?.size || 0,
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
+      }, { merge: true });
+
+      await saveMeetingSlidesCatalogEntry({
+        topicId,
+        title,
+        language,
+        sourceFilename
+      });
+    }
+
     function renderMeetingSlidesPreview(deck) {
       const list = document.getElementById('meetingSlidesPreview');
       if (!list) return;
@@ -9082,7 +9180,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       }
     }
 
-    async function publishMeetingSlidesFromDocx() {
+    async function publishMeetingSlidesUpload() {
       const btn = document.getElementById('publishMeetingSlidesBtn');
       const fileInput = document.getElementById('meetingSlidesDocxFile');
       const file = fileInput?.files?.[0];
@@ -9090,7 +9188,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const { topicId, title } = getMeetingSlidesTopicFormState();
 
       if (!file) {
-        setInlineStatus('meetingSlidesStatus', 'Choose a .docx file first.', 'warn');
+        setInlineStatus('meetingSlidesStatus', 'Choose a .docx or .json file first.', 'warn');
         return;
       }
       if (!title) {
@@ -9101,49 +9199,38 @@ match /goMission/watch-series-covers/{allPaths=**} {
         setInlineStatus('meetingSlidesStatus', 'Enter a valid topic ID first.', 'warn');
         return;
       }
-      if (!/\.docx$/i.test(file.name)) {
-        setInlineStatus('meetingSlidesStatus', 'Only .docx is supported for meeting slides upload.', 'warn');
+      if (!/\.(docx|json)$/i.test(file.name)) {
+        setInlineStatus('meetingSlidesStatus', 'Only .docx and .json files are supported for meeting slides upload.', 'warn');
         return;
       }
 
       btn.disabled = true;
-      setInlineStatus('meetingSlidesStatus', 'Parsing DOCX and building meeting slides...', 'info');
+      const isJsonUpload = /\.json$/i.test(file.name);
+      setInlineStatus('meetingSlidesStatus', isJsonUpload ? 'Validating JSON deck and preparing meeting slides...' : 'Parsing DOCX and building meeting slides...', 'info');
 
       try {
-        const paragraphs = await extractStructuredDocxParagraphsFromFile(file);
-        const deck = buildMeetingSlidesDeck(paragraphs, {
-          deckId: topicId,
-          language,
-          filename: file.name,
-          displayTitle: title
-        });
+        const deck = isJsonUpload
+          ? normalizeMeetingSlidesUploadedDeck(JSON.parse(await file.text()), {
+              deckId: topicId,
+              language,
+              filename: file.name,
+              displayTitle: title
+            })
+          : buildMeetingSlidesDeck(await extractStructuredDocxParagraphsFromFile(file), {
+              deckId: topicId,
+              language,
+              filename: file.name,
+              displayTitle: title
+            });
 
         renderMeetingSlidesPreview(deck);
+        await publishMeetingSlidesDeck(deck, { topicId, title, language, file });
 
-        const docId = meetingSlidesConfigDocId(topicId, language);
-        await setDoc(doc(db, 'goMission_config', docId), {
-          type: 'meetingSlidesDeck',
-          deckId: topicId,
-          language,
-          deck,
-          sourceFilename: file.name,
-          sourceSize: file.size || 0,
-          updatedAt: serverTimestamp(),
-          updatedBy: auth.currentUser?.email || auth.currentUser?.uid || 'unknown'
-        }, { merge: true });
-
-        await saveMeetingSlidesCatalogEntry({
-          topicId,
-          title,
-          language,
-          sourceFilename: file.name
-        });
-
-        setInlineStatus('meetingSlidesStatus', `Published "${deck.title}" (${deck.slides.length} slides) to topic "${title}" [${language.toUpperCase()}].`, 'success');
+        setInlineStatus('meetingSlidesStatus', `Published "${deck.title}" (${deck.slides.length} slides) from ${isJsonUpload ? 'JSON' : 'DOCX'} to topic "${title}" [${language.toUpperCase()}].`, 'success');
         await loadPublishedMeetingSlidesDeck();
       } catch (error) {
         console.error('[MeetingSlidesAdmin] Publish failed:', error);
-        setInlineStatus('meetingSlidesStatus', `Failed to parse/publish DOCX: ${error.message}`, 'error');
+        setInlineStatus('meetingSlidesStatus', `Failed to publish meeting slides: ${error.message}`, 'error');
       } finally {
         btn.disabled = false;
       }
@@ -9687,7 +9774,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
 
       document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingModule);
       document.getElementById('clearTrainingBtn').addEventListener('click', clearTrainingForm);
-      document.getElementById('publishMeetingSlidesBtn').addEventListener('click', publishMeetingSlidesFromDocx);
+      document.getElementById('publishMeetingSlidesBtn').addEventListener('click', publishMeetingSlidesUpload);
       document.getElementById('reloadMeetingSlidesBtn').addEventListener('click', async () => {
         await loadMeetingSlidesCatalog({ preserveSelection: true, silent: true });
         await loadPublishedMeetingSlidesDeck();
@@ -9704,7 +9791,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('meetingSlidesDocxFile').addEventListener('change', () => {
         const file = document.getElementById('meetingSlidesDocxFile')?.files?.[0];
         if (!file) return;
-        setInlineStatus('meetingSlidesStatus', `Selected file: ${file.name}`, 'info');
+        const fileKind = /\.json$/i.test(file.name) ? 'JSON deck' : (/\.docx$/i.test(file.name) ? 'DOCX guide' : 'file');
+        setInlineStatus('meetingSlidesStatus', `Selected ${fileKind}: ${file.name}`, 'info');
       });
 
       document.getElementById('lookupRoleBtn').addEventListener('click', lookupRoleUser);
