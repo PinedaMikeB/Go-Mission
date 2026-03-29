@@ -489,6 +489,7 @@ const GroupMeeting = {
   initPresentationState() {
     let savedOpacity = 72;
     let savedDeckId = '';
+    let savedFontScale = 1.125;
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
       const parsed = Number(raw);
@@ -496,6 +497,10 @@ const GroupMeeting = {
         savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
       }
       savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
+      const rawFontScale = Number(window.localStorage?.getItem('goMission_meetingSlidesFontScale'));
+      if (Number.isFinite(rawFontScale)) {
+        savedFontScale = Math.min(1.35, Math.max(0.95, rawFontScale));
+      }
     } catch (_) {}
 
     this.presentationState = {
@@ -505,6 +510,7 @@ const GroupMeeting = {
       selectedDeckId: savedDeckId || null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
+      fontScale: savedFontScale,
       currentSlideIndex: 0,
       loading: false,
       error: null,
@@ -612,6 +618,23 @@ const GroupMeeting = {
                    class="flex-1 accent-amber-400">
             <span id="meeting-slides-opacity-value"
                   class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
+          </div>
+          <div class="px-4 py-2 border-t border-white/10 flex items-center justify-between gap-3">
+            <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Text</span>
+            <div class="flex items-center gap-2">
+              <button onclick="window.GroupMeeting.decreaseSlidesFontSize()"
+                      id="meeting-slides-font-decrease"
+                      class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm font-bold">
+                A-
+              </button>
+              <span id="meeting-slides-font-value"
+                    class="text-xs font-bold text-amber-200 min-w-[52px] text-center">18px</span>
+              <button onclick="window.GroupMeeting.increaseSlidesFontSize()"
+                      id="meeting-slides-font-increase"
+                      class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-sm font-bold">
+                A+
+              </button>
+            </div>
           </div>
         </div>
 
@@ -899,6 +922,26 @@ const GroupMeeting = {
     this.renderSlidesPanel();
   },
 
+  setSlidesFontScale(value) {
+    if (!this.presentationState) return;
+    const next = Math.min(1.35, Math.max(0.95, Number(value) || 1.125));
+    this.presentationState.fontScale = Number(next.toFixed(3));
+    try {
+      window.localStorage?.setItem('goMission_meetingSlidesFontScale', String(this.presentationState.fontScale));
+    } catch (_) {}
+    this.renderSlidesPanel();
+  },
+
+  increaseSlidesFontSize() {
+    const current = Number(this.presentationState?.fontScale || 1.125);
+    this.setSlidesFontScale(current + 0.08);
+  },
+
+  decreaseSlidesFontSize() {
+    const current = Number(this.presentationState?.fontScale || 1.125);
+    this.setSlidesFontScale(current - 0.08);
+  },
+
   nextSlide() {
     const s = this.presentationState;
     if (!s?.deck?.slides?.length) return;
@@ -1003,14 +1046,39 @@ const GroupMeeting = {
     };
   },
 
+  getMeetingSlideFontScale(options = {}) {
+    const explicit = Number(options.fontScale);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const stateScale = Number(this.presentationState?.fontScale);
+    if (Number.isFinite(stateScale) && stateScale > 0) return stateScale;
+    return 1.125;
+  },
+
+  scaleMeetingSlidePx(value, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const numeric = typeof value === 'number' ? value : parseFloat(String(value || '').replace('px', ''));
+    const safe = Number.isFinite(numeric) ? numeric : 16;
+    const scaled = safe * fontScale;
+    return `${Number(scaled.toFixed(2)).toString()}px`;
+  },
+
+  scaleMeetingSlideClamp(minPx, vw, maxPx, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const safeMin = Number.isFinite(minPx) ? minPx : 24;
+    const safeVw = Number.isFinite(vw) ? vw : 5.8;
+    const safeMax = Number.isFinite(maxPx) ? maxPx : 38;
+    return `clamp(${Math.round(safeMin * fontScale)}px, ${(safeVw * fontScale).toFixed(2)}vw, ${Math.round(safeMax * fontScale)}px)`;
+  },
+
   renderMeetingSlideParagraphBlocks(paragraphs = [], options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
     const paragraphColor = options.paragraphColor || '#1f1f1f';
     const bulletColor = options.bulletColor || '#181818';
-    const paragraphSize = options.paragraphSize || '18px';
-    const bulletSize = options.bulletSize || paragraphSize;
-    const paragraphGap = options.paragraphGap || '12px';
-    const listGap = options.listGap || '10px';
-    const listIndent = options.listIndent || '22px';
+    const paragraphSize = this.scaleMeetingSlidePx(options.paragraphSize || '18px', { fontScale });
+    const bulletSize = this.scaleMeetingSlidePx(options.bulletSize || options.paragraphSize || '18px', { fontScale });
+    const paragraphGap = this.scaleMeetingSlidePx(options.paragraphGap || '12px', { fontScale });
+    const listGap = this.scaleMeetingSlidePx(options.listGap || '10px', { fontScale });
+    const listIndent = this.scaleMeetingSlidePx(options.listIndent || '22px', { fontScale });
 
     const items = Array.isArray(paragraphs) ? paragraphs.filter((p) => String(p || '').trim()) : [];
     if (!items.length) return '';
@@ -1285,6 +1353,8 @@ const GroupMeeting = {
   },
 
   renderMeetingSlideLabelBlock(block, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const compactMobile = !!options.compactMobile;
     const tone = this.getMeetingSlideLabelTone(block.kind);
     const isScripture = block.kind === 'scripture';
     const bodyHtml = block.body.length
@@ -1295,47 +1365,64 @@ const GroupMeeting = {
           bulletSize: tone.bodySize,
           paragraphGap: '10px',
           listGap: '8px',
-          listIndent: '20px'
+          listIndent: '20px',
+          fontScale
         })
       : '';
     const referenceHtml = block.reference
-      ? `<div style="margin-top:12px; color:#8a4b14; font-size:12px; line-height:1.35; font-weight:900; letter-spacing:0.14em; text-transform:uppercase;">${this.escapeHtml(block.reference)}</div>`
+      ? `<div style="margin-top:${this.scaleMeetingSlidePx('12px', { fontScale })}; color:#8a4b14; font-size:${this.scaleMeetingSlidePx('12px', { fontScale })}; line-height:1.35; font-weight:900; letter-spacing:0.14em; text-transform:uppercase;">${this.escapeHtml(block.reference)}</div>`
       : '';
     const versesHtml = block.verses.length
       ? block.verses.map((verse) => (
-          `<p style="margin:10px 0 0 0; color:#3a2617; font-size:16px; line-height:1.72; font-style:italic; font-weight:600;">${this.escapeHtml(verse)}</p>`
+          `<p style="margin:${this.scaleMeetingSlidePx('10px', { fontScale })} 0 0 0; color:#3a2617; font-size:${this.scaleMeetingSlidePx('16px', { fontScale })}; line-height:1.72; font-style:italic; font-weight:600;">${this.escapeHtml(verse)}</p>`
         )).join('')
       : '';
-    const labelMarginBottom = isScripture || bodyHtml ? '10px' : '0';
+    const labelMarginBottom = isScripture || bodyHtml ? this.scaleMeetingSlidePx('10px', { fontScale }) : '0';
+    const cardPadding = compactMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })}` : `${this.scaleMeetingSlidePx('12px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })}`;
+    const cardRadius = compactMobile ? this.scaleMeetingSlidePx('13px', { fontScale }) : this.scaleMeetingSlidePx('15px', { fontScale });
+    const labelFontSize = this.scaleMeetingSlidePx('11px', { fontScale });
+    const labelPadding = `${this.scaleMeetingSlidePx('6px', { fontScale })} ${this.scaleMeetingSlidePx('10px', { fontScale })}`;
 
     return `
-      <div style="border-radius:15px; border:1px solid ${tone.border}; background:${tone.background}; padding:12px 13px 13px 13px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);">
-        <div style="display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:999px; background:${tone.labelBg}; color:${tone.labelColor}; padding:6px 10px; font-size:11px; line-height:1.2; font-weight:900; text-transform:${tone.labelTransform}; letter-spacing:${tone.labelSpacing}; margin-bottom:${labelMarginBottom};">${this.escapeHtml(block.label)}</div>
-        ${isScripture ? `<div>${referenceHtml}${versesHtml}${bodyHtml ? `<div style="margin-top:12px;">${bodyHtml}</div>` : ''}</div>` : bodyHtml}
+      <div style="border-radius:${cardRadius}; border:1px solid ${tone.border}; background:${tone.background}; padding:${cardPadding}; box-shadow:${compactMobile ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.45)'};">
+        <div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; max-width:100%; border-radius:999px; background:${tone.labelBg}; color:${tone.labelColor}; padding:${labelPadding}; font-size:${labelFontSize}; line-height:1.2; font-weight:900; text-transform:${tone.labelTransform}; letter-spacing:${tone.labelSpacing}; margin-bottom:${labelMarginBottom};">${this.escapeHtml(block.label)}</div>
+        ${isScripture ? `<div>${referenceHtml}${versesHtml}${bodyHtml ? `<div style="margin-top:${this.scaleMeetingSlidePx('12px', { fontScale })};">${bodyHtml}</div>` : ''}</div>` : bodyHtml}
       </div>
     `;
   },
 
   renderMeetingSlideContentBlocks(blocks = [], options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const compactMobile = !!options.compactMobile;
     const depth = Number(options.depth || 0);
     const items = Array.isArray(blocks) ? blocks : [];
     if (!items.length) return '';
 
     return items.map((block, idx) => {
-      const marginTop = idx === 0 ? '0' : (block.type === 'section' ? '18px' : '12px');
+      const marginTop = idx === 0 ? '0' : (block.type === 'section' ? this.scaleMeetingSlidePx(compactMobile ? '14px' : '18px', { fontScale }) : this.scaleMeetingSlidePx(compactMobile ? '10px' : '12px', { fontScale }));
       if (block.type === 'section') {
+        if (compactMobile) {
+          return `
+            <section style="margin-top:${marginTop};">
+              <div style="margin-bottom:${block.items.length ? this.scaleMeetingSlidePx('10px', { fontScale }) : '0'};">
+                <div style="color:#2b1d13; font-size:${this.scaleMeetingSlidePx(depth > 0 ? '16px' : '19px', { fontScale })}; line-height:1.04; font-weight:900; letter-spacing:-0.02em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
+              </div>
+              <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1, fontScale, compactMobile })}</div>
+            </section>
+          `;
+        }
         return `
-          <section style="margin-top:${marginTop}; border-radius:18px; border:1px solid rgba(191, 126, 63, 0.18); background:linear-gradient(180deg, rgba(255,250,244,0.96), rgba(255,245,234,0.92)); padding:14px 14px 15px 14px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.55);">
-            <div style="margin-bottom:${block.items.length ? '12px' : '0'};">
-              <div style="color:#2b1d13; font-size:${depth > 0 ? '15px' : '17px'}; line-height:1.08; font-weight:900; letter-spacing:-0.015em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
+          <section style="margin-top:${marginTop}; border-radius:${this.scaleMeetingSlidePx('18px', { fontScale })}; border:1px solid rgba(191, 126, 63, 0.18); background:linear-gradient(180deg, rgba(255,250,244,0.96), rgba(255,245,234,0.92)); padding:${this.scaleMeetingSlidePx('14px', { fontScale })} ${this.scaleMeetingSlidePx('14px', { fontScale })} ${this.scaleMeetingSlidePx('15px', { fontScale })} ${this.scaleMeetingSlidePx('14px', { fontScale })}; box-shadow:inset 0 1px 0 rgba(255,255,255,0.55);">
+            <div style="margin-bottom:${block.items.length ? this.scaleMeetingSlidePx('12px', { fontScale }) : '0'};">
+              <div style="color:#2b1d13; font-size:${this.scaleMeetingSlidePx(depth > 0 ? '15px' : '17px', { fontScale })}; line-height:1.08; font-weight:900; letter-spacing:-0.015em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
             </div>
-            <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1 })}</div>
+            <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1, fontScale, compactMobile })}</div>
           </section>
         `;
       }
 
       if (block.type === 'label') {
-        return `<div style="margin-top:${marginTop};">${this.renderMeetingSlideLabelBlock(block, { depth })}</div>`;
+        return `<div style="margin-top:${marginTop};">${this.renderMeetingSlideLabelBlock(block, { depth, fontScale, compactMobile })}</div>`;
       }
 
       if (block.type === 'body') {
@@ -1344,11 +1431,12 @@ const GroupMeeting = {
             ${this.renderMeetingSlideParagraphBlocks(block.paragraphs, {
               paragraphColor: depth > 0 ? '#35281e' : '#2d241c',
               bulletColor: depth > 0 ? '#35281e' : '#2d241c',
-              paragraphSize: depth > 0 ? '15px' : '16px',
-              bulletSize: depth > 0 ? '15px' : '16px',
+              paragraphSize: depth > 0 ? '17px' : '18px',
+              bulletSize: depth > 0 ? '17px' : '18px',
               paragraphGap: depth > 0 ? '10px' : '12px',
               listGap: '8px',
-              listIndent: '20px'
+              listIndent: compactMobile ? '18px' : '20px',
+              fontScale
             })}
           </div>
         `;
@@ -1373,8 +1461,15 @@ const GroupMeeting = {
     const langSelect = document.getElementById('meeting-slides-lang-select');
     const opacitySlider = document.getElementById('meeting-slides-opacity');
     const opacityValueEl = document.getElementById('meeting-slides-opacity-value');
+    const fontValueEl = document.getElementById('meeting-slides-font-value');
+    const fontDecreaseBtn = document.getElementById('meeting-slides-font-decrease');
+    const fontIncreaseBtn = document.getElementById('meeting-slides-font-increase');
     const topicEntries = this.getSlidesLibraryEntries();
     const hasTopics = topicEntries.length > 0;
+    const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+    const isNarrowMobile = viewportWidth > 0 && viewportWidth <= 640;
+    const compactMobile = viewportWidth > 0 && viewportWidth <= 430;
     const selectedDeckId = hasTopics && this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]
       ? state.selectedDeckId
       : (topicEntries[0]?.[0] || null);
@@ -1399,14 +1494,20 @@ const GroupMeeting = {
     }
 
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
+    const fontScale = Math.min(1.35, Math.max(0.95, Number(state.fontScale || 1.125)));
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
     // Keep the reading surface substantially opaque so live video does not bleed through the text.
-    const noteSurfaceAlpha = Math.min(0.98, Math.max(0.84, 0.76 + (opacityPct / 100) * 0.2));
+    const noteSurfaceAlpha = isNarrowMobile
+      ? Math.min(0.99, Math.max(0.93, 0.88 + (opacityPct / 100) * 0.08))
+      : Math.min(0.98, Math.max(0.84, 0.76 + (opacityPct / 100) * 0.2));
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
     if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
+    if (fontValueEl) fontValueEl.textContent = `${Math.round(16 * fontScale)}px`;
+    if (fontDecreaseBtn) fontDecreaseBtn.disabled = fontScale <= 0.95;
+    if (fontIncreaseBtn) fontIncreaseBtn.disabled = fontScale >= 1.35;
 
     if (toggleBtn) {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
@@ -1425,6 +1526,15 @@ const GroupMeeting = {
     panel.style.border = 'none';
     panel.style.backdropFilter = 'none';
     panel.style.webkitBackdropFilter = 'none';
+    panel.style.position = isNarrowMobile ? 'fixed' : '';
+    panel.style.top = isNarrowMobile ? '92px' : '';
+    panel.style.left = isNarrowMobile ? '12px' : '';
+    panel.style.right = isNarrowMobile ? '12px' : '';
+    panel.style.bottom = isNarrowMobile ? '76px' : '';
+    panel.style.width = isNarrowMobile ? 'auto' : '';
+    panel.style.maxHeight = isNarrowMobile ? `calc(${Math.round(viewportHeight || 0)}px - 168px)` : '';
+    panel.style.contain = isNarrowMobile ? 'layout paint style' : '';
+    panel.style.transform = isNarrowMobile ? 'translateZ(0)' : '';
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
@@ -1481,35 +1591,35 @@ const GroupMeeting = {
     const displaySubtitle = !eyebrowText && subtitleRaw ? subtitleRaw : '';
     const isKeyPointSlide = this.isMeetingSlideKeyPointMarker(eyebrowText);
     const titleFontSize = isKeyPointSlide
-      ? 'clamp(31px, 6.6vw, 46px)'
-      : (slide.type === 'title' ? 'clamp(25px, 5.8vw, 38px)' : 'clamp(24px, 5.9vw, 37px)');
+      ? this.scaleMeetingSlideClamp(31, 6.6, 46, { fontScale })
+      : (slide.type === 'title' ? this.scaleMeetingSlideClamp(25, 5.8, 38, { fontScale }) : this.scaleMeetingSlideClamp(24, 5.9, 37, { fontScale }));
     const kickerHtml = slide.kicker
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:5px 10px; font-weight:800; margin-bottom:10px;">
-          <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
+      ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:${this.scaleMeetingSlidePx('5px', { fontScale })} ${this.scaleMeetingSlidePx('10px', { fontScale })}; font-weight:800; margin-bottom:${this.scaleMeetingSlidePx('10px', { fontScale })};">
+          <span style="display:inline-block; width:${this.scaleMeetingSlidePx('7px', { fontScale })}; height:${this.scaleMeetingSlidePx('7px', { fontScale })}; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
         </div>`
       : '';
     const eyebrowHtml = eyebrowText
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:999px; background:rgba(129, 66, 23, 0.08); color:#8c4317; border:1px solid rgba(209, 146, 76, 0.24); padding:6px 11px; font-size:11px; line-height:1.2; letter-spacing:0.14em; text-transform:uppercase; font-weight:900; margin-bottom:12px;">${this.escapeHtml(eyebrowText)}</div>`
+      ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; max-width:100%; border-radius:999px; background:rgba(129, 66, 23, 0.08); color:#8c4317; border:1px solid rgba(209, 146, 76, 0.24); padding:${this.scaleMeetingSlidePx('6px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.2; letter-spacing:0.14em; text-transform:uppercase; font-weight:900; margin-bottom:${this.scaleMeetingSlidePx('12px', { fontScale })};">${this.escapeHtml(eyebrowText)}</div>`
       : '';
     const titleHtml = `<div style="color:#141414; font-size:${titleFontSize}; line-height:${isKeyPointSlide ? '0.95' : '1.02'}; font-weight:900; letter-spacing:${isKeyPointSlide ? '-0.03em' : '-0.015em'}; margin-bottom:${displaySubtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(displayTitle)}</div>`;
     const subtitleHtml = displaySubtitle
-      ? `<div style="color:#5a4737; font-size:${slide.type === 'title' ? '18px' : '14px'}; line-height:1.45; margin-bottom:15px; font-weight:${slide.type === 'title' ? '700' : '600'};">${this.escapeHtml(displaySubtitle)}</div>`
+      ? `<div style="color:#5a4737; font-size:${this.scaleMeetingSlidePx(slide.type === 'title' ? '18px' : '14px', { fontScale })}; line-height:1.45; margin-bottom:${this.scaleMeetingSlidePx('15px', { fontScale })}; font-weight:${slide.type === 'title' ? '700' : '600'};">${this.escapeHtml(displaySubtitle)}</div>`
       : '';
-    const structuredContentHtml = this.renderMeetingSlideContentBlocks(slideBlocks);
+    const structuredContentHtml = this.renderMeetingSlideContentBlocks(slideBlocks, { fontScale, compactMobile });
     const bodyHtml = `
       <div style="
         position:relative;
-        border-radius:18px;
+        border-radius:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};
         border:1px solid rgba(255,255,255,0.55);
         background:
           linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.86, noteSurfaceAlpha - 0.04).toFixed(2)})),
           radial-gradient(circle at top right, rgba(245,158,11,0.1), transparent 36%),
           radial-gradient(circle at bottom left, rgba(220,38,38,0.05), transparent 42%);
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        padding:18px 18px 16px 18px;">
-        <div style="position:absolute; left:0; top:14px; bottom:14px; width:5px; border-radius:5px; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
-        <div style="position:absolute; right:-18px; bottom:-18px; width:132px; height:132px; border-radius:50%; background:radial-gradient(circle, rgba(245,158,11,0.14), rgba(245,158,11,0.04) 58%, transparent 74%); filter:blur(1px); pointer-events:none;"></div>
-        <div style="position:relative; z-index:1; padding-left:12px;">
+        padding:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '14px' : '16px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};">
+        <div style="position:absolute; left:0; top:${this.scaleMeetingSlidePx('14px', { fontScale })}; bottom:${this.scaleMeetingSlidePx('14px', { fontScale })}; width:${this.scaleMeetingSlidePx('5px', { fontScale })}; border-radius:${this.scaleMeetingSlidePx('5px', { fontScale })}; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
+        <div style="position:absolute; right:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; bottom:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; width:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; height:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; border-radius:50%; background:radial-gradient(circle, rgba(245,158,11,${compactMobile ? '0.08' : '0.14'}), rgba(245,158,11,0.04) 58%, transparent 74%); filter:blur(1px); pointer-events:none;"></div>
+        <div style="position:relative; z-index:1; padding-left:${this.scaleMeetingSlidePx('12px', { fontScale })};">
           ${kickerHtml}
           ${eyebrowHtml}
           ${titleHtml}
@@ -1528,21 +1638,35 @@ const GroupMeeting = {
     if (body) {
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
+      body.style.overflowY = 'auto';
+      body.style.overscrollBehavior = 'contain';
+      body.style.webkitOverflowScrolling = 'touch';
+      body.style.scrollbarGutter = 'stable';
+      body.style.maxHeight = '';
+      body.style.minHeight = isNarrowMobile ? '0' : '';
+      body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('12px', { fontScale })} ${this.scaleMeetingSlidePx('4px', { fontScale })} ${this.scaleMeetingSlidePx('16px', { fontScale })} ${this.scaleMeetingSlidePx('4px', { fontScale })}` : '';
     }
 
     const topbar = document.getElementById('meeting-slides-topbar');
     const bottombar = document.getElementById('meeting-slides-bottombar');
     if (topbar) {
+      topbar.style.flexShrink = '0';
       topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
       topbar.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)})`;
-      topbar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
-      topbar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      topbar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+      topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
     }
     if (bottombar) {
+      bottombar.style.flexShrink = '0';
       bottombar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.07, chromeAlpha * 0.9).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.75).toFixed(2)}))`;
       bottombar.style.borderColor = `rgba(255,255,255,${Math.min(0.14, borderAlpha).toFixed(2)})`;
-      bottombar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
-      bottombar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+      bottombar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+    }
+
+    if (isNarrowMobile && body && topbar && bottombar) {
+      const availableBodyHeight = Math.max(220, viewportHeight - 92 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 22);
+      body.style.maxHeight = `${Math.round(availableBodyHeight)}px`;
     }
   },
   
