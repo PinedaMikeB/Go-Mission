@@ -1858,8 +1858,8 @@
     
     <!-- Loading State -->
     <div id="loading" class="fixed inset-0 bg-[var(--bg-color)] flex items-center justify-center z-50 transition-colors duration-300">
-        <div class="text-center animate-fade-up loader-shell">
-            <div class="relative mb-6">
+        <div class="text-center animate-fade-up loader-shell w-full max-w-[320px] px-6">
+            <div class="relative mb-5 inline-flex items-center justify-center">
                 <div class="loader-mark w-24 h-24 rounded-full bg-gradient-to-br from-[var(--mission-red-bright)] to-[var(--mission-red-deep)] flex items-center justify-center">
                     <div class="text-center">
                         <span class="text-[var(--mission-gold)] text-2xl">★</span>
@@ -1868,12 +1868,27 @@
                     </div>
                 </div>
                 <div class="loader-ring absolute inset-0 w-24 h-24 border rounded-full"></div>
+                <div class="absolute -right-2 -top-2 w-9 h-9 rounded-full border border-[var(--mission-gold)]/35 bg-white/85 text-[var(--mission-red-bright)] shadow-lg flex items-center justify-center text-lg animate-pulse">
+                    ⌛
+                </div>
             </div>
-            <p class="text-stone-500 text-xs font-medium uppercase tracking-widest">Loading</p>
-            <div class="flex justify-center gap-1 mt-2">
-                <span class="loader-dot w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
-                <span class="loader-dot loader-dot-2 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
-                <span class="loader-dot loader-dot-3 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+            <div class="space-y-3">
+                <div class="flex items-end justify-between gap-3">
+                    <div class="text-left">
+                        <p class="text-stone-500 text-[11px] font-medium uppercase tracking-[0.25em]">Preparing</p>
+                        <p id="bootStatusLabel" class="text-[var(--text-color)] text-sm font-semibold">Restoring your journey</p>
+                    </div>
+                    <div id="bootProgressValue" class="text-[var(--mission-gold)] text-2xl font-black tabular-nums">0%</div>
+                </div>
+                <div class="h-2 rounded-full bg-black/10 overflow-hidden border border-[var(--card-border)]">
+                    <div id="bootProgressBar" class="h-full w-0 rounded-full bg-gradient-to-r from-[var(--mission-gold)] via-amber-500 to-[var(--mission-red-bright)] transition-all duration-500 ease-out"></div>
+                </div>
+                <p id="bootProgressHint" class="text-[var(--text-muted)] text-xs leading-relaxed">Checking your account and loading the right screen.</p>
+                <div class="flex justify-center gap-1">
+                    <span class="loader-dot w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+                    <span class="loader-dot loader-dot-2 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+                    <span class="loader-dot loader-dot-3 w-1.5 h-1.5 bg-[var(--mission-gold)] rounded-full"></span>
+                </div>
             </div>
         </div>
     </div>
@@ -3446,7 +3461,27 @@
         const loading = document.getElementById('loading');
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
+        const bootStatusLabel = document.getElementById('bootStatusLabel');
+        const bootProgressValue = document.getElementById('bootProgressValue');
+        const bootProgressBar = document.getElementById('bootProgressBar');
+        const bootProgressHint = document.getElementById('bootProgressHint');
         let authBootResolved = false;
+        const BootRuntime = {
+            percent: 0,
+            mainAppVisible: false,
+            setProgress(percent, label, hint) {
+                this.percent = Math.max(this.percent, Math.min(100, Number(percent) || 0));
+                if (bootProgressValue) bootProgressValue.textContent = `${Math.round(this.percent)}%`;
+                if (bootProgressBar) bootProgressBar.style.width = `${this.percent}%`;
+                if (typeof label === 'string' && bootStatusLabel) bootStatusLabel.textContent = label;
+                if (typeof hint === 'string' && bootProgressHint) bootProgressHint.textContent = hint;
+            },
+            reset() {
+                this.percent = 0;
+                this.mainAppVisible = false;
+                this.setProgress(0, 'Restoring your journey', 'Checking your account and loading the right screen.');
+            }
+        };
         function notifyPWAAppReady(reason) {
             if (window.PWAUpdater && typeof window.PWAUpdater.notifyAppReady === 'function') {
                 window.PWAUpdater.notifyAppReady(reason);
@@ -3467,15 +3502,40 @@
             return decoded;
         })();
 
+        function hideLoadingOverlay() {
+            if (loading) loading.classList.add('hidden');
+        }
+
+        function showLoadingOverlay() {
+            if (loading) loading.classList.remove('hidden');
+        }
+
+        function revealMainApp(reason = 'main-app-visible') {
+            if (loginScreen) loginScreen.classList.add('hidden');
+            if (mainApp) mainApp.classList.remove('hidden');
+            BootRuntime.mainAppVisible = true;
+            hideLoadingOverlay();
+            notifyPWAAppReady(reason);
+        }
+
+        function showLoginFallback(reason = 'login-visible') {
+            BootRuntime.reset();
+            hideLoadingOverlay();
+            if (loginScreen) loginScreen.classList.remove('hidden');
+            if (mainApp) mainApp.classList.add('hidden');
+            BootRuntime.mainAppVisible = false;
+            notifyPWAAppReady(reason);
+        }
+
+        BootRuntime.reset();
+
         // Safety net: prevent infinite "Loading" if auth/bootstrap stalls on mobile PWA.
         const authBootWatchdog = setTimeout(() => {
             if (authBootResolved) return;
             if (!loading || loading.classList.contains('hidden')) return;
 
             console.warn('[Auth] Boot watchdog fired - showing login fallback');
-            loading.classList.add('hidden');
-            if (loginScreen) loginScreen.classList.remove('hidden');
-            notifyPWAAppReady('boot-watchdog');
+            showLoginFallback('boot-watchdog');
 
             const existing = document.getElementById('bootWatchdogNotice');
             if (!existing && loginScreen) {
@@ -3748,211 +3808,269 @@
             }
         }
 
+        async function handlePostBootstrapLaunchIntent(initialLaunchIntent = {}, handledPriorityLaunch = false) {
+            let {
+                openChatGroupId,
+                openChatMessageId,
+                openDmWith,
+                openMessagesTab,
+                openAnnouncement,
+                announcementTitle,
+                announcementBody,
+                joinCode
+            } = initialLaunchIntent;
+
+            if (!handledPriorityLaunch && openChatGroupId) {
+                let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
+                    ? MyGroups.getGroupById(openChatGroupId)
+                    : null;
+                if (!targetGroup && typeof window.getDoc === 'function' && typeof window.doc === 'function' && window.db) {
+                    try {
+                        const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', openChatGroupId));
+                        if (groupDoc.exists()) {
+                            const groupData = groupDoc.data() || {};
+                            const uid = window.currentUser?.uid;
+                            const isMember = Array.isArray(groupData.members) && groupData.members.includes(uid);
+                            const isGuest = Array.isArray(groupData.guests) && groupData.guests.some((g) => g?.odId === uid);
+                            if (isMember || isGuest) {
+                                targetGroup = { id: groupDoc.id, ...groupData };
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[DeepLink] Failed loading chat group by id:', openChatGroupId, error);
+                    }
+                }
+                if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
+                    Groups.currentGroup = targetGroup;
+                    GroupChat.pendingFocusMessageId = openChatMessageId || null;
+                    await GroupChat.open();
+                } else if (typeof ChatApp !== 'undefined') {
+                    await ChatApp.open();
+                    const opened = (typeof ChatApp.openGroupChat === 'function')
+                        ? ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
+                        : false;
+                    if (!opened) {
+                        ChatApp.setTab('groups');
+                    }
+                }
+            }
+
+            if (!handledPriorityLaunch && openDmWith && typeof ChatApp !== 'undefined') {
+                await ChatApp.open();
+                ChatApp.setTab('direct');
+                await ChatApp.openDirectChat(openDmWith);
+            } else if (!handledPriorityLaunch && openMessagesTab && typeof ChatApp !== 'undefined') {
+                await ChatApp.open();
+                if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
+                    ChatApp.setTab(openMessagesTab);
+                }
+            }
+
+            if (joinCode && typeof Groups !== 'undefined' && !Groups.currentGroup) {
+                Groups.showJoinWithCodeModal();
+                setTimeout(() => {
+                    const codeInput = document.getElementById('groupInviteCode');
+                    if (codeInput) {
+                        codeInput.value = joinCode.toUpperCase();
+                    }
+                }, 200);
+            }
+
+            if (!handledPriorityLaunch && (openAnnouncement === '1' || announcementTitle || announcementBody) && !openChatGroupId && !openDmWith) {
+                if (typeof Notifications !== 'undefined' && typeof Notifications.recordNotification === 'function') {
+                    Notifications.recordNotification({
+                        title: announcementTitle || 'Go Mission Update',
+                        body: announcementBody || 'You have a new announcement.',
+                        type: 'announcement',
+                        data: {
+                            type: 'announcement'
+                        }
+                    }, {
+                        unread: false
+                    });
+                }
+                setTimeout(() => {
+                    showAnnouncementFromPush(
+                        announcementTitle || 'Go Mission Update',
+                        announcementBody || 'You have a new announcement.'
+                    );
+                }, 220);
+            }
+
+            clearInitialLaunchParams(initialLaunchIntent);
+        }
+
+        async function runDeferredBootstrap(options = {}) {
+            const {
+                user,
+                initialLaunchIntent = {},
+                handledPriorityLaunch = false,
+                groupsReady = false,
+                priorityLaunch = false
+            } = options;
+
+            try {
+                initializeDevotion();
+                await runBootstrapStep('loadTodaysEntry', () => loadTodaysEntry(user.uid));
+                await runBootstrapStep('loadWeekProgress', () => loadWeekProgress(user.uid));
+
+                if (typeof PushNotifications !== 'undefined') {
+                    runBootstrapStep('clearPushBadge', () => PushNotifications.clearBadge());
+                }
+
+                if (typeof Groups !== 'undefined' && !groupsReady) {
+                    await runBootstrapStep('Groups.init', () => Groups.init());
+                }
+
+                if (typeof MyGroups !== 'undefined' && !groupsReady) {
+                    await runBootstrapStep('MyGroups.init', () => MyGroups.init());
+                }
+
+                if (typeof window.requestJourneyStageRefresh === 'function') {
+                    window.requestJourneyStageRefresh(priorityLaunch ? 'priorityLaunchDeferred' : 'postAuthBootstrap', {
+                        forceGraphRefresh: true,
+                        silentMotivation: true,
+                        delayMs: priorityLaunch ? 0 : 120
+                    });
+                }
+                if (typeof window.requestAdminJourneyStageReconcile === 'function') {
+                    window.requestAdminJourneyStageReconcile('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 900 });
+                }
+                if (typeof window.initJourneyStageAdminWatcher === 'function') {
+                    window.initJourneyStageAdminWatcher();
+                }
+
+                if (typeof ChatApp !== 'undefined') {
+                    await runBootstrapStep('ChatApp.init', () => ChatApp.init());
+                }
+
+                if (typeof Notifications !== 'undefined') {
+                    await runBootstrapStep('Notifications.init', () => Notifications.init());
+                }
+
+                if (typeof Training !== 'undefined') {
+                    await runBootstrapStep('Training.init', () => Training.init());
+                    if (window.DiscipleshipContent) {
+                        const verse = window.DiscipleshipContent.getTrainingVerse();
+                        const verseText = document.getElementById('trainingVerseText');
+                        const verseRef = document.getElementById('trainingVerseRef');
+                        if (verseText) verseText.textContent = `"${verse.text}"`;
+                        if (verseRef) verseRef.textContent = `— ${verse.verse}`;
+                    }
+                    const progress = Training.getProgressSummary();
+                    const progressEl = document.getElementById('trainingProgress');
+                    if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
+                }
+
+                await handlePostBootstrapLaunchIntent(initialLaunchIntent, handledPriorityLaunch);
+
+                if (typeof PushNotifications !== 'undefined') {
+                    await runBootstrapStep('PushNotifications.init', () => PushNotifications.init());
+                    setTimeout(() => {
+                        if (PushNotifications.shouldShowPrompt()) {
+                            PushNotifications.showPermissionPrompt();
+                        }
+                    }, 3000);
+                }
+            } catch (error) {
+                reportBootstrapIssue(error);
+            }
+        }
+
+        async function bootstrapSignedInUser(user) {
+            BootRuntime.reset();
+            showLoadingOverlay();
+            BootRuntime.setProgress(12, 'Authenticating your account', 'Restoring your secure sign-in session.');
+
+            window.currentUser = user;
+            applyCurrentUserIdentity(user);
+            if (loginScreen) loginScreen.classList.add('hidden');
+            if (mainApp) mainApp.classList.add('hidden');
+
+            await runBootstrapStep('ensureUserExists', () => ensureUserExists(user), { required: true });
+
+            if (postLoginRedirect) {
+                window.location.replace(postLoginRedirect);
+                return;
+            }
+
+            BootRuntime.setProgress(28, 'Loading your profile', 'Restoring your language, role, and journey information.');
+            const initialLaunchIntent = await resolveInitialLaunchIntent();
+            const hasPriorityLaunch = hasPriorityLaunchIntent(initialLaunchIntent);
+            const shouldShowWelcome = !hasPriorityLaunch && !localStorage.getItem('goMission_welcomeSeen');
+
+            await runBootstrapStep('loadUserData', () => loadUserData(user.uid, {
+                skipJourneyRender: true,
+                skipStageRefresh: true
+            }));
+
+            if (hasPriorityLaunch) {
+                BootRuntime.setProgress(62, 'Opening your notification', 'Skipping home boot so your target opens first.');
+                const handledPriorityLaunch = await routeInitialPriorityLaunch(initialLaunchIntent);
+                clearInitialLaunchParams(initialLaunchIntent);
+                BootRuntime.setProgress(100, 'Ready', 'Your notification target is open.');
+                revealMainApp('priority-launch-visible');
+                window.releaseDeferredBibleStartup?.(handledPriorityLaunch ? 'after-priority-launch-route' : 'after-launch-route-check');
+                void runDeferredBootstrap({
+                    user,
+                    initialLaunchIntent,
+                    handledPriorityLaunch,
+                    groupsReady: false,
+                    priorityLaunch: true
+                });
+                return;
+            }
+
+            BootRuntime.setProgress(50, 'Loading mission groups', 'Checking your mission group relationships.');
+            let groupsReady = (typeof Groups === 'undefined' && typeof MyGroups === 'undefined');
+            if (typeof Groups !== 'undefined') {
+                await runBootstrapStep('Groups.init', () => Groups.init());
+            }
+
+            if (typeof MyGroups !== 'undefined') {
+                await runBootstrapStep('MyGroups.init', () => MyGroups.init());
+            }
+            groupsReady = true;
+
+            BootRuntime.setProgress(80, 'Settling your journey stage', 'Making sure your current stage is correct before home appears.');
+            const journeyResult = (typeof window.evaluateAndApplyJourneyStage === 'function')
+                ? await runBootstrapStep('evaluateJourneyStage', () => window.evaluateAndApplyJourneyStage({
+                    forceGraphRefresh: true,
+                    silentMotivation: true
+                }))
+                : null;
+
+            if (!journeyResult && window.currentUserStage) {
+                updateJourneyDisplay(window.currentUserStage);
+            }
+
+            BootRuntime.setProgress(100, 'Ready', 'Everything important is loaded.');
+            revealMainApp('main-app-visible');
+
+            if (shouldShowWelcome && typeof WelcomeModal !== 'undefined') {
+                WelcomeModal.show();
+                notifyPWAAppReady('welcome-modal');
+            }
+
+            window.releaseDeferredBibleStartup?.('after-home-ready');
+            void runDeferredBootstrap({
+                user,
+                initialLaunchIntent,
+                handledPriorityLaunch: false,
+                groupsReady,
+                priorityLaunch: false
+            });
+        }
+
         onAuthStateChanged(auth, async (user) => {
             authBootResolved = true;
             clearTimeout(authBootWatchdog);
-            loading.classList.add('hidden');
-            
+
             if (user) {
                 try {
-                    window.currentUser = user;
-                    applyCurrentUserIdentity(user);
-
-                    loginScreen.classList.add('hidden');
-                    mainApp.classList.remove('hidden');
-                    notifyPWAAppReady('main-app-visible');
-
-                    await runBootstrapStep('ensureUserExists', () => ensureUserExists(user), { required: true });
-
-                    if (postLoginRedirect) {
-                        window.location.replace(postLoginRedirect);
-                        return;
-                    }
-
-                    const shouldShowWelcome = !localStorage.getItem('goMission_welcomeSeen');
-
-                    if (shouldShowWelcome) {
-                        if (typeof WelcomeModal !== 'undefined') {
-                            WelcomeModal.show();
-                        }
-                        notifyPWAAppReady('welcome-modal');
-                    }
-
-                    await runBootstrapStep('loadUserData', () => loadUserData(user.uid));
-                    initializeDevotion();
-                    await runBootstrapStep('loadTodaysEntry', () => loadTodaysEntry(user.uid));
-                    await runBootstrapStep('loadWeekProgress', () => loadWeekProgress(user.uid));
-
-                    if (typeof PushNotifications !== 'undefined') {
-                        runBootstrapStep('clearPushBadge', () => PushNotifications.clearBadge());
-                    }
-
-                    if (typeof Groups !== 'undefined') {
-                        await runBootstrapStep('Groups.init', () => Groups.init());
-
-                        if (typeof MyGroups !== 'undefined') {
-                            await runBootstrapStep('MyGroups.init', () => MyGroups.init());
-                        }
-
-                        if (typeof window.requestJourneyStageRefresh === 'function') {
-                            window.requestJourneyStageRefresh('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 120 });
-                        }
-                        if (typeof window.requestAdminJourneyStageReconcile === 'function') {
-                            window.requestAdminJourneyStageReconcile('postAuthBootstrap', { forceGraphRefresh: true, delayMs: 900 });
-                        }
-                        if (typeof window.initJourneyStageAdminWatcher === 'function') {
-                            window.initJourneyStageAdminWatcher();
-                        }
-
-                        if (typeof ChatApp !== 'undefined') {
-                            await runBootstrapStep('ChatApp.init', () => ChatApp.init());
-                        }
-
-                        if (typeof Notifications !== 'undefined') {
-                            await runBootstrapStep('Notifications.init', () => Notifications.init());
-                        }
-
-                        if (typeof Training !== 'undefined') {
-                            await runBootstrapStep('Training.init', () => Training.init());
-                            if (window.DiscipleshipContent) {
-                                const verse = window.DiscipleshipContent.getTrainingVerse();
-                                const verseText = document.getElementById('trainingVerseText');
-                                const verseRef = document.getElementById('trainingVerseRef');
-                                if (verseText) verseText.textContent = `"${verse.text}"`;
-                                if (verseRef) verseRef.textContent = `— ${verse.verse}`;
-                            }
-                            const progress = Training.getProgressSummary();
-                            const progressEl = document.getElementById('trainingProgress');
-                            if (progressEl) progressEl.textContent = `${progress.completed}/${progress.total} sessions`;
-                        }
-                        
-                        const urlParams = new URLSearchParams(window.location.search);
-                        let openChatGroupId = urlParams.get('openChat');
-                        let openChatMessageId = urlParams.get('openChatMessage');
-                        let openDmWith = urlParams.get('openDmWith');
-                        let openMessagesTab = urlParams.get('openMessages');
-                        let openAnnouncement = urlParams.get('openAnnouncement');
-                        let announcementTitle = urlParams.get('announcementTitle');
-                        let announcementBody = urlParams.get('announcementBody');
-                        const joinCode = urlParams.get('join');
-                        const pendingPushTap = await consumePendingPushClickPayload();
-
-                        if (pendingPushTap) {
-                            if (typeof Notifications !== 'undefined' && typeof Notifications.capturePushTap === 'function') {
-                                Notifications.capturePushTap(pendingPushTap);
-                            }
-                            const pendingType = String(pendingPushTap.type || '').toLowerCase();
-                            if (!openChatGroupId && (pendingType === 'chat' || pendingType === 'chat_mention') && pendingPushTap.groupId) {
-                                openChatGroupId = String(pendingPushTap.groupId);
-                                openChatMessageId = pendingPushTap.messageId ? String(pendingPushTap.messageId) : null;
-                            }
-                            if (!openDmWith && pendingType === 'dm' && pendingPushTap.senderId) {
-                                openDmWith = String(pendingPushTap.senderId);
-                                openMessagesTab = 'direct';
-                            }
-                            if (!openAnnouncement && (pendingType === 'announcement' || pendingPushTap.notificationTitle || pendingPushTap.notificationBody)) {
-                                openAnnouncement = '1';
-                                if (!openMessagesTab) openMessagesTab = 'groups';
-                                if (!announcementTitle && pendingPushTap.notificationTitle) {
-                                    announcementTitle = String(pendingPushTap.notificationTitle);
-                                }
-                                if (!announcementBody && pendingPushTap.notificationBody) {
-                                    announcementBody = String(pendingPushTap.notificationBody);
-                                }
-                            }
-                        }
-
-                        if (openChatGroupId) {
-                            let targetGroup = (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupById === 'function')
-                                ? MyGroups.getGroupById(openChatGroupId)
-                                : null;
-                            if (!targetGroup && typeof window.getDoc === 'function' && typeof window.doc === 'function' && window.db) {
-                                try {
-                                    const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', openChatGroupId));
-                                    if (groupDoc.exists()) {
-                                        const groupData = groupDoc.data() || {};
-                                        const uid = window.currentUser?.uid;
-                                        const isMember = Array.isArray(groupData.members) && groupData.members.includes(uid);
-                                        const isGuest = Array.isArray(groupData.guests) && groupData.guests.some((g) => g?.odId === uid);
-                                        if (isMember || isGuest) {
-                                            targetGroup = { id: groupDoc.id, ...groupData };
-                                        }
-                                    }
-                                } catch (error) {
-                                    console.warn('[DeepLink] Failed loading chat group by id:', openChatGroupId, error);
-                                }
-                            }
-                            if (targetGroup && typeof Groups !== 'undefined' && typeof GroupChat !== 'undefined') {
-                                Groups.currentGroup = targetGroup;
-                                GroupChat.pendingFocusMessageId = openChatMessageId || null;
-                                await GroupChat.open();
-                            } else if (typeof ChatApp !== 'undefined') {
-                                await ChatApp.open();
-                                const opened = (typeof ChatApp.openGroupChat === 'function')
-                                    ? ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
-                                    : false;
-                                if (!opened) {
-                                    ChatApp.setTab('groups');
-                                }
-                            }
-                        }
-
-                        if (openDmWith && typeof ChatApp !== 'undefined') {
-                            await ChatApp.open();
-                            ChatApp.setTab('direct');
-                            await ChatApp.openDirectChat(openDmWith);
-                        } else if (openMessagesTab && typeof ChatApp !== 'undefined') {
-                            await ChatApp.open();
-                            if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
-                                ChatApp.setTab(openMessagesTab);
-                            }
-                        }
-
-                        if (joinCode && !Groups.currentGroup) {
-                            Groups.showJoinWithCodeModal();
-                            setTimeout(() => {
-                                const codeInput = document.getElementById('groupInviteCode');
-                                if (codeInput) {
-                                    codeInput.value = joinCode.toUpperCase();
-                                }
-                            }, 200);
-                        }
-
-                        if ((openAnnouncement === '1' || announcementTitle || announcementBody) && !openChatGroupId && !openDmWith) {
-                            if (typeof Notifications !== 'undefined' && typeof Notifications.recordNotification === 'function') {
-                                Notifications.recordNotification({
-                                    title: announcementTitle || 'Go Mission Update',
-                                    body: announcementBody || 'You have a new announcement.',
-                                    type: 'announcement',
-                                    data: {
-                                        type: 'announcement'
-                                    }
-                                }, {
-                                    unread: false
-                                });
-                            }
-                            setTimeout(() => {
-                                showAnnouncementFromPush(
-                                    announcementTitle || 'Go Mission Update',
-                                    announcementBody || 'You have a new announcement.'
-                                );
-                            }, 220);
-                        }
-
-                        if (openChatGroupId || openChatMessageId || openDmWith || openMessagesTab || openAnnouncement || announcementTitle || announcementBody || joinCode) {
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                        }
-
-                        if (typeof PushNotifications !== 'undefined') {
-                            await runBootstrapStep('PushNotifications.init', () => PushNotifications.init());
-                            setTimeout(() => {
-                                if (PushNotifications.shouldShowPrompt()) {
-                                    PushNotifications.showPermissionPrompt();
-                                }
-                            }, 3000);
-                        }
-                    }
+                    await bootstrapSignedInUser(user);
                 } catch (bootstrapError) {
+                    revealMainApp('bootstrap-error-fallback');
                     reportBootstrapIssue(bootstrapError);
                 }
             } else {
@@ -3969,9 +4087,12 @@
                     }
                 }
                 window.currentUser = null;
-                loginScreen.classList.remove('hidden');
-                mainApp.classList.add('hidden');
-                notifyPWAAppReady('login-visible');
+                if (typeof MyGroups !== 'undefined') {
+                    MyGroups.isHydrated = false;
+                }
+                showLoginFallback('login-visible');
+                window.releaseDeferredBibleStartup?.('login-visible');
+
             }
         });
 
@@ -4227,6 +4348,46 @@
             return getJourneyStageRank(a) >= getJourneyStageRank(b) ? normalizeJourneyStage(a) : normalizeJourneyStage(b);
         }
 
+        function getJourneyStageCacheKey(uid) {
+            return `goMission_cachedJourneyStage_${String(uid || '').trim()}`;
+        }
+
+        function persistJourneyStageCache(uid, stage, meta = {}) {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return;
+
+            try {
+                localStorage.setItem(getJourneyStageCacheKey(normalizedUid), JSON.stringify({
+                    stage: normalizeJourneyStage(stage),
+                    build: BUILD_TIMESTAMP,
+                    updatedAt: Date.now(),
+                    ...meta
+                }));
+            } catch (error) {
+                console.debug('[Journey] Could not persist stage cache:', error);
+            }
+        }
+
+        function readJourneyStageCache(uid) {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return null;
+
+            try {
+                const raw = localStorage.getItem(getJourneyStageCacheKey(normalizedUid));
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return null;
+                return {
+                    stage: normalizeJourneyStage(parsed.stage),
+                    build: String(parsed.build || ''),
+                    updatedAt: Number(parsed.updatedAt || 0)
+                };
+            } catch (error) {
+                console.debug('[Journey] Could not read stage cache:', error);
+                return null;
+            }
+        }
+
         function canReconcileJourneyStagesForOthers() {
             const roleFlags = (window.currentUserRoles && typeof window.currentUserRoles === 'object') ? window.currentUserRoles : {};
             const normalizedUid = String(window.currentUser?.uid || '').trim();
@@ -4475,7 +4636,8 @@
                 }
             };
 
-            const uplineGroup = window.MyGroups?.uplineGroup || null;
+            const myGroupsHydrated = !!window.MyGroups?.isHydrated;
+            const uplineGroup = myGroupsHydrated ? (window.MyGroups?.uplineGroup || null) : null;
             if (!memberGroupId && uplineGroup?.id && String(uplineGroup.leaderId || '').trim() !== uid) {
                 const memberIds = getCollectionIds(uplineGroup.members);
                 if (memberIds.includes(uid)) {
@@ -4526,7 +4688,9 @@
 
             let groupsLedCount = 0;
             let groupsLedWithMembersCount = 0;
-            const cachedDownlineGroups = Array.isArray(window.MyGroups?.downlineGroups) ? window.MyGroups.downlineGroups : null;
+            const cachedDownlineGroups = (myGroupsHydrated && Array.isArray(window.MyGroups?.downlineGroups))
+                ? window.MyGroups.downlineGroups
+                : null;
             if (cachedDownlineGroups) {
                 groupsLedCount = cachedDownlineGroups.length;
                 groupsLedWithMembersCount = cachedDownlineGroups.filter((group) => (
@@ -4617,6 +4781,9 @@
             if (isCurrentUser) {
                 window.currentUserProfile = { ...(status.profile || {}), stage: finalStage, id: normalizedUid };
                 window.currentUserStage = finalStage;
+                persistJourneyStageCache(normalizedUid, finalStage, {
+                    stageUpdatedAt: status.profile?.stageUpdatedAt || null
+                });
 
                 if (!options.skipCurrentUserUi) {
                     updateJourneyDisplay(finalStage);
@@ -4768,24 +4935,34 @@
             window.requestJourneyStageRefresh('myGroupsUpdated', { forceGraphRefresh: false });
         });
 
-        async function loadUserData(uid) {
+        async function loadUserData(uid, options = {}) {
             try {
+                const {
+                    skipJourneyRender = false,
+                    skipStageRefresh = false
+                } = options || {};
                 const userRef = doc(db, 'goMission_members', uid);
                 const userDoc = await getDoc(userRef);
                 if (userDoc.exists()) {
                     const data = userDoc.data();
+                    const cachedStage = readJourneyStageCache(uid);
                     window.currentUserProfile = { id: uid, ...data };
-                    window.currentUserStage = data.stage || 'seeker';
+                    window.currentUserStage = normalizeJourneyStage(data.stage || cachedStage?.stage || 'seeker');
                     window.currentUserRoles = data.roles || {};
-                    updateJourneyDisplay(window.currentUserStage);
-                    if (typeof window.requestJourneyStageRefresh === 'function') {
+                    persistJourneyStageCache(uid, window.currentUserStage, {
+                        stageUpdatedAt: data.stageUpdatedAt || null
+                    });
+                    if (!skipJourneyRender) {
+                        updateJourneyDisplay(window.currentUserStage);
+                    }
+                    if (!skipStageRefresh && typeof window.requestJourneyStageRefresh === 'function') {
                         window.requestJourneyStageRefresh('loadUserData', {
                             forceGraphRefresh: false,
                             silentMotivation: true,
                             delayMs: 0
                         });
                     }
-                    
+
                     // Show/hide leader dashboard based on roles
                     const leaderDashboard = document.getElementById('leaderDashboardCard');
                     if (leaderDashboard) {
@@ -4805,10 +4982,14 @@
                             leaderDashboard.classList.add('hidden');
                         }
                     }
+
+                    return data;
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
             }
+
+            return null;
         }
 
         window.updateJourneyDisplay = function(stage) {
