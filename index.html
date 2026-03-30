@@ -3466,9 +3466,64 @@
         const bootProgressBar = document.getElementById('bootProgressBar');
         const bootProgressHint = document.getElementById('bootProgressHint');
         let authBootResolved = false;
+        const BOOT_TELEMETRY_STORAGE_KEY = 'goMission_bootTelemetry';
+        const BOOT_MILESTONES = {
+            auth: {
+                percent: 12,
+                label: 'Signing you in',
+                hint: 'Restoring your secure session and account.'
+            },
+            profile: {
+                percent: 28,
+                label: 'Loading your profile',
+                hint: 'Restoring your language, role, and journey details.'
+            },
+            groups: {
+                percent: 50,
+                label: 'Checking your groups',
+                hint: 'Verifying your mission group relationships.'
+            },
+            priorityLaunch: {
+                percent: 62,
+                label: 'Opening your update',
+                hint: 'Routing directly to what you tapped.'
+            },
+            journey: {
+                percent: 80,
+                label: 'Settling your journey',
+                hint: 'Confirming your current stage before home appears.'
+            },
+            journeyRetry: {
+                percent: 84,
+                label: 'Still checking your journey',
+                hint: 'Waiting for mission group data before showing home.'
+            },
+            ready: {
+                percent: 100,
+                label: 'Ready',
+                hint: 'Everything important is loaded.'
+            },
+            priorityReady: {
+                percent: 100,
+                label: 'Ready',
+                hint: 'Your notification target is open.'
+            }
+        };
         const BootRuntime = {
             percent: 0,
             mainAppVisible: false,
+            mode: 'standard',
+            sessionStartedAt: 0,
+            sessionReason: 'unknown',
+            currentMilestone: null,
+            currentStepLabel: null,
+            telemetry: {
+                mode: 'standard',
+                reason: 'unknown',
+                startedAt: '',
+                steps: [],
+                milestones: []
+            },
             setProgress(percent, label, hint) {
                 this.percent = Math.max(this.percent, Math.min(100, Number(percent) || 0));
                 if (bootProgressValue) bootProgressValue.textContent = `${Math.round(this.percent)}%`;
@@ -3476,10 +3531,100 @@
                 if (typeof label === 'string' && bootStatusLabel) bootStatusLabel.textContent = label;
                 if (typeof hint === 'string' && bootProgressHint) bootProgressHint.textContent = hint;
             },
+            beginSession(mode = 'standard', reason = 'unknown') {
+                this.mode = mode;
+                this.sessionReason = reason;
+                this.sessionStartedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                this.currentMilestone = null;
+                this.currentStepLabel = null;
+                this.telemetry = {
+                    mode,
+                    reason,
+                    startedAt: new Date().toISOString(),
+                    steps: [],
+                    milestones: []
+                };
+            },
+            markMilestone(name, override = {}) {
+                const milestone = BOOT_MILESTONES[name] || {};
+                const nextPercent = override.percent ?? milestone.percent ?? this.percent;
+                const nextLabel = override.label ?? milestone.label;
+                const nextHint = override.hint ?? milestone.hint;
+                this.currentMilestone = name;
+                this.setProgress(nextPercent, nextLabel, nextHint);
+                const currentAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                this.telemetry.milestones.push({
+                    name,
+                    percent: Number(nextPercent || 0),
+                    label: typeof nextLabel === 'string' ? nextLabel : '',
+                    hint: typeof nextHint === 'string' ? nextHint : '',
+                    atMs: Math.max(0, Math.round(currentAt - this.sessionStartedAt))
+                });
+            },
+            startStep(label) {
+                const startedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                this.currentStepLabel = label;
+                return { label, startedAt };
+            },
+            finishStep(stepState, status = 'ok', error = null) {
+                if (!stepState?.label) return;
+                const endedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                this.telemetry.steps.push({
+                    label: stepState.label,
+                    status,
+                    milestone: this.currentMilestone,
+                    durationMs: Math.max(0, Math.round(endedAt - Number(stepState.startedAt || endedAt))),
+                    error: error ? String(error?.message || error) : ''
+                });
+                if (this.currentStepLabel === stepState.label) {
+                    this.currentStepLabel = null;
+                }
+            },
+            completeSession(reason = 'completed') {
+                if (!this.sessionStartedAt) return this.telemetry;
+                const endedAt = (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                const summary = {
+                    ...this.telemetry,
+                    completedAt: new Date().toISOString(),
+                    completedReason: reason,
+                    totalDurationMs: Math.max(0, Math.round(endedAt - this.sessionStartedAt))
+                };
+
+                try {
+                    const existing = JSON.parse(localStorage.getItem(BOOT_TELEMETRY_STORAGE_KEY) || '[]');
+                    const next = Array.isArray(existing) ? existing.slice(-9) : [];
+                    next.push(summary);
+                    localStorage.setItem(BOOT_TELEMETRY_STORAGE_KEY, JSON.stringify(next));
+                } catch (error) {
+                    console.debug('[Boot] Could not persist telemetry:', error);
+                }
+
+                console.info('[Boot] Telemetry', summary);
+                this.telemetry = summary;
+                return summary;
+            },
             reset() {
                 this.percent = 0;
                 this.mainAppVisible = false;
+                this.beginSession('standard', 'app-open');
                 this.setProgress(0, 'Restoring your journey', 'Checking your account and loading the right screen.');
+            }
+        };
+        window.getBootTelemetry = function() {
+            try {
+                return JSON.parse(localStorage.getItem(BOOT_TELEMETRY_STORAGE_KEY) || '[]');
+            } catch (error) {
+                return [];
             }
         };
         function notifyPWAAppReady(reason) {
@@ -3515,6 +3660,7 @@
             if (mainApp) mainApp.classList.remove('hidden');
             BootRuntime.mainAppVisible = true;
             hideLoadingOverlay();
+            BootRuntime.completeSession(reason);
             notifyPWAAppReady(reason);
         }
 
@@ -3524,6 +3670,7 @@
             if (loginScreen) loginScreen.classList.remove('hidden');
             if (mainApp) mainApp.classList.add('hidden');
             BootRuntime.mainAppVisible = false;
+            BootRuntime.completeSession(reason);
             notifyPWAAppReady(reason);
         }
 
@@ -3799,9 +3946,13 @@
 
         async function runBootstrapStep(label, handler, options = {}) {
             const isRequired = !!options.required;
+            const stepState = BootRuntime.startStep(label);
             try {
-                return await handler();
+                const result = await handler();
+                BootRuntime.finishStep(stepState, 'ok');
+                return result;
             } catch (error) {
+                BootRuntime.finishStep(stepState, 'error', error);
                 console.error(`[Auth] ${label} failed:`, error);
                 if (isRequired) throw error;
                 return null;
@@ -4122,8 +4273,9 @@
 
         async function bootstrapSignedInUser(user) {
             BootRuntime.reset();
+            BootRuntime.beginSession('standard', 'signed-in-bootstrap');
             showLoadingOverlay();
-            BootRuntime.setProgress(12, 'Authenticating your account', 'Restoring your secure sign-in session.');
+            BootRuntime.markMilestone('auth');
 
             window.currentUser = user;
             applyCurrentUserIdentity(user);
@@ -4137,7 +4289,7 @@
                 return;
             }
 
-            BootRuntime.setProgress(28, 'Loading your profile', 'Restoring your language, role, and journey information.');
+            BootRuntime.markMilestone('profile');
             const initialLaunchIntent = await resolveInitialLaunchIntent();
             const hasPriorityLaunch = hasPriorityLaunchIntent(initialLaunchIntent);
             const shouldShowWelcome = !hasPriorityLaunch && !localStorage.getItem('goMission_welcomeSeen');
@@ -4148,10 +4300,14 @@
             }));
 
             if (hasPriorityLaunch) {
-                BootRuntime.setProgress(62, 'Opening your notification', 'Skipping home boot so your target opens first.');
+                BootRuntime.mode = 'priority-launch';
+                BootRuntime.sessionReason = 'notification-or-deeplink';
+                BootRuntime.telemetry.mode = 'priority-launch';
+                BootRuntime.telemetry.reason = 'notification-or-deeplink';
+                BootRuntime.markMilestone('priorityLaunch');
                 const handledPriorityLaunch = await routeInitialPriorityLaunch(initialLaunchIntent);
                 clearInitialLaunchParams(initialLaunchIntent);
-                BootRuntime.setProgress(100, 'Ready', 'Your notification target is open.');
+                BootRuntime.markMilestone('priorityReady');
                 revealMainApp('priority-launch-visible');
                 window.releaseDeferredBibleStartup?.(handledPriorityLaunch ? 'after-priority-launch-route' : 'after-launch-route-check');
                 void runDeferredBootstrap({
@@ -4164,7 +4320,7 @@
                 return;
             }
 
-            BootRuntime.setProgress(50, 'Loading mission groups', 'Checking your mission group relationships.');
+            BootRuntime.markMilestone('groups');
             let groupsReady = (typeof Groups === 'undefined' && typeof MyGroups === 'undefined');
             if (typeof Groups !== 'undefined') {
                 await runBootstrapStep('Groups.init', () => Groups.init());
@@ -4175,7 +4331,7 @@
             }
             groupsReady = true;
 
-            BootRuntime.setProgress(80, 'Settling your journey stage', 'Making sure your current stage is correct before home appears.');
+            BootRuntime.markMilestone('journey');
             let journeyResult = null;
             if (typeof window.evaluateAndApplyJourneyStage === 'function') {
                 for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -4185,7 +4341,7 @@
                     }));
                     if (journeyResult?.finalStage) break;
                     if (attempt < 2) {
-                        BootRuntime.setProgress(84, 'Still checking your journey', 'Waiting for mission group data before showing home.');
+                        BootRuntime.markMilestone('journeyRetry');
                         await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
                     }
                 }
@@ -4216,7 +4372,7 @@
                 ));
             }
 
-            BootRuntime.setProgress(100, 'Ready', 'Everything important is loaded.');
+            BootRuntime.markMilestone('ready');
             revealMainApp('main-app-visible');
 
             if (shouldShowWelcome && typeof WelcomeModal !== 'undefined') {
