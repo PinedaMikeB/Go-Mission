@@ -615,6 +615,13 @@ const MyGroups = {
                     id: doc.id,
                     ...doc.data()
                 }));
+                nextCurrentMemberProfile = await this.reconcileCurrentMemberProfileFromGroups(
+                    nextCurrentMemberProfile,
+                    {
+                        downlineGroups: nextDownlineGroups,
+                        uplineGroup: nextUplineGroup
+                    }
+                );
 
                 const guestGroupMap = new Map();
                 const declaredGuestGroupIds = this.extractIdList(userData.guestGroups);
@@ -827,6 +834,11 @@ const MyGroups = {
                 id: doc.id,
                 ...doc.data()
             }));
+
+            await this.reconcileCurrentMemberProfileFromGroups(this.currentMemberProfile, {
+                downlineGroups: this.downlineGroups,
+                uplineGroup: this.uplineGroup
+            });
 
             await this.loadPendingGroupDeletionRequests();
             
@@ -1110,6 +1122,128 @@ const MyGroups = {
         const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
         const userDoc = await window.getDoc(userRef);
         return userDoc.exists() ? userDoc.data() : null;
+    },
+
+    resolveFirestoreDateToIso(value) {
+        if (!value) return null;
+        if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return new Date(value).toISOString();
+        }
+        if (typeof value?.toDate === 'function') {
+            try {
+                return value.toDate().toISOString();
+            } catch (error) {
+                return null;
+            }
+        }
+        if (typeof value?.seconds === 'number') {
+            return new Date(value.seconds * 1000).toISOString();
+        }
+        return null;
+    },
+
+    buildProfileReconciliationPatch(profile = null, options = {}) {
+        const uid = String(window.currentUser?.uid || '').trim();
+        if (!uid) return {};
+
+        const safeProfile = (profile && typeof profile === 'object') ? profile : {};
+        const downlineGroups = Array.isArray(options.downlineGroups) ? options.downlineGroups : this.downlineGroups;
+        const uplineGroup = options.uplineGroup === undefined ? this.uplineGroup : options.uplineGroup;
+        const normalizedRole = String(safeProfile.groupRole || '').toLowerCase().trim();
+        const currentRoles = (safeProfile.roles && typeof safeProfile.roles === 'object' && !Array.isArray(safeProfile.roles))
+            ? safeProfile.roles
+            : {};
+        const patch = {};
+
+        if (uplineGroup?.id && String(uplineGroup.leaderId || '').trim() !== uid) {
+            if (String(safeProfile.uplineGroupId || '').trim() !== String(uplineGroup.id)) {
+                patch.uplineGroupId = uplineGroup.id;
+            }
+            if (!String(safeProfile.groupId || '').trim()) {
+                patch.groupId = uplineGroup.id;
+            }
+            if (normalizedRole === '' || normalizedRole === 'guest') {
+                patch.groupRole = 'member';
+            }
+        }
+
+        if (Array.isArray(downlineGroups) && downlineGroups.length > 0) {
+            if (normalizedRole !== 'leader') {
+                patch.groupRole = 'leader';
+            }
+            if (!currentRoles.isGroupLeader) {
+                patch.roles = {
+                    ...currentRoles,
+                    isGroupLeader: true
+                };
+            }
+
+            if (!safeProfile.becameLeaderAt) {
+                const earliestLedAt = downlineGroups
+                    .map((group) => this.resolveFirestoreDateToIso(group?.createdAt || group?.createdAtIso || group?.created_at))
+                    .filter(Boolean)
+                    .sort()[0];
+                patch.becameLeaderAt = earliestLedAt || new Date().toISOString();
+            }
+
+            const existingDiscipling = this.extractIdList(safeProfile.discipling);
+            const nextDiscipling = [...new Set([
+                ...existingDiscipling,
+                ...downlineGroups.flatMap((group) => this.extractIdList(group?.members))
+            ].filter((memberId) => memberId && memberId !== uid).map(String))];
+            if (nextDiscipling.length > 0 && JSON.stringify(nextDiscipling) !== JSON.stringify(existingDiscipling)) {
+                patch.discipling = nextDiscipling;
+            }
+        }
+
+        return patch;
+    },
+
+    async reconcileCurrentMemberProfileFromGroups(profile = null, options = {}) {
+        const uid = String(window.currentUser?.uid || '').trim();
+        if (!uid || !window.db) return profile || null;
+
+        const baseProfile = (profile && typeof profile === 'object')
+            ? profile
+            : (this.currentMemberProfile || await this.getCurrentMemberData() || {});
+        const patch = this.buildProfileReconciliationPatch(baseProfile, options);
+        let nextProfile = { ...baseProfile };
+
+        if (patch.roles) {
+            nextProfile.roles = {
+                ...((baseProfile.roles && typeof baseProfile.roles === 'object' && !Array.isArray(baseProfile.roles)) ? baseProfile.roles : {}),
+                ...patch.roles
+            };
+        }
+        Object.entries(patch).forEach(([key, value]) => {
+            if (key !== 'roles') nextProfile[key] = value;
+        });
+
+        if (Object.keys(patch).length) {
+            try {
+                await window.setDoc(
+                    window.doc(window.db, 'goMission_members', uid),
+                    patch,
+                    { merge: true }
+                );
+            } catch (error) {
+                console.warn('[MyGroups] reconcileCurrentMemberProfileFromGroups patch failed:', error);
+            }
+        }
+
+        this.currentMemberProfile = nextProfile;
+        if (window.currentUserProfile && String(window.currentUser?.uid || '').trim() === uid) {
+            window.currentUserProfile = {
+                ...window.currentUserProfile,
+                ...nextProfile,
+                id: uid
+            };
+        }
+        return nextProfile;
     },
 
     /**
@@ -4529,6 +4663,20 @@ const MyGroups = {
                 },
                 { merge: true }
             );
+
+            await this.reconcileCurrentMemberProfileFromGroups(this.currentMemberProfile, {
+                downlineGroups: [
+                    ...(Array.isArray(this.downlineGroups) ? this.downlineGroups : []),
+                    {
+                        id: groupRef.id,
+                        name,
+                        leaderId: window.currentUser.uid,
+                        members: [window.currentUser.uid],
+                        createdAt: new Date().toISOString()
+                    }
+                ],
+                uplineGroup: this.uplineGroup
+            });
             
             console.log('[MyGroups] Created group:', groupRef.id);
             await this.logIntegrityEvent('group_create_success', {
