@@ -18,6 +18,7 @@ const MyGroups = {
     currentMemberProfile: null,
     activeGroupDetailContext: null,
     loadGroupsPromise: null,
+    isHydrated: false,
     groupCardMediaState: {},
     groupCardTouchState: {},
     groupCardAutoSlideTimers: {},
@@ -507,6 +508,7 @@ const MyGroups = {
         if (this.loadGroupsPromise) return this.loadGroupsPromise;
 
         const { emitUpdate = true } = options || {};
+        this.isHydrated = false;
 
         this.loadGroupsPromise = (async () => {
             try {
@@ -731,6 +733,7 @@ const MyGroups = {
                     downline: this.downlineGroups.length,
                     guest: this.guestGroups.length
                 });
+                this.isHydrated = true;
                 if (emitUpdate) {
                     this.emitGroupsUpdated('loadGroups');
                 }
@@ -738,6 +741,7 @@ const MyGroups = {
                     console.warn('[MyGroups] Deferred group photo backfill failed:', error);
                 });
             } catch (error) {
+                this.isHydrated = false;
                 console.error('[MyGroups] Load error:', error);
             }
         })().finally(() => {
