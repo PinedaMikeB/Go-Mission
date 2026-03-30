@@ -3808,6 +3808,149 @@
             }
         }
 
+        function parseLaunchIntentParams(search = window.location.search) {
+            const params = new URLSearchParams(search || '');
+            const read = (key) => String(params.get(key) || '').trim();
+            const readDecoded = (key) => {
+                const raw = read(key);
+                if (!raw) return '';
+                try {
+                    return decodeURIComponent(raw);
+                } catch (error) {
+                    return raw;
+                }
+            };
+
+            return {
+                openChatGroupId: read('openChat'),
+                openChatMessageId: read('openChatMessage'),
+                openDmWith: read('openDmWith'),
+                openMessagesTab: read('openMessages').toLowerCase(),
+                openAnnouncement: read('openAnnouncement'),
+                announcementId: read('announcementId'),
+                announcementTitle: readDecoded('announcementTitle'),
+                announcementBody: readDecoded('announcementBody'),
+                openDevotion: read('openDevotion'),
+                joinCode: read('join').toUpperCase(),
+                hasParams: [
+                    'openChat',
+                    'openChatMessage',
+                    'openDmWith',
+                    'openMessages',
+                    'openAnnouncement',
+                    'announcementId',
+                    'announcementTitle',
+                    'announcementBody',
+                    'openDevotion',
+                    'join'
+                ].some((key) => params.has(key))
+            };
+        }
+
+        async function resolveInitialLaunchIntent() {
+            return parseLaunchIntentParams(window.location.search);
+        }
+
+        function hasPriorityLaunchIntent(initialLaunchIntent = {}) {
+            return !!(
+                initialLaunchIntent.openChatGroupId ||
+                initialLaunchIntent.openDmWith ||
+                initialLaunchIntent.openMessagesTab ||
+                initialLaunchIntent.openAnnouncement === '1' ||
+                initialLaunchIntent.announcementTitle ||
+                initialLaunchIntent.announcementBody
+            );
+        }
+
+        async function routeInitialPriorityLaunch(initialLaunchIntent = {}) {
+            const {
+                openChatGroupId,
+                openChatMessageId,
+                openDmWith,
+                openMessagesTab,
+                openAnnouncement,
+                announcementTitle,
+                announcementBody
+            } = initialLaunchIntent;
+
+            if (openChatGroupId && typeof ChatApp !== 'undefined') {
+                await ChatApp.open();
+                const opened = (typeof ChatApp.openGroupChat === 'function')
+                    ? await ChatApp.openGroupChat(openChatGroupId, openChatMessageId || null)
+                    : false;
+                if (!opened) {
+                    ChatApp.setTab?.('groups');
+                }
+                return true;
+            }
+
+            if (openDmWith && typeof ChatApp !== 'undefined') {
+                await ChatApp.open();
+                ChatApp.setTab?.('direct');
+                if (typeof ChatApp.openDirectChat === 'function') {
+                    await ChatApp.openDirectChat(openDmWith);
+                }
+                return true;
+            }
+
+            if (openMessagesTab && typeof ChatApp !== 'undefined') {
+                await ChatApp.open();
+                if (['groups', 'direct', 'requests'].includes(openMessagesTab)) {
+                    ChatApp.setTab?.(openMessagesTab);
+                }
+                return true;
+            }
+
+            if ((openAnnouncement === '1' || announcementTitle || announcementBody) && typeof Notifications !== 'undefined') {
+                if (typeof Notifications.recordNotification === 'function') {
+                    Notifications.recordNotification({
+                        title: announcementTitle || 'Go Mission Update',
+                        body: announcementBody || 'You have a new announcement.',
+                        type: 'announcement',
+                        data: { type: 'announcement' }
+                    }, {
+                        unread: false
+                    });
+                }
+                setTimeout(() => {
+                    if (typeof showAnnouncementFromPush === 'function') {
+                        showAnnouncementFromPush(
+                            announcementTitle || 'Go Mission Update',
+                            announcementBody || 'You have a new announcement.'
+                        );
+                    }
+                }, 120);
+                return true;
+            }
+
+            return false;
+        }
+
+        function clearInitialLaunchParams(initialLaunchIntent = {}) {
+            if (!initialLaunchIntent?.hasParams) return;
+
+            try {
+                const url = new URL(window.location.href);
+                [
+                    'openChat',
+                    'openChatMessage',
+                    'openDmWith',
+                    'openMessages',
+                    'openAnnouncement',
+                    'announcementId',
+                    'announcementTitle',
+                    'announcementBody',
+                    'openDevotion',
+                    'join'
+                ].forEach((key) => url.searchParams.delete(key));
+                const nextSearch = url.searchParams.toString();
+                const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash || ''}`;
+                window.history.replaceState({}, '', nextUrl);
+            } catch (error) {
+                console.warn('[DeepLink] Could not clear launch params:', error);
+            }
+        }
+
         async function handlePostBootstrapLaunchIntent(initialLaunchIntent = {}, handledPriorityLaunch = false) {
             let {
                 openChatGroupId,
