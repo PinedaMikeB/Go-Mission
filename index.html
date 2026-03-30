@@ -4033,15 +4033,44 @@
             groupsReady = true;
 
             BootRuntime.setProgress(80, 'Settling your journey stage', 'Making sure your current stage is correct before home appears.');
-            const journeyResult = (typeof window.evaluateAndApplyJourneyStage === 'function')
-                ? await runBootstrapStep('evaluateJourneyStage', () => window.evaluateAndApplyJourneyStage({
-                    forceGraphRefresh: true,
-                    silentMotivation: true
-                }))
-                : null;
+            let journeyResult = null;
+            if (typeof window.evaluateAndApplyJourneyStage === 'function') {
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    journeyResult = await runBootstrapStep('evaluateJourneyStage', () => window.evaluateAndApplyJourneyStage({
+                        forceGraphRefresh: attempt > 0,
+                        silentMotivation: true
+                    }));
+                    if (journeyResult?.finalStage) break;
+                    if (attempt < 2) {
+                        BootRuntime.setProgress(84, 'Still checking your journey', 'Waiting for mission group data before showing home.');
+                        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+                    }
+                }
+            }
 
-            if (!journeyResult && window.currentUserStage) {
-                updateJourneyDisplay(window.currentUserStage);
+            const baselineStage = getBaselineJourneyStage(window.currentUserProfile, window.currentUserStage || 'seeker');
+            const settledStage = getHighestJourneyStage(journeyResult?.finalStage || 'seeker', baselineStage);
+            window.currentUserStage = settledStage;
+            if (window.currentUserProfile && typeof window.currentUserProfile === 'object') {
+                window.currentUserProfile.stage = settledStage;
+            }
+            persistJourneyStageCache(user.uid, settledStage);
+            updateJourneyDisplay(settledStage);
+
+            if (journeyResult?.finalStage !== settledStage && window.db) {
+                await runBootstrapStep('syncSettledStage', () => window.setDoc(
+                    window.doc(window.db, 'goMission_members', String(user.uid)),
+                    {
+                        stage: settledStage,
+                        stageUpdatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                        stageAutoStatus: {
+                            ...(window.currentUserProfile?.stageAutoStatus || {}),
+                            effectiveStage: settledStage,
+                            updatedAtIso: new Date().toISOString()
+                        }
+                    },
+                    { merge: true }
+                ));
             }
 
             BootRuntime.setProgress(100, 'Ready', 'Everything important is loaded.');
@@ -4386,6 +4415,17 @@
                 console.debug('[Journey] Could not read stage cache:', error);
                 return null;
             }
+        }
+
+        function getBaselineJourneyStage(profile = null, fallbackStage = 'seeker') {
+            const candidates = [
+                profile?.stage,
+                profile?.stageAutoStatus?.effectiveStage,
+                profile?.stageAutoStatus?.detectedStage,
+                fallbackStage
+            ].map(normalizeJourneyStage);
+
+            return candidates.reduce((highest, stage) => getHighestJourneyStage(highest, stage), 'seeker');
         }
 
         function canReconcileJourneyStagesForOthers() {
@@ -4750,10 +4790,12 @@
 
             const status = await resolveJourneyStatus(normalizedUid, options);
             const isCurrentUser = normalizedUid === String(window.currentUser?.uid || '').trim();
-            const persistedStage = normalizeJourneyStage(
-                status.profile?.stage || (isCurrentUser ? window.currentUserStage : 'seeker')
+            const persistedStage = getBaselineJourneyStage(
+                status.profile,
+                isCurrentUser ? window.currentUserStage : 'seeker'
             );
-            const finalStage = normalizeJourneyStage(status.detectedStage);
+            const detectedStage = normalizeJourneyStage(status.detectedStage);
+            const finalStage = getHighestJourneyStage(persistedStage, detectedStage);
             const advanced = getJourneyStageRank(finalStage) > getJourneyStageRank(persistedStage);
             const changed = finalStage !== persistedStage;
 
@@ -4764,7 +4806,8 @@
                         stage: finalStage,
                         stageUpdatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
                         stageAutoStatus: {
-                            detectedStage: finalStage,
+                            detectedStage,
+                            effectiveStage: finalStage,
                             hasMissionGroupMember: !!status.hasMissionGroupMember,
                             leadsMissionGroup: !!status.leadsMissionGroup,
                             groupsLedCount: Number(status.groupsLedCount || 0),
@@ -4947,7 +4990,7 @@
                     const data = userDoc.data();
                     const cachedStage = readJourneyStageCache(uid);
                     window.currentUserProfile = { id: uid, ...data };
-                    window.currentUserStage = normalizeJourneyStage(data.stage || cachedStage?.stage || 'seeker');
+                    window.currentUserStage = getBaselineJourneyStage(window.currentUserProfile, cachedStage?.stage || 'seeker');
                     window.currentUserRoles = data.roles || {};
                     persistJourneyStageCache(uid, window.currentUserStage, {
                         stageUpdatedAt: data.stageUpdatedAt || null
