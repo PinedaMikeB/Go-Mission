@@ -4428,6 +4428,70 @@
             return candidates.reduce((highest, stage) => getHighestJourneyStage(highest, stage), 'seeker');
         }
 
+        function getProfileJourneyStageFloor(profile = null, metrics = {}) {
+            const safeProfile = (profile && typeof profile === 'object') ? profile : {};
+            const roleFlags = (safeProfile.roles && typeof safeProfile.roles === 'object' && !Array.isArray(safeProfile.roles))
+                ? safeProfile.roles
+                : {};
+            const roleList = Array.isArray(safeProfile.roles)
+                ? safeProfile.roles.map((role) => String(role || '').toLowerCase().trim())
+                : [];
+            const groupRole = String(safeProfile.groupRole || '').toLowerCase().trim();
+            const disciplingCount = Array.isArray(safeProfile.discipling)
+                ? safeProfile.discipling.filter(Boolean).length
+                : 0;
+            const groupsLedCount = Number(metrics.groupsLedCount || 0);
+            const groupsLedWithMembersCount = Number(metrics.groupsLedWithMembersCount || 0);
+            const storedGenerationDepth = Number(
+                safeProfile.generationDepth ??
+                safeProfile.stageAutoStatus?.generationDepth ??
+                0
+            );
+            const storedGenerationCountRaw = Number(
+                safeProfile.generationCount ??
+                safeProfile.stageAutoStatus?.generationCount ??
+                0
+            );
+            const storedGenerationCount = storedGenerationCountRaw > 0
+                ? storedGenerationCountRaw
+                : (storedGenerationDepth > 0 ? storedGenerationDepth + 1 : 0);
+
+            let floor = 'seeker';
+
+            const hasMemberSignal = !!(
+                safeProfile.uplineGroupId ||
+                safeProfile.groupId ||
+                groupRole === 'member' ||
+                groupRole === 'leader'
+            );
+            if (hasMemberSignal) {
+                floor = getHighestJourneyStage(floor, 'disciple');
+            }
+
+            const hasLeaderSignal = !!(
+                groupRole === 'leader' ||
+                roleFlags.isGroupLeader ||
+                roleFlags.isShepherd ||
+                roleList.includes('leader') ||
+                roleList.includes('shepherd') ||
+                safeProfile.becameLeaderAt ||
+                disciplingCount > 0 ||
+                groupsLedCount > 0 ||
+                groupsLedWithMembersCount > 0
+            );
+            if (hasLeaderSignal) {
+                floor = getHighestJourneyStage(floor, 'disciple-maker');
+            }
+
+            if (storedGenerationCount >= 6) {
+                floor = getHighestJourneyStage(floor, 'multiplier');
+            } else if (storedGenerationCount >= 5 || roleFlags.isShepherd || roleList.includes('shepherd')) {
+                floor = getHighestJourneyStage(floor, 'builder');
+            }
+
+            return floor;
+        }
+
         function canReconcileJourneyStagesForOthers() {
             const roleFlags = (window.currentUserRoles && typeof window.currentUserRoles === 'object') ? window.currentUserRoles : {};
             const normalizedUid = String(window.currentUser?.uid || '').trim();
@@ -4770,6 +4834,14 @@
             else if (generationCount >= 5) detectedStage = 'builder';
             else if (leadsMissionGroup) detectedStage = 'disciple-maker';
             else if (hasMissionGroupMember) detectedStage = 'disciple';
+
+            detectedStage = getHighestJourneyStage(
+                detectedStage,
+                getProfileJourneyStageFloor(profile, {
+                    groupsLedCount,
+                    groupsLedWithMembersCount
+                })
+            );
 
             return {
                 profile,
