@@ -1,0 +1,24 @@
+{
+  "appId": "app.gomission.mobile",
+  "appName": "Go Mission",
+  "webDir": "www",
+  "server": {
+    "url": "https://gomission.netlify.app",
+    "cleartext": false,
+    "allowNavigation": [
+      "gomission.netlify.app",
+      "*.googleapis.com",
+      "*.gstatic.com",
+      "*.firebaseapp.com",
+      "*.firebaseio.com",
+      "*.firebasestorage.app",
+      "*.googleusercontent.com",
+      "meet.jit.si"
+    ]
+  },
+  "android": {
+    "appendUserAgent": "GoMissionAndroidApp",
+    "allowMixedContent": false,
+    "captureInput": true
+  }
+}

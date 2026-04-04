@@ -164,6 +164,8 @@ const InstallModal = {
     },
     
     checkIfInstalled() {
+        if (/GoMissionAndroidApp/i.test(navigator.userAgent || '')) return true;
+        if (window.GoMissionRuntime?.isInstalledShell === true) return true;
         if (window.matchMedia('(display-mode: standalone)').matches) return true;
         if (window.navigator.standalone === true) return true;
         return false;
@@ -173,6 +175,7 @@ const InstallModal = {
      * Check if this is the first time opening as installed PWA
      */
     isFirstLaunchAsPWA() {
+        if (window.GoMissionRuntime?.isNativeApp) return false;
         const hasSeenWelcome = localStorage.getItem('goMission_welcomeShown');
         return this.checkIfInstalled() && !hasSeenWelcome;
     },
@@ -189,6 +192,11 @@ const InstallModal = {
     },
     
     init() {
+        if (window.GO_MISSION_ENABLE_INSTALL_MODAL === false) {
+            console.log('[InstallModal] Install flow disabled');
+            return;
+        }
+
         this.isInstalled = this.checkIfInstalled();
         const params = new URLSearchParams(window.location.search);
         const forceInstall = params.has('install');

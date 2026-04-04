@@ -1,0 +1,27 @@
+{
+  "status": "running",
+  "updatedAt": "2026-04-02T15:18:27.461Z",
+  "current": {
+    "bookId": "PRO",
+    "chapter": "12",
+    "verse": "28",
+    "commentary": null
+  },
+  "totals": {
+    "generated": 400,
+    "skippedExisting": 3739,
+    "errors": 663,
+    "queued": 2659,
+    "processedBooks": 11,
+    "byCommentary": {
+      "Tyndale Open Study Notes": 375,
+      "None": 25
+    }
+  },
+  "lastError": {
+    "bookId": "PRO",
+    "chapter": "12",
+    "verse": "28",
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors."
+  }
+}

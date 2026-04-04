@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Messenger</title>
+  <meta name="theme-color" content="#f1dfb5">
+  <style>
+    :root {
+      --bg: #f8f1df;
+      --panel: #fff9ec;
+      --text: #2e2418;
+      --muted: #5d4f3e;
+      --line: #cdb98f;
+      --button: #efe0b3;
+      --button-hover: #e8d59e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+    }
+
+    .card {
+      width: min(100%, 520px);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 24px;
+    }
+
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+      text-align: left;
+    }
+
+    .button {
+      display: inline-block;
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #000;
+      background: var(--button);
+      color: #000;
+      text-align: center;
+      text-decoration: none;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .button:hover {
+      background: var(--button-hover);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p>__MESSAGE__</p>
+    <a class="button" href="__TARGET_URL__" target="_blank" rel="noopener noreferrer">
+      __BUTTON_LABEL__
+    </a>
+  </main>
+</body>
+</html>

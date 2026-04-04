@@ -259,6 +259,31 @@ const GroupMeeting = {
       return { text: `${schedule.day} at ${timeStr}`, isToday: false };
     }
   },
+
+  async ensureMeetingMediaPermissions() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { audio: false, video: false, reason: 'unsupported' };
+    }
+
+    const granted = { audio: false, video: false, reason: null };
+    const probes = [
+      { kind: 'audio', constraints: { audio: true, video: false } },
+      { kind: 'video', constraints: { audio: false, video: true } }
+    ];
+
+    for (const probe of probes) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(probe.constraints);
+        granted[probe.kind] = true;
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        console.warn(`[GroupMeeting] ${probe.kind} permission probe failed:`, error);
+        granted.reason = error?.name || error?.message || 'denied';
+      }
+    }
+
+    return granted;
+  },
   
   /**
    * Start/Join a meeting
@@ -274,6 +299,16 @@ const GroupMeeting = {
       const roomName = this.generateRoomName(groupId, groupName);
       const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(desiredDomain, roomName);
+
+      this.setMeetingStatus('Requesting camera and microphone access…');
+      const mediaAccess = await this.ensureMeetingMediaPermissions();
+      if (!mediaAccess.audio && !mediaAccess.video) {
+        this.setMeetingStatus('Camera and microphone are blocked. Please allow both permissions for Go Mission, then try again.');
+        return;
+      }
+      if (!mediaAccess.audio || !mediaAccess.video) {
+        this.setMeetingStatus('Some meeting permissions are still blocked. You can continue, but audio or video may stay muted.');
+      }
 
       // Fail fast if the call server is not responding.
       this.setMeetingStatus(`Checking ${desiredDomain}…`);

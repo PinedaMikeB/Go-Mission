@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Go Mission</string>
+    <string name="title_activity_main">Go Mission</string>
+    <string name="package_name">app.gomission.mobile</string>
+    <string name="custom_url_scheme">app.gomission.mobile</string>
+</resources>

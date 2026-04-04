@@ -1,0 +1,1926 @@
+/**
+ * Go Mission - Leader Dashboard Module
+ * Comprehensive shepherding tools for Mission Leaders
+ * 
+ * Features:
+ * - Member overview with spiritual health indicators
+ * - Weekly accountability rotation
+ * - Attendance tracking
+ * - Prayer list management
+ * - Needs attention alerts
+ * - Quick actions (message, encourage, pray)
+ * 
+ * @version 1.0.0
+ * @author Go Mission Team
+ */
+
+const LeaderDashboard = {
+  // State
+  isOpen: false,
+  myGroups: [],           // Groups where user is leader
+  uplineGroup: null,      // Group where user is being discipled
+  guestGroups: [],        // Groups where user is a guest
+  dashboardTab: 'downline', // 'downline' | 'upline'
+  selectedGroup: null,    // Currently viewing group
+  members: [],            // Members of selected group
+  memberStats: {},        // Cached member statistics
+  prayerList: [],         // Prayer requests
+  groupMeetings: [],      // Recent meetings for selected group
+  memberMeetingStats: {}, // Attendance metrics derived from meetings
+  memberActivitySignals: {}, // Shared devotions / prayer support activity
+  
+  // User roles
+  ROLES: {
+    SUPER_ADMIN: 'super_admin',
+    LEADER: 'leader',
+    ASSISTANT: 'assistant',
+    MEMBER: 'member'
+  },
+  
+  // Alert thresholds
+  THRESHOLDS: {
+    INACTIVE_DAYS: 5,           // Days without app activity
+    MISSED_MEETINGS: 2,         // Consecutive missed meetings
+    NO_DEVOTION_DAYS: 7,        // Days without devotion
+    NEW_MEMBER_DAYS: 14         // Days to consider someone "new"
+  },
+
+  CARE_TEMPLATES: {
+    encourage_bible: {
+      toast: 'Bible encouragement sent',
+      title: 'Spend time with God today',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! Open the Bible today, listen to what God is saying, and write one simple insight in the app.`
+    },
+    check_attendance: {
+      toast: 'Attendance check-in sent',
+      title: 'We miss you in mission group',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! We missed you in the mission group. I’m checking in and praying for you. Let me know how you are doing.`
+    },
+    affirm_active: {
+      toast: 'Affirmation sent',
+      title: 'Keep your rhythm with God',
+      buildMessage: (member) => `${LeaderDashboard.getFirstName(member)}! Thank you for reading the Bible and staying active with God. Keep building on this holy rhythm.`
+    }
+  },
+
+  /**
+   * Initialize the dashboard
+   */
+  async init() {
+    console.log('[LeaderDashboard] Initializing...');
+    
+    if (!window.currentUser) {
+      console.log('[LeaderDashboard] No user logged in');
+      return;
+    }
+    
+    // Check if user is a leader
+    const userRole = await this.getUserRole();
+    if (!['super_admin', 'leader', 'assistant'].includes(userRole)) {
+      console.log('[LeaderDashboard] User is not a leader');
+      return;
+    }
+    
+    // Load groups where user is leader + their upline group.
+    await this.loadMyGroups();
+    await this.loadUplineGroup();
+    await this.loadGuestGroups();
+
+    // Keep selected tab valid with available data.
+    if (this.dashboardTab === 'upline' && !this.uplineGroup && !(this.guestGroups || []).length) {
+      this.dashboardTab = 'downline';
+    }
+    if (this.dashboardTab === 'downline' && !this.myGroups.length && (this.uplineGroup || (this.guestGroups || []).length)) {
+      this.dashboardTab = 'upline';
+    }
+    
+    // Show dashboard card if user has groups
+    if (this.myGroups.length > 0 || this.uplineGroup || (this.guestGroups || []).length) {
+      this.showDashboardCard();
+    }
+    
+    console.log('[LeaderDashboard] Ready');
+  },
+
+  /**
+   * Get user's role
+   */
+  async getUserRole() {
+    if (!window.currentUser || !window.db) return 'member';
+    
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        
+        // Check for super admin
+        const normalizedEmail = String(data.email || '').toLowerCase();
+        const isAllowlistedAdminEmail =
+          normalizedEmail === 'michael.marga@gmail.com' ||
+          normalizedEmail === 'vasquezperlie18@gmail.com';
+        if (isAllowlistedAdminEmail || data.isSuperAdmin) {
+          return 'super_admin';
+        }
+        
+        // Check roles array
+        if (data.roles?.includes('leader') || data.roles?.includes('shepherd')) {
+          return 'leader';
+        }
+        
+        if (data.roles?.includes('assistant')) {
+          return 'assistant';
+        }
+      }
+      
+      // Check if user leads any groups
+      const leaderQuery = window.query(
+        window.collection(window.db, 'goMission_groups'),
+        window.where('leaderId', '==', window.currentUser.uid)
+      );
+      const leaderSnapshot = await window.getDocs(leaderQuery);
+      
+      if (!leaderSnapshot.empty) {
+        return 'leader';
+      }
+      
+      return 'member';
+    } catch (error) {
+      console.error('[LeaderDashboard] Error getting user role:', error);
+      return 'member';
+    }
+  },
+
+  /**
+   * Load groups where current user is leader or assistant
+   */
+  async loadMyGroups() {
+    if (!window.currentUser || !window.db) return;
+    
+    try {
+      // Groups where user is leader
+      const leaderQuery = window.query(
+        window.collection(window.db, 'goMission_groups'),
+        window.where('leaderId', '==', window.currentUser.uid)
+      );
+      const leaderSnapshot = await window.getDocs(leaderQuery);
+      
+      this.myGroups = leaderSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        role: 'leader'
+      }));
+      
+      // Groups where user is assistant
+      const assistantQuery = window.query(
+        window.collection(window.db, 'goMission_groups'),
+        window.where('assistantIds', 'array-contains', window.currentUser.uid)
+      );
+      const assistantSnapshot = await window.getDocs(assistantQuery);
+      
+      assistantSnapshot.docs.forEach(doc => {
+        if (!this.myGroups.find(g => g.id === doc.id)) {
+          this.myGroups.push({
+            id: doc.id,
+            ...doc.data(),
+            role: 'assistant'
+          });
+        }
+      });
+      
+      console.log(`[LeaderDashboard] Loaded ${this.myGroups.length} groups`);
+      
+      // Select first group by default
+      if (this.myGroups.length > 0 && !this.selectedGroup) {
+        await this.selectGroup(this.myGroups[0].id);
+      }
+      
+    } catch (error) {
+      console.error('[LeaderDashboard] Error loading groups:', error);
+    }
+  },
+
+  /**
+   * Load the upline group of current user (if any)
+   */
+  async loadUplineGroup() {
+    this.uplineGroup = null;
+    if (!window.currentUser || !window.db) return;
+
+    try {
+      const currentUid = window.currentUser.uid;
+      const userRef = window.doc(window.db, 'goMission_members', window.currentUser.uid);
+      const userDoc = await window.getDoc(userRef);
+      if (!userDoc.exists()) return;
+
+      const userData = userDoc.data();
+      if (!userData.uplineGroupId) return;
+
+      const groupRef = window.doc(window.db, 'goMission_groups', userData.uplineGroupId);
+      const groupDoc = await window.getDoc(groupRef);
+      if (!groupDoc.exists()) return;
+
+      const groupData = groupDoc.data();
+      // Never classify a group you lead as upline.
+      if (groupData.leaderId === currentUid) return;
+      const isMember = groupData.members?.includes(window.currentUser.uid);
+      const isGuest = groupData.guests?.some?.(g => g.odId === window.currentUser.uid);
+      if (!isMember && !isGuest) return;
+
+      this.uplineGroup = {
+        id: groupDoc.id,
+        ...groupData,
+        role: 'upline'
+      };
+    } catch (error) {
+      console.error('[LeaderDashboard] Error loading upline group:', error);
+    }
+  },
+
+  /**
+   * Load groups where current user is a guest.
+   */
+  async loadGuestGroups() {
+    this.guestGroups = [];
+    if (!window.currentUser || !window.db) return;
+
+    const uid = window.currentUser.uid;
+    const guestGroupMap = new Map();
+
+    const parseIdList = (value) => {
+      if (!value) return [];
+      if (typeof value === 'string') return value ? [value] : [];
+      if (Array.isArray(value)) {
+        return [...new Set(value.map((entry) => (
+          typeof entry === 'string'
+            ? entry
+            : (entry?.groupId || entry?.id || entry?.odId || entry?.uid || null)
+        )).filter(Boolean))];
+      }
+      if (typeof value === 'object') {
+        return [...new Set(Object.entries(value).map(([key, entry]) => (
+          typeof entry === 'string'
+            ? entry
+            : (entry?.groupId || entry?.id || entry?.odId || entry?.uid || key)
+        )).filter(Boolean))];
+      }
+      return [];
+    };
+
+    const isGuestInGroup = (groupData = {}, userId = '') => {
+      const guests = Array.isArray(groupData.guests)
+        ? groupData.guests
+        : (groupData.guests && typeof groupData.guests === 'object' ? Object.values(groupData.guests) : []);
+      return guests.some((guest) => (
+        guest === userId ||
+        guest?.odId === userId ||
+        guest?.uid === userId ||
+        guest?.id === userId ||
+        guest?.userId === userId
+      ));
+    };
+
+    const buildFallbackGuestGroup = (groupId, meta = null) => {
+      const safeMeta = (meta && typeof meta === 'object') ? meta : {};
+      return {
+        id: groupId,
+        name: safeMeta.name || safeMeta.groupName || `Guest Group (${String(groupId).slice(0, 6)})`,
+        leaderId: safeMeta.leaderId || null,
+        meetingSchedule: null,
+        members: [],
+        guests: [{ odId: uid, name: window.currentUser?.displayName || 'You' }],
+        role: 'guest',
+        _fallbackGuestGroup: true
+      };
+    };
+
+    try {
+      const userRef = window.doc(window.db, 'goMission_members', uid);
+      const userDoc = await window.getDoc(userRef);
+      if (!userDoc.exists()) return;
+
+      const userData = userDoc.data() || {};
+      const declaredGuestGroupIds = parseIdList(userData.guestGroups);
+      const guestGroupMeta = (userData.guestGroupMeta && typeof userData.guestGroupMeta === 'object')
+        ? userData.guestGroupMeta
+        : {};
+
+      for (const groupId of declaredGuestGroupIds) {
+        try {
+          const groupRef = window.doc(window.db, 'goMission_groups', groupId);
+          const groupDoc = await window.getDoc(groupRef);
+          if (groupDoc.exists()) {
+            const data = groupDoc.data() || {};
+            if (data.leaderId === uid) continue;
+            const hasGuestEntries = Array.isArray(data.guests)
+              ? data.guests.length > 0
+              : !!(data.guests && typeof data.guests === 'object' && Object.keys(data.guests).length > 0);
+            if (isGuestInGroup(data, uid) || (!hasGuestEntries && declaredGuestGroupIds.includes(groupId))) {
+              guestGroupMap.set(groupId, { id: groupId, ...data, role: 'guest' });
+            }
+          } else {
+            guestGroupMap.set(groupId, buildFallbackGuestGroup(groupId, guestGroupMeta[groupId]));
+          }
+        } catch (_) {
+          guestGroupMap.set(groupId, buildFallbackGuestGroup(groupId, guestGroupMeta[groupId]));
+        }
+      }
+
+      // Recovery scan: always merge actual guest memberships so newly approved guests appear immediately.
+      try {
+        const allGroupsSnapshot = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+        const recoveredGroupIds = [];
+        allGroupsSnapshot.forEach((doc) => {
+          const data = doc.data() || {};
+          if (data.leaderId === uid) return;
+          if (isGuestInGroup(data, uid)) {
+            if (!guestGroupMap.has(doc.id)) recoveredGroupIds.push(doc.id);
+            guestGroupMap.set(doc.id, { id: doc.id, ...data, role: 'guest' });
+          }
+        });
+
+        const missingPointerIds = recoveredGroupIds.filter((groupId) => !declaredGuestGroupIds.includes(groupId));
+        if (missingPointerIds.length > 0) {
+          await window.setDoc(
+            window.doc(window.db, 'goMission_members', uid),
+            { guestGroups: window.arrayUnion(...missingPointerIds) },
+            { merge: true }
+          );
+        }
+      } catch (scanError) {
+        console.warn('[LeaderDashboard] Guest recovery scan failed:', scanError);
+      }
+    } catch (error) {
+      console.error('[LeaderDashboard] Error loading guest groups:', error);
+    }
+
+    this.guestGroups = [...guestGroupMap.values()];
+  },
+
+  /**
+   * Get groups for currently selected dashboard tab
+   */
+  getTabGroups(tab = this.dashboardTab) {
+    if (tab === 'upline') {
+      const uplineGroups = [];
+      const downlineIds = new Set((this.myGroups || []).map((group) => group.id));
+      if (this.uplineGroup) uplineGroups.push(this.uplineGroup);
+      (this.guestGroups || []).forEach((group) => {
+        if (!group?.id) return;
+        if (downlineIds.has(group.id)) return;
+        if (!uplineGroups.some((existing) => existing.id === group.id)) {
+          uplineGroups.push(group);
+        }
+      });
+      return uplineGroups;
+    }
+    return this.myGroups || [];
+  },
+
+  /**
+   * Switch dashboard tab
+   */
+  async setDashboardTab(tab) {
+    const nextTab = tab === 'upline' ? 'upline' : 'downline';
+    if (nextTab === this.dashboardTab) return;
+    this.dashboardTab = nextTab;
+
+    const tabGroups = this.getTabGroups(nextTab);
+    if (!tabGroups.length) {
+      this.selectedGroup = null;
+      this.members = [];
+      this.prayerList = [];
+      if (this.isOpen) this.render();
+      return;
+    }
+
+    if (!this.selectedGroup || !tabGroups.some(g => g.id === this.selectedGroup.id)) {
+      await this.selectGroup(tabGroups[0].id);
+      return;
+    }
+
+    if (this.isOpen) this.render();
+  },
+
+  escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  escapeForJs(value) {
+    return String(value ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'");
+  },
+
+  formatScheduleText(group) {
+    const day = group?.meetingSchedule?.day;
+    const time = group?.meetingSchedule?.time;
+    if (!day || !time) return 'No meeting schedule yet';
+    const [hh = '0', mm = '00'] = String(time).split(':');
+    const hour = Number(hh);
+    const hour12 = (hour % 12) || 12;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    return `${day.toLowerCase()} • ${hour12}:${mm} ${ampm}`;
+  },
+
+  getMemberLabel(member = {}) {
+    return member?.fullName || member?.name || member?.displayName || member?.email || member?.id || 'Unknown';
+  },
+
+  getMeetingAttendeeIds(meeting = {}) {
+    return [...new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+      .map((entry) => entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+      .filter(Boolean))];
+  },
+
+  memberWasInGroupByMeeting(member = {}, meetingAt = null) {
+    if (!member || !meetingAt) return true;
+    const joinedAt = this.resolveDate(member?.joinedAt || member?.becameLeaderAt || member?.joinedAsSeeker || member?.createdAt);
+    if (!joinedAt) return true;
+    return joinedAt.getTime() <= meetingAt.getTime();
+  },
+
+  buildSelectedGroupAttendanceReport() {
+    const membersById = new Map(this.members.map((member) => [member.id, member]));
+    const recentMeetings = this.groupMeetings.slice(0, 4).map((meeting) => {
+      const meetingAt = this.resolveDate(meeting?.startedAt || meeting?.createdAt || meeting?.updatedAt || meeting?.date);
+      const attendeeIds = this.getMeetingAttendeeIds(meeting);
+      const attendeeIdSet = new Set(attendeeIds);
+      const eligibleMembers = this.members.filter((member) => this.memberWasInGroupByMeeting(member, meetingAt));
+      const attendees = attendeeIds
+        .map((memberId) => membersById.get(memberId) || { id: memberId, fullName: memberId })
+        .map((member) => ({ id: member.id, name: this.getMemberLabel(member) }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const absentees = eligibleMembers
+        .filter((member) => !attendeeIdSet.has(member.id))
+        .map((member) => ({ id: member.id, name: this.getMemberLabel(member), stats: member.stats || {} }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        meeting,
+        meetingAt,
+        attendees,
+        absentees,
+        attendeeCount: attendees.length,
+        expectedCount: eligibleMembers.length,
+        attendancePercent: eligibleMembers.length ? Math.round((attendees.length / eligibleMembers.length) * 100) : 0
+      };
+    });
+
+    const latestMeeting = recentMeetings[0] || null;
+    const urgentFollowUp = this.members
+      .filter((member) => Number(member.stats?.consecutiveMisses || 0) >= this.THRESHOLDS.MISSED_MEETINGS)
+      .sort((a, b) => Number(b.stats?.consecutiveMisses || 0) - Number(a.stats?.consecutiveMisses || 0));
+
+    return {
+      recentMeetings,
+      latestMeeting,
+      followUpNow: latestMeeting?.absentees || [],
+      urgentFollowUp
+    };
+  },
+
+  buildAttendanceMeetingCard(reportEntry) {
+    if (!reportEntry) return '';
+    const meetingDateText = reportEntry.meetingAt
+      ? reportEntry.meetingAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })
+      : 'Unknown date';
+
+    return `
+      <article class="rounded-[28px] border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">Meeting Record</p>
+            <h3 class="mt-2 text-lg font-black text-[var(--text-color)]">${this.escapeHtml(meetingDateText)}</h3>
+            <p class="mt-1 text-[11px] text-[var(--text-muted)]">
+              ${this.escapeHtml(`${reportEntry.attendeeCount}/${reportEntry.expectedCount || 0} members attended • ${reportEntry.attendancePercent}% coverage`)}
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] ${reportEntry.absentees.length ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}">
+            ${this.escapeHtml(reportEntry.absentees.length ? `${reportEntry.absentees.length} follow up` : 'complete')}
+          </span>
+        </div>
+        <div class="mt-3">
+          <p class="text-[10px] uppercase tracking-[0.16em] text-green-300">Attended</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            ${reportEntry.attendees.length
+              ? reportEntry.attendees.map((member) => `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/15 text-green-200 border border-green-500/20">${this.escapeHtml(member.name)}</span>`).join('')
+              : '<span class="text-[11px] text-[var(--text-muted)]">No attendees captured.</span>'}
+          </div>
+        </div>
+        <div class="mt-4">
+          <p class="text-[10px] uppercase tracking-[0.16em] text-amber-300">Needs Follow-Up</p>
+          <div class="mt-2 space-y-2">
+            ${reportEntry.absentees.length
+              ? reportEntry.absentees.map((member) => `
+                <div class="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/8 px-3 py-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.name)}</p>
+                    <p class="text-[11px] text-[var(--text-muted)]">${this.escapeHtml(`${member.stats?.consecutiveMisses || 0} missed in a row`)}</p>
+                  </div>
+                  <button onclick="window.LeaderDashboard.sendCareMessage('${this.escapeForJs(member.id)}', 'check_attendance')"
+                          class="shrink-0 px-3 py-2 rounded-xl bg-amber-500/20 text-amber-300 text-[11px] font-bold">
+                    Check in
+                  </button>
+                </div>
+              `).join('')
+              : '<div class="rounded-2xl border border-green-500/15 bg-green-500/8 px-3 py-3 text-[11px] text-green-200">Nobody missed this meeting.</div>'}
+          </div>
+        </div>
+      </article>
+    `;
+  },
+
+  getStatusGroupsForTab(tabGroups) {
+    if (this.dashboardTab !== 'downline') {
+      return tabGroups;
+    }
+    const myGroupsDownline = window.MyGroups?.downlineGroups;
+    if (Array.isArray(myGroupsDownline) && myGroupsDownline.length) {
+      return myGroupsDownline;
+    }
+    return tabGroups;
+  },
+
+  showInviteCode(groupId) {
+    if (window.MyGroups?.showInviteCode) {
+      window.MyGroups.showInviteCode(groupId);
+      return;
+    }
+    this.showToast('Invite code is not available right now');
+  },
+
+  openGroupCardChat(groupId) {
+    if (window.MyGroups?.openGroupChat) {
+      window.MyGroups.openGroupChat(groupId);
+      return;
+    }
+    this.showToast('Chat is not available right now');
+  },
+
+  openGroupCardView(groupId) {
+    if (window.MyGroups?.viewGroupDetails) {
+      window.MyGroups.viewGroupDetails(groupId);
+      return;
+    }
+    this.showToast('View details is not available right now');
+  },
+
+  joinGroupCardMeeting(groupId) {
+    if (window.MyGroups?.joinMeeting) {
+      window.MyGroups.joinMeeting(groupId);
+      return;
+    }
+    this.showToast('Meeting is not available right now');
+  },
+
+  /**
+   * Select a group to view
+   */
+  async selectGroup(groupId) {
+    const group = this.myGroups.find(g => g.id === groupId)
+      || (this.uplineGroup?.id === groupId ? this.uplineGroup : null)
+      || (this.guestGroups || []).find((g) => g.id === groupId)
+      || null;
+    if (!group) return;
+    
+    this.selectedGroup = group;
+    await this.loadGroupMembers();
+    await this.loadPrayerList();
+    
+    if (this.isOpen) {
+      this.render();
+    }
+  },
+
+  /**
+   * Load members of the selected group with their stats
+   */
+  async loadGroupMembers() {
+    if (!this.selectedGroup || !window.db) return;
+    
+    const memberIds = (Array.isArray(this.selectedGroup.members) ? this.selectedGroup.members : [])
+      .map((entry) => (
+        typeof entry === 'string'
+          ? entry
+          : (entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+      ))
+      .filter(Boolean);
+    this.members = [];
+    this.groupMeetings = [];
+    this.memberMeetingStats = {};
+    this.memberActivitySignals = {};
+
+    await Promise.all([
+      this.loadSelectedGroupMeetingHistory(memberIds),
+      this.loadSelectedGroupSharedActivity(memberIds)
+    ]);
+    
+    for (const memberId of memberIds) {
+      try {
+        const memberDoc = await window.getDoc(
+          window.doc(window.db, 'goMission_members', memberId)
+        );
+        
+        if (memberDoc.exists()) {
+          const data = memberDoc.data();
+          const stats = await this.getMemberStats(memberId, data);
+          
+          this.members.push({
+            id: memberId,
+            ...data,
+            stats
+          });
+        }
+      } catch (error) {
+        console.error(`[LeaderDashboard] Error loading member ${memberId}:`, error);
+      }
+    }
+    
+    // Sort: needs attention first, then by name
+    this.members.sort((a, b) => {
+      const aNeeds = this.needsAttention(a).length;
+      const bNeeds = this.needsAttention(b).length;
+      if (aNeeds !== bNeeds) return bNeeds - aNeeds;
+      return (a.fullName || '').localeCompare(b.fullName || '');
+    });
+
+    console.log(`[LeaderDashboard] Loaded ${this.members.length} members`);
+  },
+
+  async loadSelectedGroupMeetingHistory(memberIds = []) {
+    if (!this.selectedGroup?.id || !window.db) return;
+
+    const normalizedMemberIds = [...new Set((memberIds || []).filter(Boolean))];
+    const statsByMember = {};
+    normalizedMemberIds.forEach((memberId) => {
+      statsByMember[memberId] = {
+        attendedRecent: 0,
+        missedRecent: 0,
+        consecutiveMisses: 0,
+        lastAttendedAt: null
+      };
+    });
+
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_meetings'),
+        window.where('groupId', '==', this.selectedGroup.id),
+        window.limit(20)
+      );
+      const snapshot = await window.getDocs(q);
+      const meetings = snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .sort((a, b) => {
+          const aTime = this.resolveDate(a?.startedAt || a?.createdAt || a?.updatedAt || a?.date)?.getTime() || 0;
+          const bTime = this.resolveDate(b?.startedAt || b?.createdAt || b?.updatedAt || b?.date)?.getTime() || 0;
+          return bTime - aTime;
+        });
+
+      this.groupMeetings = meetings;
+      const recentMeetings = meetings.slice(0, 4);
+
+      normalizedMemberIds.forEach((memberId) => {
+        let missChain = 0;
+        let chainBroken = false;
+
+        recentMeetings.forEach((meeting) => {
+          const attendeeIds = new Set((Array.isArray(meeting?.attendees) ? meeting.attendees : [])
+            .map((entry) => entry?.odId || entry?.uid || entry?.id || entry?.userId || null)
+            .filter(Boolean));
+          const meetingDate = this.resolveDate(meeting?.startedAt || meeting?.createdAt || meeting?.updatedAt || meeting?.date);
+          if (attendeeIds.has(memberId)) {
+            statsByMember[memberId].attendedRecent += 1;
+            if (!statsByMember[memberId].lastAttendedAt && meetingDate) {
+              statsByMember[memberId].lastAttendedAt = meetingDate;
+            }
+            chainBroken = true;
+          } else {
+            statsByMember[memberId].missedRecent += 1;
+            if (!chainBroken) missChain += 1;
+          }
+        });
+
+        statsByMember[memberId].consecutiveMisses = missChain;
+      });
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not load group meeting history:', error);
+    }
+
+    this.memberMeetingStats = statsByMember;
+  },
+
+  async loadSelectedGroupSharedActivity(memberIds = []) {
+    if (!this.selectedGroup?.id || !window.db) return;
+
+    const signals = {};
+    [...new Set((memberIds || []).filter(Boolean))].forEach((memberId) => {
+      signals[memberId] = {
+        sharedDevotions: 0,
+        sharedInsights: 0,
+        prayerRequestsShared: 0,
+        prayedForOthers: 0
+      };
+    });
+
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_chats'),
+        window.where('groupId', '==', this.selectedGroup.id),
+        window.limit(120)
+      );
+      const snapshot = await window.getDocs(q);
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const isSharedDevotion = String(data.type || '') === 'devotion' || String(data.sharedSource || '') === 'devotion';
+        if (isSharedDevotion) {
+          const devotion = (data.devotion && typeof data.devotion === 'object') ? data.devotion : {};
+          const senderId = String(data.senderId || devotion.uid || '').trim();
+          if (senderId && signals[senderId]) {
+            signals[senderId].sharedDevotions += 1;
+            const understanding = String(devotion.understandingText || devotion.reflectionText || devotion.reflection || '').trim();
+            const action = String(devotion.actionText || devotion.commitment || '').trim();
+            if (understanding || action) signals[senderId].sharedInsights += 1;
+            const prayerRequests = Array.isArray(devotion.prayerRequests)
+              ? devotion.prayerRequests.filter((item) => String(item?.text || '').trim())
+              : [];
+            signals[senderId].prayerRequestsShared += prayerRequests.length;
+          }
+
+          const supportMap = (devotion.prayerSupports && typeof devotion.prayerSupports === 'object')
+            ? devotion.prayerSupports
+            : {};
+          Object.values(supportMap).forEach((supportList) => {
+            if (!Array.isArray(supportList)) return;
+            supportList.forEach((entry) => {
+              const uid = String(entry?.uid || entry?.userId || '').trim();
+              if (uid && signals[uid]) {
+                signals[uid].prayedForOthers += 1;
+              }
+            });
+          });
+        }
+
+        const messagePrayerSupport = Array.isArray(data.prayerSupportUsers) ? data.prayerSupportUsers : [];
+        messagePrayerSupport.forEach((entry) => {
+          const uid = String(entry?.uid || entry?.userId || entry?.id || '').trim();
+          if (uid && signals[uid]) {
+            signals[uid].prayedForOthers += 1;
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not load shared group activity:', error);
+    }
+
+    this.memberActivitySignals = signals;
+  },
+
+  /**
+   * Get statistics for a member
+   */
+  async getMemberStats(memberId, memberData) {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    
+    // Calculate days since last active
+    const lastActive = this.resolveDate(memberData.lastActive);
+    const daysSinceActive = lastActive 
+      ? Math.floor((now - lastActive.getTime()) / dayMs)
+      : 999;
+    
+    // Devotion streak
+    const lastDevotion = this.resolveDate(memberData.bibleProgress?.lastReadAt);
+    const daysSinceDevotion = lastDevotion
+      ? Math.floor((now - lastDevotion.getTime()) / dayMs)
+      : 999;
+    const devotionStreak = Math.max(
+      0,
+      Number(memberData.bibleProgress?.currentStreak || 0),
+      daysSinceDevotion <= 0 ? 1 : 0
+    );
+    
+    const meetingStats = this.memberMeetingStats?.[memberId] || {};
+    const activitySignals = this.memberActivitySignals?.[memberId] || {};
+    const missedMeetings = Number(meetingStats.consecutiveMisses || meetingStats.missedRecent || 0);
+    
+    // Days since joined
+    const joinedAt = this.resolveDate(memberData.joinedAt || memberData.createdAt);
+    const daysSinceJoined = joinedAt
+      ? Math.floor((now - joinedAt.getTime()) / dayMs)
+      : 0;
+    
+    // Last check-in from leader
+    const lastCheckIn = memberData.leaderCheckIns?.slice(-1)[0];
+    const lastCheckInDate = this.resolveDate(lastCheckIn?.date);
+    const daysSinceCheckIn = lastCheckInDate
+      ? Math.floor((now - lastCheckInDate.getTime()) / dayMs)
+      : 999;
+    
+    return {
+      daysSinceActive,
+      devotionStreak,
+      daysSinceDevotion,
+      missedMeetings,
+      attendedRecent: Number(meetingStats.attendedRecent || 0),
+      consecutiveMisses: Number(meetingStats.consecutiveMisses || 0),
+      lastAttendedAt: meetingStats.lastAttendedAt || null,
+      daysSinceJoined,
+      daysSinceCheckIn,
+      isNew: daysSinceJoined <= this.THRESHOLDS.NEW_MEMBER_DAYS,
+      gospelShared: memberData.gospelSharedCount || 0,
+      journeyPhase: memberData.currentPhase || 'unknown',
+      sharedDevotions: Number(activitySignals.sharedDevotions || 0),
+      sharedInsights: Number(activitySignals.sharedInsights || 0),
+      prayerRequestsShared: Number(activitySignals.prayerRequestsShared || 0),
+      prayedForOthers: Number(activitySignals.prayedForOthers || 0),
+      streakTier: devotionStreak >= 7 ? 'seven' : (devotionStreak >= 3 ? 'three' : (devotionStreak > 0 ? 'building' : 'none')),
+      needsBibleNudge: daysSinceDevotion >= 3,
+      needsAttendanceFollowUp: Number(meetingStats.consecutiveMisses || 0) >= this.THRESHOLDS.MISSED_MEETINGS,
+      isSpirituallyActive: daysSinceDevotion <= 2 && (
+        devotionStreak >= 3 ||
+        Number(activitySignals.sharedInsights || 0) > 0 ||
+        Number(activitySignals.prayerRequestsShared || 0) > 0 ||
+        Number(activitySignals.prayedForOthers || 0) > 0
+      )
+    };
+  },
+
+  /**
+   * Check if member needs attention and why
+   */
+  needsAttention(member) {
+    const alerts = [];
+    const stats = member.stats || {};
+    
+    if (stats.daysSinceActive >= this.THRESHOLDS.INACTIVE_DAYS) {
+      alerts.push({
+        type: 'inactive',
+        message: `Inactive for ${stats.daysSinceActive} days`,
+        priority: 'high',
+        icon: '😴'
+      });
+    }
+    
+    if (stats.daysSinceDevotion >= this.THRESHOLDS.NO_DEVOTION_DAYS) {
+      alerts.push({
+        type: 'no_devotion',
+        message: `No devotion for ${stats.daysSinceDevotion} days`,
+        priority: 'medium',
+        icon: '📖'
+      });
+    }
+    
+    if ((stats.consecutiveMisses || stats.missedMeetings || 0) >= this.THRESHOLDS.MISSED_MEETINGS) {
+      alerts.push({
+        type: 'missed_meetings',
+        message: `Missed ${stats.consecutiveMisses || stats.missedMeetings} meeting${(stats.consecutiveMisses || stats.missedMeetings) === 1 ? '' : 's'}`,
+        priority: 'high',
+        icon: '📅'
+      });
+    }
+    
+    if (stats.isNew) {
+      alerts.push({
+        type: 'new_member',
+        message: 'New member - needs follow-up',
+        priority: 'medium',
+        icon: '🆕'
+      });
+    }
+    
+    return alerts;
+  },
+
+  /**
+   * Load prayer list for the group
+   */
+  async loadPrayerList() {
+    if (!this.selectedGroup || !window.db) return;
+    
+    try {
+      const prayerQuery = window.query(
+        window.collection(window.db, 'goMission_groups', this.selectedGroup.id, 'prayerRequests'),
+        window.orderBy('createdAt', 'desc'),
+        window.limit(20)
+      );
+      
+      const snapshot = await window.getDocs(prayerQuery);
+      this.prayerList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      // Collection might not exist yet
+      this.prayerList = [];
+    }
+  },
+
+  /**
+   * Get this week's accountability partner
+   */
+  getThisWeeksAccountability() {
+    if (!this.selectedGroup || !this.members.length) return null;
+    
+    const schedule = this.selectedGroup.accountabilitySchedule || {};
+    const currentMemberId = schedule.currentMember;
+    
+    if (currentMemberId) {
+      return this.members.find(m => m.id === currentMemberId);
+    }
+    
+    // Default to first member if no schedule
+    return this.members[0];
+  },
+
+  /**
+   * Rotate accountability to next member
+   */
+  async rotateAccountability() {
+    if (!this.selectedGroup || !this.members.length || !window.db) return;
+    
+    const rotation = this.selectedGroup.accountabilitySchedule?.rotation || 
+                     this.members.map(m => m.id);
+    const currentIndex = rotation.indexOf(
+      this.selectedGroup.accountabilitySchedule?.currentMember
+    );
+    const nextIndex = (currentIndex + 1) % rotation.length;
+    const nextMemberId = rotation[nextIndex];
+    
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_groups', this.selectedGroup.id),
+        {
+          accountabilitySchedule: {
+            currentMember: nextMemberId,
+            rotation: rotation,
+            lastRotated: new Date().toISOString(),
+            week: this.getCurrentWeekNumber()
+          }
+        },
+        { merge: true }
+      );
+      
+      this.selectedGroup.accountabilitySchedule = {
+        currentMember: nextMemberId,
+        rotation: rotation,
+        lastRotated: new Date().toISOString()
+      };
+      
+      this.render();
+      this.showToast('Accountability rotated to next member');
+    } catch (error) {
+      console.error('[LeaderDashboard] Error rotating accountability:', error);
+    }
+  },
+
+  /**
+   * Get current week number of the year
+   */
+  getCurrentWeekNumber() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const diff = now - start;
+    const oneWeek = 604800000;
+    return Math.ceil(diff / oneWeek);
+  },
+
+  /**
+   * Record a check-in with a member
+   */
+  async recordCheckIn(memberId, notes = '') {
+    if (!window.db) return;
+    
+    try {
+      const memberRef = window.doc(window.db, 'goMission_members', memberId);
+      
+      await window.setDoc(memberRef, {
+        leaderCheckIns: window.arrayUnion({
+          date: new Date().toISOString(),
+          leaderId: window.currentUser.uid,
+          notes: notes
+        })
+      }, { merge: true });
+      
+      // Update local state
+      const member = this.members.find(m => m.id === memberId);
+      if (member) {
+        member.stats.daysSinceCheckIn = 0;
+      }
+      
+      this.showToast('Check-in recorded');
+      this.render();
+    } catch (error) {
+      console.error('[LeaderDashboard] Error recording check-in:', error);
+    }
+  },
+
+  /**
+   * Add a prayer request
+   */
+  async addPrayerRequest(memberId, request) {
+    if (!this.selectedGroup || !window.db) return;
+    
+    try {
+      const member = this.members.find(m => m.id === memberId);
+      
+      await window.addDoc(
+        window.collection(window.db, 'goMission_groups', this.selectedGroup.id, 'prayerRequests'),
+        {
+          memberId: memberId,
+          memberName: member?.fullName || 'Unknown',
+          request: request,
+          createdAt: new Date().toISOString(),
+          createdBy: window.currentUser.uid,
+          answered: false
+        }
+      );
+      
+      await this.loadPrayerList();
+      this.render();
+      this.showToast('Prayer request added');
+    } catch (error) {
+      console.error('[LeaderDashboard] Error adding prayer request:', error);
+    }
+  },
+
+  /**
+   * Mark prayer request as answered
+   */
+  async markPrayerAnswered(requestId) {
+    if (!this.selectedGroup || !window.db) return;
+    
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_groups', this.selectedGroup.id, 'prayerRequests', requestId),
+        { answered: true, answeredAt: new Date().toISOString() },
+        { merge: true }
+      );
+      
+      const request = this.prayerList.find(p => p.id === requestId);
+      if (request) request.answered = true;
+      
+      this.render();
+      this.showToast('Praise God! Prayer marked as answered');
+    } catch (error) {
+      console.error('[LeaderDashboard] Error marking prayer answered:', error);
+    }
+  },
+
+  /**
+   * Send encouragement message to a member
+   */
+  async sendEncouragement(memberId) {
+    const member = this.members.find(m => m.id === memberId);
+    if (!member) return;
+    
+    // Open chat with pre-filled encouragement
+    if (typeof Groups !== 'undefined' && Groups.openChat) {
+      Groups.openChat(this.selectedGroup.id, memberId);
+    } else {
+      // Fallback: show modal to compose message
+      this.showEncouragementModal(member);
+    }
+  },
+
+  /**
+   * Show encouragement modal
+   */
+  showEncouragementModal(member) {
+    const encouragements = [
+      `Hi ${member.fullName?.split(' ')[0] || 'kapatid'}! Just checking in on you. How are you doing? 🙏`,
+      `Hey ${member.fullName?.split(' ')[0] || 'kapatid'}! I've been praying for you. Is there anything I can help you with?`,
+      `Hello! I noticed we haven't connected in a while. Just want you to know I'm here for you. God bless! 💛`,
+      `Kumusta ka? I'm thinking of you and praying for you today. Let's catch up soon! 🤗`
+    ];
+    
+    const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+    
+    // For now, just copy to clipboard
+    navigator.clipboard?.writeText(randomEncouragement);
+    this.showToast('Encouragement copied! Paste it in your chat.');
+  },
+
+  /**
+   * Show the dashboard card on main screen
+   */
+  showDashboardCard() {
+    const card = document.getElementById('leaderDashboardCard');
+    if (card) {
+      card.classList.remove('hidden');
+      this.updateDashboardCardStats();
+    }
+  },
+  
+  /**
+   * Update the mini stats on the dashboard card
+   */
+  updateDashboardCardStats() {
+    const memberCountEl = document.getElementById('dashboardMemberCount');
+    const activeCountEl = document.getElementById('dashboardActiveCount');
+    const needsAttentionEl = document.getElementById('dashboardNeedsAttention');
+    
+    const stats = this.calculateGroupStats();
+    const needsAttention = this.members.filter(m => this.needsAttention(m).length > 0).length;
+    
+    if (memberCountEl) memberCountEl.textContent = this.members.length || '0';
+    if (activeCountEl) activeCountEl.textContent = stats.activeCount || '0';
+    if (needsAttentionEl) needsAttentionEl.textContent = needsAttention || '0';
+  },
+
+  resolveDate(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value?.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    if (typeof value === 'object' && typeof value.seconds === 'number') {
+      const date = new Date(value.seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  },
+
+  getFirstName(member) {
+    const name = String(member?.fullName || member?.name || member?.displayName || member?.email || '').trim();
+    return name.split(/\s+/)[0] || 'kapatid';
+  },
+
+  getStreakLabel(stats = {}) {
+    if (stats.devotionStreak >= 7) return '7-day rhythm';
+    if (stats.devotionStreak >= 3) return '3-day rhythm';
+    if (stats.devotionStreak > 0) return 'Building rhythm';
+    return 'Start today';
+  },
+
+  renderStreakGraphic(stats = {}) {
+    const streak = Math.max(0, Number(stats.devotionStreak || 0));
+    const filled = Math.min(7, streak);
+    const accent = streak >= 7 ? 'bg-amber-400' : (streak >= 3 ? 'bg-green-400' : 'bg-[var(--card-border)]');
+    const label = this.getStreakLabel(stats);
+    return `
+      <div class="mt-2">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Bible rhythm</span>
+          <span class="text-[10px] font-bold ${streak >= 7 ? 'text-amber-400' : (streak >= 3 ? 'text-green-400' : 'text-[var(--text-muted)]')}">${this.escapeHtml(label)}</span>
+        </div>
+        <div class="mt-1 grid grid-cols-7 gap-1">
+          ${Array.from({ length: 7 }).map((_, index) => `
+            <span class="h-2 rounded-full ${index < filled ? accent : 'bg-[var(--input-bg)]'}"></span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  getCareSegments() {
+    const encourageBible = this.members
+      .filter((member) => member.stats?.needsBibleNudge)
+      .sort((a, b) => (b.stats?.daysSinceDevotion || 0) - (a.stats?.daysSinceDevotion || 0));
+
+    const attendanceFollowUp = this.members
+      .filter((member) => member.stats?.needsAttendanceFollowUp)
+      .sort((a, b) => (b.stats?.consecutiveMisses || 0) - (a.stats?.consecutiveMisses || 0));
+
+    const affirmActive = this.members
+      .filter((member) => member.stats?.isSpirituallyActive)
+      .sort((a, b) => {
+        if ((b.stats?.devotionStreak || 0) !== (a.stats?.devotionStreak || 0)) {
+          return (b.stats?.devotionStreak || 0) - (a.stats?.devotionStreak || 0);
+        }
+        return (b.stats?.prayedForOthers || 0) - (a.stats?.prayedForOthers || 0);
+      });
+
+    return { encourageBible, attendanceFollowUp, affirmActive };
+  },
+
+  buildCareRow(member, mode) {
+    const stats = member.stats || {};
+    const photo = member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName || 'U')}&background=4a0404&color=fbbf24`;
+    const config = {
+      encourage_bible: {
+        title: 'Encourage Bible time',
+        description: stats.daysSinceDevotion >= 999
+          ? 'No recent Bible reading found'
+          : `${stats.daysSinceDevotion} day${stats.daysSinceDevotion === 1 ? '' : 's'} since last reading`,
+        button: 'Encourage'
+      },
+      check_attendance: {
+        title: 'Check attendance',
+        description: `${stats.consecutiveMisses || stats.missedMeetings || 0} missed meeting${(stats.consecutiveMisses || stats.missedMeetings || 0) === 1 ? '' : 's'} in a row`,
+        button: 'Check in'
+      },
+      affirm_active: {
+        title: 'Affirm momentum',
+        description: `${stats.sharedInsights || 0} insight share${(stats.sharedInsights || 0) === 1 ? '' : 's'} • ${stats.prayerRequestsShared || 0} prayer request${(stats.prayerRequestsShared || 0) === 1 ? '' : 's'}`,
+        button: 'Affirm'
+      }
+    }[mode];
+
+    return `
+      <div class="p-3 rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/55">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3 min-w-0">
+            <img src="${photo}" class="w-11 h-11 rounded-full border border-[var(--card-border)]">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(member.fullName || 'Unknown')}</p>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">${this.escapeHtml(config.title)}</p>
+              <p class="text-[11px] text-[var(--text-muted)] mt-1">${this.escapeHtml(config.description)}</p>
+            </div>
+          </div>
+          <button onclick="window.LeaderDashboard.sendCareMessage('${this.escapeForJs(member.id)}', '${mode}')"
+                  class="shrink-0 px-3 py-2 rounded-xl bg-amber-500/20 text-amber-400 text-[11px] font-bold">
+            ${this.escapeHtml(config.button)}
+          </button>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          ${stats.devotionStreak >= 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-amber-500/20 text-amber-300">7-day streak</span>' : ''}
+          ${stats.devotionStreak >= 3 && stats.devotionStreak < 7 ? '<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-300">3-day streak</span>' : ''}
+          ${stats.prayedForOthers > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-blue-500/20 text-blue-300">🙏 praying for ${stats.prayedForOthers}</span>` : ''}
+          ${stats.attendedRecent > 0 ? `<span class="text-[10px] px-2 py-1 rounded-full bg-green-500/20 text-green-300">${stats.attendedRecent} recent meeting${stats.attendedRecent === 1 ? '' : 's'}</span>` : ''}
+        </div>
+        ${this.renderStreakGraphic(stats)}
+      </div>
+    `;
+  },
+
+  async sendCareMessage(memberId, mode = 'encourage_bible') {
+    const member = this.members.find((entry) => entry.id === memberId);
+    const template = this.CARE_TEMPLATES[mode];
+    if (!member || !template) return;
+
+    const message = template.buildMessage(member);
+    let sent = false;
+
+    try {
+      if (typeof window.sendCustomNotificationCallable === 'function') {
+        await window.sendCustomNotificationCallable({
+          targetType: 'user',
+          targetId: memberId,
+          title: template.title,
+          body: message,
+          notificationType: 'leader_care'
+        });
+        sent = true;
+      }
+    } catch (error) {
+      console.warn('[LeaderDashboard] Could not send care notification:', error);
+    }
+
+    try {
+      await navigator.clipboard?.writeText(message);
+    } catch (_) {}
+
+    this.showToast(sent ? `${template.toast}. Message copied.` : 'Message copied. Paste it in chat if needed.');
+  },
+
+  /**
+   * Open full dashboard modal
+   */
+  async open() {
+    this.isOpen = true;
+    await this.loadMyGroups();
+    await this.loadUplineGroup();
+    await this.loadGuestGroups();
+    const tabGroups = this.getTabGroups();
+    if (!tabGroups.length && this.dashboardTab === 'upline' && this.myGroups.length) {
+      this.dashboardTab = 'downline';
+    }
+
+    const activeGroups = this.getTabGroups();
+    if (!this.selectedGroup && activeGroups.length) {
+      await this.selectGroup(activeGroups[0].id);
+    } else {
+      this.render();
+    }
+    
+    const modal = document.getElementById('leaderDashboardModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+  },
+
+  /**
+   * Close dashboard modal
+   */
+  close() {
+    this.isOpen = false;
+    
+    const modal = document.getElementById('leaderDashboardModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+  },
+
+  /**
+   * Render the dashboard
+   */
+  render() {
+    let modal = document.getElementById('leaderDashboardModal');
+    
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'leaderDashboardModal';
+      modal.className = 'fixed inset-0 z-[70] hidden';
+      document.body.appendChild(modal);
+    }
+    
+    const tabGroups = this.getTabGroups();
+    const statusGroups = this.getStatusGroupsForTab(tabGroups);
+    const hasDownline = this.myGroups.length > 0;
+    const hasUpline = !!this.uplineGroup || (this.guestGroups || []).length > 0;
+    const showTabToggle = hasDownline || hasUpline;
+    const needsAttentionMembers = this.members.filter(m => this.needsAttention(m).length > 0);
+    const thisWeekAccountability = this.getThisWeeksAccountability();
+    const groupStats = this.calculateGroupStats();
+    const isDownlineView = this.dashboardTab === 'downline';
+    const careSegments = this.getCareSegments();
+    const recentGroupMeeting = this.groupMeetings[0] || null;
+    const attendanceReport = this.buildSelectedGroupAttendanceReport();
+    
+    modal.innerHTML = `
+      <div class="absolute inset-0 bg-[var(--bg-color)]">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)] bg-[var(--nav-bg)]">
+          <button onclick="window.LeaderDashboard.close()" class="flex items-center gap-2 text-amber-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span class="text-sm">Back</span>
+          </button>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-[var(--text-color)] whitespace-nowrap">My Mission Groups</h1>
+            ${showTabToggle ? `
+            <div class="inline-flex rounded-xl p-1 border border-[var(--card-border)] bg-[var(--input-bg)]">
+              <button onclick="window.LeaderDashboard.setDashboardTab('upline')"
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'upline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}">
+                Upline
+              </button>
+              <button onclick="window.LeaderDashboard.setDashboardTab('downline')"
+                      class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${this.dashboardTab === 'downline' ? 'bg-amber-500 text-[var(--mission-red-deep)]' : 'text-[var(--text-muted)]'}">
+                Downline
+              </button>
+            </div>
+            ` : ''}
+          </div>
+          <div class="w-16"></div>
+        </div>
+        
+        <!-- Content -->
+        <div class="h-[calc(100vh-60px)] overflow-y-auto p-4 space-y-4">
+          
+          <!-- Group Selector (if multiple groups) -->
+          ${tabGroups.length > 1 ? `
+          <div class="flex gap-2 overflow-x-auto pb-2">
+            ${tabGroups.map(g => `
+              <button onclick="window.LeaderDashboard.selectGroup('${g.id}')"
+                      class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                             ${this.selectedGroup?.id === g.id 
+                               ? 'bg-amber-500 text-white' 
+                               : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--card-border)]'}">
+                ${g.name || 'My Group'}
+              </button>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${!tabGroups.length ? `
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center">
+            <p class="text-[var(--text-muted)]">${this.dashboardTab === 'upline' ? 'No upline or guest group yet.' : 'No downline groups yet.'}</p>
+          </div>
+          ` : ''}
+
+          ${tabGroups.length ? `
+          
+          ${isDownlineView ? `
+          <!-- This Week's Focus -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)]">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>📅</span> This Week's Focus
+              </h2>
+            </div>
+            <div class="p-4 space-y-4">
+              ${thisWeekAccountability ? `
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <img src="${thisWeekAccountability.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(thisWeekAccountability.fullName || 'U')}&background=4a0404&color=fbbf24`}" 
+                       class="w-12 h-12 rounded-full border-2 border-amber-500">
+                  <div>
+                    <p class="font-bold text-[var(--text-color)]">${thisWeekAccountability.fullName || 'Unknown'}</p>
+                    <p class="text-xs text-[var(--text-muted)]">🎯 Accountability Partner</p>
+                    <p class="text-xs text-amber-500 mt-1">
+                      ${thisWeekAccountability.stats?.devotionStreak || 0}-day devotion streak
+                    </p>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="window.LeaderDashboard.sendEncouragement('${thisWeekAccountability.id}')"
+                          class="p-2 rounded-full bg-amber-500/20 text-amber-500">
+                    💬
+                  </button>
+                  <button onclick="window.LeaderDashboard.recordCheckIn('${thisWeekAccountability.id}')"
+                          class="p-2 rounded-full bg-green-500/20 text-green-500">
+                    ✓
+                  </button>
+                </div>
+              </div>
+              <button onclick="window.LeaderDashboard.rotateAccountability()"
+                      class="w-full py-2 text-xs text-amber-500/70 hover:text-amber-500">
+                ↻ Rotate to next member
+              </button>
+              ` : `
+              <p class="text-center text-[var(--text-muted)] py-4">No members yet</p>
+              `}
+            </div>
+          </div>
+
+          <!-- Shepherding Summary -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-2xl border border-red-500/25 bg-red-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-red-300">Encourage</p>
+              <p class="mt-2 text-3xl font-black text-red-200">${careSegments.encourageBible.length}</p>
+              <p class="text-[11px] text-red-100/80 mt-2">Members who need a Bible nudge and time with God.</p>
+            </div>
+            <div class="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-amber-300">Check In</p>
+              <p class="mt-2 text-3xl font-black text-amber-200">${careSegments.attendanceFollowUp.length}</p>
+              <p class="text-[11px] text-amber-100/80 mt-2">Members missing meetings who need pastoral follow-up.</p>
+            </div>
+            <div class="rounded-2xl border border-green-500/25 bg-green-500/10 p-4">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-green-300">Affirm</p>
+              <p class="mt-2 text-3xl font-black text-green-200">${careSegments.affirmActive.length}</p>
+              <p class="text-[11px] text-green-100/80 mt-2">Members showing Bible rhythm, insights, prayer, or care for others.</p>
+            </div>
+          </div>
+
+          <!-- Group Stats -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)]">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>📈</span> Group Health
+              </h2>
+            </div>
+            <div class="p-4 grid grid-cols-2 gap-4">
+              <div class="text-center">
+                <p class="text-3xl font-bold text-[var(--text-color)]">${this.members.length}</p>
+                <p class="text-xs text-[var(--text-muted)]">Members</p>
+              </div>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-green-500">${groupStats.activeCount}</p>
+                <p class="text-xs text-[var(--text-muted)]">Active (7d)</p>
+              </div>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-amber-500">${groupStats.devotionActiveCount}</p>
+                <p class="text-xs text-[var(--text-muted)]">Reading Bible</p>
+              </div>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-blue-500">${groupStats.newCount}</p>
+                <p class="text-xs text-[var(--text-muted)]">New Members</p>
+              </div>
+            </div>
+            <div class="px-4 pb-4">
+              <div class="rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-3">
+                <p class="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Meeting Signal</p>
+                <p class="text-sm text-[var(--text-color)] mt-2">
+                  ${recentGroupMeeting
+                    ? `Latest recorded meeting: ${this.resolveDate(recentGroupMeeting.startedAt || recentGroupMeeting.createdAt || recentGroupMeeting.updatedAt || recentGroupMeeting.date)?.toLocaleDateString() || 'recently'}`
+                    : 'No meeting history recorded yet for this group.'}
+                </p>
+                <p class="text-[11px] text-[var(--text-muted)] mt-1">
+                  ${this.groupMeetings.length ? `${this.groupMeetings.length} recorded meeting${this.groupMeetings.length === 1 ? '' : 's'} available for attendance coaching.` : 'Start or record a meeting to help leaders follow up attendance.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Coaching -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(59,130,246,0.06))]">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="font-bold text-amber-400 flex items-center gap-2">
+                    <span>🧭</span> Attendance Coaching
+                  </h2>
+                  <p class="text-[11px] text-[var(--text-muted)] mt-1">See who attended, who missed, and who needs a pastoral follow-up from recent meetings.</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] ${attendanceReport.recentMeetings.length ? 'bg-blue-500/15 text-blue-300' : 'bg-[var(--input-bg)] text-[var(--text-muted)]'}">
+                  ${attendanceReport.recentMeetings.length ? `${attendanceReport.recentMeetings.length} records` : 'No records'}
+                </span>
+              </div>
+            </div>
+            <div class="p-4 space-y-4">
+              <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-blue-300">Latest Attendance</p>
+                  <p class="mt-2 text-3xl font-black text-blue-100">${attendanceReport.latestMeeting ? `${attendanceReport.latestMeeting.attendeeCount}/${attendanceReport.latestMeeting.expectedCount || 0}` : '0/0'}</p>
+                  <p class="text-[11px] text-blue-100/75 mt-2">${attendanceReport.latestMeeting ? `${attendanceReport.latestMeeting.attendancePercent}% of members were present` : 'No meeting recorded yet for this group.'}</p>
+                </div>
+                <div class="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-amber-300">Follow Up Now</p>
+                  <p class="mt-2 text-3xl font-black text-amber-100">${attendanceReport.followUpNow.length}</p>
+                  <p class="text-[11px] text-amber-100/75 mt-2">Absent from the latest recorded meeting.</p>
+                </div>
+                <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+                  <p class="text-[11px] uppercase tracking-[0.16em] text-red-300">Urgent Check-In</p>
+                  <p class="mt-2 text-3xl font-black text-red-100">${attendanceReport.urgentFollowUp.length}</p>
+                  <p class="text-[11px] text-red-100/75 mt-2">Members who missed ${this.THRESHOLDS.MISSED_MEETINGS}+ meetings in a row.</p>
+                </div>
+              </div>
+              ${attendanceReport.recentMeetings.length ? `
+              <div class="grid gap-3 lg:grid-cols-2">
+                ${attendanceReport.recentMeetings.map((entry) => this.buildAttendanceMeetingCard(entry)).join('')}
+              </div>
+              ` : `
+              <div class="rounded-[28px] border border-dashed border-[var(--card-border)] bg-[var(--input-bg)]/30 p-6 text-center">
+                <p class="text-sm text-[var(--text-color)]">No meeting attendance has been recorded yet.</p>
+                <p class="text-[11px] text-[var(--text-muted)] mt-2">Start the in-app meeting to capture attendance automatically, then this report will show who attended and who needs follow-up.</p>
+              </div>
+              `}
+            </div>
+          </div>
+          ` : ''}
+
+          ${isDownlineView ? `
+          <!-- Shepherding Lists -->
+          <div class="space-y-4">
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-red-500/25 overflow-hidden">
+              <div class="p-4 border-b border-red-500/20 bg-red-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-red-300 flex items-center gap-2">
+                  <span>📖</span> Encourage Bible Reading
+                </h2>
+                <span class="text-[11px] text-red-100/70">${careSegments.encourageBible.length} member${careSegments.encourageBible.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.encourageBible.length
+                  ? careSegments.encourageBible.slice(0, 6).map((member) => this.buildCareRow(member, 'encourage_bible')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">Nobody needs a Bible nudge right now.</div>'}
+              </div>
+            </div>
+
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-amber-500/25 overflow-hidden">
+              <div class="p-4 border-b border-amber-500/20 bg-amber-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-amber-300 flex items-center gap-2">
+                  <span>📅</span> Members Not Attending
+                </h2>
+                <span class="text-[11px] text-amber-100/70">${careSegments.attendanceFollowUp.length} member${careSegments.attendanceFollowUp.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.attendanceFollowUp.length
+                  ? careSegments.attendanceFollowUp.slice(0, 6).map((member) => this.buildCareRow(member, 'check_attendance')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">No attendance follow-up needed from recent meetings.</div>'}
+              </div>
+            </div>
+
+            <div class="bg-[var(--card-bg)] rounded-2xl border border-green-500/25 overflow-hidden">
+              <div class="p-4 border-b border-green-500/20 bg-green-500/8 flex items-center justify-between">
+                <h2 class="font-bold text-green-300 flex items-center gap-2">
+                  <span>🙌</span> Active and Spending Time With God
+                </h2>
+                <span class="text-[11px] text-green-100/70">${careSegments.affirmActive.length} member${careSegments.affirmActive.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="p-3 space-y-3">
+                ${careSegments.affirmActive.length
+                  ? careSegments.affirmActive.slice(0, 6).map((member) => this.buildCareRow(member, 'affirm_active')).join('')
+                  : '<div class="p-4 text-center text-[var(--text-muted)] text-sm">No affirmation candidates yet. Encourage members to share insights and prayer in the app.</div>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Member Roster -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>👥</span> Member Rhythm
+              </h2>
+              <span class="text-xs text-[var(--text-muted)]">${this.members.length} total</span>
+            </div>
+            <div class="p-3 space-y-3 max-h-[32rem] overflow-y-auto">
+              ${this.members.map(member => `
+                <div class="rounded-2xl border border-[var(--card-border)] bg-[var(--input-bg)]/45 p-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <img src="${member.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getMemberLabel(member) || 'U')}&background=4a0404&color=fbbf24`}" 
+                           class="w-10 h-10 rounded-full">
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-[var(--text-color)] truncate">${this.escapeHtml(this.getMemberLabel(member))}</p>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-1">
+                          ${member.stats?.sharedInsights ? `${member.stats.sharedInsights} shared insight${member.stats.sharedInsights === 1 ? '' : 's'}` : 'No shared insight yet'} • ${member.stats?.prayedForOthers ? `prayed for ${member.stats.prayedForOthers}` : 'keep building'}
+                        </p>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-1">
+                          ${member.stats?.lastAttendedAt
+                            ? `Last attended ${this.resolveDate(member.stats.lastAttendedAt)?.toLocaleDateString() || 'recently'}`
+                            : 'No attendance record yet'} • ${member.stats?.consecutiveMisses || 0} missed in a row
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      ${member.stats?.isNew ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">NEW</span>' : ''}
+                      ${member.stats?.streakTier === 'seven' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">7-day</span>' : ''}
+                      ${member.stats?.streakTier === 'three' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">3-day</span>' : ''}
+                      ${this.needsAttention(member).length > 0 ? '<span class="w-2 h-2 rounded-full bg-red-500"></span>' : ''}
+                    </div>
+                  </div>
+                  ${this.renderStreakGraphic(member.stats || {})}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- Prayer List -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>🙏</span> Prayer List
+              </h2>
+              <button onclick="window.LeaderDashboard.showAddPrayerModal()"
+                      class="text-xs px-3 py-1 bg-amber-500/20 text-amber-500 rounded-full">
+                + Add
+              </button>
+            </div>
+            <div class="divide-y divide-[var(--card-border)] max-h-60 overflow-y-auto">
+              ${this.prayerList.length > 0 ? this.prayerList.map(prayer => `
+                <div class="p-3 ${prayer.answered ? 'bg-green-500/10' : ''}">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <p class="text-xs text-amber-500 font-medium">${prayer.memberName}</p>
+                      <p class="text-sm text-[var(--text-color)] mt-1 ${prayer.answered ? 'line-through opacity-60' : ''}">${prayer.request}</p>
+                    </div>
+                    ${!prayer.answered ? `
+                    <button onclick="window.LeaderDashboard.markPrayerAnswered('${prayer.id}')"
+                            class="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">
+                      ✓ Answered
+                    </button>
+                    ` : `
+                    <span class="text-xs text-green-500">✓ Answered</span>
+                    `}
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-6 text-center text-[var(--text-muted)]">
+                  <p>No prayer requests yet</p>
+                  <p class="text-xs mt-1">Add prayer needs for your members</p>
+                </div>
+              `}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- Group Status -->
+          <div class="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden">
+            <div class="p-4 border-b border-[var(--card-border)] flex items-center justify-between">
+              <h2 class="font-bold text-amber-500 flex items-center gap-2">
+                <span>👥</span> Group Status
+              </h2>
+              <span class="text-xs text-[var(--text-muted)]">${statusGroups.length} group${statusGroups.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="p-3 space-y-3">
+              ${statusGroups.length ? statusGroups.map(group => {
+                const groupId = this.escapeForJs(group.id);
+                const groupName = this.escapeHtml(group.name || 'My Group');
+                const members = group.members?.length || 0;
+                const isUplineTab = this.dashboardTab === 'upline';
+                const roleText = this.dashboardTab === 'upline'
+                  ? (group.role === 'guest' ? 'Guest' : 'Upline')
+                  : 'Downline';
+                const roleColor = this.dashboardTab === 'upline'
+                  ? (group.role === 'guest' ? 'text-blue-400' : 'text-blue-500')
+                  : 'text-green-500';
+                const scheduleText = this.escapeHtml(this.formatScheduleText(group));
+                const isDownlineCard = !isUplineTab;
+                const pendingDeleteRequest = isDownlineCard
+                  ? (window.MyGroups?.pendingGroupDeletionRequestsById?.[group.id] || null)
+                  : null;
+                const hasPendingDelete = !!pendingDeleteRequest;
+                return `
+                <div class="rounded-xl border border-[var(--card-border)] p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-[24px] leading-tight font-bold text-[var(--text-color)]">${groupName}</p>
+                      <p class="text-xs uppercase tracking-[0.16em] mt-1 ${roleColor}">${roleText}</p>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      ${isDownlineCard ? `
+                      <button onclick="window.MyGroups && window.MyGroups.showGroupMenu ? window.MyGroups.showGroupMenu('${groupId}') : alert('Group options are unavailable right now. Please reopen My Mission Groups.')"
+                              class="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--card-border)] text-[var(--text-muted)] hover:border-amber-500/40 hover:text-amber-500 transition-colors"
+                              title="Group options"
+                              aria-label="Group options">•••</button>
+                      ` : ''}
+                      <p class="text-sm text-[var(--text-muted)] whitespace-nowrap">${members}/12 members</p>
+                    </div>
+                  </div>
+                  <p class="text-sm text-[var(--text-muted)] mt-3">📅 ${scheduleText}</p>
+                  <p class="text-sm text-[var(--text-muted)] mt-1">
+                    ${this.selectedGroup?.id === group.id
+                      ? (recentGroupMeeting
+                        ? `✅ Latest recorded meeting ${this.resolveDate(recentGroupMeeting.startedAt || recentGroupMeeting.createdAt || recentGroupMeeting.updatedAt || recentGroupMeeting.date)?.toLocaleDateString() || 'recently'}`
+                        : '✅ No recorded meeting yet')
+                      : '✅ Select this group to view attendance'}
+                  </p>
+                  ${hasPendingDelete ? `<p class="text-sm text-red-500 font-semibold mt-1">🗑️ Delete request pending admin approval</p>` : ''}
+                  <div class="mt-4 grid ${isUplineTab ? 'grid-cols-3' : 'grid-cols-4'} gap-2">
+                    ${isUplineTab ? '' : `
+                    <button onclick="window.LeaderDashboard.showInviteCode('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-gold)]">
+                      <div class="text-base leading-none">🔑</div>
+                      <div class="text-xs font-bold mt-1">Invite</div>
+                    </button>
+                    `}
+                    <button onclick="window.LeaderDashboard.openGroupCardChat('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-gold)]">
+                      <div class="text-base leading-none">💬</div>
+                      <div class="text-xs font-bold mt-1">Chat</div>
+                    </button>
+                    <button onclick="window.LeaderDashboard.openGroupCardView('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-red-deep)]">
+                      <div class="text-base leading-none">👁️</div>
+                      <div class="text-xs font-bold mt-1">View</div>
+                    </button>
+                    <button onclick="window.LeaderDashboard.joinGroupCardMeeting('${groupId}')"
+                            class="rounded-xl border border-[var(--card-border)] py-2.5 text-center text-[var(--mission-red-deep)]">
+                      <div class="text-base leading-none">🎥</div>
+                      <div class="text-xs font-bold mt-1">Join</div>
+                    </button>
+                  </div>
+                </div>
+              `;
+              }).join('') : `
+              <div class="rounded-xl border border-dashed border-[var(--card-border)] p-4 text-center text-[var(--text-muted)] text-sm">
+                No groups available in this tab.
+              </div>
+              `}
+            </div>
+          </div>
+          
+          <!-- Quick Actions -->
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="window.LeaderDashboard.openCreateGroup()"
+                    class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
+              <span class="text-2xl">➕</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Create Group</p>
+            </button>
+            <button onclick="window.LeaderDashboard.openJoinWithCode()"
+                    class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
+              <span class="text-2xl">🔑</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Join with Code</p>
+            </button>
+            <button onclick="window.LeaderDashboard.sendGroupAnnouncement()"
+                    class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
+              <span class="text-2xl">📢</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Announcement</p>
+            </button>
+            <button onclick="window.LeaderDashboard.viewReports()"
+                    class="p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--card-border)] text-center">
+              <span class="text-2xl">📊</span>
+              <p class="text-sm text-[var(--text-color)] mt-1">Reports</p>
+            </button>
+          </div>
+
+          ` : ''}
+          
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Calculate group statistics
+   */
+  calculateGroupStats() {
+    const activeCount = this.members.filter(m => 
+      (m.stats?.daysSinceActive || 999) <= 7
+    ).length;
+    
+    const devotionActiveCount = this.members.filter(m => 
+      (m.stats?.daysSinceDevotion || 999) <= 7
+    ).length;
+    
+    const newCount = this.members.filter(m => m.stats?.isNew).length;
+    
+    return { activeCount, devotionActiveCount, newCount };
+  },
+
+  openCreateGroup() {
+    if (window.MyGroups?.showCreateModal) {
+      window.MyGroups.showCreateModal();
+      return;
+    }
+    this.showToast('Create group is not available right now');
+  },
+
+  openJoinWithCode() {
+    if (window.MyGroups?.showJoinModal) {
+      window.MyGroups.showJoinModal();
+      return;
+    }
+    this.showToast('Join with code is not available right now');
+  },
+
+  /**
+   * Send group announcement
+   */
+  sendGroupAnnouncement() {
+    // TODO: Implement announcement modal
+    this.showToast('Announcement feature coming soon');
+  },
+
+  /**
+   * View reports
+   */
+  viewReports() {
+    // TODO: Implement reports view
+    this.showToast('Reports feature coming soon');
+  },
+
+  /**
+   * Show add prayer modal
+   */
+  showAddPrayerModal() {
+    const memberOptions = this.members.map(m => 
+      `<option value="${m.id}">${m.fullName || 'Unknown'}</option>`
+    ).join('');
+    
+    const modalHtml = `
+      <div id="addPrayerModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60" onclick="document.getElementById('addPrayerModal').remove()"></div>
+        <div class="relative bg-[var(--card-bg)] rounded-2xl p-6 w-full max-w-md border border-[var(--card-border)]">
+          <h3 class="text-lg font-bold text-amber-500 mb-4">🙏 Add Prayer Request</h3>
+          <select id="prayerMemberId" class="w-full p-3 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl text-[var(--text-color)] mb-3">
+            <option value="">Select member...</option>
+            ${memberOptions}
+          </select>
+          <textarea id="prayerRequest" rows="3" placeholder="Prayer request..."
+                    class="w-full p-3 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-xl text-[var(--text-color)] mb-4"></textarea>
+          <div class="flex gap-3">
+            <button onclick="document.getElementById('addPrayerModal').remove()"
+                    class="flex-1 py-3 border border-[var(--card-border)] rounded-xl text-[var(--text-muted)]">
+              Cancel
+            </button>
+            <button onclick="window.LeaderDashboard.submitPrayerRequest()"
+                    class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold">
+              Add Prayer
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  },
+
+  /**
+   * Submit prayer request from modal
+   */
+  async submitPrayerRequest() {
+    const memberId = document.getElementById('prayerMemberId')?.value;
+    const request = document.getElementById('prayerRequest')?.value?.trim();
+    
+    if (!memberId || !request) {
+      this.showToast('Please select a member and enter a prayer request');
+      return;
+    }
+    
+    await this.addPrayerRequest(memberId, request);
+    document.getElementById('addPrayerModal')?.remove();
+  },
+
+  /**
+   * Show toast notification
+   */
+  showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 px-6 py-3 bg-amber-500 text-white rounded-full text-sm font-medium z-[100] animate-fade-up';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
+  }
+};
+
+// Make available to inline handlers and other modules.
+window.LeaderDashboard = LeaderDashboard;
+
+// Initialize when DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Wait for auth to be ready
+    setTimeout(() => window.LeaderDashboard?.init?.(), 2000);
+  });
+} else {
+  setTimeout(() => window.LeaderDashboard?.init?.(), 2000);
+}
+
+// Export
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = LeaderDashboard;
+}

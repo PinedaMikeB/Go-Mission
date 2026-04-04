@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Series | Go Mission Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/watch/watch.css">
+</head>
+<body>
+  <div class="watch-shell">
+    <header class="watch-header">
+      <div class="watch-header-row">
+        <a href="/watch.html" class="back-link" aria-label="Back to watch series">← Watch</a>
+      </div>
+      <p class="watch-kicker">Go Mission</p>
+      <h1 class="watch-title">Series Episodes</h1>
+      <p class="watch-subtitle">Pick an episode to open the player.</p>
+    </header>
+
+    <main>
+      <article class="series-hero" aria-label="Series details">
+        <img id="seriesCover" class="series-hero-cover" src="" alt="Series cover">
+        <div class="series-hero-body">
+          <h2 id="seriesTitle" class="series-title">Loading...</h2>
+          <p id="seriesDescription" class="series-desc"></p>
+        </div>
+      </article>
+
+      <p id="episodesState" class="state-message">Loading episodes...</p>
+      <section id="episodeList" class="episode-list" aria-label="Episodes"></section>
+    </main>
+  </div>
+
+  <nav class="watch-footer-nav" aria-label="Bottom navigation">
+    <div class="watch-footer-row">
+      <a href="/" class="watch-footer-link">Home</a>
+      <a href="/watch.html" class="watch-footer-link active">Watch</a>
+      <a href="/groups" class="watch-footer-link">Groups</a>
+    </div>
+  </nav>
+
+  <script type="module" src="/watch/series.js"></script>
+</body>
+</html>

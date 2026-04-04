@@ -1,0 +1,25 @@
+{
+  "id": "l9wZ79yQMg9wlQV2ig7f",
+  "_name": "projects/shaped-by-grace/databases/(default)/documents/goMission_groups/l9wZ79yQMg9wlQV2ig7f",
+  "leaderId": "gXZ6XC1oNGZVcoBTEHEZqpx4tJ52",
+  "meetingSchedule": {
+    "updatedAt": "2026-03-14T13:06:55.902Z",
+    "day": "Friday",
+    "time": "14:00"
+  },
+  "createdAt": "2026-03-11T13:38:13.252Z",
+  "inviteCodeExpiresAt": "2026-03-18T13:38:15.529Z",
+  "members": [
+    "gXZ6XC1oNGZVcoBTEHEZqpx4tJ52",
+    "wCk98kd67CSEFomz66zoq7FUBVg2",
+    "LwtkLtMyzsMEsY3EbtXzXYfEZI23",
+    "C9uWLQTOGYNXF34cPB37k6aD3tG3"
+  ],
+  "leaderName": "melisa gallegos",
+  "name": "Women of Faith",
+  "type": "downline",
+  "nameKey": "women of faith",
+  "joinRequests": [],
+  "pendingRequests": [],
+  "inviteCode": "9GRMB6"
+}
