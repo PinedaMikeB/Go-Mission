@@ -1,24 +1,20 @@
 {
   "status": "running",
-  "updatedAt": "2026-03-24T01:53:50.577Z",
+  "updatedAt": "2026-04-02T02:54:58.893Z",
   "current": {
-    "bookId": "EXO",
-    "chapter": "25",
-    "verse": "16",
+    "bookId": "DEU",
+    "chapter": "29",
+    "verse": "10",
     "commentary": "Tyndale Open Study Notes"
   },
   "totals": {
-    "generated": 0,
-    "skippedExisting": 14989,
-    "errors": 1,
-    "queued": 16097,
+    "generated": 73,
+    "skippedExisting": 17719,
+    "errors": 0,
+    "queued": 13367,
     "processedBooks": 66,
-    "byCommentary": {}
-  },
-  "lastError": {
-    "bookId": "EXO",
-    "chapter": "25",
-    "verse": "16",
-    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors."
+    "byCommentary": {
+      "Tyndale Open Study Notes": 73
+    }
   }
 }

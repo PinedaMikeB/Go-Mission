@@ -9,19 +9,93 @@
     
     <!-- Auto-Update System - MUST BE FIRST for elderly users -->
     <script>
+        (function() {
+            const nativeStorageKey = 'goMission_nativePlatform';
+            const userAgent = navigator.userAgent || '';
+            const capacitorBridge = window.Capacitor || window.capacitor || null;
+            const url = new URL(window.location.href);
+            const nativeHint = String(url.searchParams.get('native_app') || '').trim().toLowerCase();
+            let storedNativePlatform = '';
+
+            try {
+                storedNativePlatform = String(localStorage.getItem(nativeStorageKey) || '').trim().toLowerCase();
+            } catch (error) {
+                console.debug('[Runtime] Could not read native platform from storage:', error);
+            }
+
+            let nativePlatform = null;
+            try {
+                if (capacitorBridge && typeof capacitorBridge.isNativePlatform === 'function' && capacitorBridge.isNativePlatform()) {
+                    nativePlatform = typeof capacitorBridge.getPlatform === 'function'
+                        ? capacitorBridge.getPlatform()
+                        : 'native';
+                } else if (capacitorBridge && typeof capacitorBridge.getPlatform === 'function') {
+                    const platform = capacitorBridge.getPlatform();
+                    nativePlatform = platform && platform !== 'web' ? platform : null;
+                }
+            } catch (error) {
+                console.debug('[Runtime] Could not inspect Capacitor bridge:', error);
+            }
+
+            if (!nativePlatform && nativeHint === 'android') {
+                nativePlatform = 'android';
+            }
+
+            if (!nativePlatform && /GoMissionAndroidApp/i.test(userAgent)) {
+                nativePlatform = 'android';
+            }
+
+            if (!nativePlatform && /Android/i.test(userAgent) && /wv|Version\/[\d.]+/i.test(userAgent)) {
+                nativePlatform = 'android';
+            }
+
+            if (!nativePlatform && storedNativePlatform) {
+                nativePlatform = storedNativePlatform;
+            }
+
+            if (nativePlatform) {
+                try {
+                    localStorage.setItem(nativeStorageKey, nativePlatform);
+                } catch (error) {
+                    console.debug('[Runtime] Could not persist native platform:', error);
+                }
+            }
+
+            const isNativeApp = !!nativePlatform;
+            const isInstalledShell = isNativeApp ||
+                window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+
+            if (url.searchParams.has('native_app')) {
+                url.searchParams.delete('native_app');
+                const cleanedSearch = url.searchParams.toString();
+                const cleanedUrl = `${url.pathname}${cleanedSearch ? `?${cleanedSearch}` : ''}${url.hash}`;
+                window.history.replaceState({}, '', cleanedUrl);
+            }
+
+            window.GoMissionRuntime = Object.assign({}, window.GoMissionRuntime, {
+                userAgent,
+                nativePlatform,
+                isNativeApp,
+                isInstalledShell
+            });
+        })();
+    </script>
+    <script>
         // Auto-generated build timestamp - changes on every deployment
         const BUILD_TIMESTAMP = '1773580759000';
         // PWAUpdater is the active updater; keep legacy updater in passive mode.
         window.GO_MISSION_DISABLE_LEGACY_SW_UPDATER = true;
+        // Install instructions are intentionally disabled. Users can still add
+        // the web app manually from the browser menu/share sheet when needed.
+        window.GO_MISSION_ENABLE_INSTALL_MODAL = false;
     </script>
     <script src="modules/core/auto-update.js"></script>
     
     <!-- PWA launch guard: keep notification/deep-link params intact -->
     <script>
         (function() {
-            // Check if running as installed PWA (standalone mode)
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                 window.navigator.standalone === true;
+            const isStandalone = window.GoMissionRuntime?.isInstalledShell === true;
             
             // If PWA and on install page, clean it.
             // Keep query params because push/deep-link launches rely on them.
@@ -2018,6 +2092,7 @@
     <div id="loginScreen" class="hidden min-h-screen bg-mission-sunset flex items-center justify-center p-6">
         <div class="max-w-md w-full animate-fade-up">
             <div class="text-center mb-8">
+                <img src="Go%20Mission%20Logo.png" alt="Go Mission logo" class="mx-auto mb-5 h-24 w-24 rounded-[28px] border border-white/10 bg-white/90 p-3 shadow-2xl shadow-black/35 object-contain">
                 <h1 class="font-mission text-2xl font-bold text-[var(--text-color)] tracking-[0.2em] uppercase mb-1">GO MISSION</h1>
                 <div class="flex justify-center gap-1 text-[var(--mission-gold)] mb-6">
                     <span>★</span><span>★</span><span>★</span>

@@ -1,0 +1,114 @@
+{
+  "id": "wCk98kd67CSEFomz66zoq7FUBVg2",
+  "_name": "projects/shaped-by-grace/databases/(default)/documents/goMission_members/wCk98kd67CSEFomz66zoq7FUBVg2",
+  "becameLeaderAt": "2026-01-20T08:00:05.406Z",
+  "name": "Klyn sereno",
+  "stageAutoStatus": {
+    "generationCount": 5,
+    "detectedStage": "builder",
+    "groupsLedCount": 5,
+    "generationDepth": 4,
+    "hasMissionGroupMember": true,
+    "groupsLedWithMembersCount": 5,
+    "leadsMissionGroup": true,
+    "updatedAtIso": "2026-03-30T11:09:02.854Z"
+  },
+  "stageUpdatedAt": "2026-03-30T11:09:02.955Z",
+  "activeChat": "LtU627U3nJoyA3fpoGzx",
+  "discipledBy": null,
+  "displayName": "Klyn sereno",
+  "stage": "builder",
+  "unreadCount": 62,
+  "groupRole": "leader",
+  "activeChatUpdatedAt": "2026-03-14T14:32:48.717Z",
+  "groupId": "l9wZ79yQMg9wlQV2ig7f",
+  "training": {
+    "currentPhase": 1,
+    "phases": {
+      "phase3": {
+        "status": "locked"
+      },
+      "phase1": {
+        "status": "enrolled",
+        "sessionsAttended": []
+      },
+      "phase2": {
+        "status": "locked"
+      },
+      "phase4": {
+        "status": "locked"
+      }
+    }
+  },
+  "createdAt": "2026-02-25T11:15:07.639Z",
+  "bibleProgress": {
+    "lastReadAt": 1772070696200,
+    "book": "JHN",
+    "chapter": 21,
+    "booksProgress": {
+      "JHN": {
+        "chaptersRead": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21
+        ],
+        "lastChapter": 21
+      }
+    }
+  },
+  "uplineGroupId": "l9wZ79yQMg9wlQV2ig7f",
+  "updatedAt": "2026-04-01T12:08:27.948Z",
+  "discipling": [
+    "9zVKHJ11zaXD0f4GI6P7LHD6re32",
+    "VTiGaWgPj2O3uOUpVeTYuuRERMl1",
+    "YPCfUQ8gD6RNdMKQoUOwbNeLWqh1",
+    "qTY2SJb2fDUZJPizbT5vz4cktgk1",
+    "PPHvcxpMmwTHI1T2XXrz7CbC4cW2",
+    "QRjyNLzDvwZxqjoIA3hQVnNf7Bs1",
+    "jx5DuJTTWMemdb0cYl47TsyRFMC2",
+    "TGy2OfA4z6h2iZV7wYTQ5f3RqF62",
+    "x2yUbOuL5iT5bav6DxovPZUlYWG2",
+    "hWmfs6cawvXFQuwtLSRt0UNmY622",
+    "Fz5TSxdBNJPi3JOWZSoVqfuGN0y1",
+    "cx1gKGM6D4aNtS4ujNQkXjTkiq82",
+    "c2N6AKk0xuP2oa9owCYJoBThy2G2",
+    "ur25DDLndtSXZ7sjQzDdJBx4o2n1",
+    "7Ic9kX7y4AZUtWoVQ1dMFLIZYMG3",
+    "i86t9HfrZkY08pNfA0sHDkuyjjf1",
+    "NA0DiAlQKwUQsRkigPS8gmOI3Tq2",
+    "9ViyhZwwLTQh1cRw81KtvpoLhVx2",
+    "A4EJwyuhgjYgmLz8AHakcXc87323",
+    "BcpExVrMu4N2Mti9khMMa5ewdZ53",
+    "VbdwztNsSwhrpAPwy84LObfI4Ra2",
+    "eAQwc4ybJeefREHLRHLa8ZZhWEX2",
+    "MoENqzA3bFaSd7otZgyMFEhZv5q1",
+    "F4hR7RejZFgFoj2FkXGS9FkCTY32",
+    "jrbYktcxdBZdlDRwy3HTPbbAY773"
+  ],
+  "email": "klynsereno@gmail.com",
+  "roles": {
+    "isGroupLeader": true,
+    "isWelcomeTeam": false,
+    "isTrainer": false,
+    "isShepherd": false,
+    "isAdmin": false,
+    "isMissionary": true
+  },
+  "photoURL": ""
+}

@@ -1,0 +1,2176 @@
+/**
+ * Go Mission - Chat Inbox Module
+ * Unified entry point for group chats and direct messages.
+ */
+
+if (typeof window !== 'undefined' && !window.GoMissionChatAttachmentSheet) {
+  window.GoMissionChatAttachmentSheet = {
+    handlers: null,
+    open(config = {}) {
+      const sheet = document.getElementById('chatAttachmentSheet');
+      if (!sheet) return;
+
+      const titleEl = document.getElementById('chatAttachmentSheetTitle');
+      const subtitleEl = document.getElementById('chatAttachmentSheetSubtitle');
+      if (titleEl) titleEl.textContent = String(config.title || 'Add photo');
+      if (subtitleEl) subtitleEl.textContent = String(config.subtitle || 'Choose a photo from your library or open the camera.');
+
+      this.handlers = {
+        gallery: typeof config.onGallery === 'function' ? config.onGallery : null,
+        camera: typeof config.onCamera === 'function' ? config.onCamera : null
+      };
+      sheet.classList.remove('hidden');
+    },
+
+    close() {
+      const sheet = document.getElementById('chatAttachmentSheet');
+      if (sheet) sheet.classList.add('hidden');
+      this.handlers = null;
+    },
+
+    choose(mode) {
+      const nextHandler = this.handlers?.[mode];
+      this.close();
+      if (typeof nextHandler === 'function') {
+        nextHandler();
+      }
+    }
+  };
+}
+
+const ChatApp = {
+  initialized: false,
+  isOpen: false,
+  activeTab: 'groups',
+  searchTerm: '',
+
+  groups: [],
+  groupThreads: [],
+  friendships: [],
+  directThreads: [],
+  incomingRequests: [],
+  outgoingRequests: [],
+  memberCache: new Map(),
+  pendingDirectDraft: null,
+  groupsSyncListenerBound: false,
+
+  peopleSearchPool: [],
+  findMeEnabled: true,
+  isPeopleFinderOpen: false,
+
+  activeDmThreadId: null,
+  activeDmPeerId: null,
+  dmMessages: [],
+  dmPollTimer: null,
+  dmNotificationUnsubscribe: null,
+  dmLastSeenAt: null,
+  activeDmHeartbeatTimer: null,
+  dmIsSending: false,
+  pendingDmAttachment: null,
+  dmEmojiPickerOpen: false,
+  dmFullscreenEmojiPickerOpen: false,
+  isDmFullscreenComposerOpen: false,
+  suppressNextDmComposerFocusOverlay: false,
+  dmEmojiOptions: ['🙏','😊','❤️','👍','🔥','🙌','🥹','😢','😮','😂','🎉','💯','✨','🤝','👏','🤍','💛','💙','📖','✝️','🕊️','🙂','😇','💪'],
+
+  /**
+   * Initialize module
+   */
+  async init() {
+    if (this.initialized) {
+      await this.refresh();
+      if (!this.dmNotificationUnsubscribe) {
+        this.initDirectMessageNotifier();
+      }
+      return;
+    }
+    this.initialized = true;
+    this.bindGroupsSyncListener();
+    this.setTab('groups');
+    await this.refresh();
+    this.initDirectMessageNotifier();
+  },
+
+  bindGroupsSyncListener() {
+    if (this.groupsSyncListenerBound || typeof document === 'undefined') return;
+    document.addEventListener('myGroupsUpdated', async () => {
+      if (!this.initialized || !window.currentUser) return;
+      try {
+        await this.loadGroups({ refreshMyGroups: false });
+        if (this.isOpen || this.activeTab === 'groups') {
+          this.renderGroups();
+        }
+      } catch (error) {
+        console.warn('[ChatApp] Failed syncing group visuals after myGroupsUpdated:', error);
+      }
+    });
+    this.groupsSyncListenerBound = true;
+  },
+
+  /**
+   * Open messages inbox
+   */
+  async open() {
+    if (!window.currentUser) {
+      alert('Please sign in first');
+      return;
+    }
+
+    const screen = document.getElementById('messagesInboxScreen');
+    if (!screen) return;
+
+    screen.classList.remove('hidden');
+    this.isOpen = true;
+    await this.refresh();
+  },
+
+  /**
+   * Close messages inbox
+   */
+  close() {
+    const screen = document.getElementById('messagesInboxScreen');
+    if (screen) screen.classList.add('hidden');
+    this.isOpen = false;
+  },
+
+  /**
+   * Cleanup listeners/state (used on sign-out)
+   */
+  cleanup() {
+    this.close();
+    this.closeDirectChat();
+    this.closePeopleFinder();
+    this.closeDmFullscreenComposer(false, true);
+    if (this.dmNotificationUnsubscribe) {
+      this.dmNotificationUnsubscribe();
+      this.dmNotificationUnsubscribe = null;
+    }
+    this.initialized = false;
+    this.dmLastSeenAt = null;
+  },
+
+  /**
+   * Refresh data for all tabs
+   */
+  async refresh() {
+    if (!window.currentUser || !window.db) return;
+
+    await this.loadGroups();
+    await this.loadFriendData();
+    this.renderCurrentTab();
+    this.updateBadges();
+  },
+
+  /**
+   * Change active tab
+   */
+  setTab(tab) {
+    this.activeTab = ['groups', 'direct', 'requests'].includes(tab) ? tab : 'groups';
+    this.renderTabButtons();
+
+    const groupsPanel = document.getElementById('messagesGroupsPanel');
+    const directPanel = document.getElementById('messagesDirectPanel');
+    const requestsPanel = document.getElementById('messagesRequestsPanel');
+    if (groupsPanel) groupsPanel.classList.toggle('hidden', this.activeTab !== 'groups');
+    if (directPanel) directPanel.classList.toggle('hidden', this.activeTab !== 'direct');
+    if (requestsPanel) requestsPanel.classList.toggle('hidden', this.activeTab !== 'requests');
+
+    this.renderCurrentTab();
+  },
+
+  /**
+   * Handle search input in the inbox
+   */
+  handleSearchInput(value) {
+    this.searchTerm = (value || '').trim().toLowerCase();
+    this.renderCurrentTab();
+  },
+
+  /**
+   * Render active tab content
+   */
+  renderCurrentTab() {
+    if (this.activeTab === 'groups') this.renderGroups();
+    else if (this.activeTab === 'direct') this.renderDirect();
+    else this.renderRequests();
+  },
+
+  /**
+   * Render tab button states
+   */
+  renderTabButtons() {
+    const map = {
+      groups: document.getElementById('messagesTabGroups'),
+      direct: document.getElementById('messagesTabDirect'),
+      requests: document.getElementById('messagesTabRequests')
+    };
+
+    for (const key of Object.keys(map)) {
+      const button = map[key];
+      if (!button) continue;
+      const active = this.activeTab === key;
+      button.style.background = active ? 'var(--mission-gold)' : 'transparent';
+      button.style.color = active ? 'var(--mission-red-deep)' : 'var(--text-muted)';
+      button.style.boxShadow = active ? '0 8px 18px rgba(251, 191, 36, 0.22)' : 'none';
+    }
+  },
+
+  /**
+   * Load groups and build list previews
+   */
+  async loadGroups(options = {}) {
+    if (!window.currentUser || !window.db) return;
+    const { refreshMyGroups = true } = options || {};
+
+    if (refreshMyGroups && typeof MyGroups !== 'undefined' && typeof MyGroups.loadGroups === 'function') {
+      await MyGroups.loadGroups({ emitUpdate: false });
+    }
+
+    const dedupe = new Map();
+    const pushGroup = (group) => {
+      if (!group?.id || dedupe.has(group.id)) return;
+      dedupe.set(group.id, group);
+    };
+
+    if (typeof MyGroups !== 'undefined') {
+      pushGroup(MyGroups.uplineGroup);
+      (MyGroups.guestGroups || []).forEach(pushGroup);
+      (MyGroups.downlineGroups || []).forEach(pushGroup);
+    }
+
+    this.groups = Array.from(dedupe.values());
+
+    const threads = await Promise.all(this.groups.map(async (group) => {
+      let previewText = group.lastChatMessageText || '';
+      let senderName = group.lastChatSenderName || '';
+      let lastAt = this.parseTimestamp(group.lastChatMessageAt) || this.parseTimestamp(group.updatedAt);
+      let type = group.lastChatMessageType || 'text';
+
+      if (!previewText) {
+        const fallback = await this.fetchLatestGroupMessage(group.id);
+        if (fallback) {
+          previewText = fallback.text;
+          senderName = fallback.senderName;
+          lastAt = fallback.createdAt || lastAt;
+          type = fallback.type || type;
+        }
+      }
+
+      return {
+        id: group.id,
+        name: group.name || 'Mission Group',
+        memberCount: (group.members || []).length || group.currentCount || 0,
+        previewText: previewText || 'No messages yet',
+        senderName: senderName || '',
+        lastAt,
+        type,
+        photoURL: this.getGroupDisplayImage(group),
+        icon: this.getGroupDisplayIcon(group),
+        group
+      };
+    }));
+
+    threads.sort((a, b) => {
+      const aTime = a.lastAt ? a.lastAt.getTime() : 0;
+      const bTime = b.lastAt ? b.lastAt.getTime() : 0;
+      if (aTime !== bTime) return bTime - aTime;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    this.groupThreads = threads;
+  },
+
+  getGroupDisplayImage(group = {}) {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupDisplayImage === 'function') {
+      return MyGroups.getGroupDisplayImage(group);
+    }
+    return group.groupPhotoURL || group.photoURL || group.photo || group.imageUrl || group.imageURL || '';
+  },
+
+  getGroupDisplayIcon(group = {}) {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupDisplayIcon === 'function') {
+      return MyGroups.getGroupDisplayIcon(group);
+    }
+    return group.groupIcon || group.icon || '';
+  },
+
+  getGroupInitials(groupName = '') {
+    if (typeof MyGroups !== 'undefined' && typeof MyGroups.getGroupInitials === 'function') {
+      return MyGroups.getGroupInitials(groupName);
+    }
+    const words = String(groupName || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+    if (!words.length) return 'MG';
+    return words.map((word) => word[0]?.toUpperCase() || '').join('');
+  },
+
+  renderGroupThreadAvatar(thread = {}) {
+    const group = thread.group || {};
+    const imageUrl = thread.photoURL || this.getGroupDisplayImage(group);
+    const icon = thread.icon || this.getGroupDisplayIcon(group);
+    const initials = this.getGroupInitials(thread.name || group.name || 'Mission Group');
+
+    if (imageUrl) {
+      return `
+        <img
+          src="${this.escapeHtml(imageUrl)}"
+          alt="${this.escapeHtml(thread.name || group.name || 'Mission Group')}"
+          loading="lazy"
+          decoding="async"
+          class="w-14 h-14 rounded-full object-cover border border-[var(--card-border)] shadow-[0_8px_18px_rgba(82,28,28,0.12)] shrink-0 bg-white"
+        >
+      `;
+    }
+
+    return `
+      <div class="w-14 h-14 rounded-full border border-[var(--card-border)] bg-[linear-gradient(145deg,rgba(255,244,214,0.96),rgba(255,255,255,0.98))] shadow-[0_8px_18px_rgba(82,28,28,0.08)] flex items-center justify-center shrink-0">
+        <span class="text-base font-black tracking-[0.08em] text-[var(--text-color)]">${this.escapeHtml(icon || initials)}</span>
+      </div>
+    `;
+  },
+
+  /**
+   * Fetch latest message for a group (fallback when group doc has no preview metadata)
+   */
+  async fetchLatestGroupMessage(groupId) {
+    if (!groupId || !window.db) return null;
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_chats'),
+        window.where('groupId', '==', groupId),
+        window.limit(60)
+      );
+      const snapshot = await window.getDocs(q);
+      let latest = null;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const createdAt = this.parseTimestamp(data.createdAt);
+        if (!latest || (createdAt && latest.createdAt && createdAt > latest.createdAt) || (createdAt && !latest.createdAt)) {
+          latest = {
+            text: data.type === 'devotion' ? 'Shared a devotion' : (data.text || ''),
+            senderName: data.senderName || '',
+            createdAt,
+            type: data.type || 'text'
+          };
+        }
+      });
+      return latest;
+    } catch (error) {
+      console.warn('[ChatApp] Could not fetch latest group message:', groupId, error);
+      return null;
+    }
+  },
+
+  /**
+   * Load friendship and request records
+   */
+  async loadFriendData() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+
+    try {
+      const friendshipsQ = window.query(
+        window.collection(window.db, 'goMission_friendships'),
+        window.where('users', 'array-contains', uid),
+        window.limit(200)
+      );
+      const incomingQ = window.query(
+        window.collection(window.db, 'goMission_friendRequests'),
+        window.where('toId', '==', uid),
+        window.limit(200)
+      );
+      const outgoingQ = window.query(
+        window.collection(window.db, 'goMission_friendRequests'),
+        window.where('fromId', '==', uid),
+        window.limit(200)
+      );
+
+      const [friendshipsSnap, incomingSnap, outgoingSnap] = await Promise.all([
+        window.getDocs(friendshipsQ),
+        window.getDocs(incomingQ),
+        window.getDocs(outgoingQ)
+      ]);
+
+      this.friendships = friendshipsSnap.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+
+      this.incomingRequests = incomingSnap.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter((request) => request.status === 'pending');
+
+      this.outgoingRequests = outgoingSnap.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter((request) => request.status === 'pending');
+
+      const missionContactIds = this.getMissionContactIds();
+      const existingFriendIds = new Set(
+        this.friendships
+          .map((friendship) => (friendship.users || []).find((id) => id !== uid))
+          .filter(Boolean)
+      );
+      const missingMissionContacts = missionContactIds.filter((id) => !existingFriendIds.has(id));
+      if (missingMissionContacts.length) {
+        await Promise.all(missingMissionContacts.map((contactId) => this.ensureMissionDirectFriendship(contactId, { silent: true })));
+      }
+
+      const missionContactSet = new Set(missionContactIds);
+      this.incomingRequests = this.incomingRequests.filter((request) => !missionContactSet.has(request.fromId));
+      this.outgoingRequests = this.outgoingRequests.filter((request) => !missionContactSet.has(request.toId));
+
+      const friendIds = this.friendships
+        .map((friendship) => (friendship.users || []).find((id) => id !== uid))
+        .filter(Boolean);
+      const requestUserIds = [
+        ...this.incomingRequests.map((request) => request.fromId),
+        ...this.outgoingRequests.map((request) => request.toId)
+      ];
+      await this.ensureMembersLoaded([...friendIds, ...requestUserIds, ...missionContactIds, uid]);
+      await this.loadCurrentFindMeSetting();
+      await this.buildDirectThreads();
+    } catch (error) {
+      console.error('[ChatApp] Failed loading friend data:', error);
+      this.friendships = [];
+      this.incomingRequests = [];
+      this.outgoingRequests = [];
+      this.directThreads = [];
+    }
+  },
+
+  /**
+   * Ensure member profiles are loaded into cache
+   */
+  async ensureMembersLoaded(ids) {
+    const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
+    const toLoad = uniqueIds.filter((id) => !this.memberCache.has(id));
+    if (toLoad.length === 0) return;
+
+    await Promise.all(toLoad.map(async (id) => {
+      try {
+        const docSnap = await window.getDoc(window.doc(window.db, 'goMission_members', id));
+        if (docSnap.exists()) {
+          this.memberCache.set(id, { id, ...docSnap.data() });
+        }
+      } catch (error) {
+        console.warn('[ChatApp] Could not load member', id, error);
+      }
+    }));
+  },
+
+  /**
+   * Build direct-thread list from friendships
+   */
+  async buildDirectThreads() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) {
+      this.directThreads = [];
+      return;
+    }
+
+    const threads = await Promise.all(this.friendships.map(async (friendship) => {
+      const users = friendship.users || [];
+      const peerId = users.find((id) => id !== uid);
+      if (!peerId) return null;
+
+      const peer = this.memberCache.get(peerId) || {};
+      const threadId = this.pairKey(uid, peerId);
+      let threadData = null;
+      try {
+        const threadDoc = await window.getDoc(window.doc(window.db, 'goMission_dmThreads', threadId));
+        if (threadDoc.exists()) {
+          threadData = threadDoc.data();
+        }
+      } catch (error) {
+        console.warn('[ChatApp] Failed loading DM thread', threadId, error);
+      }
+
+      return {
+        friendId: peerId,
+        threadId,
+        name: this.getMemberDisplayName(peer) || 'Friend',
+        photoURL: this.getMemberPhoto(peer),
+        email: peer.email || '',
+        lastMessageText: threadData?.lastMessageText || 'No messages yet',
+        lastMessageAt: this.parseTimestamp(threadData?.lastMessageAt) || this.parseTimestamp(friendship.createdAt),
+        lastMessageSenderId: threadData?.lastMessageSenderId || null
+      };
+    }));
+
+    this.directThreads = threads
+      .filter(Boolean)
+      .sort((a, b) => {
+        const aTime = a.lastMessageAt ? a.lastMessageAt.getTime() : 0;
+        const bTime = b.lastMessageAt ? b.lastMessageAt.getTime() : 0;
+        if (aTime !== bTime) return bTime - aTime;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+  },
+
+  /**
+   * Render group list
+   */
+  renderGroups() {
+    const container = document.getElementById('messagesGroupsList');
+    if (!container) return;
+
+    const filtered = this.groupThreads.filter((thread) => {
+      if (!this.searchTerm) return true;
+      return `${thread.name} ${thread.previewText} ${thread.senderName}`.toLowerCase().includes(this.searchTerm);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-10">
+          <p class="text-sm text-[var(--text-muted)]">No matching group chats.</p>
+          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">Join or create a mission group to start chatting.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filtered.map((thread) => {
+      const subtitle = thread.senderName
+        ? `${this.escapeHtml(thread.senderName)}: ${this.escapeHtml(thread.previewText)}`
+        : this.escapeHtml(thread.previewText);
+      return `
+        <button onclick="window.ChatApp.openGroupChat('${thread.id}')" class="w-full text-left mission-card rounded-2xl border border-[var(--card-border)] p-4 hover:border-[var(--mission-gold)]/45 transition-colors">
+          <div class="flex items-start gap-3">
+            ${this.renderGroupThreadAvatar(thread)}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(thread.name)}</p>
+                  <p class="text-[11px] text-[var(--text-muted)]">${thread.memberCount} members</p>
+                </div>
+                <p class="text-[10px] text-[var(--text-muted)] shrink-0">${this.formatTime(thread.lastAt)}</p>
+              </div>
+              <p class="text-sm text-[var(--text-color)]/90 truncate mt-2">${subtitle}</p>
+            </div>
+          </div>
+        </button>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Render direct-message list
+   */
+  renderDirect() {
+    const container = document.getElementById('messagesDirectList');
+    if (!container) return;
+
+    const filtered = this.directThreads.filter((thread) => {
+      if (!this.searchTerm) return true;
+      return `${thread.name} ${thread.email} ${thread.lastMessageText}`.toLowerCase().includes(this.searchTerm);
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-10">
+          <p class="text-sm text-[var(--text-muted)]">No direct chats yet.</p>
+          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">Mission-group contacts appear here automatically when you share a group.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filtered.map((thread) => `
+      <button onclick="window.ChatApp.openDirectChat('${thread.friendId}')" class="w-full text-left mission-card rounded-2xl border border-[var(--card-border)] p-4 hover:border-[var(--mission-gold)]/45 transition-colors">
+        <div class="flex items-center gap-3">
+          <img src="${this.escapeHtml(thread.photoURL)}" alt="${this.escapeHtml(thread.name)}" class="w-11 h-11 rounded-full border border-[var(--card-border)]">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(thread.name)}</p>
+              <p class="text-[10px] text-[var(--text-muted)] shrink-0">${this.formatTime(thread.lastMessageAt)}</p>
+            </div>
+            <p class="text-xs text-[var(--text-muted)] truncate">${this.escapeHtml(thread.lastMessageText || 'No messages yet')}</p>
+          </div>
+        </div>
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Render incoming/outgoing requests
+   */
+  renderRequests() {
+    const container = document.getElementById('messagesRequestsList');
+    if (!container) return;
+
+    const incoming = this.incomingRequests.filter((request) => {
+      if (!this.searchTerm) return true;
+      const member = this.memberCache.get(request.fromId) || {};
+      return `${this.getMemberDisplayName(member)} ${member.email || ''}`.toLowerCase().includes(this.searchTerm);
+    });
+
+    const outgoing = this.outgoingRequests.filter((request) => {
+      if (!this.searchTerm) return true;
+      const member = this.memberCache.get(request.toId) || {};
+      return `${this.getMemberDisplayName(member)} ${member.email || ''}`.toLowerCase().includes(this.searchTerm);
+    });
+
+    if (incoming.length === 0 && outgoing.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-10">
+          <p class="text-sm text-[var(--text-muted)]">No pending requests.</p>
+          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">New friend requests will appear here for approval.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const incomingHtml = incoming.map((request) => {
+      const member = this.memberCache.get(request.fromId) || {};
+      const name = this.getMemberDisplayName(member) || request.fromName || 'User';
+      return `
+        <div class="mission-card rounded-2xl border border-[var(--card-border)] p-4">
+          <div class="flex items-start gap-3">
+            <img src="${this.escapeHtml(this.getMemberPhoto(member))}" alt="${this.escapeHtml(name)}" class="w-10 h-10 rounded-full border border-[var(--card-border)]">
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(name)}</p>
+              <p class="text-xs text-[var(--text-muted)] truncate">${this.escapeHtml(member.email || request.fromEmail || '')}</p>
+              <p class="text-[10px] text-[var(--text-muted)] mt-1">Incoming request</p>
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <button onclick="window.ChatApp.acceptFriendRequest('${request.id}')" class="py-2 rounded-lg bg-[var(--mission-gold)] text-[var(--mission-red-deep)] text-xs font-bold">Accept</button>
+            <button onclick="window.ChatApp.declineFriendRequest('${request.id}')" class="py-2 rounded-lg border border-[var(--card-border)] text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-color)]">Decline</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const outgoingHtml = outgoing.map((request) => {
+      const member = this.memberCache.get(request.toId) || {};
+      const name = this.getMemberDisplayName(member) || request.toName || 'User';
+      return `
+        <div class="mission-card rounded-2xl border border-[var(--card-border)] p-4">
+          <div class="flex items-start gap-3">
+            <img src="${this.escapeHtml(this.getMemberPhoto(member))}" alt="${this.escapeHtml(name)}" class="w-10 h-10 rounded-full border border-[var(--card-border)]">
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-[var(--text-color)] truncate">${this.escapeHtml(name)}</p>
+              <p class="text-xs text-[var(--text-muted)] truncate">${this.escapeHtml(member.email || request.toEmail || '')}</p>
+              <p class="text-[10px] text-amber-500 mt-1">Pending approval</p>
+            </div>
+            <button onclick="window.ChatApp.cancelFriendRequest('${request.id}')" class="text-[10px] px-2 py-1 rounded-md border border-[var(--card-border)] text-[var(--text-muted)] hover:text-red-400">Cancel</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      ${incoming.length ? `<p class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-[0.12em]">Incoming</p>${incomingHtml}` : ''}
+      ${outgoing.length ? `<p class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-[0.12em] mt-1">Sent by you</p>${outgoingHtml}` : ''}
+    `;
+  },
+
+  /**
+   * Open selected group chat
+   */
+  openGroupChat(groupId, focusMessageId = null) {
+    if (!groupId) return false;
+    let groupThread = this.groupThreads.find((thread) => thread.id === groupId);
+    if (!groupThread) {
+      const group = this.groups.find((item) => item?.id === groupId);
+      if (group) {
+        groupThread = { id: groupId, group };
+      }
+    }
+    if (!groupThread?.group) return false;
+
+    if (typeof Groups !== 'undefined') {
+      Groups.currentGroup = groupThread.group;
+    }
+
+    this.close();
+    if (typeof GroupChat !== 'undefined' && typeof GroupChat.open === 'function') {
+      if (focusMessageId) {
+        GroupChat.pendingFocusMessageId = focusMessageId;
+      }
+      GroupChat.open();
+      if (typeof Notifications !== 'undefined') {
+        Notifications.markAsRead();
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Open DM modal with a friend
+   */
+  async openDirectChat(friendId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !friendId) return;
+
+    let thread = this.directThreads.find((item) => item.friendId === friendId);
+    if (!thread) {
+      const ensured = await this.ensureMissionDirectFriendship(friendId, { silent: true });
+      if (ensured) {
+        await this.ensureMembersLoaded([friendId, uid]);
+        await this.buildDirectThreads();
+        this.renderDirect();
+        thread = this.directThreads.find((item) => item.friendId === friendId);
+      }
+    }
+    if (!thread) {
+      alert('You can only message accepted friends.');
+      return;
+    }
+
+    this.activeDmPeerId = friendId;
+    this.activeDmThreadId = this.pairKey(uid, friendId);
+    const peer = this.memberCache.get(friendId) || {};
+
+    const photo = document.getElementById('dmChatPhoto');
+    const name = document.getElementById('dmChatName');
+    const input = document.getElementById('dmChatInput');
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
+    if (photo) photo.src = this.getMemberPhoto(peer);
+    if (name) name.textContent = this.getMemberDisplayName(peer) || 'Direct Message';
+    const pendingDraft = this.consumePendingDirectDraft(friendId);
+    if (input) {
+      input.value = pendingDraft || '';
+      if (!this.shouldUseDmFullscreenComposer()) {
+        requestAnimationFrame(() => {
+          input.focus();
+          input.setSelectionRange?.(input.value.length, input.value.length);
+        });
+      }
+    }
+    this.autoResizeDmInput(input);
+    this.closeDmEmojiPicker();
+    this.closeDmFullscreenEmojiPicker();
+    this.dmIsSending = false;
+    this.setDmComposerSendingState(false);
+    this.renderDmEmojiPicker();
+    this.renderDmFullscreenEmojiPicker();
+    this.renderDmAttachmentDraft();
+
+    const modal = document.getElementById('dmChatModal');
+    if (modal) modal.classList.remove('hidden');
+
+    if (this.shouldUseDmFullscreenComposer() && pendingDraft) {
+      requestAnimationFrame(() => this.openDmFullscreenComposer());
+    }
+
+    await this.setActiveDmThread(this.activeDmThreadId);
+    this.startActiveDmHeartbeat(this.activeDmThreadId);
+    this.markDmSeenNow();
+    await this.loadDirectMessages(true);
+    this.startDmPolling();
+  },
+
+  /**
+   * Close DM modal
+   */
+  closeDirectChat() {
+    const previousThreadId = this.activeDmThreadId;
+    const modal = document.getElementById('dmChatModal');
+    if (modal) modal.classList.add('hidden');
+    this.closeDmFullscreenComposer(false, true);
+    this.activeDmThreadId = null;
+    this.activeDmPeerId = null;
+    this.dmMessages = [];
+    this.closeDmEmojiPicker();
+    this.closeDmFullscreenEmojiPicker();
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
+    this.renderDmAttachmentDraft();
+    this.dmIsSending = false;
+    this.setDmComposerSendingState(false);
+    this.stopDmPolling();
+    this.stopActiveDmHeartbeat();
+    if (previousThreadId) {
+      this.setActiveDmThread(null);
+    }
+  },
+
+  /**
+   * Save a draft so guided flows can land inside DM with a suggested opener.
+   */
+  setPendingDirectDraft(friendId, text = '') {
+    if (!friendId) return;
+    this.pendingDirectDraft = {
+      friendId,
+      text: String(text || '')
+    };
+  },
+
+  /**
+   * Consume a pending draft for one DM peer.
+   */
+  consumePendingDirectDraft(friendId) {
+    if (!this.pendingDirectDraft || this.pendingDirectDraft.friendId !== friendId) return '';
+    const text = this.pendingDirectDraft.text || '';
+    this.pendingDirectDraft = null;
+    return text;
+  },
+
+  /**
+   * Use fullscreen composer for mobile DM writing.
+   */
+  shouldUseDmFullscreenComposer() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  },
+
+  /**
+   * Open fullscreen composer when the compact DM textarea receives focus on mobile.
+   */
+  handleDmComposerInputFocus(event) {
+    this.closeDmEmojiPicker();
+    if (!this.shouldUseDmFullscreenComposer()) return;
+    if (this.suppressNextDmComposerFocusOverlay) {
+      this.suppressNextDmComposerFocusOverlay = false;
+      return;
+    }
+    event?.preventDefault?.();
+    event?.target?.blur?.();
+    this.openDmFullscreenComposer();
+  },
+
+  /**
+   * Open fullscreen DM composer and sync from the compact field.
+   */
+  openDmFullscreenComposer() {
+    const overlay = document.getElementById('dmFullscreenComposer');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!overlay || !fullscreenInput || !input) return;
+
+    fullscreenInput.value = input.value || '';
+    overlay.classList.remove('hidden');
+    this.isDmFullscreenComposerOpen = true;
+    this.closeDmEmojiPicker();
+    this.renderDmFullscreenEmojiPicker();
+    this.setDmComposerSendingState(!!this.dmIsSending);
+    requestAnimationFrame(() => {
+      fullscreenInput.focus();
+      fullscreenInput.setSelectionRange?.(fullscreenInput.value.length, fullscreenInput.value.length);
+    });
+  },
+
+  /**
+   * Close fullscreen DM composer.
+   */
+  closeDmFullscreenComposer(syncBack = true, preserveFocus = false) {
+    const overlay = document.getElementById('dmFullscreenComposer');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!overlay) return;
+
+    if (syncBack && fullscreenInput && input) {
+      input.value = fullscreenInput.value || '';
+      this.autoResizeDmInput(input);
+    }
+
+    overlay.classList.add('hidden');
+    this.isDmFullscreenComposerOpen = false;
+    this.closeDmFullscreenEmojiPicker();
+
+    if (!preserveFocus && input && this.shouldUseDmFullscreenComposer()) {
+      this.suppressNextDmComposerFocusOverlay = true;
+      setTimeout(() => input.focus(), 0);
+    }
+  },
+
+  /**
+   * Keep the hidden compact DM input in sync while writing fullscreen.
+   */
+  handleDmFullscreenComposerInput(event) {
+    const fullscreenInput = event?.target || document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Sync fullscreen composer text back into the compact DM input.
+   */
+  syncDmFullscreenComposerToMainInput() {
+    if (!this.isDmFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    input.value = fullscreenInput.value || '';
+    this.autoResizeDmInput(input);
+  },
+
+  /**
+   * Mirror compact DM input into fullscreen when it is open.
+   */
+  syncMainDmInputToFullscreenComposer() {
+    if (!this.isDmFullscreenComposerOpen) return;
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const input = document.getElementById('dmChatInput');
+    if (!fullscreenInput || !input) return;
+    fullscreenInput.value = input.value || '';
+  },
+
+  /**
+   * Send a DM from fullscreen composer.
+   */
+  async sendFromDmFullscreenComposer() {
+    this.syncDmFullscreenComposerToMainInput();
+    this.closeDmFullscreenComposer(true, true);
+    await this.sendDirectMessage();
+  },
+
+  /**
+   * Load messages for active DM thread
+   */
+  async loadDirectMessages(scrollToBottom = false) {
+    if (!this.activeDmThreadId || !window.db) return;
+
+    const container = document.getElementById('dmChatMessages');
+    if (!container) return;
+
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_dmMessages'),
+        window.where('threadId', '==', this.activeDmThreadId),
+        window.limit(120)
+      );
+      const snapshot = await window.getDocs(q);
+      const messages = [];
+      snapshot.forEach((docSnap) => messages.push({ id: docSnap.id, ...docSnap.data() }));
+      messages.sort((a, b) => {
+        const aTime = this.parseTimestamp(a.createdAt)?.getTime() || 0;
+        const bTime = this.parseTimestamp(b.createdAt)?.getTime() || 0;
+        return aTime - bTime;
+      });
+      this.dmMessages = messages;
+      this.renderDirectMessages(scrollToBottom);
+      this.markDmSeenNow();
+    } catch (error) {
+      console.error('[ChatApp] Failed loading direct messages:', error);
+      container.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Could not load messages.</p>';
+    }
+  },
+
+  /**
+   * Render DM messages
+   */
+  renderDirectMessages(scrollToBottom = false) {
+    const container = document.getElementById('dmChatMessages');
+    if (!container) return;
+
+    if (!this.dmMessages.length) {
+      container.innerHTML = `
+        <div class="text-center py-10">
+          <p class="text-sm text-[var(--text-muted)]">No messages yet.</p>
+          <p class="text-xs text-[var(--text-muted)] opacity-70 mt-1">Say hello and start the conversation.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const uid = window.currentUser?.uid;
+    let html = '';
+    let lastDate = '';
+
+    for (const message of this.dmMessages) {
+      const isMe = message.senderId === uid;
+      const messageDate = this.parseTimestamp(message.createdAt) || new Date();
+      const dateLabel = messageDate.toLocaleDateString();
+      const timeLabel = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (dateLabel !== lastDate) {
+        html += `
+          <div class="text-center my-3">
+            <span class="text-[10px] text-[var(--text-muted)] bg-[var(--input-bg)] border border-[var(--card-border)] px-3 py-1 rounded-full">${dateLabel}</span>
+          </div>
+        `;
+        lastDate = dateLabel;
+      }
+
+      html += `
+        <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[80%] rounded-2xl border ${isMe ? 'bg-amber-500/20 border-amber-500/30' : 'bg-[var(--card-bg)] border-[var(--card-border)]'} px-3 py-2">
+            ${this.renderDmImageContent(message)}
+            ${this.renderDmMessageText(message)}
+            <p class="text-[10px] text-[var(--text-muted)] mt-1 ${isMe ? 'text-right' : ''}">${timeLabel}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+    if (scrollToBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  },
+
+  /**
+   * Send a direct message
+   */
+  async sendDirectMessage() {
+    const input = document.getElementById('dmChatInput');
+    if (!input) return;
+    this.syncDmFullscreenComposerToMainInput();
+    const text = (input.value || '').trim();
+    const attachment = this.pendingDmAttachment;
+    if (!text && !attachment?.file) return;
+    if (!this.activeDmThreadId || !this.activeDmPeerId) return;
+    if (this.dmIsSending) return;
+
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+
+    try {
+      this.dmIsSending = true;
+      this.setDmComposerSendingState(true);
+      this.closeDmEmojiPicker();
+      let imagePayload = null;
+      if (attachment?.file) {
+        imagePayload = await this.uploadDmImageAttachment(attachment.file);
+      }
+      const senderName = window.currentUser.displayName || window.currentUser.email || 'User';
+      const senderPhoto = window.currentUser.photoURL || '';
+      const participants = [uid, this.activeDmPeerId].sort();
+      const hasImage = !!imagePayload?.url;
+      const messageText = text || (hasImage ? '📷 Photo' : '');
+
+      await window.addDoc(window.collection(window.db, 'goMission_dmMessages'), {
+        threadId: this.activeDmThreadId,
+        participants,
+        senderId: uid,
+        senderName,
+        senderPhoto,
+        text: messageText,
+        type: hasImage ? 'image' : 'text',
+        imageUrl: imagePayload?.url || '',
+        imagePath: imagePayload?.path || '',
+        imageName: imagePayload?.name || '',
+        imageSize: imagePayload?.size || 0,
+        imageMimeType: imagePayload?.mimeType || '',
+        imageCaption: text || '',
+        createdAt: window.serverTimestamp()
+      });
+
+      await window.setDoc(
+        window.doc(window.db, 'goMission_dmThreads', this.activeDmThreadId),
+        {
+          participants,
+          pairKey: this.activeDmThreadId,
+          lastMessageText: messageText,
+          lastMessageType: hasImage ? 'image' : 'text',
+          lastMessageSenderId: uid,
+          lastMessageSenderName: senderName,
+          lastMessageAt: window.serverTimestamp(),
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      input.value = '';
+      this.autoResizeDmInput(input);
+      this.syncMainDmInputToFullscreenComposer();
+      this.releasePendingDmAttachmentPreview();
+      this.pendingDmAttachment = null;
+      this.renderDmAttachmentDraft();
+      this.resetDmAttachmentInputs();
+      await this.loadDirectMessages(true);
+      await this.buildDirectThreads();
+      this.renderDirect();
+    } catch (error) {
+      console.error('[ChatApp] Failed sending direct message:', error);
+      alert('Could not send message. Please try again.');
+    } finally {
+      this.dmIsSending = false;
+      this.setDmComposerSendingState(false);
+    }
+  },
+
+  /**
+   * Keep Enter for line breaks; use Ctrl/Cmd+Enter to send.
+   */
+  handleDmKeyDown(event) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.sendDirectMessage();
+    }
+  },
+
+  /**
+   * Auto-grow DM composer textarea.
+   */
+  handleDmInput(event) {
+    this.autoResizeDmInput(event?.target || null);
+    this.syncMainDmInputToFullscreenComposer();
+  },
+
+  /**
+   * Resize helper for DM textarea.
+   */
+  autoResizeDmInput(inputEl = null) {
+    const input = inputEl || document.getElementById('dmChatInput');
+    if (!input) return;
+    const maxHeight = input.id === 'dmFullscreenInput' ? 9999 : 176;
+    input.style.height = 'auto';
+    const nextHeight = Math.min(maxHeight, Math.max(48, input.scrollHeight || 48));
+    input.style.height = `${nextHeight}px`;
+    input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+  },
+
+  /**
+   * Toggle the direct-message emoji picker.
+   */
+  toggleDmEmojiPicker() {
+    this.dmEmojiPickerOpen = !this.dmEmojiPickerOpen;
+    this.closeDmFullscreenEmojiPicker();
+    if (this.dmEmojiPickerOpen) {
+      this.renderDmEmojiPicker();
+    }
+    const picker = document.getElementById('dmEmojiPicker');
+    const toggleBtn = document.getElementById('dmEmojiToggleBtn');
+    if (picker) picker.classList.toggle('hidden', !this.dmEmojiPickerOpen);
+    if (toggleBtn) toggleBtn.classList.toggle('bg-amber-500/20', this.dmEmojiPickerOpen);
+  },
+
+  /**
+   * Close the DM emoji picker.
+   */
+  closeDmEmojiPicker() {
+    this.dmEmojiPickerOpen = false;
+    const picker = document.getElementById('dmEmojiPicker');
+    const toggleBtn = document.getElementById('dmEmojiToggleBtn');
+    if (picker) picker.classList.add('hidden');
+    if (toggleBtn) toggleBtn.classList.remove('bg-amber-500/20');
+  },
+
+  /**
+   * Toggle emoji tray inside the fullscreen DM composer.
+   */
+  toggleDmFullscreenEmojiPicker() {
+    this.dmFullscreenEmojiPickerOpen = !this.dmFullscreenEmojiPickerOpen;
+    this.closeDmEmojiPicker();
+    if (this.dmFullscreenEmojiPickerOpen) {
+      this.renderDmFullscreenEmojiPicker();
+    }
+    const picker = document.getElementById('dmFullscreenEmojiPicker');
+    const toggleBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    if (picker) picker.classList.toggle('hidden', !this.dmFullscreenEmojiPickerOpen);
+    if (toggleBtn) toggleBtn.classList.toggle('bg-amber-500/20', this.dmFullscreenEmojiPickerOpen);
+  },
+
+  /**
+   * Close the fullscreen DM emoji tray.
+   */
+  closeDmFullscreenEmojiPicker() {
+    this.dmFullscreenEmojiPickerOpen = false;
+    const picker = document.getElementById('dmFullscreenEmojiPicker');
+    const toggleBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    if (picker) picker.classList.add('hidden');
+    if (toggleBtn) toggleBtn.classList.remove('bg-amber-500/20');
+  },
+
+  /**
+   * Render lightweight emoji choices for DM composer.
+   */
+  renderDmEmojiPicker() {
+    const grid = document.getElementById('dmEmojiGrid');
+    if (!grid) return;
+    const emojis = Array.isArray(this.dmEmojiOptions) ? this.dmEmojiOptions : [];
+    grid.innerHTML = emojis.map((emoji) => `
+      <button type="button"
+              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}', 'dmChatInput')"
+              class="h-9 w-9 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center justify-center text-lg"
+              title="${this.escapeHtml(emoji)}">
+        <span aria-hidden="true">${emoji}</span>
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Render emoji tray for the fullscreen DM composer.
+   */
+  renderDmFullscreenEmojiPicker() {
+    const grid = document.getElementById('dmFullscreenEmojiGrid');
+    if (!grid) return;
+    const emojis = Array.isArray(this.dmEmojiOptions) ? this.dmEmojiOptions : [];
+    grid.innerHTML = emojis.map((emoji) => `
+      <button type="button"
+              onclick="window.ChatApp && window.ChatApp.insertDmEmoji && window.ChatApp.insertDmEmoji('${String(emoji).replace(/'/g, "\\'")}', 'dmFullscreenInput')"
+              class="h-9 w-9 rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center justify-center text-lg"
+              title="${this.escapeHtml(emoji)}">
+        <span aria-hidden="true">${emoji}</span>
+      </button>
+    `).join('');
+  },
+
+  /**
+   * Insert selected emoji into DM input at the cursor position.
+   */
+  insertDmEmoji(emoji, inputId = 'dmChatInput') {
+    const input = document.getElementById(inputId);
+    if (!input || !emoji) return;
+
+    const value = input.value || '';
+    const start = Number.isFinite(input.selectionStart) ? input.selectionStart : value.length;
+    const end = Number.isFinite(input.selectionEnd) ? input.selectionEnd : value.length;
+    input.value = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+
+    const nextPos = start + String(emoji).length;
+    if (typeof input.setSelectionRange === 'function') {
+      input.setSelectionRange(nextPos, nextPos);
+    }
+    input.focus();
+    this.autoResizeDmInput(input);
+    if (inputId === 'dmFullscreenInput') {
+      this.handleDmFullscreenComposerInput({ target: input });
+    } else {
+      this.syncMainDmInputToFullscreenComposer();
+    }
+  },
+
+  /**
+   * Wrap selected text in **bold** markers in DM composer.
+   */
+  wrapDmSelectionWithBold(inputId = 'dmChatInput') {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const value = input.value || '';
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : value.length;
+    const selected = value.slice(start, end);
+    const hasSelection = end > start;
+    const replacement = hasSelection ? `**${selected}**` : '**bold**';
+
+    input.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+    const cursorStart = start + 2;
+    const cursorEnd = hasSelection ? cursorStart + selected.length : cursorStart + 4;
+    if (typeof input.setSelectionRange === 'function') {
+      input.setSelectionRange(cursorStart, cursorEnd);
+    }
+    input.focus();
+    this.autoResizeDmInput(input);
+    if (inputId === 'dmFullscreenInput') {
+      this.handleDmFullscreenComposerInput({ target: input });
+    } else {
+      this.syncMainDmInputToFullscreenComposer();
+    }
+  },
+
+  /**
+   * Render DM message body with safe bold + line break support.
+   */
+  formatDmMessageRichText(text = '') {
+    const escaped = this.escapeHtml(String(text || ''));
+    if (!escaped) return '';
+    const withBold = escaped.replace(/\*\*([^\n*][^*]*?)\*\*/g, '<strong class="font-bold text-[var(--text-color)]">$1</strong>');
+    return withBold.replace(/\n/g, '<br>');
+  },
+
+  renderDmImageContent(message) {
+    const imageUrl = String(message?.imageUrl || '').trim();
+    if (!imageUrl) return '';
+    const safeUrl = this.escapeHtml(imageUrl);
+    const altText = this.escapeHtml(message?.imageName || 'Chat image');
+    return `
+      <button onclick="window.ChatApp && window.ChatApp.openDmImagePreview && window.ChatApp.openDmImagePreview('${safeUrl}')" class="block mb-2 rounded-xl overflow-hidden border border-[var(--card-border)] bg-black/10">
+        <img src="${safeUrl}" alt="${altText}" class="max-h-64 w-full object-cover">
+      </button>
+    `;
+  },
+
+  renderDmMessageText(message) {
+    const hasImage = !!message?.imageUrl;
+    const caption = String(message?.imageCaption || '').trim();
+    if (hasImage) {
+      if (caption) {
+        return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(caption)}</p>`;
+      }
+      if (!message?.text || String(message.text).trim() === '📷 Photo') return '';
+    }
+
+    const text = String(message?.text || '').trim();
+    if (!text) return '';
+    return `<p class="text-sm text-[var(--text-color)] whitespace-pre-wrap break-words">${this.formatDmMessageRichText(text)}</p>`;
+  },
+
+  openDmImagePreview(url) {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  },
+
+  openDmAttachmentPicker() {
+    if (window.GoMissionChatAttachmentSheet?.open) {
+      window.GoMissionChatAttachmentSheet.open({
+        title: 'Add photo',
+        subtitle: 'Choose a photo from your library or open the camera.',
+        onGallery: () => this.pickDmAttachmentFromGallery(),
+        onCamera: () => this.captureDmAttachmentFromCamera()
+      });
+      return;
+    }
+    this.pickDmAttachmentFromGallery();
+  },
+
+  pickDmAttachmentFromGallery() {
+    const input = document.getElementById('dmGalleryInput');
+    if (input) input.click();
+  },
+
+  captureDmAttachmentFromCamera() {
+    const input = document.getElementById('dmCameraInput');
+    if (input) input.click();
+  },
+
+  handleDmAttachmentSelected(event, source = 'gallery') {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      alert('Only image files are supported.');
+      this.resetDmAttachmentInputs();
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert('Image is too large. Please select a photo under 10 MB.');
+      this.resetDmAttachmentInputs();
+      return;
+    }
+
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = {
+      file,
+      source,
+      name: file.name || 'photo.jpg',
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg',
+      previewUrl: URL.createObjectURL(file)
+    };
+    this.renderDmAttachmentDraft();
+    this.resetDmAttachmentInputs();
+  },
+
+  releasePendingDmAttachmentPreview() {
+    const previewUrl = this.pendingDmAttachment?.previewUrl;
+    if (previewUrl && typeof previewUrl === 'string' && previewUrl.startsWith('blob:')) {
+      try { URL.revokeObjectURL(previewUrl); } catch (_) {}
+    }
+  },
+
+  clearDmAttachmentDraft() {
+    this.releasePendingDmAttachmentPreview();
+    this.pendingDmAttachment = null;
+    this.renderDmAttachmentDraft();
+    this.resetDmAttachmentInputs();
+  },
+
+  resetDmAttachmentInputs() {
+    const gallery = document.getElementById('dmGalleryInput');
+    const camera = document.getElementById('dmCameraInput');
+    if (gallery) gallery.value = '';
+    if (camera) camera.value = '';
+  },
+
+  renderDmAttachmentDraft() {
+    const containers = [
+      document.getElementById('dmAttachmentDraft'),
+      document.getElementById('dmFullscreenAttachmentDraft')
+    ].filter(Boolean);
+    if (!containers.length) return;
+
+    if (!this.pendingDmAttachment?.previewUrl) {
+      containers.forEach((container) => {
+        container.classList.add('hidden');
+        container.innerHTML = '<p class="text-xs text-[var(--text-muted)]">Photo attachment</p>';
+      });
+      return;
+    }
+
+    const sizeKb = Math.max(1, Math.round((this.pendingDmAttachment.size || 0) / 1024));
+    const name = this.escapeHtml(this.pendingDmAttachment.name || 'photo.jpg');
+    const preview = this.escapeHtml(this.pendingDmAttachment.previewUrl);
+    const cardHtml = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-2 min-w-0">
+          <img src="${preview}" alt="${name}" class="w-14 h-14 rounded-lg object-cover border border-[var(--card-border)]">
+          <div class="min-w-0">
+            <p class="text-[10px] font-bold text-amber-500">📷 Photo ready to send</p>
+            <p class="text-xs text-[var(--text-color)] truncate">${name}</p>
+            <p class="text-[10px] text-[var(--text-muted)]">${sizeKb} KB</p>
+          </div>
+        </div>
+        <button onclick="window.ChatApp && window.ChatApp.clearDmAttachmentDraft && window.ChatApp.clearDmAttachmentDraft()" class="text-[var(--text-muted)] hover:text-[var(--text-color)] rounded-full p-1" title="Remove photo">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    containers.forEach((container) => {
+      container.classList.remove('hidden');
+      container.innerHTML = cardHtml;
+    });
+  },
+
+  async uploadDmImageAttachment(file) {
+    if (!file || !window.storage || !window.storageRef || !window.uploadBytes || !window.getDownloadURL) {
+      throw new Error('Storage is not initialized');
+    }
+    const threadId = this.activeDmThreadId || 'dm-thread';
+    const uid = window.currentUser?.uid || 'user';
+    const safeName = String(file.name || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `dm-attachments/${threadId}/${uid}/${Date.now()}_${safeName}`;
+    const ref = window.storageRef(window.storage, path);
+    const result = await window.uploadBytes(ref, file, {
+      contentType: file.type || 'image/jpeg',
+      cacheControl: 'public,max-age=3600'
+    });
+    const url = await window.getDownloadURL(result.ref);
+    return {
+      url,
+      path,
+      name: file.name || safeName,
+      size: file.size || 0,
+      mimeType: file.type || 'image/jpeg'
+    };
+  },
+
+  /**
+   * Disable DM composer controls while a message is being sent.
+   */
+  setDmComposerSendingState(isSending) {
+    const input = document.getElementById('dmChatInput');
+    const sendBtn = document.getElementById('dmChatSendBtn');
+    const emojiBtn = document.getElementById('dmEmojiToggleBtn');
+    const boldBtn = document.getElementById('dmBoldBtn');
+    const attachBtn = document.getElementById('dmAttachBtn');
+    const fullscreenInput = document.getElementById('dmFullscreenInput');
+    const fullscreenSendBtn = document.getElementById('dmFullscreenSendBtn');
+    const fullscreenEmojiBtn = document.getElementById('dmFullscreenEmojiToggleBtn');
+    const fullscreenBoldBtn = document.getElementById('dmFullscreenBoldBtn');
+    const fullscreenAttachBtn = document.getElementById('dmFullscreenAttachBtn');
+
+    [input, sendBtn, emojiBtn, boldBtn, attachBtn, fullscreenInput, fullscreenSendBtn, fullscreenEmojiBtn, fullscreenBoldBtn, fullscreenAttachBtn].filter(Boolean).forEach((el) => {
+      if (isSending) {
+        el.setAttribute('disabled', 'disabled');
+        el.classList.add('opacity-60', 'cursor-not-allowed');
+      } else {
+        el.removeAttribute('disabled');
+        el.classList.remove('opacity-60', 'cursor-not-allowed');
+      }
+    });
+
+    if (sendBtn) {
+      sendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      sendBtn.title = isSending ? 'Sending...' : 'Send message';
+    }
+    if (fullscreenSendBtn) {
+      fullscreenSendBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+      const fullscreenLabel = document.getElementById('dmFullscreenSendLabel');
+      if (fullscreenLabel) fullscreenLabel.textContent = isSending ? 'Sending...' : 'Send';
+    }
+    const iconWrap = document.getElementById('dmChatSendIconWrap');
+    if (iconWrap) {
+      iconWrap.innerHTML = isSending
+        ? '<span class="text-xs font-bold">...</span>'
+        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
+    }
+  },
+
+  /**
+   * Ctrl/Cmd+Enter sends from the fullscreen DM composer.
+   */
+  handleDmFullscreenComposerKeyDown(event) {
+    if (!event) return;
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.sendFromDmFullscreenComposer();
+    }
+  },
+
+  /**
+   * Start polling for DM updates
+   */
+  startDmPolling() {
+    this.stopDmPolling();
+    this.dmPollTimer = setInterval(() => {
+      if (!this.activeDmThreadId) return;
+      this.loadDirectMessages();
+    }, 4000);
+  },
+
+  /**
+   * Stop DM polling
+   */
+  stopDmPolling() {
+    if (this.dmPollTimer) {
+      clearInterval(this.dmPollTimer);
+      this.dmPollTimer = null;
+    }
+  },
+
+  /**
+   * Subscribe to direct message stream for in-app notifications
+   */
+  initDirectMessageNotifier() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db || !window.onSnapshot) return;
+
+    if (this.dmNotificationUnsubscribe) {
+      this.dmNotificationUnsubscribe();
+      this.dmNotificationUnsubscribe = null;
+    }
+
+    const key = `dmLastSeen_${uid}`;
+    const saved = localStorage.getItem(key);
+    const parsed = saved ? this.parseTimestamp(saved) : null;
+    this.dmLastSeenAt = parsed || new Date();
+
+    const q = window.query(
+      window.collection(window.db, 'goMission_dmMessages'),
+      window.where('participants', 'array-contains', uid),
+      window.limit(150)
+    );
+
+    this.dmNotificationUnsubscribe = window.onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== 'added') return;
+        const message = { id: change.doc.id, ...change.doc.data() };
+        this.handleIncomingDirectMessageNotification(message);
+      });
+    }, (error) => {
+      console.error('[ChatApp] DM notification listener error:', error);
+    });
+  },
+
+  /**
+   * Handle a newly-observed DM for in-app alerting
+   */
+  handleIncomingDirectMessageNotification(message) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !message) return;
+    if (message.senderId === uid) return;
+
+    const messageTime = this.parseTimestamp(message.createdAt);
+    if (!messageTime) return;
+    if (this.dmLastSeenAt && messageTime <= this.dmLastSeenAt) return;
+
+    if (this.activeDmThreadId && message.threadId === this.activeDmThreadId) {
+      this.setDmLastSeen(messageTime);
+      return;
+    }
+
+    if (typeof Notifications !== 'undefined' && typeof Notifications.addNotification === 'function') {
+      Notifications.addNotification({
+        title: message.senderName || 'Direct message',
+        body: this.truncateText(message.text || 'Sent you a message', 100),
+        icon: message.senderPhoto || null,
+        type: 'dm',
+        data: {
+          type: 'dm',
+          threadId: message.threadId,
+          senderId: message.senderId,
+          messageId: message.id
+        }
+      });
+    }
+
+    this.setDmLastSeen(messageTime);
+  },
+
+  /**
+   * Save "last seen DM" marker
+   */
+  setDmLastSeen(value) {
+    const uid = window.currentUser?.uid;
+    if (!uid) return;
+    const date = value instanceof Date ? value : this.parseTimestamp(value) || new Date();
+    this.dmLastSeenAt = date;
+    localStorage.setItem(`dmLastSeen_${uid}`, date.toISOString());
+  },
+
+  /**
+   * Mark current time as DM seen
+   */
+  markDmSeenNow() {
+    this.setDmLastSeen(new Date());
+  },
+
+  /**
+   * Track active DM thread in profile so push can skip while open
+   */
+  async setActiveDmThread(threadId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', uid),
+        {
+          activeDmThread: threadId || null,
+          activeDmThreadUpdatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.warn('[ChatApp] Failed setting active DM thread:', error);
+    }
+  },
+
+  /**
+   * Keep DM active state fresh to avoid stale notification suppression.
+   */
+  startActiveDmHeartbeat(threadId) {
+    this.stopActiveDmHeartbeat();
+    if (!threadId) return;
+    this.activeDmHeartbeatTimer = setInterval(() => {
+      if (!this.activeDmThreadId || this.activeDmThreadId !== threadId) {
+        this.stopActiveDmHeartbeat();
+        return;
+      }
+      this.setActiveDmThread(threadId);
+    }, 60000);
+  },
+
+  /**
+   * Stop DM active state heartbeat.
+   */
+  stopActiveDmHeartbeat() {
+    if (this.activeDmHeartbeatTimer) {
+      clearInterval(this.activeDmHeartbeatTimer);
+      this.activeDmHeartbeatTimer = null;
+    }
+  },
+
+  /**
+   * Open people finder modal
+   */
+  async openPeopleFinder() {
+    const modal = document.getElementById('peopleFinderModal');
+    if (!modal) return;
+
+    await this.loadPeopleSearchPool();
+    this.updateFindMeToggleUI();
+    this.searchPeople((document.getElementById('peopleFinderInput')?.value || '').trim());
+    modal.classList.remove('hidden');
+    this.isPeopleFinderOpen = true;
+  },
+
+  /**
+   * Close people finder modal
+   */
+  closePeopleFinder() {
+    const modal = document.getElementById('peopleFinderModal');
+    if (modal) modal.classList.add('hidden');
+    this.isPeopleFinderOpen = false;
+  },
+
+  /**
+   * Load searchable users
+   */
+  async loadPeopleSearchPool() {
+    if (!window.currentUser?.uid || !window.db) return;
+    try {
+      const q = window.query(
+        window.collection(window.db, 'goMission_members'),
+        window.limit(250)
+      );
+      const snapshot = await window.getDocs(q);
+      this.peopleSearchPool = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      for (const member of this.peopleSearchPool) {
+        this.memberCache.set(member.id, member);
+      }
+    } catch (error) {
+      console.error('[ChatApp] Failed loading people search pool:', error);
+      this.peopleSearchPool = [];
+    }
+  },
+
+  /**
+   * Search people by name/email
+   */
+  searchPeople(term) {
+    const container = document.getElementById('peopleFinderResults');
+    if (!container) return;
+
+    const uid = window.currentUser?.uid;
+    const queryTerm = (term || '').trim().toLowerCase();
+    const isFriend = new Set(this.friendships.map((f) => (f.users || []).find((id) => id !== uid)));
+    const incomingMap = new Map(this.incomingRequests.map((r) => [r.fromId, r]));
+    const outgoingMap = new Map(this.outgoingRequests.map((r) => [r.toId, r]));
+
+    const candidates = this.peopleSearchPool
+      .filter((member) => member.id && member.id !== uid)
+      .filter((member) => member.findMeEnabled !== false)
+      .filter((member) => {
+        if (!queryTerm) return true;
+        const text = `${this.getMemberDisplayName(member)} ${member.email || ''}`.toLowerCase();
+        return text.includes(queryTerm);
+      })
+      .slice(0, 40);
+
+    if (candidates.length === 0) {
+      container.innerHTML = '<p class="text-[var(--text-muted)] text-sm text-center py-8">No matching users found.</p>';
+      return;
+    }
+
+    container.innerHTML = candidates.map((member) => {
+      const name = this.getMemberDisplayName(member) || 'User';
+      let actionHtml = '';
+      if (isFriend.has(member.id)) {
+        actionHtml = '<span class="text-[11px] font-bold text-green-500">Friends</span>';
+      } else if (incomingMap.has(member.id)) {
+        const request = incomingMap.get(member.id);
+        actionHtml = `<button onclick="window.ChatApp.acceptFriendRequest('${request.id}')" class="px-3 py-1.5 text-[11px] font-bold rounded-md bg-[var(--mission-gold)] text-[var(--mission-red-deep)]">Accept</button>`;
+      } else if (outgoingMap.has(member.id)) {
+        actionHtml = '<span class="text-[11px] font-bold text-amber-500">Pending</span>';
+      } else {
+        actionHtml = `<button onclick="window.ChatApp.sendFriendRequest('${member.id}')" class="px-3 py-1.5 text-[11px] font-bold rounded-md border border-[var(--mission-gold)]/50 text-[var(--mission-gold)] hover:bg-[var(--mission-gold)]/10">Add Friend</button>`;
+      }
+
+      return `
+        <div class="flex items-center justify-between gap-2 mission-card rounded-xl border border-[var(--card-border)] p-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <img src="${this.escapeHtml(this.getMemberPhoto(member))}" alt="${this.escapeHtml(name)}" class="w-9 h-9 rounded-full border border-[var(--card-border)]">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(name)}</p>
+              <p class="text-[11px] text-[var(--text-muted)] truncate">${this.escapeHtml(member.email || '')}</p>
+            </div>
+          </div>
+          <div class="shrink-0">${actionHtml}</div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  /**
+   * Send friend request
+   */
+  async sendFriendRequest(targetUserId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !targetUserId || uid === targetUserId || !window.db) return;
+
+    const target = this.memberCache.get(targetUserId);
+    if (target && target.findMeEnabled === false) {
+      alert('This user is not discoverable right now.');
+      return;
+    }
+
+    const requestId = this.pairKey(uid, targetUserId);
+    const requestRef = window.doc(window.db, 'goMission_friendRequests', requestId);
+    const existingRequest = await window.getDoc(requestRef);
+    if (existingRequest.exists() && existingRequest.data().status === 'pending') {
+      alert('Friend request already pending.');
+      return;
+    }
+
+    const senderName = window.currentUser.displayName || window.currentUser.email || 'User';
+    const senderPhoto = window.currentUser.photoURL || '';
+    const payload = {
+      pairKey: requestId,
+      fromId: uid,
+      toId: targetUserId,
+      fromName: senderName,
+      fromPhoto: senderPhoto,
+      toName: this.getMemberDisplayName(target) || '',
+      toEmail: target?.email || '',
+      status: 'pending',
+      updatedAt: window.serverTimestamp()
+    };
+    if (!existingRequest.exists()) payload.createdAt = window.serverTimestamp();
+
+    try {
+      await window.setDoc(requestRef, payload, { merge: true });
+      await this.loadFriendData();
+      this.renderRequests();
+      this.searchPeople(document.getElementById('peopleFinderInput')?.value || '');
+      this.updateBadges();
+    } catch (error) {
+      console.error('[ChatApp] Failed sending friend request:', error);
+      alert('Could not send request. Please try again.');
+    }
+  },
+
+  /**
+   * Accept request and create friendship
+   */
+  async acceptFriendRequest(requestId) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !requestId || !window.db) return;
+
+    try {
+      const requestRef = window.doc(window.db, 'goMission_friendRequests', requestId);
+      const requestDoc = await window.getDoc(requestRef);
+      if (!requestDoc.exists()) return;
+      const request = requestDoc.data();
+      if (request.toId !== uid) return;
+
+      const users = [request.fromId, request.toId].sort();
+      const friendshipId = this.pairKey(users[0], users[1]);
+      await window.setDoc(
+        window.doc(window.db, 'goMission_friendships', friendshipId),
+        {
+          pairKey: friendshipId,
+          users,
+          createdAt: window.serverTimestamp(),
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      await window.setDoc(requestRef, {
+        status: 'accepted',
+        acceptedAt: window.serverTimestamp(),
+        updatedAt: window.serverTimestamp()
+      }, { merge: true });
+
+      await this.loadFriendData();
+      this.renderCurrentTab();
+      this.searchPeople(document.getElementById('peopleFinderInput')?.value || '');
+      this.updateBadges();
+    } catch (error) {
+      console.error('[ChatApp] Failed accepting friend request:', error);
+      alert('Could not accept request. Please try again.');
+    }
+  },
+
+  /**
+   * Group-connected members should be reachable in DM immediately.
+   */
+  getMissionContactIds() {
+    const uid = window.currentUser?.uid;
+    if (!uid) return [];
+
+    const ids = new Set();
+    const addId = (value) => {
+      const id = this.resolveEntityId(value);
+      if (id && id !== uid) ids.add(id);
+    };
+    const addCollection = (value) => {
+      if (!value) return;
+      if (typeof MyGroups !== 'undefined' && typeof MyGroups.extractIdList === 'function') {
+        MyGroups.extractIdList(value).forEach(addId);
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(addId);
+        return;
+      }
+      if (typeof value === 'object') {
+        Object.entries(value).forEach(([key, entry]) => addId(entry && typeof entry === 'object' ? entry : key));
+        return;
+      }
+      addId(value);
+    };
+
+    (this.groups || []).forEach((group) => {
+      if (!group) return;
+      addId(group.leaderId);
+      addCollection(group.members);
+      addCollection(group.guests);
+    });
+
+    return Array.from(ids);
+  },
+
+  /**
+   * Ensure a friendship exists for mission contacts so DM opens without friend requests.
+   */
+  async ensureMissionDirectFriendship(friendId, { silent = false } = {}) {
+    const uid = window.currentUser?.uid;
+    if (!uid || !friendId || friendId === uid || !window.db) return false;
+
+    const missionContactIds = this.getMissionContactIds();
+    if (!missionContactIds.includes(friendId)) return false;
+
+    const friendshipId = this.pairKey(uid, friendId);
+    const users = [uid, friendId].sort();
+    const friendshipRef = window.doc(window.db, 'goMission_friendships', friendshipId);
+    const requestRef = window.doc(window.db, 'goMission_friendRequests', friendshipId);
+
+    try {
+      const existingDoc = await window.getDoc(friendshipRef);
+      const payload = {
+        pairKey: friendshipId,
+        users,
+        source: 'mission_group',
+        autoAccepted: true,
+        status: 'accepted',
+        updatedAt: window.serverTimestamp()
+      };
+      if (!existingDoc.exists()) {
+        payload.createdAt = window.serverTimestamp();
+      }
+
+      await window.setDoc(friendshipRef, payload, { merge: true });
+
+      const requestDoc = await window.getDoc(requestRef);
+      if (requestDoc.exists() && requestDoc.data()?.status === 'pending') {
+        await window.setDoc(requestRef, {
+          status: 'accepted',
+          acceptedAt: window.serverTimestamp(),
+          acceptedBy: 'mission_group',
+          updatedAt: window.serverTimestamp()
+        }, { merge: true });
+      }
+
+      const localEntry = {
+        id: friendshipId,
+        pairKey: friendshipId,
+        users,
+        source: 'mission_group',
+        autoAccepted: true,
+        status: 'accepted',
+        updatedAt: new Date().toISOString(),
+        createdAt: existingDoc.exists() ? (existingDoc.data()?.createdAt || new Date().toISOString()) : new Date().toISOString()
+      };
+      const index = this.friendships.findIndex((friendship) => friendship.id === friendshipId);
+      if (index >= 0) {
+        this.friendships[index] = { ...this.friendships[index], ...localEntry };
+      } else {
+        this.friendships.push(localEntry);
+      }
+
+      return true;
+    } catch (error) {
+      if (!silent) {
+        console.error('[ChatApp] Failed ensuring mission direct friendship:', error);
+      }
+      return false;
+    }
+  },
+
+  /**
+   * Decline incoming request
+   */
+  async declineFriendRequest(requestId) {
+    if (!requestId || !window.db) return;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_friendRequests', requestId),
+        {
+          status: 'declined',
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+      await this.loadFriendData();
+      this.renderCurrentTab();
+      this.searchPeople(document.getElementById('peopleFinderInput')?.value || '');
+      this.updateBadges();
+    } catch (error) {
+      console.error('[ChatApp] Failed declining request:', error);
+      alert('Could not decline request. Please try again.');
+    }
+  },
+
+  /**
+   * Cancel outgoing request
+   */
+  async cancelFriendRequest(requestId) {
+    if (!requestId || !window.db) return;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_friendRequests', requestId),
+        {
+          status: 'canceled',
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+      await this.loadFriendData();
+      this.renderCurrentTab();
+      this.searchPeople(document.getElementById('peopleFinderInput')?.value || '');
+      this.updateBadges();
+    } catch (error) {
+      console.error('[ChatApp] Failed canceling request:', error);
+      alert('Could not cancel request. Please try again.');
+    }
+  },
+
+  /**
+   * Load current user's discoverability setting
+   */
+  async loadCurrentFindMeSetting() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+    const current = this.memberCache.get(uid);
+    if (current) {
+      this.findMeEnabled = current.findMeEnabled !== false;
+      this.updateFindMeToggleUI();
+      return;
+    }
+    try {
+      const docSnap = await window.getDoc(window.doc(window.db, 'goMission_members', uid));
+      if (docSnap.exists()) {
+        const data = { id: uid, ...docSnap.data() };
+        this.memberCache.set(uid, data);
+        this.findMeEnabled = data.findMeEnabled !== false;
+      } else {
+        this.findMeEnabled = true;
+      }
+      this.updateFindMeToggleUI();
+    } catch (error) {
+      console.warn('[ChatApp] Failed loading findMe setting:', error);
+    }
+  },
+
+  /**
+   * Toggle discoverability
+   */
+  async toggleFindMe() {
+    const uid = window.currentUser?.uid;
+    if (!uid || !window.db) return;
+    const next = !this.findMeEnabled;
+    try {
+      await window.setDoc(
+        window.doc(window.db, 'goMission_members', uid),
+        {
+          findMeEnabled: next,
+          updatedAt: window.serverTimestamp()
+        },
+        { merge: true }
+      );
+      this.findMeEnabled = next;
+      const cached = this.memberCache.get(uid) || { id: uid };
+      cached.findMeEnabled = next;
+      this.memberCache.set(uid, cached);
+      this.updateFindMeToggleUI();
+    } catch (error) {
+      console.error('[ChatApp] Failed updating findMe:', error);
+      alert('Could not update setting. Please try again.');
+    }
+  },
+
+  /**
+   * Update discoverability toggle button
+   */
+  updateFindMeToggleUI() {
+    const button = document.getElementById('findMeToggleBtn');
+    if (!button) return;
+    const enabled = this.findMeEnabled === true;
+    button.textContent = enabled ? 'ON' : 'OFF';
+    button.style.borderColor = enabled ? 'rgba(251, 191, 36, 0.45)' : 'var(--card-border)';
+    button.style.color = enabled ? 'var(--mission-gold)' : 'var(--text-muted)';
+    button.style.background = enabled ? 'rgba(251, 191, 36, 0.08)' : 'transparent';
+  },
+
+  /**
+   * Update nav + tab badges
+   */
+  updateBadges() {
+    const incomingCount = this.incomingRequests.length;
+    const requestsBadge = document.getElementById('messagesRequestsBadge');
+    if (requestsBadge) {
+      if (incomingCount > 0) {
+        requestsBadge.textContent = incomingCount > 99 ? '99+' : String(incomingCount);
+        requestsBadge.classList.remove('hidden');
+      } else {
+        requestsBadge.classList.add('hidden');
+      }
+    }
+
+    const navBadge = document.getElementById('messagesNavBadge');
+    if (navBadge) {
+      const notifCount = typeof Notifications !== 'undefined' ? (Notifications.unreadCount || 0) : 0;
+      const total = incomingCount + notifCount;
+      if (total > 0) {
+        navBadge.textContent = total > 99 ? '99+' : String(total);
+        navBadge.classList.remove('hidden');
+      } else {
+        navBadge.classList.add('hidden');
+      }
+    }
+  },
+
+  /**
+   * Pair key for user IDs
+   */
+  pairKey(a, b) {
+    return [a, b].sort().join('__');
+  },
+
+  /**
+   * Resolve ids across the member/group schemas used in the app.
+   */
+  resolveEntityId(entity) {
+    if (!entity) return null;
+    if (typeof entity === 'string') return entity;
+    return entity.odId || entity.uid || entity.id || entity.userId || entity.memberId || entity.profileId || entity._key || null;
+  },
+
+  /**
+   * Truncate helper for preview strings
+   */
+  truncateText(text, max = 80) {
+    const value = (text || '').toString();
+    if (value.length <= max) return value;
+    return `${value.slice(0, max - 1)}…`;
+  },
+
+  /**
+   * Parse Firestore timestamp-like values
+   */
+  parseTimestamp(value) {
+    if (!value) return null;
+    if (typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return Number.isNaN(date?.getTime?.()) ? null : date;
+    }
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value === 'number') {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  },
+
+  /**
+   * Friendly date/time labels for lists
+   */
+  formatTime(date) {
+    if (!date) return '';
+    const now = new Date();
+    const target = date instanceof Date ? date : this.parseTimestamp(date);
+    if (!target) return '';
+    const sameDay = now.toDateString() === target.toDateString();
+    if (sameDay) return target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return target.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  },
+
+  /**
+   * Member name helper
+   */
+  getMemberDisplayName(member) {
+    if (!member) return '';
+    return member.displayName || member.name || (member.email ? member.email.split('@')[0] : '');
+  },
+
+  /**
+   * Member photo helper
+   */
+  getMemberPhoto(member) {
+    const name = this.getMemberDisplayName(member) || 'User';
+    return member?.photoURL || member?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4a0404&color=fbbf24`;
+  },
+
+  /**
+   * Escape helper for HTML rendering
+   */
+  escapeHtml(value) {
+    const str = (value ?? '').toString();
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+};
+
+window.ChatApp = ChatApp;

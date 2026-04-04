@@ -1,0 +1,409 @@
+/**
+ * Go Mission - Combined Service Worker
+ * Handles: Push Notifications, Caching, Silent Auto-Updates
+ * 
+ * SILENT UPDATE FLOW:
+ * 1. Change CACHE_VERSION below
+ * 2. Deploy to Netlify
+ * 3. User opens app → new SW installs in background
+ * 4. User leaves/blurs app → SW activates silently
+ * 5. User returns → app is already updated!
+ * 
+ * NO PROMPTS - Fully automatic updates
+ */
+
+// ============================================
+// 🔥 AUTO-UPDATING VERSION - Changes every deploy
+// ============================================
+const CACHE_VERSION = 'v20260315-2119';
+const CACHE_NAME = 'go-mission-' + CACHE_VERSION;
+const PUSH_CLICK_CACHE = 'go-mission-push-state';
+const PUSH_CLICK_KEY = '/__push-click';
+const PUSH_DEDUPE_CACHE = 'go-mission-push-dedupe';
+const PUSH_DEDUPE_KEY = '/__push-dedupe';
+
+// Files to cache for offline
+const STATIC_CACHE = [
+    '/',
+    '/index.html',
+    '/manifest.json',
+    '/offline.html',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png'
+];
+
+
+// ============================================
+// INSTALL - Cache static assets
+// ============================================
+self.addEventListener('install', (event) => {
+    console.log('[SW] Installing:', CACHE_NAME);
+    
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[SW] Caching static assets');
+                return cache.addAll(STATIC_CACHE).catch(err => {
+                    console.log('[SW] Cache addAll error (non-fatal):', err);
+                });
+            })
+            .then(() => {
+                // DON'T skip waiting here - let the app control when to activate
+                console.log('[SW] Install complete - waiting for activation signal');
+            })
+    );
+});
+
+
+// ============================================
+// ACTIVATE - Clean old caches & claim clients
+// ============================================
+self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating:', CACHE_NAME);
+    
+    event.waitUntil(
+        // 1. Delete old caches
+        caches.keys()
+            .then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((name) => {
+                        if (name !== CACHE_NAME && name.startsWith('go-mission-')) {
+                            console.log('[SW] Deleting old cache:', name);
+                            return caches.delete(name);
+                        }
+                    })
+                );
+            })
+            // 2. Take control of all clients immediately
+            .then(() => {
+                console.log('[SW] Claiming clients');
+                return self.clients.claim();
+            })
+            .then(() => {
+                console.log('[SW] ✓ Activated and controlling all clients');
+            })
+    );
+});
+
+
+// ============================================
+// FETCH - Network First for code, Cache First for assets
+// ============================================
+self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+    
+    // Skip non-GET requests
+    if (event.request.method !== 'GET') return;
+    
+    // Skip cross-origin requests
+    if (url.origin !== location.origin) return;
+    
+    // Skip API calls and Firebase
+    if (url.pathname.includes('/api/') || url.hostname.includes('firebase')) return;
+    
+    // HTML pages - ALWAYS Network First (get latest)
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Clone and cache for offline
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => {
+                    // Offline - try cache, then offline page
+                    return caches.match(event.request)
+                        .then(cached => cached || caches.match('/offline.html'));
+                })
+        );
+        return;
+    }
+    
+    // JS files - ALWAYS Network First (critical for updates!)
+    if (url.pathname.endsWith('.js')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+    
+    // CSS files - Network First
+    if (url.pathname.endsWith('.css')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+    
+    // Images and other assets - Cache First (for performance)
+    event.respondWith(
+        caches.match(event.request)
+            .then((cached) => {
+                if (cached) return cached;
+                
+                return fetch(event.request).then((response) => {
+                    // Only cache successful responses
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                });
+            })
+    );
+});
+
+
+// ============================================
+// MESSAGE - Handle commands from app
+// ============================================
+self.addEventListener('message', (event) => {
+    console.log('[SW] Message received:', event.data);
+    
+    if (event.data?.type === 'SKIP_WAITING') {
+        console.log('[SW] Skip waiting requested - activating now');
+        self.skipWaiting();
+    }
+    
+    if (event.data?.type === 'GET_VERSION') {
+        event.ports[0]?.postMessage({ version: CACHE_NAME });
+    }
+});
+
+
+// ============================================
+// FIREBASE PUSH NOTIFICATIONS
+// ============================================
+
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+    apiKey: "AIzaSyBarR1ENd5qBWHZBGhKdxa-Zrw3Y8XpoT4",
+    authDomain: "shaped-by-grace.firebaseapp.com",
+    projectId: "shaped-by-grace",
+    storageBucket: "shaped-by-grace.firebasestorage.app",
+    messagingSenderId: "421948043828",
+    appId: "1:421948043828:web:4a8eb4ac2aa34df4c89061"
+});
+
+const messaging = firebase.messaging();
+
+function buildPushDedupKey(payload = {}) {
+    const payloadData = (payload?.data && typeof payload.data === 'object') ? payload.data : {};
+    const title = String(payload?.notification?.title || '').trim();
+    const body = String(payload?.notification?.body || '').trim();
+    const explicitId = String(
+        payloadData.notificationId ||
+        payloadData.announcementId ||
+        payloadData.eventId ||
+        ''
+    ).trim();
+
+    if (explicitId) {
+        return { key: explicitId, ttlMs: 24 * 60 * 60 * 1000 };
+    }
+
+    const fallback = [
+        String(payloadData.type || 'general').trim(),
+        title,
+        body
+    ].join('|');
+    return { key: fallback, ttlMs: 2 * 60 * 1000 };
+}
+
+async function readPushDedupState() {
+    try {
+        const cache = await caches.open(PUSH_DEDUPE_CACHE);
+        const response = await cache.match(PUSH_DEDUPE_KEY);
+        if (!response) return {};
+        return await response.json();
+    } catch (error) {
+        console.warn('[SW] Failed reading push dedupe state:', error);
+        return {};
+    }
+}
+
+async function writePushDedupState(state = {}) {
+    try {
+        const cache = await caches.open(PUSH_DEDUPE_CACHE);
+        const response = new Response(JSON.stringify(state || {}), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        await cache.put(PUSH_DEDUPE_KEY, response);
+    } catch (error) {
+        console.warn('[SW] Failed writing push dedupe state:', error);
+    }
+}
+
+async function shouldDisplayBackgroundPush(payload = {}) {
+    const { key, ttlMs } = buildPushDedupKey(payload);
+    if (!key) return true;
+
+    const now = Date.now();
+    const state = await readPushDedupState();
+    const seenAt = Number(state[key] || 0);
+    const nextState = {};
+
+    Object.entries(state || {}).forEach(([entryKey, entryValue]) => {
+        const ts = Number(entryValue || 0);
+        if (Number.isFinite(ts) && now - ts < 24 * 60 * 60 * 1000) {
+            nextState[entryKey] = ts;
+        }
+    });
+
+    if (seenAt && now - seenAt < ttlMs) {
+        return false;
+    }
+
+    nextState[key] = now;
+    await writePushDedupState(nextState);
+    return true;
+}
+
+// Background push notifications
+messaging.onBackgroundMessage(async (payload) => {
+    console.log('[SW] Background message:', payload);
+
+    const shouldDisplay = await shouldDisplayBackgroundPush(payload);
+    if (!shouldDisplay) {
+        console.log('[SW] Skipping duplicate background push');
+        return null;
+    }
+    
+    const title = payload.notification?.title || 'Go Mission';
+    const body = payload.notification?.body || 'You have a new notification';
+    const payloadData = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+    const notificationTag = String(
+        payloadData.notificationId ||
+        payloadData.announcementId ||
+        payloadData.eventId ||
+        payloadData.type ||
+        'default'
+    ).trim() || 'default';
+    const options = {
+        body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: notificationTag,
+        renotify: false,
+        data: {
+            ...payloadData,
+            notificationTitle: title,
+            notificationBody: body
+        },
+        vibrate: [100, 50, 100],
+        actions: getNotificationActions(payloadData.type)
+    };
+    
+    return self.registration.showNotification(title, options);
+});
+
+function getNotificationActions(type) {
+    switch (type) {
+        case 'chat':
+        case 'chat_mention':
+            return [{ action: 'open', title: 'Open Chat' }];
+        case 'dm':
+            return [{ action: 'open', title: 'Open Message' }];
+        case 'devotion':
+            return [{ action: 'open', title: 'View' }];
+        default:
+            return [{ action: 'open', title: 'Open' }];
+    }
+}
+
+async function storePendingPushClick(payload = {}) {
+    try {
+        const cache = await caches.open(PUSH_CLICK_CACHE);
+        const response = new Response(JSON.stringify(payload || {}), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        await cache.put(PUSH_CLICK_KEY, response);
+    } catch (error) {
+        console.warn('[SW] Failed to store pending push click payload:', error);
+    }
+}
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    
+    const data = event.notification.data || {};
+    let url = '/';
+    const announcementTitle = String(data.notificationTitle || event.notification.title || '').trim();
+    const announcementBody = String(data.notificationBody || event.notification.body || '').trim();
+    const hasAnnouncementContent = Boolean(announcementTitle || announcementBody);
+    
+    if (data.type === 'chat' && data.groupId) {
+        url = '/?openChat=' + encodeURIComponent(data.groupId);
+        if (data.messageId) {
+            url += '&openChatMessage=' + encodeURIComponent(data.messageId);
+        }
+    } else if (data.type === 'chat_mention' && data.groupId) {
+        url = '/?openChat=' + encodeURIComponent(data.groupId);
+        if (data.messageId) {
+            url += '&openChatMessage=' + encodeURIComponent(data.messageId);
+        }
+    } else if (data.type === 'dm' && data.senderId) {
+        url = '/?openMessages=direct&openDmWith=' + encodeURIComponent(data.senderId);
+    } else if (data.type === 'devotion') {
+        url = '/?openDevotion=true';
+    } else if (data.type === 'announcement' || (!data.type && hasAnnouncementContent)) {
+        url = '/?openAnnouncement=1&openMessages=groups';
+        if (announcementTitle) {
+            url += '&announcementTitle=' + encodeURIComponent(announcementTitle.slice(0, 180));
+        }
+        if (announcementBody) {
+            url += '&announcementBody=' + encodeURIComponent(announcementBody.slice(0, 2000));
+        }
+        if (data.announcementId) {
+            url += '&announcementId=' + encodeURIComponent(data.announcementId);
+        }
+    }
+
+    const clickPayload = {
+        type: data.type || (hasAnnouncementContent ? 'announcement' : ''),
+        groupId: data.groupId || null,
+        messageId: data.messageId || null,
+        senderId: data.senderId || null,
+        announcementId: data.announcementId || null,
+        notificationTitle: announcementTitle || '',
+        notificationBody: announcementBody || '',
+        deepLinkUrl: url,
+        ts: Date.now()
+    };
+    
+    event.waitUntil(
+        Promise.all([
+            storePendingPushClick(clickPayload),
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+                // Focus existing window
+                for (const client of windowClients) {
+                    if (client.url.includes('gomission') && 'focus' in client) {
+                        client.navigate(url);
+                        return client.focus();
+                    }
+                }
+                // Open new window
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+                return null;
+            })
+        ])
+    );
+});

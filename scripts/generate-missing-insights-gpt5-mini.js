@@ -12,6 +12,7 @@
  * Usage:
  *   OPENAI_API_KEY="sk-..." node scripts/generate-missing-insights-gpt5-mini.js
  *   OPENAI_API_KEY="sk-..." node scripts/generate-missing-insights-gpt5-mini.js NUM,PSA --limit=25
+ *   OPENAI_API_KEY="sk-..." node scripts/generate-missing-insights-gpt5-mini.js JON,HAG,1TH,2TH --force
  */
 
 const fs = require('fs');
@@ -20,6 +21,7 @@ const https = require('https');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_ROOT = path.join(ROOT, 'modules', 'bible', 'data');
+const WORKER_TAG = process.env.INSIGHTS_WORKER_TAG || 'default';
 const CONFIG = {
   bibleDir: path.join(DATA_ROOT, 'en'),
   outputDir: path.join(DATA_ROOT, 'quick-insights'),
@@ -29,7 +31,8 @@ const CONFIG = {
     barnes: path.join(DATA_ROOT, 'commentary', 'barnes'),
   },
   stateDir: path.join(ROOT, 'tmp'),
-  logFile: '/tmp/gm-insights-gpt5-mini.log',
+  logFile: process.env.INSIGHTS_LOG_FILE || `/tmp/gm-insights-gpt5-mini-${WORKER_TAG}.log`,
+  stateFile: process.env.INSIGHTS_STATE_FILE || path.join(ROOT, 'tmp', `insight-generation-state-${WORKER_TAG}.json`),
   model: 'gpt-5-mini',
   delayMs: 900,
   retryDelayMs: 10000,
@@ -52,6 +55,7 @@ if (!fs.existsSync(CONFIG.stateDir)) fs.mkdirSync(CONFIG.stateDir, { recursive: 
 const args = process.argv.slice(2);
 const positional = args.find((arg) => !arg.startsWith('--'));
 const limitArg = args.find((arg) => arg.startsWith('--limit='));
+const forceRegenerate = args.includes('--force');
 const booksToProcess = positional
   ? positional.toUpperCase() === 'ALL'
     ? ALL_BOOKS
@@ -87,7 +91,7 @@ function getOutputFile(bookId) {
 }
 
 function getStateFile() {
-  return path.join(CONFIG.stateDir, 'insight-generation-state.json');
+  return CONFIG.stateFile;
 }
 
 function ensureOutputShape(bookId, bibleData, outputData) {
@@ -95,7 +99,7 @@ function ensureOutputShape(bookId, bibleData, outputData) {
   if (!current.id) current.id = bookId;
   if (!current.book) current.book = bookId;
   if (!current.name) current.name = bibleData.nameEn || bibleData.name || bookId;
-  if (!current.type) current.type = 'quick-insights-gpt5-mini-commentary-hybrid';
+  current.type = 'quick-insights-gpt5-mini-commentary-hybrid';
   if (!current.chapters || typeof current.chapters !== 'object') current.chapters = {};
   return current;
 }
@@ -328,13 +332,13 @@ function normalizeInsight(raw) {
   return trimmed;
 }
 
-function collectMissingVerses(bookId, bibleData, outputData) {
+function collectTasks(bookId, bibleData, outputData) {
   const tasks = [];
   for (const [chapterNum, chapterData] of Object.entries(bibleData.chapters || {})) {
     const outputChapter = outputData.chapters[chapterNum] || (outputData.chapters[chapterNum] = { verses: {} });
     for (const [verseNum, verseText] of Object.entries(chapterData.verses || {})) {
       if (!String(verseText || '').trim()) continue;
-      if (hasInsight(outputChapter.verses?.[verseNum])) continue;
+      if (!forceRegenerate && hasInsight(outputChapter.verses?.[verseNum])) continue;
       tasks.push({
         bookId,
         bookName: bibleData.nameEn || bibleData.name || bookId,
@@ -429,8 +433,10 @@ async function main() {
 
   log('============================================================');
   log('Go Mission Missing Insights Generator - GPT-5 mini');
+  log(`Worker: ${WORKER_TAG}`);
   log(`Books: ${booksToProcess.join(', ')}`);
   log(`Limit: ${Number.isFinite(verseLimit) ? verseLimit : 'none'}`);
+  log(`Force regenerate: ${forceRegenerate ? 'yes' : 'no'}`);
   log('============================================================');
 
   const allTasks = [];
@@ -450,7 +456,7 @@ async function main() {
       totalVerses += Object.keys(chapterData.verses || {}).length;
     }
 
-    const missingTasks = collectMissingVerses(bookId, bibleData, outputData);
+    const missingTasks = collectTasks(bookId, bibleData, outputData);
     counters.skippedExisting += (totalVerses - missingTasks.length);
     counters.queued += missingTasks.length;
     counters.processedBooks += 1;

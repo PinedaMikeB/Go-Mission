@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player | Go Mission Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/watch/watch.css">
+</head>
+<body>
+  <div class="watch-shell">
+    <header class="watch-header">
+      <div class="watch-header-row">
+        <a id="backToSeriesLink" href="/watch.html" class="back-link" aria-label="Back to series">← Series</a>
+      </div>
+      <p class="watch-kicker">Go Mission</p>
+      <h1 class="watch-title">Watch Player</h1>
+      <p class="watch-subtitle">Play the episode below. Events are tracked for mission insights.</p>
+    </header>
+
+    <main>
+      <article class="player-wrap" aria-label="Episode player">
+        <div class="player-frame">
+          <div id="youtubePlayer"></div>
+        </div>
+        <div class="player-body">
+          <h2 id="episodeTitle" class="player-title">Loading episode...</h2>
+          <p id="episodeSubtitle" class="player-subtitle"></p>
+
+          <section class="engage-wrap" aria-label="Comments and prayer request">
+            <h3 class="engage-title">We'd Love to Hear From You</h3>
+            <p class="engage-subtitle">Comments, Prayer Request, or Chat With Us.</p>
+            <p class="engage-note">Private one-on-one with our team (signed-in members only).</p>
+
+            <div class="engage-types" role="tablist" aria-label="Message type">
+              <button type="button" class="engage-type-btn active" data-message-type="comment">Comments</button>
+              <button type="button" class="engage-type-btn" data-message-type="prayer_request">Prayer Request</button>
+              <button type="button" class="engage-type-btn" data-message-type="chat_with_us">Chat With Us</button>
+            </div>
+
+            <textarea
+              id="engageMessageInput"
+              class="engage-textarea"
+              rows="4"
+              maxlength="1200"
+              placeholder="Share what spoke to you from this episode."
+            ></textarea>
+
+            <div class="engage-action-row">
+              <button type="button" id="engageSendBtn" class="engage-send-btn">Send Message</button>
+            </div>
+
+            <p id="engageStatusText" class="engage-status" aria-live="polite"></p>
+          </section>
+        </div>
+      </article>
+
+      <p id="playerState" class="state-message">Loading player...</p>
+    </main>
+  </div>
+
+  <nav class="watch-footer-nav" aria-label="Bottom navigation">
+    <div class="watch-footer-row">
+      <a href="/" class="watch-footer-link">Home</a>
+      <a href="/watch.html" class="watch-footer-link active">Watch</a>
+      <a href="/groups" class="watch-footer-link">Groups</a>
+    </div>
+  </nav>
+
+  <script type="module" src="/watch/player.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{
+  "id": "wapp9BYH91nQjSJ9OOny",
+  "_name": "projects/shaped-by-grace/databases/(default)/documents/goMission_groups/wapp9BYH91nQjSJ9OOny",
+  "joinRequests": [],
+  "groupPhotoOptimizationVersion": 1,
+  "groupPhotoGallery": [],
+  "meetingSchedule": {
+    "time": "20:00",
+    "day": "Friday",
+    "updatedAt": "2026-03-22T09:02:22.027Z"
+  },
+  "members": [
+    "78P91pxakYfgrU9AMh079LkHcjv1",
+    "bNY6FAGqJsVZEVPg16yuYwFIw013",
+    "Ah2QFR6AHvOZouRalPWd7plgoQg1",
+    "y0BpW90XP0UYsMMnnxtKM3MTlxt2",
+    "meRFPj4W1mW28ZVEQURxCvHNJUp2",
+    "JTlwnlgDKpeyUZMWQQBRzOMODot2",
+    "UIJh355ImxRT08KqjntoLtLHMwp1"
+  ],
+  "name": "CorzzL-WOTG Friday Group",
+  "inviteCodeExpiresAt": "2026-04-10T07:28:23.005Z",
+  "lastChatMessageAt": "2026-03-22T08:09:17.719Z",
+  "lastChatMessageText": "Hi sis Mary Ann sucess! welcome to our Mission Group!",
+  "leaderId": "78P91pxakYfgrU9AMh079LkHcjv1",
+  "type": "downline",
+  "pendingRequests": [],
+  "updatedAt": "2026-03-22T09:02:00.324Z",
+  "guests": [
+    {
+      "homeGroupId": null,
+      "homeGroupName": null,
+      "joinedAsGuestAt": "2026-03-13T12:11:46.881Z",
+      "email": "chatreaflorescabaltea@gmail.com",
+      "name": "Chatty",
+      "photo": "",
+      "homeLeaderName": null,
+      "odId": "uBP4KBgwGQYNJIhng04tmJes6HK2",
+      "approvedBy": "78P91pxakYfgrU9AMh079LkHcjv1"
+    }
+  ],
+  "integrityLock": {
+    "updatedAtIso": "2026-02-28T11:36:44.775Z",
+    "updatedBy": "9zVKHJ11zaXD0f4GI6P7LHD6re32",
+    "reason": "Meeting is temporarily locked. Join a valid upline group first, then request unlock from admin.",
+    "enabled": true,
+    "updatedByEmail": "michael.marga@gmail.com",
+    "type": "missing_upline"
+  },
+  "lastChatSenderName": "Corazon Largo",
+  "accountabilitySchedule": {
+    "rotation": [
+      "Ah2QFR6AHvOZouRalPWd7plgoQg1",
+      "78P91pxakYfgrU9AMh079LkHcjv1",
+      "bNY6FAGqJsVZEVPg16yuYwFIw013"
+    ],
+    "currentMember": "78P91pxakYfgrU9AMh079LkHcjv1",
+    "lastRotated": "2026-03-06T16:14:38.138Z",
+    "week": 10
+  },
+  "lastChatMessageType": "text",
+  "groupPhotoURL": "",
+  "groupIcon": "",
+  "createdAt": "2026-02-01T10:48:31.748Z",
+  "inviteCode": "5GBAQ5",
+  "leaderName": "Corazon Largo"
+}

@@ -1,7 +1,25 @@
 {
+  "name": "go-mission",
+  "private": true,
+  "scripts": {
+    "android:stage:web": "bash scripts/stage-capacitor-web.sh",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build:debug": "bash scripts/build-android-apk.sh",
+    "android:keystore:create": "bash scripts/generate-android-upload-keystore.sh",
+    "android:build:release:apk": "bash scripts/build-android-release.sh apk",
+    "android:build:release:aab": "bash scripts/build-android-release.sh aab",
+    "android:build:release": "bash scripts/build-android-release.sh all"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@google/generative-ai": "^0.24.1",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
     "openai": "^6.16.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
   }
 }

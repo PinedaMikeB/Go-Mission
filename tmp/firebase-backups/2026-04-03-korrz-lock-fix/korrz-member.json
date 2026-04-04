@@ -1,0 +1,122 @@
+{
+  "id": "78P91pxakYfgrU9AMh079LkHcjv1",
+  "_name": "projects/shaped-by-grace/databases/(default)/documents/goMission_members/78P91pxakYfgrU9AMh079LkHcjv1",
+  "lastTokenUpdate": "2026-04-03T14:10:57.557Z",
+  "lastTokenUpdateIso": "2026-04-03T14:10:57.433Z",
+  "fcmTokens": [
+    "dMRov4qJg6KMUbnAdWFV4a:APA91bHcPNpkhQq77b__nuqpFyeC5goPyo2qWo70lxxUOnnER2-5CL7c7pYCMyuVS1Oeiwq7IrfIDbS2ztsUiv9WU7HtIYCYUkfU12lfNFTbbM3i1ZaShH8",
+    "dMRov4qJg6KMUbnAdWFV4a:APA91bGazIYLg6y0aoA0Lt2LedvSR3dx192g3VARazgUFHkGNIpIamJtG8O8pr0eptreaSdFNVRg4G-FP4-JA0-Q4GkQ963zRcoM7JHo8X9sZ0HVRwoJKho"
+  ],
+  "stage": "disciple-maker",
+  "roles": {
+    "isTrainer": false,
+    "isWelcomeTeam": false,
+    "isShepherd": false,
+    "isAdmin": false,
+    "isMissionary": true,
+    "isGroupLeader": true
+  },
+  "unreadCount": 0,
+  "groupRole": "member",
+  "uplineGroupId": "LtU627U3nJoyA3fpoGzx",
+  "activeDmThread": "78P91pxakYfgrU9AMh079LkHcjv1__JTlwnlgDKpeyUZMWQQBRzOMODot2",
+  "notificationCampaigns": {
+    "joinMissionGroup": {
+      "lastSentAt": "2026-03-12T22:30:38.598Z",
+      "updatedAt": "2026-03-12T22:30:38.598Z",
+      "nextIndex": 4,
+      "lastMessageBody": "✨ Your everyday life is your mission field. Who can you encourage today?",
+      "lastSentDateKey": "2026-03-13",
+      "lastMessageNumber": 4
+    }
+  },
+  "discipling": [
+    "9zVKHJ11zaXD0f4GI6P7LHD6re32",
+    "VTiGaWgPj2O3uOUpVeTYuuRERMl1",
+    "YPCfUQ8gD6RNdMKQoUOwbNeLWqh1",
+    "qTY2SJb2fDUZJPizbT5vz4cktgk1",
+    "PPHvcxpMmwTHI1T2XXrz7CbC4cW2",
+    "QRjyNLzDvwZxqjoIA3hQVnNf7Bs1",
+    "jx5DuJTTWMemdb0cYl47TsyRFMC2",
+    "TGy2OfA4z6h2iZV7wYTQ5f3RqF62",
+    "x2yUbOuL5iT5bav6DxovPZUlYWG2",
+    "hWmfs6cawvXFQuwtLSRt0UNmY622",
+    "Fz5TSxdBNJPi3JOWZSoVqfuGN0y1",
+    "cx1gKGM6D4aNtS4ujNQkXjTkiq82",
+    "c2N6AKk0xuP2oa9owCYJoBThy2G2",
+    "ur25DDLndtSXZ7sjQzDdJBx4o2n1",
+    "7Ic9kX7y4AZUtWoVQ1dMFLIZYMG3",
+    "i86t9HfrZkY08pNfA0sHDkuyjjf1",
+    "NA0DiAlQKwUQsRkigPS8gmOI3Tq2",
+    "9ViyhZwwLTQh1cRw81KtvpoLhVx2",
+    "A4EJwyuhgjYgmLz8AHakcXc87323",
+    "BcpExVrMu4N2Mti9khMMa5ewdZ53",
+    "VbdwztNsSwhrpAPwy84LObfI4Ra2",
+    "eAQwc4ybJeefREHLRHLa8ZZhWEX2",
+    "MoENqzA3bFaSd7otZgyMFEhZv5q1",
+    "F4hR7RejZFgFoj2FkXGS9FkCTY32",
+    "jrbYktcxdBZdlDRwy3HTPbbAY773"
+  ],
+  "groupId": "LtU627U3nJoyA3fpoGzx",
+  "activeChatUpdatedAt": "2026-02-25T14:28:51.691Z",
+  "updatedAt": "2026-04-03T14:10:47.394Z",
+  "training": {
+    "currentPhase": 1,
+    "phases": {
+      "phase4": {
+        "status": "locked"
+      },
+      "phase3": {
+        "status": "locked"
+      },
+      "phase2": {
+        "status": "locked"
+      },
+      "phase1": {
+        "sessionsAttended": [],
+        "status": "enrolled"
+      }
+    }
+  },
+  "activeChat": "wapp9BYH91nQjSJ9OOny",
+  "activeDmThreadUpdatedAt": "2026-03-22T08:10:34.641Z",
+  "stageUpdatedAt": "2026-03-30T11:09:03.456Z",
+  "photoURL": "https://firebasestorage.googleapis.com/v0/b/shaped-by-grace.firebasestorage.app/o/profile-photos%2F78P91pxakYfgrU9AMh079LkHcjv1%2F1774219053811_20260309_112034.jpg?alt=media&token=80383812-95c1-42db-973e-96b9ce24f5ce",
+  "becameLeaderAt": "2026-01-20T08:00:05.406Z",
+  "bibleProgress": {
+    "lastReadAt": 1772024877632,
+    "book": "NUM",
+    "chapter": 8,
+    "booksProgress": {
+      "NUM": {
+        "chaptersRead": [
+          8,
+          9
+        ],
+        "lastChapter": 8
+      },
+      "JHN": {
+        "chaptersRead": [
+          1,
+          2
+        ],
+        "lastChapter": 2
+      }
+    }
+  },
+  "email": "corzzlargo@gmail.com",
+  "createdAt": "2026-02-01T10:40:33.873Z",
+  "discipledBy": null,
+  "name": "Corazon Largo",
+  "displayName": "Corazon Largo",
+  "stageAutoStatus": {
+    "groupsLedCount": 5,
+    "generationCount": 4,
+    "hasMissionGroupMember": true,
+    "generationDepth": 3,
+    "updatedAtIso": "2026-03-30T11:09:03.355Z",
+    "leadsMissionGroup": true,
+    "detectedStage": "disciple-maker",
+    "groupsLedWithMembersCount": 5
+  }
+}
