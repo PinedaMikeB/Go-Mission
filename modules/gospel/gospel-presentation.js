@@ -51,7 +51,7 @@ const GOSPEL_PRESENTATION_CONTENT = {
                     ref: 'Romans 6:23'
                 },
                 {
-                    text: '"Subalit para naman sa mga duwag, mga taksil, ... at sa lahat ng mga sinungaling-ang magiging bahagi nila\'y sa lawa ng nagliliyab na apoy at asupre. Ito ang pangalawang kamatayan."',
+                    text: '"Subalit para naman sa mga duwag, mga taksil, mga gumagawa ng mga kasuklam-suklam na bagay, mga mamamatay-tao, mga nakikiapid, mga mangkukulam, mga sumasamba sa diyus-diyosan, at sa lahat ng mga sinungaling—ang magiging bahagi nila\'y sa lawa ng nagliliyab na apoy at asupre. Ito ang pangalawang kamatayan."',
                     ref: 'Revelation 21:8'
                 }
             ],
@@ -66,12 +66,13 @@ const GOSPEL_PRESENTATION_CONTENT = {
                     body: 'Ganap na pagkahiwalay sa Diyos.'
                 }
             ],
-            bridgeLead: 'Kapag nakita ng tao ang kanyang pagkahiwalay sa Diyos, madalas niyang iniisip na kaya niya itong solusyunan sa pamamagitan ng sariling pagsisikap.'
+            bridgeLead: 'Kapag nakita ng tao ang kanyang pagkahiwalay sa Diyos, madalas niyang iniisip na kaya niya itong solusyunan sa pamamagitan ng sariling pagsisikap.',
+            effortConclusion: 'Subalit ang lahat ng ito ay kapos at hindi aabot sa kaluwalhatian ng Diyos dahil ang lahat ay nagkasala.'
         },
         truth3: {
             kicker: 'Pangatlong Katotohanan',
             title: 'Ang Panginoong Hesus ang tanging daan patungong langit.',
-            body: 'Hindi sapat ang relihiyon, seremonya, kabaitan, o personal na disiplina para matubos ang kasalanan. Si Hesus lamang ang nagbayad ng lahat ng ating kasalanan sa krus.',
+            body: 'Bakit ang Panginoong Hesus lang ang daan? Dahil. Siya lang nagbayad ng lahat ng iyung kasalanan sa krus.',
             effortsTitle: 'Hindi sapat ang mga ito',
             efforts: ['Sampung Utos', 'Relihiyon', 'Mabuting Gawa', 'Ritwal'],
             verses: [
@@ -94,13 +95,13 @@ const GOSPEL_PRESENTATION_CONTENT = {
                 text: '"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito\'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya\'t walang maipagmamalaki ang sinuman."',
                 ref: 'Ephesians 2:8-9'
             },
-            formulaTitle: 'Kung ilalagay sa formula ang kaligtasan',
+            formulaTitle: 'Base sa Ephesians 2:8-9, kung ilalagay sa formula ang kaligtasan, alin sa mga sumusunod ang sa tingin mo ay tama?',
             formulas: [
                 'Pananampalataya + Mabuting Gawa = Kaligtasan',
                 'Pananampalataya + Relihiyon = Kaligtasan',
                 'Pananampalataya + Wala = Kaligtasan'
             ],
-            formulaAnswer: 'Ang mabuting gawa ay hindi basehan ng kaligtasan. Ito ay bunga ng buhay ng taong totoong nanampalataya sa Panginoong Hesus.'
+            formulaAnswer: '...ang mabuting gawa ay hindi basehan ng kaligtasan kundi ito ay by-product o magiging bunga sa buhay ng taong totoong nanampalataya sa Panginoong Hesus.'
         },
         prayer: {
             kicker: 'Panalangin',
@@ -1426,15 +1427,9 @@ const GospelPresentation = {
                             soft: true
                         })}
                         ${this.renderVerse(t2.verses[2])}
-                        ${this.renderInlineImage('assets/images/gospel/gospel_tract2.jpg', t2.deathTitle)}
                         ${this.renderHighlightBlock(t2.bridgeLead, { compact: true })}
-                    </article>
-                    <article class="gospel-effort-panel">
-                        <p class="gospel-effort-label">${t3.effortsTitle}</p>
-                        <div class="gospel-effort-grid">
-                            ${t3.efforts.map((effort) => `<div class="gospel-effort">${effort}</div>`).join('')}
-                        </div>
-                        ${this.renderHighlightBlock(t3.body, { soft: true, compact: true })}
+                        ${this.renderInlineImage('assets/images/gospel/gospel_tract3.jpg', t2.bridgeLead)}
+                        ${this.renderHighlightBlock(t2.effortConclusion)}
                     </article>
                 </section>
 
@@ -1456,13 +1451,7 @@ const GospelPresentation = {
                         <div class="gospel-section-banner">${t4.title}</div>
                         ${this.renderVerse(t4.verse)}
                         ${this.renderHighlightBlock(t4.formulaTitle, { compact: true })}
-                        <div class="gospel-stack">
-                            ${t4.formulas.map((formula, index) => `
-                                <div class="gospel-formula-card ${index === 2 ? 'correct' : ''}">
-                                    <p class="gospel-formula-copy">${formula}</p>
-                                </div>
-                            `).join('')}
-                        </div>
+                        ${this.renderInlineImage('assets/images/gospel/gospel_tract5.jpg', t4.formulaTitle)}
                         ${this.renderHighlightBlock(t4.formulaAnswer, { soft: true, compact: true })}
                     </article>
                 </section>
