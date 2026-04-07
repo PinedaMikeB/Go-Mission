@@ -550,6 +550,30 @@ const GospelPresentation = {
                 padding-top: 1rem;
             }
 
+            #gospelModal .gospel-intro-card {
+                background: #fffdf8;
+                border: 1px solid #efe0cf;
+                border-radius: 24px;
+                padding: 1.15rem 1.1rem 1rem;
+                box-shadow: 0 14px 36px rgba(70, 24, 12, 0.08);
+            }
+
+            #gospelModal .gospel-intro-title {
+                margin: 0.35rem 0 0;
+                font-family: 'Cormorant Garamond', serif;
+                font-size: clamp(2rem, 6vw, 3rem);
+                line-height: 0.95;
+                color: #6d2620;
+            }
+
+            #gospelModal .gospel-intro-copy {
+                margin: 0.55rem 0 0;
+                max-width: 36rem;
+                font-size: 1rem;
+                line-height: 1.55;
+                color: #5e5048;
+            }
+
             #gospelModal .gospel-hero {
                 position: relative;
                 overflow: hidden;
@@ -913,6 +937,151 @@ const GospelPresentation = {
                 color: var(--text-color);
             }
 
+            #gospelModal .gospel-flow {
+                display: flex;
+                flex-direction: column;
+                gap: 0.85rem;
+                max-width: 820px;
+            }
+
+            #gospelModal .gospel-flow-section {
+                display: flex;
+                flex-direction: column;
+                gap: 0.85rem;
+            }
+
+            #gospelModal .gospel-flow .gospel-kicker {
+                color: #b56a2e;
+            }
+
+            #gospelModal .gospel-section-banner {
+                background: #070707;
+                color: #fff;
+                border-radius: 0;
+                padding: 1.45rem 1.35rem;
+                font-size: clamp(1.8rem, 5vw, 3rem);
+                font-weight: 700;
+                line-height: 1.28;
+            }
+
+            #gospelModal .gospel-flow .gospel-verse {
+                background: #fff;
+                border: 1px solid #eedfd0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            #gospelModal .gospel-flow .gospel-verse-text {
+                color: #191919;
+                font-size: 1.06rem;
+                line-height: 1.7;
+            }
+
+            #gospelModal .gospel-flow .gospel-verse-ref {
+                color: #dc3d1f;
+            }
+
+            #gospelModal .gospel-highlight-block {
+                background: #f6d6a4;
+                border: 1px solid #efc688;
+                border-radius: 0;
+                padding: 1.25rem 1.15rem;
+                color: #1f140d;
+            }
+
+            #gospelModal .gospel-highlight-block.soft {
+                background: #f9ecdd;
+                border-color: #f0dcc8;
+            }
+
+            #gospelModal .gospel-highlight-copy {
+                margin: 0;
+                font-size: clamp(1.1rem, 3.4vw, 1.65rem);
+                line-height: 1.22;
+                font-weight: 700;
+                color: #141414;
+            }
+
+            #gospelModal .gospel-highlight-copy.small {
+                font-size: 1rem;
+                line-height: 1.7;
+                font-weight: 600;
+            }
+
+            #gospelModal .gospel-highlight-note {
+                margin: 0.45rem 0 0;
+                font-size: 0.96rem;
+                line-height: 1.65;
+                color: #4e3526;
+            }
+
+            #gospelModal .gospel-inline-image {
+                background: #fff;
+                border: 1px solid #eedfd0;
+                padding: 0.65rem;
+            }
+
+            #gospelModal .gospel-inline-image img {
+                width: 100%;
+                height: auto;
+                display: block;
+            }
+
+            #gospelModal .gospel-simple-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.75rem;
+            }
+
+            #gospelModal .gospel-simple-card {
+                background: #fff;
+                border: 1px solid #eedfd0;
+                padding: 1rem;
+            }
+
+            #gospelModal .gospel-simple-title {
+                font-size: 0.92rem;
+                font-weight: 700;
+                line-height: 1.5;
+                color: #121212;
+            }
+
+            #gospelModal .gospel-simple-copy {
+                margin-top: 0.35rem;
+                font-size: 0.9rem;
+                line-height: 1.65;
+                color: #50453e;
+            }
+
+            #gospelModal .gospel-effort-panel {
+                background: #fff7ea;
+                border: 1px solid #efddc7;
+                padding: 1rem;
+            }
+
+            #gospelModal .gospel-effort-label {
+                margin: 0 0 0.8rem;
+                font-size: 0.95rem;
+                font-weight: 700;
+                color: #1c1c1c;
+            }
+
+            #gospelModal .gospel-effort-panel .gospel-effort-grid {
+                margin-top: 0;
+            }
+
+            #gospelModal .gospel-effort-panel .gospel-effort {
+                background: #fff;
+                border-color: #efddc7;
+                color: #1e1e1e;
+            }
+
+            #gospelModal .gospel-stack {
+                display: flex;
+                flex-direction: column;
+                gap: 0.85rem;
+            }
+
             #gospelModal .gospel-prayer-card {
                 position: relative;
                 margin-top: 1rem;
@@ -1121,7 +1290,8 @@ const GospelPresentation = {
                 }
 
                 #gospelModal .gospel-two-up,
-                #gospelModal .gospel-effort-grid {
+                #gospelModal .gospel-effort-grid,
+                #gospelModal .gospel-simple-grid {
                     grid-template-columns: 1fr;
                 }
 
@@ -1214,107 +1384,87 @@ const GospelPresentation = {
 
         return `
             <div class="gospel-story">
-                <section class="gospel-hero">
-                    <div class="gospel-hero-copy">
-                        <div class="gospel-hero-badge">
-                            <span>${copy.badge}</span>
-                            <span>•</span>
-                            <span>${copy.languageBadge}</span>
-                        </div>
-                        <h1 class="gospel-hero-title">${copy.title}</h1>
-                        <p class="gospel-hero-question">${copy.heroQuestion}</p>
-                        <p class="gospel-hero-lead">${copy.heroLead}</p>
-                        <div class="gospel-jump">
-                            <div class="gospel-jump-label">${copy.jumpLabel}</div>
-                            <div class="gospel-jump-grid">
-                                ${copy.jumps.map((jump) => `
-                                    <button type="button" class="gospel-jump-btn" onclick="GospelPresentation.jumpToSection('${jump.id}')">${jump.label}</button>
-                                `).join('')}
-                            </div>
+                <section class="gospel-intro-card">
+                    <div class="gospel-hero-badge">
+                        <span>${copy.badge}</span>
+                        <span>•</span>
+                        <span>${copy.languageBadge}</span>
+                    </div>
+                    <h1 class="gospel-intro-title">${copy.title}</h1>
+                    <p class="gospel-intro-copy">${copy.subtitle}</p>
+                    <div class="gospel-jump">
+                        <div class="gospel-jump-label">${copy.jumpLabel}</div>
+                        <div class="gospel-jump-grid">
+                            ${copy.jumps.map((jump) => `
+                                <button type="button" class="gospel-jump-btn" onclick="GospelPresentation.jumpToSection('${jump.id}')">${jump.label}</button>
+                            `).join('')}
                         </div>
                     </div>
                 </section>
 
-                <section class="gospel-grid" data-section="truth1">
-                    <article class="gospel-card">
+                <section class="gospel-flow" data-section="truth1">
+                    <article class="gospel-flow-section">
                         <span class="gospel-kicker">${t1.kicker}</span>
-                        <h2 class="gospel-section-title">${t1.title}</h2>
-                        <p class="gospel-body-copy">${t1.body}</p>
-                        <div class="gospel-verse-list">
-                            ${t1.verses.map((verse) => this.renderVerse(verse)).join('')}
-                        </div>
-                        <p class="gospel-transition-copy">${t1.transition}</p>
+                        <div class="gospel-section-banner">${t1.title}</div>
+                        ${this.renderVerse(t1.verses[0])}
+                        ${this.renderHighlightBlock(t1.body)}
+                        ${this.renderVerse(t1.verses[1])}
+                        ${this.renderHighlightBlock(t1.transition, { soft: true, compact: true })}
                     </article>
-                    <aside class="gospel-media-card">
-                        <img src="assets/images/gospel/gospel_tract1.jpg" alt="${copy.title}" onerror="this.style.display='none'">
-                        <div class="gospel-media-caption">${copy.subtitle}</div>
-                    </aside>
                 </section>
 
-                <section class="gospel-grid" data-section="truth2">
-                    <article class="gospel-card">
+                <section class="gospel-flow" data-section="truth2">
+                    <article class="gospel-flow-section">
                         <span class="gospel-kicker">${t2.kicker}</span>
-                        <h2 class="gospel-section-title">${t2.title}</h2>
-                        <p class="gospel-body-copy">${t2.body}</p>
-                        <div class="gospel-verse-list">
-                            ${t2.verses.map((verse) => this.renderVerse(verse)).join('')}
-                        </div>
-                        <div class="gospel-two-up">
-                            ${t2.deaths.map((death) => `
-                                <div class="gospel-mini-card">
-                                    <div class="gospel-mini-title">${death.title}</div>
-                                    <div class="gospel-mini-copy">${death.body}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <p class="gospel-transition-copy"><strong>${t2.deathTitle}</strong><br>${t2.bridgeLead}</p>
+                        <div class="gospel-section-banner">${t2.title}</div>
+                        ${this.renderInlineImage('assets/images/gospel/gospel_tract1.jpg', t2.title)}
+                        ${this.renderVerse(t2.verses[0])}
+                        ${this.renderHighlightBlock(t2.body)}
+                        ${this.renderVerse(t2.verses[1])}
+                        ${this.renderHighlightBlock(t2.deathTitle, {
+                            note: t2.deaths.map((death) => `<strong>${death.title}:</strong> ${death.body}`).join('<br>'),
+                            soft: true
+                        })}
+                        ${this.renderVerse(t2.verses[2])}
+                        ${this.renderInlineImage('assets/images/gospel/gospel_tract2.jpg', t2.deathTitle)}
+                        ${this.renderHighlightBlock(t2.bridgeLead, { compact: true })}
                     </article>
-                    <aside class="gospel-media-card">
-                        <img src="assets/images/gospel/gospel_tract2.jpg" alt="${t2.title}" onerror="this.style.display='none'">
-                        <div class="gospel-media-caption">${t2.body}</div>
-                    </aside>
-                </section>
-
-                <section class="gospel-grid" data-section="truth3">
-                    <article class="gospel-card">
-                        <span class="gospel-kicker">${t3.kicker}</span>
-                        <h2 class="gospel-section-title">${t3.title}</h2>
-                        <p class="gospel-body-copy">${t3.body}</p>
-                        <div class="gospel-body-copy"><strong>${t3.effortsTitle}</strong></div>
+                    <article class="gospel-effort-panel">
+                        <p class="gospel-effort-label">${t3.effortsTitle}</p>
                         <div class="gospel-effort-grid">
                             ${t3.efforts.map((effort) => `<div class="gospel-effort">${effort}</div>`).join('')}
                         </div>
-                        <div class="gospel-verse-list">
-                            ${t3.verses.map((verse) => this.renderVerse(verse)).join('')}
-                        </div>
-                        <p class="gospel-transition-copy">${t3.bridgeSummary}</p>
+                        ${this.renderHighlightBlock(t3.body, { soft: true, compact: true })}
                     </article>
-                    <aside class="gospel-media-card">
-                        <img src="assets/images/gospel/gospel_tract4.jpg" alt="${t3.title}" onerror="this.style.display='none'">
-                        <div class="gospel-media-caption">${t3.body}</div>
-                    </aside>
                 </section>
 
-                <section class="gospel-grid" data-section="truth4">
-                    <article class="gospel-card">
-                        <span class="gospel-kicker">${t4.kicker}</span>
-                        <h2 class="gospel-section-title">${t4.title}</h2>
-                        <p class="gospel-body-copy">${t4.body}</p>
-                        <div class="gospel-verse-list">
-                            ${this.renderVerse(t4.verse)}
-                        </div>
+                <section class="gospel-flow" data-section="truth3">
+                    <article class="gospel-flow-section">
+                        <span class="gospel-kicker">${t3.kicker}</span>
+                        <div class="gospel-section-banner">${t3.title}</div>
+                        ${this.renderVerse(t3.verses[0])}
+                        ${this.renderHighlightBlock(t3.body)}
+                        ${this.renderVerse(t3.verses[1])}
+                        ${this.renderInlineImage('assets/images/gospel/gospel_tract4.jpg', t3.title)}
+                        ${this.renderHighlightBlock(t3.bridgeSummary, { soft: true, compact: true })}
                     </article>
-                    <aside class="gospel-card">
-                        <span class="gospel-kicker">${t4.formulaTitle}</span>
-                        <div class="gospel-formula-grid">
+                </section>
+
+                <section class="gospel-flow" data-section="truth4">
+                    <article class="gospel-flow-section">
+                        <span class="gospel-kicker">${t4.kicker}</span>
+                        <div class="gospel-section-banner">${t4.title}</div>
+                        ${this.renderVerse(t4.verse)}
+                        ${this.renderHighlightBlock(t4.formulaTitle, { compact: true })}
+                        <div class="gospel-stack">
                             ${t4.formulas.map((formula, index) => `
                                 <div class="gospel-formula-card ${index === 2 ? 'correct' : ''}">
                                     <p class="gospel-formula-copy">${formula}</p>
                                 </div>
                             `).join('')}
                         </div>
-                        <p class="gospel-body-copy">${t4.formulaAnswer}</p>
-                    </aside>
+                        ${this.renderHighlightBlock(t4.formulaAnswer, { soft: true, compact: true })}
+                    </article>
                 </section>
 
                 <section class="gospel-card" data-section="prayer">
@@ -1336,8 +1486,8 @@ const GospelPresentation = {
                     </div>
                 </section>
 
-                <section class="gospel-grid">
-                    <article class="gospel-card">
+                <section class="gospel-simple-grid">
+                    <article class="gospel-simple-card">
                         <span class="gospel-kicker">${copy.promises.kicker}</span>
                         <h2 class="gospel-section-title">${copy.promises.title}</h2>
                         <div class="gospel-list">
@@ -1350,7 +1500,7 @@ const GospelPresentation = {
                             `).join('')}
                         </div>
                     </article>
-                    <article class="gospel-card">
+                    <article class="gospel-simple-card">
                         <span class="gospel-kicker">${copy.nextSteps.kicker}</span>
                         <h2 class="gospel-section-title">${copy.nextSteps.title}</h2>
                         <div class="gospel-checklist">
@@ -1364,6 +1514,24 @@ const GospelPresentation = {
                         <div class="gospel-footer-note">${copy.ui.footerNote}</div>
                     </article>
                 </section>
+            </div>
+        `;
+    },
+
+    renderHighlightBlock(text, options = {}) {
+        const { note = '', soft = false, compact = false } = options;
+        return `
+            <div class="gospel-highlight-block ${soft ? 'soft' : ''}">
+                <p class="gospel-highlight-copy ${compact ? 'small' : ''}">${text}</p>
+                ${note ? `<p class="gospel-highlight-note">${note}</p>` : ''}
+            </div>
+        `;
+    },
+
+    renderInlineImage(src, alt) {
+        return `
+            <div class="gospel-inline-image">
+                <img src="${src}" alt="${alt}" onerror="this.parentElement.style.display='none'">
             </div>
         `;
     },
