@@ -7317,6 +7317,10 @@
                     closeMenu();
                     await window.openGroupsNav?.();
                     break;
+                case 'gospel':
+                    closeMenu();
+                    window.GospelPresentation?.open();
+                    break;
                 case 'messages':
                     closeMenu();
                     await window.handleInboxIconClick?.();
@@ -7387,6 +7391,8 @@
                         watchCopy: 'Panoorin ang mga series at lessons.',
                         groups: 'Groups',
                         groupsCopy: 'Buksan ang mission groups dashboard.',
+                        gospel: 'Ang Daan Papuntang Langit',
+                        gospelCopy: 'Buksan ang gospel presentation.',
                         messages: 'Messages',
                         messagesCopy: 'Basahin ang group at direct inbox.',
                         notifications: 'Notifications',
@@ -7418,6 +7424,8 @@
                         watchCopy: 'Open video series and lessons.',
                         groups: 'Groups',
                         groupsCopy: 'Open the mission groups dashboard.',
+                        gospel: 'Ang Daan Papuntang Langit',
+                        gospelCopy: 'Open the Way to Heaven presentation.',
                         messages: 'Messages',
                         messagesCopy: 'Check group and direct inbox.',
                         notifications: 'Notifications',
@@ -7476,6 +7484,13 @@
                             <div class="menu-section">
                                 <p class="menu-section-label">${menuText.tools}</p>
                                 <div class="menu-list">
+                                    <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('gospel', event)">
+                                        <span class="menu-list-icon">✝</span>
+                                        <span class="menu-list-text">
+                                            <span class="menu-list-title">${menuText.gospel}</span>
+                                            <span class="menu-list-copy">${menuText.gospelCopy}</span>
+                                        </span>
+                                    </button>
                                     <button type="button" class="menu-list-item" onclick="window.runMainMenuAction('messages', event)">
                                         <span class="menu-list-icon">💬</span>
                                         <span class="menu-list-text">

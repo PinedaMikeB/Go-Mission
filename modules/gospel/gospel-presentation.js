@@ -1,827 +1,1493 @@
 /**
- * Gospel Presentation Module - Bilingual Animated Interactive Version
+ * Gospel Presentation Module
  * "Ang Daan Papuntang Langit" / "The Way to Heaven"
- * 
- * Features:
- * - Bilingual support (English & Tagalog)
- * - Smooth slide transitions
- * - Elements animate in sequence
- * - Mobile-optimized
+ *
+ * Rebuilt as an editorial-style full-screen presentation that follows
+ * the actual tract flow while preserving app decision hooks.
  */
 
-const GospelPresentation = {
-    currentSlide: 0,
-    totalSlides: 0,
-    slides: [],
-    
-    // Get content based on current language
-    c(key) {
-        return GospelContent.get(key);
+const GOSPEL_PRESENTATION_CONTENT = {
+    tl: {
+        title: 'Ang Daan Papuntang Langit',
+        subtitle: 'May apat na katotohanan na dapat nating malaman upang makapunta tayo sa langit.',
+        badge: 'Gospel Presentation',
+        languageBadge: 'Tagalog',
+        heroQuestion: 'Kung tatayo ka sa harap ng Diyos ngayong araw, sigurado ka ba kung saan mo gugugulin ang iyong susunod na buhay?',
+        heroLead: 'Hindi ito tungkol sa relihiyon, sariling pagsisikap, o mabubuting gawa. Ito ay tungkol sa malinaw na sinasabi ng Bibliya kung paano tayo maliligtas.',
+        jumpLabel: 'Apat na Katotohanan',
+        jumps: [
+            { id: 'truth1', label: '1. Mahal ka ng Diyos' },
+            { id: 'truth2', label: '2. Makasalanan ang tao' },
+            { id: 'truth3', label: '3. Si Hesus ang daan' },
+            { id: 'truth4', label: '4. Sumampalataya' }
+        ],
+        truth1: {
+            kicker: 'Unang Katotohanan',
+            title: 'Mahal ka ng Diyos at nais Niyang magkaroon ka ng buhay na walang hanggan.',
+            body: 'Nais din Niyang magkaroon ka ng buhay na makabuluhan, hindi lamang habang nabubuhay ka rito kundi hanggang sa walang hanggan.',
+            verses: [
+                {
+                    text: '"Sapagkat gayon na lamang ang pag-ibig ng Diyos sa sangkatauhan, kaya\'t ibinigay niya ang kanyang kaisa-isang Anak, upang ang sinumang sumampalataya sa kanya ay hindi mapahamak, kundi magkaroon ng buhay na walang hanggan."',
+                    ref: 'John 3:16'
+                },
+                {
+                    text: '"Dumarating ang magnanakaw para lamang magnakaw, pumatay, at manira. Naparito ako upang ang mga tupa ay magkaroon ng buhay, buhay na masaganang lubos."',
+                    ref: 'John 10:10'
+                }
+            ],
+            transition: 'Kaya lang maraming tao ang hindi nakakaranas ng buhay na walang hanggan at buhay na makabuluhan sapagkat...'
+        },
+        truth2: {
+            kicker: 'Pangalawang Katotohanan',
+            title: 'Likas na makasalanan ang tao kaya napahiwalay siya sa Diyos.',
+            body: 'Hindi lamang nagkasala ang lahat ng tao. May bayad ang kasalanan, at ang bayad ay kamatayan.',
+            verses: [
+                {
+                    text: '"Sapagkat ang lahat ay nagkasala, at walang sinumang nakaabot sa kaluwalhatian ng Diyos."',
+                    ref: 'Romans 3:23'
+                },
+                {
+                    text: '"Sapagkat kamatayan ang kabayaran ng kasalanan..."',
+                    ref: 'Romans 6:23'
+                },
+                {
+                    text: '"Subalit para naman sa mga duwag, mga taksil, ... at sa lahat ng mga sinungaling-ang magiging bahagi nila\'y sa lawa ng nagliliyab na apoy at asupre. Ito ang pangalawang kamatayan."',
+                    ref: 'Revelation 21:8'
+                }
+            ],
+            deathTitle: 'May dalawang klase ng kamatayan sa Biblia',
+            deaths: [
+                {
+                    title: 'Pisikal na Kamatayan',
+                    body: 'Pagkamatay ng katawan.'
+                },
+                {
+                    title: 'Espiritwal na Kamatayan',
+                    body: 'Ganap na pagkahiwalay sa Diyos.'
+                }
+            ],
+            bridgeLead: 'Kapag nakita ng tao ang kanyang pagkahiwalay sa Diyos, madalas niyang iniisip na kaya niya itong solusyunan sa pamamagitan ng sariling pagsisikap.'
+        },
+        truth3: {
+            kicker: 'Pangatlong Katotohanan',
+            title: 'Ang Panginoong Hesus ang tanging daan patungong langit.',
+            body: 'Hindi sapat ang relihiyon, seremonya, kabaitan, o personal na disiplina para matubos ang kasalanan. Si Hesus lamang ang nagbayad ng lahat ng ating kasalanan sa krus.',
+            effortsTitle: 'Hindi sapat ang mga ito',
+            efforts: ['Sampung Utos', 'Relihiyon', 'Mabuting Gawa', 'Ritwal'],
+            verses: [
+                {
+                    text: '"Sumagot si Jesus, Ako ang daan, ang katotohanan, at ang buhay. Walang makakapunta sa Ama kundi sa pamamagitan ko."',
+                    ref: 'John 14:6'
+                },
+                {
+                    text: '"Sapagkat si Cristo na walang kasalanan ay namatay nang minsan para sa inyo na mga makasalanan, upang iharap kayo sa Diyos. Siya\'y pinatay sa laman, at muling binuhay sa espiritu."',
+                    ref: '1 Peter 3:18'
+                }
+            ],
+            bridgeSummary: 'Ang malaman lamang na namatay ang Panginoong Hesus para sa iyong kasalanan ay hindi pa sapat. Kailangan mo Siyang personal na sampalatayanan.'
+        },
+        truth4: {
+            kicker: 'Pang-apat na Katotohanan',
+            title: 'Kailangan nating manampalataya sa Panginoong Hesus upang tayo\'y maligtas.',
+            body: 'Ang kaligtasan ay hindi formula ng pananampalataya plus gawa. Ito ay regalo ng Diyos na tinatanggap sa pamamagitan ng tunay na pananampalataya kay Hesus.',
+            verse: {
+                text: '"Sapagkat dahil sa kagandahang-loob ng Diyos kayo ay naligtas sa pamamagitan ng pananampalataya; at ito\'y kaloob ng Diyos at hindi mula sa inyong sarili; hindi ito bunga ng inyong mga gawa kaya\'t walang maipagmamalaki ang sinuman."',
+                ref: 'Ephesians 2:8-9'
+            },
+            formulaTitle: 'Kung ilalagay sa formula ang kaligtasan',
+            formulas: [
+                'Pananampalataya + Mabuting Gawa = Kaligtasan',
+                'Pananampalataya + Relihiyon = Kaligtasan',
+                'Pananampalataya + Wala = Kaligtasan'
+            ],
+            formulaAnswer: 'Ang mabuting gawa ay hindi basehan ng kaligtasan. Ito ay bunga ng buhay ng taong totoong nanampalataya sa Panginoong Hesus.'
+        },
+        prayer: {
+            kicker: 'Panalangin',
+            title: 'Ipahayag mo ang iyong pananampalataya sa Panginoong Hesus sa pamamagitan ng panalangin.',
+            lead: 'Kung handa ka nang sumampalataya, maaari mong sabihin ito sa Kanya nang buong puso:',
+            text: 'Panginoong Hesus, Inaamin ko po na ako ay makasalanan. Patawarin mo po ako. Nananampalataya po ako na ikaw ang tanging daan patungo sa langit dahil ikaw ang nagbayad ng aking kasalanan. Ngayon nga ay binubuksan ko na ang aking puso. Pumasok ka at manahan sa akin. Tinatanggap kita bilang aking Panginoon at Tagapagligtas. Simula ngayon ay tatalikdan ko na ang aking kasalanan. Salamat at isang araw ay makakasama kita sa langit. Amen.',
+            readyLabel: 'Handa ka na ba?',
+            readyCopy: 'Kapag handa ka na, puwede mo nang ipahayag ang desisyong ito dito mismo sa app.'
+        },
+        promises: {
+            kicker: 'Kapag sumampalataya ka kay Hesus',
+            title: 'Ito ang mga pangakong maaari mong panghawakan.',
+            items: [
+                {
+                    title: 'Ikaw ay naging anak na ng Diyos.',
+                    text: '"Subalit ang lahat ng tumanggap at sumampalataya sa kanya ay binigyan niya ng karapatang maging mga anak ng Diyos."',
+                    ref: 'John 1:12'
+                },
+                {
+                    title: 'May buhay na walang hanggan.',
+                    text: '"Kung ang Anak ng Diyos ay nasa isang tao, mayroon siyang buhay na walang hanggan; ngunit kung wala sa kanya ang Anak ng Diyos ay wala siyang buhay na walang hanggan. Isinusulat ko ito sa inyo upang malaman ninyo na kayong sumasampalataya sa Anak ng Diyos ay may buhay na walang hanggan."',
+                    ref: '1 John 5:12-13'
+                },
+                {
+                    title: 'Ikaw ay isa nang bagong nilalang.',
+                    text: '"Kaya\'t kung nakipag-isa na kay Cristo ang isang tao, isa na siyang bagong nilalang. Wala na ang dati niyang pagkatao, sa halip, ito\'y napalitan na ng bago."',
+                    ref: '2 Corinthians 5:17'
+                },
+                {
+                    title: 'Ang lahat ng kasalanan mo ay bayad na.',
+                    text: '"Iniligtas niya tayo sa kapangyarihan ng kadiliman at inilipat tayo sa kaharian ng kanyang minamahal na Anak, na sa kanya ay mayroon tayong katubusan, na siyang kapatawaran ng mga kasalanan."',
+                    ref: 'Colosas 1:13-14'
+                }
+            ]
+        },
+        nextSteps: {
+            kicker: 'Upang lumago sa relasyon mo sa Kanya',
+            title: 'Mga susunod mong hakbang',
+            items: [
+                'Makipag-usap sa Diyos araw-araw: Manalangin ka at makinig sa sasabihin Niya sa iyo sa pamamagitan ng pagbabasa ng Biblia.',
+                'Maging bahagi ng isang discipleship group: Dito mo makakasama ang mga kapatiran na makakatulong sa iyong paglago.',
+                'Dumalo sa isang Christian church na naniniwala sa Biblia: Upang makapagpuri at magpasalamat sa Diyos.'
+            ]
+        },
+        decisions: {
+            storyPrimary: 'Handa na akong manampalataya',
+            storySecondary: 'Hindi pa ako handa',
+            prayerTitle: 'Panalangin ng Pagtanggap',
+            prayerPrompt: 'Tinanggap mo ba ang Panginoong Hesus bilang iyong Panginoon at Tagapagligtas?',
+            prayerPrimary: 'Oo, tinanggap ko Siya',
+            prayerSecondary: 'Hindi pa',
+            backToStory: 'Bumalik sa presentation',
+            notReadyTitle: 'Salamat sa pagiging tapat.',
+            notReadyBody: 'Naiintindihan ko na hindi ka pa handa. Patuloy mong hanapin ang Diyos. Buksan mo ang Biblia araw-araw at bumalik ka rito kapag handa ka nang isuko ang buhay mo sa Kanya.',
+            notReadyContinue: 'Magpatuloy',
+            celebrationTitle: 'Purihin ang Diyos.',
+            celebrationBody: 'Ang pagtanggap mo kay Hesus ang pinakamahalagang desisyon sa buhay mo. Hawakan mo ang Kanyang mga pangako at magpatuloy ka sa susunod mong hakbang kasama Siya.',
+            celebrationButton: 'Bumalik sa Home'
+        },
+        ui: {
+            close: 'Isara',
+            footerNote: 'Batay sa presentasyon sa mission.wotgonline.com/daan'
+        }
     },
-    
-    // Get current language
+    en: {
+        title: 'Ang Daan Papuntang Langit',
+        subtitle: 'There are four truths we need to understand if we want to know the way to heaven.',
+        badge: 'Gospel Presentation',
+        languageBadge: 'English',
+        heroQuestion: 'If you stood before God today, would you be certain where you would spend eternity?',
+        heroLead: 'This is not about religion, self-effort, or good works. It is about what the Bible clearly says about salvation.',
+        jumpLabel: 'Four Truths',
+        jumps: [
+            { id: 'truth1', label: '1. God loves you' },
+            { id: 'truth2', label: '2. Humanity is sinful' },
+            { id: 'truth3', label: '3. Jesus is the way' },
+            { id: 'truth4', label: '4. Believe in Him' }
+        ],
+        truth1: {
+            kicker: 'First Truth',
+            title: 'God loves you and wants you to have eternal life.',
+            body: 'He also wants you to experience a meaningful life, not only here on earth but forever.',
+            verses: [
+                {
+                    text: '"For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life."',
+                    ref: 'John 3:16'
+                },
+                {
+                    text: '"The thief comes only to steal and kill and destroy. I came that they may have life and have it abundantly."',
+                    ref: 'John 10:10'
+                }
+            ],
+            transition: 'Yet many people do not experience eternal life or a meaningful life because...'
+        },
+        truth2: {
+            kicker: 'Second Truth',
+            title: 'Humanity is sinful, so we are separated from God.',
+            body: 'It is not only that all people have sinned. Sin also carries a penalty, and that penalty is death.',
+            verses: [
+                {
+                    text: '"For all have sinned and fall short of the glory of God."',
+                    ref: 'Romans 3:23'
+                },
+                {
+                    text: '"For the wages of sin is death..."',
+                    ref: 'Romans 6:23'
+                },
+                {
+                    text: '"Their portion will be in the lake that burns with fire and sulfur, which is the second death."',
+                    ref: 'Revelation 21:8'
+                }
+            ],
+            deathTitle: 'There are two kinds of death in the Bible',
+            deaths: [
+                {
+                    title: 'Physical Death',
+                    body: 'The death of the body.'
+                },
+                {
+                    title: 'Spiritual Death',
+                    body: 'Complete separation from God.'
+                }
+            ],
+            bridgeLead: 'When people recognize their separation from God, they often think they can solve it through their own effort.'
+        },
+        truth3: {
+            kicker: 'Third Truth',
+            title: 'The Lord Jesus is the only way to heaven.',
+            body: 'Religion, ceremony, kindness, and discipline cannot pay for sin. Jesus alone paid for all our sins on the cross.',
+            effortsTitle: 'These are not enough',
+            efforts: ['Ten Commandments', 'Religion', 'Good Works', 'Rituals'],
+            verses: [
+                {
+                    text: '"I am the way, and the truth, and the life. No one comes to the Father except through me."',
+                    ref: 'John 14:6'
+                },
+                {
+                    text: '"For Christ also suffered once for sins, the righteous for the unrighteous, that he might bring us to God."',
+                    ref: '1 Peter 3:18'
+                }
+            ],
+            bridgeSummary: 'Knowing that Jesus died for your sins is still not enough by itself. You must personally place your faith in Him.'
+        },
+        truth4: {
+            kicker: 'Fourth Truth',
+            title: 'We must place our faith in the Lord Jesus to be saved.',
+            body: 'Salvation is not faith plus works. It is God\'s gift, received through true faith in Jesus.',
+            verse: {
+                text: '"For by grace you have been saved through faith. And this is not your own doing; it is the gift of God, not a result of works, so that no one may boast."',
+                ref: 'Ephesians 2:8-9'
+            },
+            formulaTitle: 'If you put salvation into a formula',
+            formulas: [
+                'Faith + Good Works = Salvation',
+                'Faith + Religion = Salvation',
+                'Faith + Nothing = Salvation'
+            ],
+            formulaAnswer: 'Good works are not the basis of salvation. They are the fruit of the life of someone who truly believes in the Lord Jesus.'
+        },
+        prayer: {
+            kicker: 'Prayer',
+            title: 'Express your faith in the Lord Jesus through prayer.',
+            lead: 'If you are ready to believe, you may say this to Him from your heart:',
+            text: 'Lord Jesus, I admit that I am a sinner. Please forgive me. I believe that You are the only way to heaven because You paid for my sin. Right now I open my heart. Come in and dwell in me. I receive You as my Lord and Savior. From this day on I will turn away from my sin. Thank You that one day I will be with You in heaven. Amen.',
+            readyLabel: 'Are you ready?',
+            readyCopy: 'When you are ready, you can respond to this decision right here in the app.'
+        },
+        promises: {
+            kicker: 'If you place your faith in Jesus',
+            title: 'These are the promises you can hold onto.',
+            items: [
+                {
+                    title: 'You have become a child of God.',
+                    text: '"But to all who did receive him, who believed in his name, he gave the right to become children of God."',
+                    ref: 'John 1:12'
+                },
+                {
+                    title: 'You have eternal life.',
+                    text: '"Whoever has the Son has life... I write these things to you who believe in the name of the Son of God, that you may know that you have eternal life."',
+                    ref: '1 John 5:12-13'
+                },
+                {
+                    title: 'You are a new creation.',
+                    text: '"If anyone is in Christ, he is a new creation. The old has passed away; behold, the new has come."',
+                    ref: '2 Corinthians 5:17'
+                },
+                {
+                    title: 'Your sins have been paid for.',
+                    text: '"He has delivered us from the domain of darkness... in whom we have redemption, the forgiveness of sins."',
+                    ref: 'Colossians 1:13-14'
+                }
+            ]
+        },
+        nextSteps: {
+            kicker: 'To grow in your relationship with Him',
+            title: 'Your next steps',
+            items: [
+                'Talk to God daily: pray and listen to Him through reading the Bible.',
+                'Become part of a discipleship group: this is where believers can help you grow.',
+                'Attend a Bible-believing Christian church: worship and give thanks to God together.'
+            ]
+        },
+        decisions: {
+            storyPrimary: 'I am ready to believe',
+            storySecondary: 'I am not ready yet',
+            prayerTitle: 'Prayer of Acceptance',
+            prayerPrompt: 'Did you receive the Lord Jesus as your Lord and Savior?',
+            prayerPrimary: 'Yes, I received Him',
+            prayerSecondary: 'Not yet',
+            backToStory: 'Back to presentation',
+            notReadyTitle: 'Thank you for being honest.',
+            notReadyBody: 'I understand that you are not ready yet. Keep seeking God. Open the Bible daily and come back here when you are ready to surrender your life to Him.',
+            notReadyContinue: 'Continue',
+            celebrationTitle: 'Praise God.',
+            celebrationBody: 'Receiving Jesus is the most important decision of your life. Hold on to His promises and keep moving into your next steps with Him.',
+            celebrationButton: 'Back to Home'
+        },
+        ui: {
+            close: 'Close',
+            footerNote: 'Based on the presentation at mission.wotgonline.com/daan'
+        }
+    }
+};
+
+const GospelPresentation = {
+    view: 'story',
+    forcedLang: null,
+    followUpDeclined: false,
+
     lang() {
-        return GospelContent.getLang();
+        if (this.forcedLang) return this.forcedLang;
+        if (window.i18n?.getLang) return window.i18n.getLang();
+        const stored = localStorage.getItem('goMission_language');
+        return stored === 'en' ? 'en' : 'tl';
     },
 
-    open() {
-        this.currentSlide = 0;
-        this.buildSlides();
-        this.totalSlides = this.slides.length;
-        this.createModal();
+    copy() {
+        return GOSPEL_PRESENTATION_CONTENT[this.lang()] || GOSPEL_PRESENTATION_CONTENT.tl;
+    },
+
+    open(options = {}) {
+        this.forcedLang = options.lang === 'en' ? 'en' : options.lang === 'tl' ? 'tl' : null;
+        this.view = 'story';
+        this.followUpDeclined = false;
         this.injectStyles();
-        this.showSlide(0);
-        document.getElementById('gospelModal').classList.remove('hidden');
+        this.createModal();
+        this.renderView();
+        const modal = document.getElementById('gospelModal');
+        if (modal) modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
 
     close() {
         const modal = document.getElementById('gospelModal');
-        if (modal) {
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-        if (window.GospelAudio) {
+        if (modal) modal.remove();
+        document.body.style.overflow = '';
+        if (window.GospelAudio?.stop) {
             window.GospelAudio.stop();
         }
+        this.view = 'story';
+        this.forcedLang = null;
     },
 
     injectStyles() {
-        if (document.getElementById('gospelStyles')) return;
-        
+        if (document.getElementById('gospelPresentationStyles')) return;
+
         const style = document.createElement('style');
-        style.id = 'gospelStyles';
+        style.id = 'gospelPresentationStyles';
         style.textContent = `
-            .gospel-slide-enter { animation: slideIn 0.4s ease-out forwards; }
-            .gospel-slide-exit { animation: slideOut 0.3s ease-in forwards; }
-            @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-            @keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-30px); } }
-            .gospel-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-            .gospel-fade-up { animation: fadeUp 0.5s ease-out forwards; }
-            .gospel-scale-in { animation: scaleIn 0.4s ease-out forwards; }
-            .gospel-bounce { animation: bounce 0.6s ease-out forwards; }
-            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-            @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes scaleIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-            @keyframes bounce { 0% { opacity: 0; transform: scale(0.3); } 50% { transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
-            .delay-1 { animation-delay: 0.1s; opacity: 0; }
-            .delay-2 { animation-delay: 0.2s; opacity: 0; }
-            .delay-3 { animation-delay: 0.3s; opacity: 0; }
-            .delay-4 { animation-delay: 0.4s; opacity: 0; }
-            .delay-5 { animation-delay: 0.5s; opacity: 0; }
-            .gospel-option { transition: all 0.2s ease; }
-            .gospel-option:hover { transform: translateX(5px); border-color: var(--mission-gold) !important; }
-            .gospel-option:active { transform: scale(0.98); }
-            .gospel-correct { animation: correctPulse 0.5s ease-out forwards; }
-            .gospel-wrong { animation: wrongShake 0.5s ease-out forwards; }
-            @keyframes correctPulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); background: rgba(212, 160, 23, 0.22); } 100% { transform: scale(1); background: rgba(212, 160, 23, 0.14); } }
-            @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-            #gospelProgress { box-shadow: 0 0 10px var(--mission-gold); }
-            .gospel-btn-pulse { animation: btnPulse 2s infinite; }
-            @keyframes btnPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); } }
-            .gospel-modal-shell {
-                border: 1px solid var(--card-border);
-                background: var(--card-bg);
-                backdrop-filter: blur(8px);
+            #gospelModal {
+                position: fixed;
+                inset: 0;
+                z-index: 100;
+                background:
+                    radial-gradient(circle at top left, rgba(255, 215, 0, 0.14), transparent 28%),
+                    radial-gradient(circle at bottom right, rgba(122, 0, 0, 0.24), transparent 34%),
+                    linear-gradient(145deg, rgba(16, 6, 6, 0.97), rgba(34, 10, 10, 0.96));
+                backdrop-filter: blur(16px);
             }
-            .gospel-slide-stage {
-                background: var(--card-bg-solid);
-                border: 1px solid var(--card-border);
-                border-radius: 1.25rem;
-                padding: 1rem;
-                box-shadow: 0 18px 48px var(--shadow-color);
-                min-height: clamp(420px, 60vh, 560px);
+
+            #gospelModal.hidden {
+                display: none;
+            }
+
+            #gospelModal .gospel-overlay {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                background-image:
+                    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+                background-size: 32px 32px;
+                mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.7), transparent);
+            }
+
+            #gospelModal .gospel-shell {
+                position: relative;
+                z-index: 1;
+                height: 100%;
+                width: 100%;
+                display: flex;
+                align-items: stretch;
+                justify-content: center;
+                padding: clamp(0.75rem, 2vw, 1.5rem);
+            }
+
+            #gospelModal .gospel-frame {
+                width: min(1180px, 100%);
+                height: 100%;
+                border-radius: 28px;
+                overflow: hidden;
+                border: 1px solid rgba(255, 215, 0, 0.16);
+                background:
+                    linear-gradient(180deg, rgba(31, 10, 10, 0.9), rgba(22, 8, 8, 0.96)),
+                    rgba(23, 8, 8, 0.95);
+                box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+                display: grid;
+                grid-template-rows: auto 1fr;
+            }
+
+            body.light-mode #gospelModal .gospel-frame {
+                background:
+                    linear-gradient(180deg, rgba(255, 249, 240, 0.97), rgba(247, 240, 230, 0.98)),
+                    #f7f0e6;
+                border-color: rgba(123, 0, 0, 0.1);
+                box-shadow: 0 24px 70px rgba(123, 0, 0, 0.16);
+            }
+
+            #gospelModal .gospel-header {
                 display: flex;
                 align-items: center;
-                justify-content: center;
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 1rem 1.1rem;
+                border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+                background: rgba(17, 5, 5, 0.78);
+                backdrop-filter: blur(14px);
             }
-            body.light-mode .gospel-slide-stage {
-                background: #ffffff;
+
+            body.light-mode #gospelModal .gospel-header {
+                background: rgba(255, 255, 255, 0.82);
+                border-bottom-color: rgba(123, 0, 0, 0.08);
+            }
+
+            #gospelModal .gospel-heading-wrap {
+                display: flex;
+                align-items: center;
+                gap: 0.9rem;
+                min-width: 0;
+            }
+
+            #gospelModal .gospel-heading-mark {
+                width: 2.9rem;
+                height: 2.9rem;
+                border-radius: 1rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.18), rgba(255, 255, 255, 0.06));
+                color: var(--mission-gold);
+                font-size: 1.25rem;
+                flex-shrink: 0;
+            }
+
+            #gospelModal .gospel-heading-kicker {
+                display: block;
+                font-family: 'Bebas Neue', sans-serif;
+                font-size: 0.78rem;
+                letter-spacing: 0.22em;
+                color: var(--mission-gold);
+                text-transform: uppercase;
+            }
+
+            #gospelModal .gospel-heading-title {
+                display: block;
+                font-family: 'Cormorant Garamond', serif;
+                font-size: clamp(1.35rem, 2vw, 1.8rem);
+                font-weight: 600;
+                line-height: 1;
+                color: var(--text-color);
+            }
+
+            body.light-mode #gospelModal .gospel-heading-title {
+                color: #671818;
+            }
+
+            #gospelModal .gospel-heading-subtitle {
+                display: block;
+                margin-top: 0.1rem;
+                font-size: 0.78rem;
+                color: var(--text-muted);
+                max-width: 40rem;
+            }
+
+            #gospelModal .gospel-header-tools {
+                display: flex;
+                align-items: center;
+                gap: 0.55rem;
+                flex-shrink: 0;
+            }
+
+            #gospelModal .gospel-pill {
+                border-radius: 999px;
+                border: 1px solid rgba(255, 215, 0, 0.18);
+                background: rgba(255, 215, 0, 0.08);
+                color: var(--mission-gold);
+                padding: 0.45rem 0.85rem;
+                font-size: 0.72rem;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+            }
+
+            body.light-mode #gospelModal .gospel-pill {
+                border-color: rgba(123, 0, 0, 0.12);
+                background: rgba(123, 0, 0, 0.04);
+                color: #7b0000;
+            }
+
+            #gospelModal .gospel-close {
+                width: 2.6rem;
+                height: 2.6rem;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--text-color);
+                cursor: pointer;
+                transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+            }
+
+            #gospelModal .gospel-close:hover,
+            #gospelModal .gospel-close:focus-visible {
+                transform: translateY(-1px);
+                border-color: rgba(255, 215, 0, 0.32);
+                background: rgba(255, 255, 255, 0.08);
+                outline: none;
+            }
+
+            #gospelModal .gospel-body {
+                overflow-y: auto;
+                padding: 0 1.1rem 1.1rem;
+            }
+
+            #gospelModal .gospel-story {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                padding-top: 1rem;
+            }
+
+            #gospelModal .gospel-hero {
+                position: relative;
+                overflow: hidden;
+                border-radius: 30px;
+                padding: clamp(1.35rem, 4vw, 3.1rem);
+                background:
+                    radial-gradient(circle at top right, rgba(255, 215, 0, 0.18), transparent 26%),
+                    linear-gradient(135deg, rgba(72, 18, 18, 0.9), rgba(25, 8, 8, 0.98));
+                border: 1px solid rgba(255, 215, 0, 0.16);
+            }
+
+            body.light-mode #gospelModal .gospel-hero {
+                background:
+                    radial-gradient(circle at top right, rgba(212, 160, 23, 0.18), transparent 28%),
+                    linear-gradient(135deg, rgba(255, 247, 235, 0.98), rgba(246, 237, 228, 0.98));
+                border-color: rgba(123, 0, 0, 0.1);
+            }
+
+            #gospelModal .gospel-hero::after {
+                content: '';
+                position: absolute;
+                inset: auto -3rem -3rem auto;
+                width: 18rem;
+                height: 18rem;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(255, 215, 0, 0.12), transparent 70%);
+            }
+
+            #gospelModal .gospel-hero-copy {
+                position: relative;
+                z-index: 1;
+                max-width: 46rem;
+            }
+
+            #gospelModal .gospel-hero-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.08);
+                color: var(--mission-gold);
+                padding: 0.5rem 0.8rem;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.16em;
+            }
+
+            body.light-mode #gospelModal .gospel-hero-badge {
+                background: rgba(123, 0, 0, 0.05);
+                color: #8b0000;
+            }
+
+            #gospelModal .gospel-hero-title {
+                margin: 0.8rem 0 0;
+                font-family: 'Cormorant Garamond', serif;
+                font-size: clamp(2.3rem, 7vw, 4.9rem);
+                line-height: 0.95;
+                letter-spacing: -0.03em;
+                color: #fff6e8;
+            }
+
+            body.light-mode #gospelModal .gospel-hero-title {
+                color: #5d1111;
+            }
+
+            #gospelModal .gospel-hero-question {
+                margin: 0.85rem 0 0;
+                font-size: clamp(1rem, 2vw, 1.25rem);
+                line-height: 1.6;
+                color: rgba(255, 246, 232, 0.92);
+            }
+
+            body.light-mode #gospelModal .gospel-hero-question {
+                color: #582323;
+            }
+
+            #gospelModal .gospel-hero-lead {
+                margin: 0.75rem 0 0;
+                max-width: 39rem;
+                font-size: 0.95rem;
+                line-height: 1.75;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-jump {
+                margin-top: 1.2rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.7rem;
+            }
+
+            #gospelModal .gospel-jump-label {
+                font-family: 'Bebas Neue', sans-serif;
+                font-size: 0.82rem;
+                letter-spacing: 0.22em;
+                color: var(--mission-gold);
+                text-transform: uppercase;
+            }
+
+            #gospelModal .gospel-jump-grid {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.55rem;
+            }
+
+            #gospelModal .gospel-jump-btn,
+            #gospelModal .gospel-action-btn,
+            #gospelModal .gospel-panel-btn {
+                border: 1px solid transparent;
+                border-radius: 999px;
+                cursor: pointer;
+                transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+            }
+
+            #gospelModal .gospel-jump-btn {
+                padding: 0.68rem 1rem;
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text-color);
+                font-size: 0.8rem;
+            }
+
+            body.light-mode #gospelModal .gospel-jump-btn {
+                background: rgba(123, 0, 0, 0.04);
+                color: #622222;
+            }
+
+            #gospelModal .gospel-jump-btn:hover,
+            #gospelModal .gospel-jump-btn:focus-visible,
+            #gospelModal .gospel-action-btn:hover,
+            #gospelModal .gospel-action-btn:focus-visible,
+            #gospelModal .gospel-panel-btn:hover,
+            #gospelModal .gospel-panel-btn:focus-visible {
+                transform: translateY(-1px);
+                border-color: rgba(255, 215, 0, 0.28);
+                outline: none;
+            }
+
+            #gospelModal .gospel-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+                gap: 1rem;
+            }
+
+            #gospelModal .gospel-card,
+            #gospelModal .gospel-media-card,
+            #gospelModal .gospel-promise-card,
+            #gospelModal .gospel-formula-card,
+            #gospelModal .gospel-panel {
+                border-radius: 26px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                background: rgba(255, 255, 255, 0.035);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+            }
+
+            body.light-mode #gospelModal .gospel-card,
+            body.light-mode #gospelModal .gospel-media-card,
+            body.light-mode #gospelModal .gospel-promise-card,
+            body.light-mode #gospelModal .gospel-formula-card,
+            body.light-mode #gospelModal .gospel-panel {
+                border-color: rgba(123, 0, 0, 0.08);
+                background: rgba(255, 255, 255, 0.82);
+                box-shadow: 0 12px 28px rgba(123, 0, 0, 0.06);
+            }
+
+            #gospelModal .gospel-card {
+                padding: clamp(1rem, 2vw, 1.6rem);
+            }
+
+            #gospelModal .gospel-kicker {
+                display: inline-block;
+                font-family: 'Bebas Neue', sans-serif;
+                font-size: 0.8rem;
+                letter-spacing: 0.22em;
+                text-transform: uppercase;
+                color: var(--mission-gold);
+            }
+
+            body.light-mode #gospelModal .gospel-kicker {
+                color: #8b0000;
+            }
+
+            #gospelModal .gospel-section-title {
+                margin: 0.55rem 0 0;
+                font-family: 'Cormorant Garamond', serif;
+                font-size: clamp(1.8rem, 3vw, 2.7rem);
+                line-height: 1.05;
+                color: var(--text-color);
+            }
+
+            body.light-mode #gospelModal .gospel-section-title {
+                color: #631818;
+            }
+
+            #gospelModal .gospel-body-copy {
+                margin: 0.8rem 0 0;
+                font-size: 0.96rem;
+                line-height: 1.8;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-transition-copy {
+                margin-top: 1rem;
+                padding-left: 1rem;
+                border-left: 2px solid rgba(255, 215, 0, 0.3);
+                font-size: 0.92rem;
+                line-height: 1.75;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-verse-list,
+            #gospelModal .gospel-list,
+            #gospelModal .gospel-checklist {
+                margin: 1rem 0 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            #gospelModal .gospel-verse {
+                padding: 1rem;
+                border-radius: 20px;
+                background: rgba(0, 0, 0, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            body.light-mode #gospelModal .gospel-verse {
+                background: rgba(123, 0, 0, 0.03);
+                border-color: rgba(123, 0, 0, 0.06);
+            }
+
+            #gospelModal .gospel-verse-text {
+                margin: 0;
+                font-family: 'Instrument Serif', serif;
+                font-size: 1.02rem;
+                line-height: 1.7;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-verse-ref {
+                margin-top: 0.7rem;
+                font-size: 0.76rem;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: var(--mission-gold);
+            }
+
+            body.light-mode #gospelModal .gospel-verse-ref {
+                color: #8b0000;
+            }
+
+            #gospelModal .gospel-media-card {
+                padding: 0.7rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.7rem;
+            }
+
+            #gospelModal .gospel-media-card img {
+                width: 100%;
+                height: clamp(220px, 34vw, 430px);
+                object-fit: cover;
+                border-radius: 22px;
+                display: block;
+            }
+
+            #gospelModal .gospel-media-caption {
+                padding: 0.25rem 0.45rem 0.45rem;
+                font-size: 0.82rem;
+                line-height: 1.6;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-two-up {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.75rem;
+                margin-top: 1rem;
+            }
+
+            #gospelModal .gospel-mini-card {
+                padding: 0.95rem;
+                border-radius: 20px;
+                background: rgba(0, 0, 0, 0.18);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            body.light-mode #gospelModal .gospel-mini-card {
+                background: rgba(123, 0, 0, 0.03);
+                border-color: rgba(123, 0, 0, 0.05);
+            }
+
+            #gospelModal .gospel-mini-title {
+                font-size: 0.88rem;
+                font-weight: 700;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-mini-copy {
+                margin-top: 0.35rem;
+                font-size: 0.82rem;
+                line-height: 1.6;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-effort-grid {
+                margin-top: 1rem;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.7rem;
+            }
+
+            #gospelModal .gospel-effort {
+                position: relative;
+                padding: 0.95rem 1rem;
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                color: var(--text-color);
+                font-size: 0.92rem;
+                overflow: hidden;
+            }
+
+            #gospelModal .gospel-effort::after {
+                content: '';
+                position: absolute;
+                inset: 50% -10% auto -10%;
+                height: 2px;
+                background: linear-gradient(90deg, transparent, rgba(248, 113, 113, 0.85), transparent);
+                transform: rotate(-12deg);
+            }
+
+            body.light-mode #gospelModal .gospel-effort {
+                background: rgba(123, 0, 0, 0.04);
+                border-color: rgba(123, 0, 0, 0.06);
+                color: #5d1b1b;
+            }
+
+            #gospelModal .gospel-formula-grid {
+                margin-top: 1rem;
+                display: grid;
+                gap: 0.7rem;
+            }
+
+            #gospelModal .gospel-formula-card {
+                padding: 1rem 1.1rem;
+            }
+
+            #gospelModal .gospel-formula-card.correct {
+                border-color: rgba(255, 215, 0, 0.24);
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 255, 255, 0.04));
+            }
+
+            body.light-mode #gospelModal .gospel-formula-card.correct {
+                background: linear-gradient(135deg, rgba(212, 160, 23, 0.12), rgba(255, 255, 255, 0.88));
+            }
+
+            #gospelModal .gospel-formula-copy {
+                margin: 0;
+                font-size: 0.95rem;
+                line-height: 1.6;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-prayer-card {
+                position: relative;
+                margin-top: 1rem;
+                padding: clamp(1rem, 2vw, 1.5rem);
+                border-radius: 24px;
+                background:
+                    linear-gradient(145deg, rgba(255, 215, 0, 0.14), rgba(255, 255, 255, 0.03)),
+                    rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 215, 0, 0.18);
+            }
+
+            body.light-mode #gospelModal .gospel-prayer-card {
+                background: linear-gradient(145deg, rgba(212, 160, 23, 0.12), rgba(255, 255, 255, 0.92));
+                border-color: rgba(123, 0, 0, 0.08);
+            }
+
+            #gospelModal .gospel-prayer-text {
+                margin: 0;
+                font-family: 'Instrument Serif', serif;
+                font-size: 1.08rem;
+                line-height: 1.85;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-action-bar {
+                position: sticky;
+                bottom: 0;
+                margin-top: 1.1rem;
+                padding: 1rem;
+                border-radius: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                background: rgba(17, 5, 5, 0.92);
+                border: 1px solid rgba(255, 215, 0, 0.1);
+                backdrop-filter: blur(14px);
+            }
+
+            body.light-mode #gospelModal .gospel-action-bar {
+                background: rgba(255, 255, 255, 0.94);
+                border-color: rgba(123, 0, 0, 0.08);
+            }
+
+            #gospelModal .gospel-action-copy {
+                max-width: 36rem;
+            }
+
+            #gospelModal .gospel-action-title {
+                margin: 0;
+                font-size: 0.9rem;
+                font-weight: 700;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-action-note {
+                margin: 0.25rem 0 0;
+                font-size: 0.78rem;
+                line-height: 1.55;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-action-row,
+            #gospelModal .gospel-panel-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.65rem;
+            }
+
+            #gospelModal .gospel-action-btn,
+            #gospelModal .gospel-panel-btn {
+                padding: 0.82rem 1.15rem;
+                font-size: 0.84rem;
+                font-weight: 700;
+            }
+
+            #gospelModal .gospel-action-btn.primary,
+            #gospelModal .gospel-panel-btn.primary {
+                background: linear-gradient(135deg, rgba(255, 215, 0, 1), rgba(237, 176, 21, 0.96));
+                color: #350909;
+            }
+
+            #gospelModal .gospel-action-btn.secondary,
+            #gospelModal .gospel-panel-btn.secondary {
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text-color);
+                border-color: rgba(255, 255, 255, 0.08);
+            }
+
+            body.light-mode #gospelModal .gospel-action-btn.secondary,
+            body.light-mode #gospelModal .gospel-panel-btn.secondary {
+                background: rgba(123, 0, 0, 0.05);
+                color: #632020;
+                border-color: rgba(123, 0, 0, 0.08);
+            }
+
+            #gospelModal .gospel-panel-wrap {
+                display: grid;
+                place-items: center;
+                min-height: 100%;
+                padding: 1rem 0;
+            }
+
+            #gospelModal .gospel-panel {
+                width: min(760px, 100%);
+                padding: clamp(1.2rem, 3vw, 2rem);
+            }
+
+            #gospelModal .gospel-panel-title {
+                margin: 0.65rem 0 0;
+                font-family: 'Cormorant Garamond', serif;
+                font-size: clamp(2rem, 4vw, 3rem);
+                line-height: 0.98;
+                color: var(--text-color);
+            }
+
+            body.light-mode #gospelModal .gospel-panel-title {
+                color: #641919;
+            }
+
+            #gospelModal .gospel-panel-copy {
+                margin: 0.85rem 0 0;
+                font-size: 0.96rem;
+                line-height: 1.8;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-promise-grid {
+                margin-top: 1rem;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.75rem;
+            }
+
+            #gospelModal .gospel-promise-card {
+                padding: 1rem;
+            }
+
+            #gospelModal .gospel-promise-title {
+                font-size: 0.92rem;
+                font-weight: 700;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-promise-text {
+                margin-top: 0.45rem;
+                font-family: 'Instrument Serif', serif;
+                font-size: 0.96rem;
+                line-height: 1.7;
+                color: var(--text-color);
+            }
+
+            #gospelModal .gospel-promise-ref {
+                margin-top: 0.65rem;
+                font-size: 0.73rem;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--mission-gold);
+            }
+
+            body.light-mode #gospelModal .gospel-promise-ref {
+                color: #8b0000;
+            }
+
+            #gospelModal .gospel-panel-footnote {
+                margin-top: 1rem;
+                font-size: 0.76rem;
+                line-height: 1.6;
+                color: var(--text-muted);
+            }
+
+            #gospelModal .gospel-footer-note {
+                margin-top: 0.9rem;
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                text-align: right;
+            }
+
+            @media (max-width: 900px) {
+                #gospelModal .gospel-grid,
+                #gospelModal .gospel-promise-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 720px) {
+                #gospelModal .gospel-shell {
+                    padding: 0;
+                }
+
+                #gospelModal .gospel-frame {
+                    border-radius: 0;
+                }
+
+                #gospelModal .gospel-header {
+                    align-items: flex-start;
+                }
+
+                #gospelModal .gospel-heading-wrap {
+                    gap: 0.7rem;
+                }
+
+                #gospelModal .gospel-heading-mark {
+                    width: 2.55rem;
+                    height: 2.55rem;
+                }
+
+                #gospelModal .gospel-two-up,
+                #gospelModal .gospel-effort-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                #gospelModal .gospel-action-bar {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+
+                #gospelModal .gospel-action-row,
+                #gospelModal .gospel-panel-actions {
+                    flex-direction: column;
+                }
+
+                #gospelModal .gospel-action-btn,
+                #gospelModal .gospel-panel-btn {
+                    width: 100%;
+                    justify-content: center;
+                }
             }
         `;
         document.head.appendChild(style);
-    },
-
-    buildSlides() {
-        // Note: c() must be called inside render functions to get current language
-        const self = this;
-        
-        this.slides = [
-            // ========== SLIDE 1: INTRO ==========
-            {
-                type: 'intro',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-bounce text-6xl mb-4">❤️</div>
-                        <h1 class="gospel-fade-up delay-2 text-2xl font-display font-bold text-[var(--mission-gold)] mb-3">${self.c('intro.title')}</h1>
-                        <p class="gospel-fade-up delay-3 text-base text-[var(--text-color)] mb-4">${self.c('intro.subtitle')}</p>
-                        <p class="gospel-fade-up delay-4 text-xs text-[var(--text-muted)]">${self.c('intro.description')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 2: TRUTH 1 HEADER ==========
-            {
-                type: 'truth-header',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth1.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth1.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth1.subtitle')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 3: JOHN 3:16 ==========
-            {
-                type: 'verse',
-                getData: () => self.c('truth1.verse')
-            },
-
-            // ========== SLIDE 4: QUESTION 1 ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth1.q1')
-            },
-
-            // ========== SLIDE 5: QUESTION 2 ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth1.q2')
-            },
-
-            // ========== SLIDE 6: TRANSITION ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth1.transition')
-            },
-
-            // ========== SLIDE 7: TRUTH 2 HEADER ==========
-            {
-                type: 'truth-header',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth2.label')}</p>
-                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${self.c('truth2.intro')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth2.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth2.subtitle')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 8: ROMANS 3:23 ==========
-            {
-                type: 'verse',
-                image: 'assets/images/gospel/gospel_tract1.jpg',
-                getData: () => self.c('truth2.verse1')
-            },
-
-            // ========== SLIDE 9: QUESTION - WHO SINNED ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth2.q1')
-            },
-
-            // ========== SLIDE 10: TRANSITION - PRICE ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth2.transition1')
-            },
-
-            // ========== SLIDE 11: ROMANS 6:23 ==========
-            {
-                type: 'verse',
-                image: 'assets/images/gospel/gospel_tract2.jpg',
-                getData: () => self.c('truth2.verse2')
-            },
-
-            // ========== SLIDE 12: QUESTION - PAYMENT ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth2.q2')
-            },
-
-            // ========== SLIDE 13: TRANSITION - TWO DEATHS ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth2.transition2')
-            },
-
-            // ========== SLIDE 14: TWO KINDS OF DEATH ==========
-            {
-                type: 'custom',
-                render: () => {
-                    const d = self.c('truth2.twoDeaths');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-sm text-[var(--text-muted)] mb-4">${d.intro}</p>
-                        <div class="gospel-fade-up delay-2 flex justify-center gap-4 mb-4">
-                            <div class="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 text-center w-32">
-                                <p class="text-2xl mb-1">💀</p>
-                                <p class="text-xs text-[var(--text-color)] font-bold">${d.physical}</p>
-                                <p class="text-xs text-[var(--text-muted)]">${d.physicalSub}</p>
-                            </div>
-                            <div class="bg-[var(--card-bg)] border border-[var(--mission-gold)]/50 rounded-xl p-3 text-center w-32">
-                                <p class="text-2xl mb-1">👻</p>
-                                <p class="text-xs text-[var(--mission-gold)] font-bold">${d.spiritual}</p>
-                                <p class="text-xs text-[var(--text-muted)]">${d.spiritualSub}</p>
-                            </div>
-                        </div>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-color)]">${d.explanation}</p>
-                        <p class="gospel-fade-up delay-5 text-xs text-[var(--text-muted)] mt-2">${d.next}</p>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 15: REVELATION 21:8 ==========
-            {
-                type: 'verse',
-                getData: () => self.c('truth2.verse3')
-            },
-
-            // ========== SLIDE 16: QUESTION - SECOND DEATH ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth2.q3')
-            },
-
-            // ========== SLIDE 17: TRUTH 3 INTRO ==========
-            {
-                type: 'custom',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth3.label')}</p>
-                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${self.c('truth3.intro')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 18: PROVERBS 14:12 ==========
-            {
-                type: 'verse',
-                image: 'assets/images/gospel/gospel_tract3.jpg',
-                getData: () => self.c('truth3.verseHumanEffort')
-            },
-
-            // ========== SLIDE 19: HUMAN EFFORTS FAIL ==========
-            {
-                type: 'custom',
-                render: () => {
-                    const h = self.c('truth3.humanEfforts');
-                    return `
-                    <div class="flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-center text-sm text-[var(--text-muted)] mb-4">${h.intro}</p>
-                        <div class="grid grid-cols-2 gap-2 max-w-xs mx-auto mb-4">
-                            ${h.items.map((item, i) => `
-                                <div class="gospel-fade-up delay-${i+1} bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 rounded-xl p-2 text-center">
-                                    <p class="text-xs text-[var(--text-color)]">${item}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <p class="gospel-fade-up delay-5 text-center text-sm text-[var(--mission-red-bright)]">${h.fail}</p>
-                        <p class="gospel-fade-up delay-6 text-center text-xs text-[var(--text-muted)] mt-2">${h.explanation}</p>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 20: TRANSITION - HOW ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth3.transition')
-            },
-
-            // ========== SLIDE 21: JESUS IS THE WAY HEADER ==========
-            {
-                type: 'truth-header',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth3.label')}</p>
-                        <p class="gospel-fade-up delay-1 text-sm text-[var(--text-muted)] mb-3">${this.lang() === 'tl' ? 'Ang sagot sa ating tanong ay...' : 'The answer to our question is...'}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth3.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth3.subtitle')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 22: JOHN 14:6 ==========
-            {
-                type: 'verse',
-                image: 'assets/images/gospel/gospel_tract4.jpg',
-                getData: () => self.c('truth3.verse1')
-            },
-
-            // ========== SLIDE 23: QUESTION - ONLY WAY ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth3.q1')
-            },
-
-            // ========== SLIDE 24: TRANSITION - WHY JESUS ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth3.transition2')
-            },
-
-            // ========== SLIDE 25: 1 PETER 3:18 ==========
-            {
-                type: 'verse',
-                getData: () => self.c('truth3.verse2')
-            },
-
-            // ========== SLIDE 26: QUESTION - WHY DIED ==========
-            {
-                type: 'question',
-                getData: () => self.c('truth3.q2')
-            },
-
-            // ========== SLIDE 27: TRANSITION - SAVED YET? ==========
-            {
-                type: 'transition',
-                getData: () => self.c('truth3.transition3')
-            },
-
-            // ========== SLIDE 28: TRUTH 4 HEADER ==========
-            {
-                type: 'truth-header',
-                render: () => `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${self.c('truth4.label')}</p>
-                        <h2 class="gospel-scale-in delay-2 text-3xl font-bold text-[var(--text-color)] mb-3">${self.c('truth4.title')}</h2>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)]">${self.c('truth4.subtitle')}</p>
-                    </div>
-                `
-            },
-
-            // ========== SLIDE 29: EPHESIANS 2:8-9 ==========
-            {
-                type: 'verse',
-                getData: () => self.c('truth4.verse')
-            },
-
-            // ========== SLIDE 30: FORMULA QUESTION ==========
-            {
-                type: 'formula-question',
-                getData: () => self.c('truth4.formulaQ')
-            },
-
-            // ========== SLIDE 31: DECISION CHOICE ==========
-            {
-                type: 'decision-choice',
-                render: () => {
-                    const d = self.c('decision');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <h3 class="gospel-fade-in text-lg font-bold text-[var(--text-color)] mb-3">${d.question}</h3>
-                        <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-3">${d.summary}</p>
-                        <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-3 text-xs mb-4">
-                            ${d.points.map(p => `<p class="text-[var(--text-color)] mb-1">✅ ${p}</p>`).join('')}
-                        </div>
-                        <div class="gospel-fade-up delay-3 space-y-2">
-                            <button onclick="GospelPresentation.handleDecision('not-ready')" class="w-full px-4 py-3 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] rounded-xl text-sm">
-                                ${d.notReadyBtn}
-                            </button>
-                            <button onclick="GospelPresentation.handleDecision('yes')" class="w-full px-4 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm gospel-btn-pulse">
-                                ${d.yesBtn}
-                            </button>
-                        </div>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 32: NOT READY ==========
-            {
-                type: 'not-ready',
-                render: () => {
-                    const n = self.c('notReady');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-fade-in text-4xl mb-3">🙏</div>
-                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-3">${n.title}</h3>
-                        <div class="gospel-fade-up delay-2 text-left bg-[var(--card-bg)] rounded-xl p-4 text-sm">
-                            <p class="text-[var(--text-color)] mb-3">${n.message1}</p>
-                            <p class="text-[var(--text-color)] mb-3">${n.message2}</p>
-                            <p class="text-[var(--text-color)]">${n.message3}</p>
-                        </div>
-                        <button onclick="GospelPresentation.completeNotReady()" class="gospel-fade-up delay-3 mt-4 px-6 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
-                            ${n.continueBtn}
-                        </button>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 33: PRAYER INTRO ==========
-            {
-                type: 'prayer-intro',
-                render: () => {
-                    const p = self.c('prayer');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-bounce text-5xl mb-3">🙏</div>
-                        <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-3">${p.intro}</h3>
-                        <p class="gospel-fade-up delay-2 text-sm text-[var(--text-muted)]">${p.introSub}</p>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 34: PRAYER ==========
-            {
-                type: 'prayer',
-                render: () => {
-                    const p = self.c('prayer');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <h3 class="gospel-fade-in text-base font-bold text-[var(--text-color)] mb-2">${p.title}</h3>
-                        <p class="gospel-fade-up delay-1 text-xs text-[var(--text-muted)] mb-2">${p.instruction}</p>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-left mb-3">
-                            <p class="text-[var(--text-color)] leading-relaxed text-sm italic">${p.text}</p>
-                        </div>
-                        <p class="gospel-fade-up delay-3 text-sm text-[var(--text-color)] mb-3">${p.confirmQ}</p>
-                        <div class="gospel-fade-up delay-4 flex gap-3 justify-center">
-                            <button onclick="GospelPresentation.handlePrayerResponse('no')" class="px-6 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-muted)] rounded-xl text-sm">
-                                ${p.noBtn}
-                            </button>
-                            <button onclick="GospelPresentation.handlePrayerResponse('yes')" class="px-6 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
-                                ${p.yesBtn}
-                            </button>
-                        </div>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 35: NOT ACCEPTED (shown when user clicks "No") ==========
-            {
-                type: 'not-accepted',
-                render: () => {
-                    const p = self.c('prayer.notAccepted');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-bounce text-4xl mb-3">🙏</div>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] rounded-xl p-4 text-sm mb-4">
-                            <p class="text-[var(--text-color)] leading-relaxed">${p.message}</p>
-                        </div>
-                        <button onclick="GospelPresentation.next()" class="gospel-fade-up delay-3 px-6 py-3 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-sm">
-                            ${p.continueBtn}
-                        </button>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 36: CELEBRATION ==========
-            {
-                type: 'celebration',
-                render: () => {
-                    const cel = self.c('celebration');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <div class="gospel-bounce text-6xl mb-3">🎉</div>
-                        <h2 class="gospel-scale-in delay-2 text-2xl font-bold text-[var(--mission-gold)] mb-2">${cel.title}</h2>
-                        <p class="gospel-fade-up delay-3 text-lg text-[var(--text-color)] mb-4">${cel.subtitle}</p>
-                        <div class="gospel-fade-up delay-4 bg-[var(--card-bg)] rounded-xl p-4 text-sm">
-                            <p class="text-[var(--text-color)] leading-relaxed">${cel.message}</p>
-                            <p class="text-[var(--text-muted)] mt-3 text-xs">${cel.promisesIntro}</p>
-                        </div>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 36: PROMISE 1 ==========
-            {
-                type: 'promise',
-                render: () => {
-                    const p = self.c('promise1');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
-                            <p class="text-base italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
-                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
-                        </div>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 37: PROMISE 2 ==========
-            {
-                type: 'promise',
-                render: () => {
-                    const p = self.c('promise2');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 text-left">
-                            <p class="text-sm italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
-                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
-                        </div>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 38: PROMISE 3 ==========
-            {
-                type: 'promise',
-                render: () => {
-                    const p = self.c('promise3');
-                    return `
-                    <div class="text-center flex flex-col justify-center h-full">
-                        <p class="gospel-fade-in text-xs uppercase tracking-wider text-[var(--mission-gold)] mb-2">${p.label}</p>
-                        <h2 class="gospel-scale-in delay-1 text-xl font-bold text-[var(--text-color)] mb-4">${p.title}</h2>
-                        <div class="gospel-fade-up delay-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
-                            <p class="text-base italic text-[var(--text-color)] leading-relaxed">${p.verse}</p>
-                            <p class="text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${p.ref}</p>
-                        </div>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--text-muted)] mt-4">${p.footer}</p>
-                    </div>
-                `}
-            },
-
-            // ========== SLIDE 39: FINAL ==========
-            {
-                type: 'final',
-                render: () => {
-                    const f = self.c('final');
-                    return `
-                    <div class="text-center">
-                        <div class="gospel-bounce text-3xl mb-2">🌟</div>
-                        <h2 class="gospel-scale-in delay-1 text-lg font-bold text-[var(--mission-gold)] mb-2">${f.title}</h2>
-                        <p class="gospel-fade-up delay-2 text-xs text-[var(--text-color)] mb-2">${f.message1} <strong class="text-[var(--mission-gold)]">${f.keyword}</strong>.</p>
-                        <p class="gospel-fade-up delay-2 text-xs text-[var(--text-muted)] mb-2">${f.question}</p>
-                        <div class="gospel-fade-up delay-3 bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 rounded-xl p-3 text-xs text-left mb-2">
-                            <p class="text-[var(--mission-gold)] font-bold mb-1">${f.stepsTitle}</p>
-                            <p class="text-[var(--text-color)]">${f.step1}</p>
-                            <p class="text-[var(--text-color)]">${f.step2}</p>
-                            <p class="text-[var(--text-color)]">${f.step3}</p>
-                        </div>
-                        <p class="gospel-fade-up delay-3 text-xs text-[var(--text-muted)] mb-2">${f.footer}</p>
-                        <p class="gospel-fade-up delay-4 text-sm text-[var(--mission-gold)] font-bold mb-3">${f.excited}</p>
-                        <button onclick="GospelPresentation.complete()" class="gospel-fade-up delay-4 w-full py-4 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-xl text-lg shadow-lg hover:opacity-95 transition-opacity">
-                            ${f.button}
-                        </button>
-                    </div>
-                `}
-            }
-        ];
     },
 
     createModal() {
         const existing = document.getElementById('gospelModal');
         if (existing) existing.remove();
 
+        const copy = this.copy();
         const modal = document.createElement('div');
         modal.id = 'gospelModal';
-        modal.className = 'fixed inset-0 z-[100] bg-mission-sunset hidden';
-        
-        const audioBtn = window.GospelAudio ? window.GospelAudio.getButtonHTML() : '';
-        const headerTitle = this.lang() === 'tl' ? 'Ang Pag-ibig ng Diyos' : 'God\'s Love';
-        
+        modal.className = 'hidden';
         modal.innerHTML = `
-            <div class="h-full w-full max-w-3xl mx-auto md:px-4 md:py-4">
-                <div class="gospel-modal-shell mission-card rounded-none md:rounded-3xl overflow-hidden flex flex-col h-full">
-                    <div class="flex items-center justify-between p-4 border-b border-[var(--card-border)] bg-[var(--nav-bg)]/90 backdrop-blur-md">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">❤️</span>
-                            <span class="font-bold text-sm text-[var(--text-color)]">${headerTitle}</span>
+            <div class="gospel-overlay"></div>
+            <div class="gospel-shell">
+                <div class="gospel-frame">
+                    <div class="gospel-header">
+                        <div class="gospel-heading-wrap">
+                            <div class="gospel-heading-mark">✝</div>
+                            <div>
+                                <span class="gospel-heading-kicker">${copy.badge}</span>
+                                <span class="gospel-heading-title">${copy.title}</span>
+                                <span class="gospel-heading-subtitle">${copy.subtitle}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1">
-                            ${audioBtn}
-                            <button onclick="GospelPresentation.close()" class="p-2 text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <div class="gospel-header-tools">
+                            <span class="gospel-pill">${copy.languageBadge}</span>
+                            <button type="button" class="gospel-close" aria-label="${copy.ui.close}" onclick="GospelPresentation.close()">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"></path>
                                 </svg>
                             </button>
                         </div>
                     </div>
-                    <div class="h-1 bg-[var(--card-border)]">
-                        <div id="gospelProgress" class="h-full bg-[var(--mission-gold)] transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div id="gospelContent" class="flex-1 overflow-hidden p-4 sm:p-6 flex items-center justify-center"></div>
-                    <div class="p-3 border-t border-[var(--card-border)] bg-[var(--nav-bg)]/90 backdrop-blur-md flex items-center justify-between">
-                        <button onclick="GospelPresentation.prev()" id="gospelPrevBtn" class="px-4 py-2 bg-[var(--card-bg)] text-[var(--text-color)] border border-[var(--card-border)] rounded-lg text-sm transition-all hover:border-[var(--mission-gold)]/50">
-                            ${this.c('ui.back')}
-                        </button>
-                        <span id="gospelSlideNum" class="text-xs text-[var(--text-muted)]"></span>
-                        <button onclick="GospelPresentation.next()" id="gospelNextBtn" class="px-5 py-2 bg-[var(--mission-gold)] text-[var(--mission-red-deep)] font-bold rounded-lg text-sm transition-all hover:opacity-90">
-                            ${this.c('ui.next')}
-                        </button>
-                    </div>
+                    <div id="gospelPresentationBody" class="gospel-body custom-scrollbar"></div>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
     },
 
-    showSlide(index) {
-        if (index < 0 || index >= this.totalSlides) return;
-        
-        const content = document.getElementById('gospelContent');
-        const oldSlide = content.firstChild;
-        
-        if (oldSlide) {
-            oldSlide.classList.add('gospel-slide-exit');
-            setTimeout(() => this.renderNewSlide(index), 200);
-        } else {
-            this.renderNewSlide(index);
-        }
-    },
+    renderView() {
+        const body = document.getElementById('gospelPresentationBody');
+        if (!body) return;
 
-    renderNewSlide(index) {
-        this.currentSlide = index;
-        const slide = this.slides[index];
-        const content = document.getElementById('gospelContent');
-        const progress = document.getElementById('gospelProgress');
-        const prevBtn = document.getElementById('gospelPrevBtn');
-        const nextBtn = document.getElementById('gospelNextBtn');
-        const slideNum = document.getElementById('gospelSlideNum');
-        
-        progress.style.width = ((index + 1) / this.totalSlides * 100) + '%';
-        slideNum.textContent = `${index + 1}/${this.totalSlides}`;
-        prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
-        
-        if (window.GospelAudio) {
-            window.GospelAudio.playForSlide(index);
-        }
-        
-        let html = '';
-        
-        switch (slide.type) {
-            case 'verse':
-                html = this.renderVerse(slide);
-                nextBtn.style.display = 'flex';
-                nextBtn.textContent = this.c('ui.next');
-                break;
-            case 'question':
-            case 'formula-question':
-                html = this.renderQuestion(slide);
-                nextBtn.style.display = 'none';
-                break;
-            case 'transition':
-                html = this.renderTransition(slide);
-                nextBtn.style.display = 'flex';
-                nextBtn.textContent = this.c('ui.next');
-                break;
-            case 'decision-choice':
-            case 'not-ready':
+        switch (this.view) {
             case 'prayer':
-            case 'not-accepted':
-                html = slide.render();
-                nextBtn.style.display = 'none';
+                body.innerHTML = this.renderPrayerView();
                 break;
-            case 'prayer-intro':
-                html = slide.render();
-                nextBtn.style.display = 'flex';
-                nextBtn.textContent = this.c('ui.next');
+            case 'not-ready':
+                body.innerHTML = this.renderNotReadyView();
                 break;
             case 'celebration':
-            case 'promise':
-            case 'truth-header':
-            case 'intro':
-            case 'final':
-            case 'custom':
-                html = slide.render();
-                nextBtn.style.display = slide.type === 'final' ? 'none' : 'flex';
-                nextBtn.textContent = this.c('ui.next');
+                body.innerHTML = this.renderCelebrationView();
                 break;
+            case 'story':
             default:
-                html = slide.render ? slide.render() : '';
-                nextBtn.style.display = 'flex';
+                body.innerHTML = this.renderStoryView();
+                break;
         }
-        
-        content.innerHTML = `<div class="w-full max-w-lg gospel-slide-enter gospel-slide-stage"><div class="w-full">${html}</div></div>`;
+
+        body.scrollTop = 0;
     },
 
-    renderVerse(slide) {
-        const data = slide.getData ? slide.getData() : slide.verse;
-        const imageHtml = slide.image ? 
-            `<img src="${slide.image}" class="gospel-scale-in h-24 w-auto mx-auto mb-3 rounded-xl object-contain" onerror="this.style.display='none'">` : '';
-        
+    renderStoryView() {
+        const copy = this.copy();
+        const t1 = copy.truth1;
+        const t2 = copy.truth2;
+        const t3 = copy.truth3;
+        const t4 = copy.truth4;
+
         return `
-            <div class="text-center flex flex-col justify-center h-full">
-                ${imageHtml}
-                <div class="gospel-fade-up ${slide.image ? 'delay-2' : ''} bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
-                    <p class="text-base italic text-[var(--text-color)] leading-relaxed">${data.text}</p>
-                    <p class="gospel-fade-in delay-3 text-right text-[var(--mission-gold)] text-sm font-bold mt-3">${data.ref}</p>
+            <div class="gospel-story">
+                <section class="gospel-hero">
+                    <div class="gospel-hero-copy">
+                        <div class="gospel-hero-badge">
+                            <span>${copy.badge}</span>
+                            <span>•</span>
+                            <span>${copy.languageBadge}</span>
+                        </div>
+                        <h1 class="gospel-hero-title">${copy.title}</h1>
+                        <p class="gospel-hero-question">${copy.heroQuestion}</p>
+                        <p class="gospel-hero-lead">${copy.heroLead}</p>
+                        <div class="gospel-jump">
+                            <div class="gospel-jump-label">${copy.jumpLabel}</div>
+                            <div class="gospel-jump-grid">
+                                ${copy.jumps.map((jump) => `
+                                    <button type="button" class="gospel-jump-btn" onclick="GospelPresentation.jumpToSection('${jump.id}')">${jump.label}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="gospel-grid" data-section="truth1">
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${t1.kicker}</span>
+                        <h2 class="gospel-section-title">${t1.title}</h2>
+                        <p class="gospel-body-copy">${t1.body}</p>
+                        <div class="gospel-verse-list">
+                            ${t1.verses.map((verse) => this.renderVerse(verse)).join('')}
+                        </div>
+                        <p class="gospel-transition-copy">${t1.transition}</p>
+                    </article>
+                    <aside class="gospel-media-card">
+                        <img src="assets/images/gospel/gospel_tract1.jpg" alt="${copy.title}" onerror="this.style.display='none'">
+                        <div class="gospel-media-caption">${copy.subtitle}</div>
+                    </aside>
+                </section>
+
+                <section class="gospel-grid" data-section="truth2">
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${t2.kicker}</span>
+                        <h2 class="gospel-section-title">${t2.title}</h2>
+                        <p class="gospel-body-copy">${t2.body}</p>
+                        <div class="gospel-verse-list">
+                            ${t2.verses.map((verse) => this.renderVerse(verse)).join('')}
+                        </div>
+                        <div class="gospel-two-up">
+                            ${t2.deaths.map((death) => `
+                                <div class="gospel-mini-card">
+                                    <div class="gospel-mini-title">${death.title}</div>
+                                    <div class="gospel-mini-copy">${death.body}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="gospel-transition-copy"><strong>${t2.deathTitle}</strong><br>${t2.bridgeLead}</p>
+                    </article>
+                    <aside class="gospel-media-card">
+                        <img src="assets/images/gospel/gospel_tract2.jpg" alt="${t2.title}" onerror="this.style.display='none'">
+                        <div class="gospel-media-caption">${t2.body}</div>
+                    </aside>
+                </section>
+
+                <section class="gospel-grid" data-section="truth3">
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${t3.kicker}</span>
+                        <h2 class="gospel-section-title">${t3.title}</h2>
+                        <p class="gospel-body-copy">${t3.body}</p>
+                        <div class="gospel-body-copy"><strong>${t3.effortsTitle}</strong></div>
+                        <div class="gospel-effort-grid">
+                            ${t3.efforts.map((effort) => `<div class="gospel-effort">${effort}</div>`).join('')}
+                        </div>
+                        <div class="gospel-verse-list">
+                            ${t3.verses.map((verse) => this.renderVerse(verse)).join('')}
+                        </div>
+                        <p class="gospel-transition-copy">${t3.bridgeSummary}</p>
+                    </article>
+                    <aside class="gospel-media-card">
+                        <img src="assets/images/gospel/gospel_tract4.jpg" alt="${t3.title}" onerror="this.style.display='none'">
+                        <div class="gospel-media-caption">${t3.body}</div>
+                    </aside>
+                </section>
+
+                <section class="gospel-grid" data-section="truth4">
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${t4.kicker}</span>
+                        <h2 class="gospel-section-title">${t4.title}</h2>
+                        <p class="gospel-body-copy">${t4.body}</p>
+                        <div class="gospel-verse-list">
+                            ${this.renderVerse(t4.verse)}
+                        </div>
+                    </article>
+                    <aside class="gospel-card">
+                        <span class="gospel-kicker">${t4.formulaTitle}</span>
+                        <div class="gospel-formula-grid">
+                            ${t4.formulas.map((formula, index) => `
+                                <div class="gospel-formula-card ${index === 2 ? 'correct' : ''}">
+                                    <p class="gospel-formula-copy">${formula}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="gospel-body-copy">${t4.formulaAnswer}</p>
+                    </aside>
+                </section>
+
+                <section class="gospel-card" data-section="prayer">
+                    <span class="gospel-kicker">${copy.prayer.kicker}</span>
+                    <h2 class="gospel-section-title">${copy.prayer.title}</h2>
+                    <p class="gospel-body-copy">${copy.prayer.lead}</p>
+                    <div class="gospel-prayer-card">
+                        <p class="gospel-prayer-text">${copy.prayer.text}</p>
+                    </div>
+                    <div class="gospel-action-bar">
+                        <div class="gospel-action-copy">
+                            <p class="gospel-action-title">${copy.prayer.readyLabel}</p>
+                            <p class="gospel-action-note">${copy.prayer.readyCopy}</p>
+                        </div>
+                        <div class="gospel-action-row">
+                            <button type="button" class="gospel-action-btn secondary" onclick="GospelPresentation.openNotReady()">${copy.decisions.storySecondary}</button>
+                            <button type="button" class="gospel-action-btn primary" onclick="GospelPresentation.openPrayer()">${copy.decisions.storyPrimary}</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="gospel-grid">
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${copy.promises.kicker}</span>
+                        <h2 class="gospel-section-title">${copy.promises.title}</h2>
+                        <div class="gospel-list">
+                            ${copy.promises.items.map((item) => `
+                                <div class="gospel-verse">
+                                    <div class="gospel-mini-title">${item.title}</div>
+                                    <p class="gospel-verse-text">${item.text}</p>
+                                    <div class="gospel-verse-ref">${item.ref}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </article>
+                    <article class="gospel-card">
+                        <span class="gospel-kicker">${copy.nextSteps.kicker}</span>
+                        <h2 class="gospel-section-title">${copy.nextSteps.title}</h2>
+                        <div class="gospel-checklist">
+                            ${copy.nextSteps.items.map((item) => `
+                                <div class="gospel-mini-card">
+                                    <div class="gospel-mini-title">•</div>
+                                    <div class="gospel-mini-copy">${item}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="gospel-footer-note">${copy.ui.footerNote}</div>
+                    </article>
+                </section>
+            </div>
+        `;
+    },
+
+    renderPrayerView() {
+        const copy = this.copy();
+        return `
+            <div class="gospel-panel-wrap">
+                <div class="gospel-panel">
+                    <span class="gospel-kicker">${copy.prayer.kicker}</span>
+                    <h2 class="gospel-panel-title">${copy.decisions.prayerTitle}</h2>
+                    <p class="gospel-panel-copy">${copy.prayer.lead}</p>
+                    <div class="gospel-prayer-card">
+                        <p class="gospel-prayer-text">${copy.prayer.text}</p>
+                    </div>
+                    <p class="gospel-panel-copy">${copy.decisions.prayerPrompt}</p>
+                    <div class="gospel-panel-actions">
+                        <button type="button" class="gospel-panel-btn secondary" onclick="GospelPresentation.handlePrayerResponse('no')">${copy.decisions.prayerSecondary}</button>
+                        <button type="button" class="gospel-panel-btn primary" onclick="GospelPresentation.handlePrayerResponse('yes')">${copy.decisions.prayerPrimary}</button>
+                        <button type="button" class="gospel-panel-btn secondary" onclick="GospelPresentation.backToStory()">${copy.decisions.backToStory}</button>
+                    </div>
                 </div>
             </div>
         `;
     },
 
-    renderQuestion(slide) {
-        const data = slide.getData ? slide.getData() : slide;
-        const options = data.options.map((opt, i) => {
-            const text = typeof opt === 'string' ? opt : opt.text;
-            return `
-            <button 
-                onclick="GospelPresentation.answerQuestion(${i}, ${i === data.correctIndex})"
-                class="gospel-option gospel-fade-up delay-${i + 3} w-full text-left p-3 bg-[var(--card-bg)] border-2 border-[var(--card-border)] rounded-xl text-sm mb-2 flex items-center gap-3"
-                data-index="${i}"
-            >
-                <span class="w-7 h-7 rounded-full bg-[var(--card-border)] flex items-center justify-center text-sm font-bold flex-shrink-0">${String.fromCharCode(65 + i)}</span>
-                <span>${text}</span>
-            </button>
-        `}).join('');
-        
-        const questionLabel = this.lang() === 'tl' ? 'Tanong:' : 'Question:';
-        
+    renderNotReadyView() {
+        const copy = this.copy();
         return `
-            <div class="flex flex-col justify-center h-full">
-                <p class="gospel-fade-in text-xs text-[var(--mission-gold)] mb-1 text-center">${questionLabel}</p>
-                <h3 class="gospel-fade-up delay-1 text-lg font-bold text-[var(--text-color)] mb-4 text-center">${data.question}</h3>
-                <div id="questionOptions">${options}</div>
-                <div id="questionFeedback" class="hidden mt-3 p-3 rounded-xl text-sm"></div>
+            <div class="gospel-panel-wrap">
+                <div class="gospel-panel">
+                    <span class="gospel-kicker">${copy.decisions.storySecondary}</span>
+                    <h2 class="gospel-panel-title">${copy.decisions.notReadyTitle}</h2>
+                    <p class="gospel-panel-copy">${copy.decisions.notReadyBody}</p>
+                    <div class="gospel-panel-actions">
+                        <button type="button" class="gospel-panel-btn secondary" onclick="GospelPresentation.backToStory()">${copy.decisions.backToStory}</button>
+                        <button type="button" class="gospel-panel-btn primary" onclick="GospelPresentation.completeNotReady()">${copy.decisions.notReadyContinue}</button>
+                    </div>
+                </div>
             </div>
         `;
     },
 
-    renderTransition(slide) {
-        const data = slide.getData ? slide.getData() : slide;
+    renderCelebrationView() {
+        const copy = this.copy();
         return `
-            <div class="text-center flex flex-col justify-center h-full">
-                <div class="gospel-bounce text-4xl mb-3">${data.emoji}</div>
-                <h3 class="gospel-fade-up delay-2 text-xl font-bold text-[var(--text-color)] mb-3">${data.title}</h3>
-                <p class="gospel-fade-up delay-3 text-sm text-[var(--text-muted)] mb-3">${data.text}</p>
-                <p class="gospel-fade-up delay-4 text-lg text-[var(--mission-gold)] font-bold">${data.highlight}</p>
+            <div class="gospel-panel-wrap">
+                <div class="gospel-panel">
+                    <span class="gospel-kicker">${copy.promises.kicker}</span>
+                    <h2 class="gospel-panel-title">${copy.decisions.celebrationTitle}</h2>
+                    <p class="gospel-panel-copy">${copy.decisions.celebrationBody}</p>
+                    <div class="gospel-promise-grid">
+                        ${copy.promises.items.map((item) => `
+                            <div class="gospel-promise-card">
+                                <div class="gospel-promise-title">${item.title}</div>
+                                <div class="gospel-promise-text">${item.text}</div>
+                                <div class="gospel-promise-ref">${item.ref}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="gospel-panel-footnote">${copy.nextSteps.items.join(' ')}</p>
+                    <div class="gospel-panel-actions">
+                        <button type="button" class="gospel-panel-btn primary" onclick="GospelPresentation.complete()">${copy.decisions.celebrationButton}</button>
+                    </div>
+                </div>
             </div>
         `;
     },
 
-    answerQuestion(selectedIndex, isCorrect) {
-        const slide = this.slides[this.currentSlide];
-        const data = slide.getData ? slide.getData() : slide;
-        const options = document.querySelectorAll('.gospel-option');
-        const feedback = document.getElementById('questionFeedback');
-        const nextBtn = document.getElementById('gospelNextBtn');
-        
-        options.forEach((opt, i) => {
-            opt.disabled = true;
-            opt.classList.remove('gospel-option');
-            
-            if (i === selectedIndex) {
-                if (isCorrect) {
-                    opt.classList.add('gospel-correct');
-                    opt.style.borderColor = 'var(--mission-gold)';
-                    opt.style.background = 'rgba(212, 160, 23, 0.12)';
-                } else {
-                    opt.classList.add('gospel-wrong');
-                    opt.style.borderColor = 'var(--mission-red-bright)';
-                    opt.style.background = 'rgba(122, 0, 0, 0.10)';
-                }
-            }
-            if (i === data.correctIndex && !isCorrect) {
-                setTimeout(() => {
-                    opt.style.borderColor = 'var(--mission-gold)';
-                }, 500);
-            }
-        });
-        
-        feedback.classList.remove('hidden');
-        feedback.classList.add('gospel-fade-up');
-        
-        if (isCorrect) {
-            feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-[var(--mission-gold)]/10 border border-[var(--mission-gold)]/30 text-[var(--text-color)]';
-            feedback.innerHTML = data.correctFeedback;
-            // Play correct answer audio
-            if (window.GospelAudio) {
-                window.GospelAudio.playCorrect(this.currentSlide);
-            }
-        } else {
-            if (data.wrongExplanation) {
-                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-xs bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-color)] max-h-48 overflow-y-auto';
-                feedback.innerHTML = data.wrongExplanation;
-            } else {
-                feedback.className = 'gospel-fade-up mt-3 p-3 rounded-xl text-sm bg-[var(--mission-red-bright)]/10 border border-[var(--mission-red-bright)]/30 text-[var(--text-color)]';
-                feedback.innerHTML = data.wrongFeedback;
-            }
-            // Play wrong answer audio
-            if (window.GospelAudio) {
-                window.GospelAudio.playWrong(this.currentSlide);
-            }
-        }
-        
-        setTimeout(() => {
-            nextBtn.style.display = 'flex';
-            nextBtn.textContent = this.c('ui.continue');
-            nextBtn.classList.add('gospel-btn-pulse');
-        }, 800);
+    renderVerse(verse) {
+        return `
+            <div class="gospel-verse">
+                <p class="gospel-verse-text">${verse.text}</p>
+                <div class="gospel-verse-ref">${verse.ref}</div>
+            </div>
+        `;
     },
 
-    next() {
-        const nextBtn = document.getElementById('gospelNextBtn');
-        nextBtn.classList.remove('gospel-btn-pulse');
-        
-        if (this.currentSlide < this.totalSlides - 1) {
-            this.showSlide(this.currentSlide + 1);
+    jumpToSection(sectionId) {
+        if (this.view !== 'story') {
+            this.view = 'story';
+            this.renderView();
+        }
+
+        const body = document.getElementById('gospelPresentationBody');
+        const section = body?.querySelector(`[data-section="${sectionId}"]`);
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     },
 
-    prev() {
-        if (this.currentSlide > 0) {
-            this.showSlide(this.currentSlide - 1);
-        }
+    openPrayer() {
+        this.followUpDeclined = false;
+        this.view = 'prayer';
+        this.renderView();
+    },
+
+    openNotReady() {
+        this.followUpDeclined = false;
+        this.view = 'not-ready';
+        this.renderView();
+    },
+
+    backToStory() {
+        this.followUpDeclined = false;
+        this.view = 'story';
+        this.renderView();
     },
 
     async handleDecision(choice) {
         if (choice === 'not-ready') {
+            this.openNotReady();
+        } else {
+            this.openPrayer();
+        }
+    },
+
+    async completeNotReady() {
+        localStorage.setItem('gospelViewed', 'true');
+
+        if (this.followUpDeclined) {
+            localStorage.setItem('gospelStatus', 'needs-followup');
+        } else {
+            localStorage.setItem('gospelStatus', 'not-ready');
             try {
                 const user = window.auth?.currentUser;
                 if (user && window.db) {
@@ -830,19 +1496,11 @@ const GospelPresentation = {
                         'gospelDecision.status': 'not-ready'
                     });
                 }
-            } catch (e) { console.error(e); }
-            
-            localStorage.setItem('gospelStatus', 'not-ready');
-            const notReadyIndex = this.slides.findIndex(s => s.type === 'not-ready');
-            if (notReadyIndex !== -1) this.showSlide(notReadyIndex);
-        } else if (choice === 'yes') {
-            const prayerIntroIndex = this.slides.findIndex(s => s.type === 'prayer-intro');
-            if (prayerIntroIndex !== -1) this.showSlide(prayerIntroIndex);
+            } catch (error) {
+                console.error(error);
+            }
         }
-    },
 
-    completeNotReady() {
-        localStorage.setItem('gospelViewed', 'true');
         this.close();
         if (typeof NextStepsModal !== 'undefined') {
             setTimeout(() => NextStepsModal.open(), 500);
@@ -860,42 +1518,47 @@ const GospelPresentation = {
                         'gospelDecision.respondedAt': firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
-            } catch (e) { console.error(e); }
-            
+            } catch (error) {
+                console.error(error);
+            }
+
             localStorage.setItem('gospelStatus', 'needs-followup');
-            // Show the not-accepted slide instead of closing
-            const notAcceptedIndex = this.slides.findIndex(s => s.type === 'not-accepted');
-            if (notAcceptedIndex !== -1) this.showSlide(notAcceptedIndex);
-        } else if (response === 'yes') {
-            localStorage.setItem('gospelCompleted', 'true');
-            localStorage.setItem('prayerPrayed', 'true');
-            localStorage.setItem('savedDate', new Date().toISOString());
-            
-            try {
-                const user = window.auth?.currentUser;
-                if (user && window.db) {
-                    await window.db.collection('users').doc(user.uid).update({
-                        'gospelDecision.accepted': true,
-                        'gospelDecision.acceptedAt': firebase.firestore.FieldValue.serverTimestamp(),
-                        'gospelDecision.status': 'saved',
-                        'stage': 'disciple'
-                    });
-                    
-                    await window.db.collection('stats').doc('gospel').set({
-                        savedCount: firebase.firestore.FieldValue.increment(1),
-                        lastSavedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                }
-            } catch (e) { console.error(e); }
-            
-            const celebrationIndex = this.slides.findIndex(s => s.type === 'celebration');
-            if (celebrationIndex !== -1) this.showSlide(celebrationIndex);
+            this.followUpDeclined = true;
+            this.view = 'not-ready';
+            this.renderView();
+            return;
         }
+
+        localStorage.setItem('gospelCompleted', 'true');
+        localStorage.setItem('prayerPrayed', 'true');
+        localStorage.setItem('savedDate', new Date().toISOString());
+
+        try {
+            const user = window.auth?.currentUser;
+            if (user && window.db) {
+                await window.db.collection('users').doc(user.uid).update({
+                    'gospelDecision.accepted': true,
+                    'gospelDecision.acceptedAt': firebase.firestore.FieldValue.serverTimestamp(),
+                    'gospelDecision.status': 'saved',
+                    stage: 'disciple'
+                });
+
+                await window.db.collection('stats').doc('gospel').set({
+                    savedCount: firebase.firestore.FieldValue.increment(1),
+                    lastSavedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            }
+        } catch (error) {
+            console.error(error);
+        }
+
+        this.view = 'celebration';
+        this.renderView();
     },
 
     async complete() {
         localStorage.setItem('gospelCompleted', 'true');
-        
+
         try {
             const user = window.auth?.currentUser;
             if (user && window.db) {
@@ -904,10 +1567,11 @@ const GospelPresentation = {
                     'gospelDecision.completedAt': firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
-        } catch (e) { console.error(e); }
-        
+        } catch (error) {
+            console.error(error);
+        }
+
         this.close();
-        
         if (typeof NextStepsModal !== 'undefined') {
             setTimeout(() => NextStepsModal.open(), 500);
         }
