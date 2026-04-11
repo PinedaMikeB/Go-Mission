@@ -1,10 +1,10 @@
 {
-  "translation": "ANG_DATING_BIBLIA_1905",
-  "name": "Ang Dating Biblia (1905)",
+  "translation": "TAGALOG_WEB",
+  "name": "Tagalog WEB",
   "language": "tl",
   "languageName": "Tagalog",
-  "license": "Public Domain",
-  "source": "GetBible API",
+  "license": "Unspecified",
+  "source": "bible_verses_web SQL import",
   "books": [
     {
       "id": "GEN",

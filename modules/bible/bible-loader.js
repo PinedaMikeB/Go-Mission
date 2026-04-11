@@ -1,7 +1,7 @@
 /**
  * Go Mission - Bible Loader Module
  * Loads Bible text, commentary, and Quick Insights from local JSON files
- * Supports both English (BSB) and Tagalog (ADB 1905)
+ * Supports both English (BSB) and Tagalog (Tagalog WEB)
  * 
  * Data locations:
  * - Bible EN: /modules/bible/data/en/{BOOK}.json

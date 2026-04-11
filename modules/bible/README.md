@@ -22,7 +22,7 @@ modules/bible/
 ├── bible-reader.js        # Chapter display + highlighting ✅
 ├── data/
     ├── en/                # English BSB (66 books) ✅
-    ├── tl/                # Tagalog ADB 1905 (66 books) ✅
+    ├── tl/                # Tagalog WEB (66 books) ✅
     ├── commentary/
     │   └── tyndale-json/  # Tyndale Study Notes (66 books) ✅
     └── quick-insights/    # AI-generated insights (66 books) ✅
@@ -34,7 +34,7 @@ modules/bible/
 | Data | Source | Status |
 |------|--------|--------|
 | English Bible (BSB) | HelloAO API | ✅ 66/66 |
-| Tagalog Bible (ADB 1905) | GetBible API | ✅ 66/66 |
+| Tagalog Bible (Tagalog WEB) | `bible_verses_web` SQL import | ✅ 66/66 |
 | Tyndale Study Notes | tyndaleopenresources.com | ✅ 66/66 |
 | Quick Insights files (EN+TL) | GPT-4o-mini + Tyndale | ✅ 66/66 books |
 
