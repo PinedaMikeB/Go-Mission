@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['OBA'] = {
   "id": "OBA",
   "name": "Obadiah",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T10:37:04.949Z",
   "chapters": {
     "1": {
@@ -305,6 +305,7 @@
         }
       }
     }
-  }
+  },
+  "book": "OBA"
 };
 })();

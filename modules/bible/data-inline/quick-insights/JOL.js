@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['JOL'] = {
   "id": "JOL",
   "name": "Joel",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T10:54:49.306Z",
   "chapters": {
     "1": {
@@ -1041,6 +1041,7 @@
         }
       }
     }
-  }
+  },
+  "book": "JOL"
 };
 })();

@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['2PE'] = {
   "id": "2PE",
   "name": "2 Peter",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-26T09:37:40.510Z",
   "chapters": {
     "1": {
@@ -873,6 +873,7 @@
         }
       }
     }
-  }
+  },
+  "book": "2PE"
 };
 })();

@@ -3,7 +3,7 @@
 ## Purpose
 Spirit-led Bible reading with verse highlighting, auto-commentary, and progress tracking.
 
-## Status: ✅ Core Complete | ✅ Quick Insights Files 66/66 Books | ⚠️ Verse Coverage Partial
+## Status: ✅ Core Complete | ✅ Quick Insights Files 66/66 Books | ✅ Verse Coverage Complete
 
 ## Philosophy
 > "Let the Holy Spirit speak - stop where prompted, highlight it, read commentary, then reflect."
@@ -36,9 +36,9 @@ modules/bible/
 | English Bible (BSB) | HelloAO API | ✅ 66/66 |
 | Tagalog Bible (Tagalog WEB) | `bible_verses_web` SQL import | ✅ 66/66 |
 | Tyndale Study Notes | tyndaleopenresources.com | ✅ 66/66 |
-| Quick Insights files (EN+TL) | GPT-4o-mini + Tyndale | ✅ 66/66 books |
+| Quick Insights files (EN+TL) | GPT-5 mini + local commentary | ✅ 66/66 books |
 
-### Quick Insights Progress (Generated via GPT-4o-mini)
+### Quick Insights Progress (Generated via GPT-5 mini)
 **✅ File coverage (66 canonical books):**
 - **Old Testament (39 books):** Genesis, Exodus, Leviticus, Numbers, Deuteronomy, Joshua, Judges, Ruth, 1 Samuel, 2 Samuel, 1 Kings, 2 Kings, 1 Chronicles, 2 Chronicles, Ezra, Nehemiah, Esther, Job, Psalms, Proverbs, Ecclesiastes, Song of Solomon, Isaiah, Jeremiah, Lamentations, Ezekiel, Daniel, Hosea, Joel, Amos, Obadiah, Jonah, Micah, Nahum, Habakkuk, Zephaniah, Haggai, Zechariah, Malachi
 - **New Testament (27 books):** Matthew, Mark, Luke, John, Acts, Romans, 1 & 2 Corinthians, Galatians, Ephesians, Philippians, Colossians, 1 & 2 Thessalonians, 1 & 2 Timothy, Titus, Philemon, Hebrews, James, 1 & 2 Peter, 1, 2 & 3 John, Jude, Revelation
@@ -46,7 +46,8 @@ modules/bible/
 **Actual module coverage:**
 - JSON quick-insight files: 66/66 canonical loader books
 - Inline quick-insights fallback bundles: 66/66 canonical loader books
-- Verse-level insight coverage is still partial in many books. Audit with `scripts/audit-quick-insights.js`.
+- Verse-level insight coverage: complete for all canonical verses in the current loader set.
+- Audit with `scripts/audit-quick-insights.js`.
 
 ## Quick Insights System
 

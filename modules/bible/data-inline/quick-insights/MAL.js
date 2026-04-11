@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['MAL'] = {
   "id": "MAL",
   "name": "Malachi",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-24T09:44:46.612Z",
   "chapters": {
     "1": {
@@ -793,6 +793,7 @@
         }
       }
     }
-  }
+  },
+  "book": "MAL"
 };
 })();

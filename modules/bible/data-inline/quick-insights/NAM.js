@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['NAM'] = {
   "id": "NAM",
   "name": "Nahum",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-24T16:12:26.802Z",
   "chapters": {
     "1": {
@@ -677,6 +677,7 @@
         }
       }
     }
-  }
+  },
+  "book": "NAM"
 };
 })();

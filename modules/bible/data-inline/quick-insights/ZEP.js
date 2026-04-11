@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['ZEP'] = {
   "id": "ZEP",
   "name": "Zephaniah",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T10:48:49.870Z",
   "chapters": {
     "1": {
@@ -761,6 +761,7 @@
         }
       }
     }
-  }
+  },
+  "book": "ZEP"
 };
 })();

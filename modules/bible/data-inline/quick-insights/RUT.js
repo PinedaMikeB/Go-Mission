@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['RUT'] = {
   "id": "RUT",
   "name": "Ruth",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T10:58:29.788Z",
   "chapters": {
     "1": {
@@ -1213,6 +1213,7 @@
         }
       }
     }
-  }
+  },
+  "book": "RUT"
 };
 })();

@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['2JN'] = {
   "id": "2JN",
   "name": "2 John",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-26T09:20:13.475Z",
   "chapters": {
     "1": {
@@ -193,6 +193,7 @@
         }
       }
     }
-  }
+  },
+  "book": "2JN"
 };
 })();

@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['EZR'] = {
   "id": "EZR",
   "name": "Ezra",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T12:09:39.605Z",
   "chapters": {
     "1": {
@@ -3967,6 +3967,7 @@
         }
       }
     }
-  }
+  },
+  "book": "EZR"
 };
 })();

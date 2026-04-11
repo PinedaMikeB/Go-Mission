@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['HAB'] = {
   "id": "HAB",
   "name": "Habakkuk",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T10:49:07.861Z",
   "chapters": {
     "1": {
@@ -803,6 +803,7 @@
         }
       }
     }
-  }
+  },
+  "book": "HAB"
 };
 })();

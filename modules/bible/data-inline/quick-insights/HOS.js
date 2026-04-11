@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['HOS'] = {
   "id": "HOS",
   "name": "Hosea",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-23T11:39:35.082Z",
   "chapters": {
     "1": {
@@ -2821,6 +2821,7 @@
         }
       }
     }
-  }
+  },
+  "book": "HOS"
 };
 })();

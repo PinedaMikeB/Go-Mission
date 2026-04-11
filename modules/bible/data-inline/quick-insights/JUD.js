@@ -4,7 +4,7 @@
   window.GoMissionQuickInsightsInline['JUD'] = {
   "id": "JUD",
   "name": "Jude",
-  "type": "quick-insights-openai-gpt4omini",
+  "type": "quick-insights-gpt5-mini-commentary-hybrid",
   "generatedAt": "2026-01-26T09:24:42.681Z",
   "chapters": {
     "1": {
@@ -361,6 +361,7 @@
         }
       }
     }
-  }
+  },
+  "book": "JUD"
 };
 })();
