@@ -23,6 +23,27 @@ service cloud.firestore {
       return isAdminUid() || isAdminEmail();
     }
 
+    function seekerMonitoringName() {
+      let m = memberData(request.auth.uid);
+      return m != null && m.fullName is string && m.fullName.size() > 0
+        ? m.fullName
+        : (
+            m != null && m.displayName is string && m.displayName.size() > 0
+              ? m.displayName
+              : (m != null && m.name is string ? m.name : '')
+          );
+    }
+
+    function isSeekerMonitoringUser() {
+      return isAdmin() || (
+        isSignedIn() &&
+        seekerMonitoringName() in [
+          'Dona Perez',
+          'Chatty Claveria'
+        ]
+      );
+    }
+
     function isSelf(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
@@ -421,11 +442,11 @@ service cloud.firestore {
     }
 
     match /goMission_vlogEngagementSeekers/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSeekerMonitoringUser();
     }
 
     match /goMission_vlogEngagementLeaders/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSeekerMonitoringUser();
     }
 
     // Deny anything not explicitly allowed above.
