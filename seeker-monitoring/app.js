@@ -482,6 +482,12 @@ function normalizeSeeker(record = {}) {
   };
 }
 
+function leaderSignature(record = {}) {
+  return [record.name, record.day, record.time]
+    .map((value) => coerceText(value).toLowerCase())
+    .join('|');
+}
+
 function normalizeLeader(record = {}) {
   return {
     id: record.id || record.key || '',
@@ -494,6 +500,32 @@ function normalizeLeader(record = {}) {
     createdAt: record.createdAt || null,
     updatedAt: record.updatedAt || null
   };
+}
+
+function pickPreferredLeaderRecord(existing, incoming) {
+  const existingScore = (existing.groupChatName ? 2 : 0) + (existing.messengerLink ? 1 : 0);
+  const incomingScore = (incoming.groupChatName ? 2 : 0) + (incoming.messengerLink ? 1 : 0);
+  if (incomingScore !== existingScore) {
+    return incomingScore > existingScore ? incoming : existing;
+  }
+  return String(incoming.id || '').localeCompare(String(existing.id || '')) < 0 ? incoming : existing;
+}
+
+function dedupeLeaderRecords(records = []) {
+  const deduped = new Map();
+  records.forEach((record) => {
+    const signature = leaderSignature(record);
+    if (!signature) {
+      deduped.set(`${record.id || Math.random()}`, record);
+      return;
+    }
+    if (!deduped.has(signature)) {
+      deduped.set(signature, record);
+      return;
+    }
+    deduped.set(signature, pickPreferredLeaderRecord(deduped.get(signature), record));
+  });
+  return [...deduped.values()];
 }
 
 function renderImageLinks(urls = [], emptyLabel = '(none)') {
@@ -672,7 +704,12 @@ function isAuthorizedUser(user, member) {
 async function seedLeadersIfNeeded() {
   const snapshot = await getDocs(collection(db, LEADER_COLLECTION));
   const existingIds = new Set(snapshot.docs.map((record) => record.id));
-  const missingLeaders = DEFAULT_LEADERS.filter((leader) => !existingIds.has(leader.key));
+  const existingSignatures = new Set(
+    snapshot.docs.map((record) => leaderSignature(normalizeLeader({ id: record.id, ...record.data() })))
+  );
+  const missingLeaders = DEFAULT_LEADERS.filter(
+    (leader) => !existingIds.has(leader.key) && !existingSignatures.has(leaderSignature(leader))
+  );
 
   if (!missingLeaders.length) return snapshot;
 
@@ -709,8 +746,10 @@ async function fetchLeaders() {
 
   try {
     const snapshot = await seedLeadersIfNeeded();
-    state.leaders = snapshot.docs
+    state.leaders = dedupeLeaderRecords(
+      snapshot.docs
       .map((record) => normalizeLeader({ id: record.id, ...record.data() }))
+    )
       .sort((left, right) => {
         const daySort = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         const dayDiff = daySort.indexOf(normalizeDay(left.day)) - daySort.indexOf(normalizeDay(right.day));
