@@ -488,21 +488,20 @@ const GroupMeeting = {
    */
   initPresentationState() {
     let savedOpacity = 72;
-    let savedDeckId = '';
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
       const parsed = Number(raw);
       if (Number.isFinite(parsed)) {
         savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
       }
-      savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     this.presentationState = {
       mode: 'local',        // future: 'host_synced'
       focusMode: false,     // future moderator setting
       panelOpen: false,
-      selectedDeckId: savedDeckId || null,
+      selectedDeckId: null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       currentSlideIndex: 0,
@@ -676,9 +675,43 @@ const GroupMeeting = {
     return 'meetingSlidesCatalog';
   },
 
+  getMeetingSlidesTopicSortMs(topic) {
+    const candidates = [
+      topic?.updatedAt,
+      topic?.updatedAtIso,
+      topic?.uploadedAt,
+      topic?.uploadedAtIso,
+      topic?.createdAt,
+      topic?.createdAtIso
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      if (typeof value?.toDate === 'function') {
+        const date = value.toDate();
+        if (date instanceof Date && Number.isFinite(date.getTime())) return date.getTime();
+      }
+      if (value instanceof Date && Number.isFinite(value.getTime())) return value.getTime();
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      if (typeof value === 'object' && Number.isFinite(value.seconds)) {
+        return (Number(value.seconds) * 1000) + Math.round(Number(value.nanoseconds || 0) / 1000000);
+      }
+    }
+
+    return 0;
+  },
+
   getSlidesLibraryEntries() {
     return Object.entries(this.MEETING_SLIDES_LIBRARY || {})
-      .sort((a, b) => String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0])));
+      .sort((a, b) => {
+        const timeDiff = this.getMeetingSlidesTopicSortMs(b[1]) - this.getMeetingSlidesTopicSortMs(a[1]);
+        if (timeDiff) return timeDiff;
+        return String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0]));
+      });
   },
 
   async ensureSlidesLibraryLoaded(force = false) {
@@ -698,7 +731,12 @@ const GroupMeeting = {
           if (!topicId || !title) return;
           nextLibrary[topicId] = {
             title,
-            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {}
+            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {},
+            sourceFilename: String(topic?.sourceFilename || '').trim(),
+            createdAt: topic?.createdAt || null,
+            createdAtIso: String(topic?.createdAtIso || '').trim(),
+            updatedAt: topic?.updatedAt || null,
+            updatedAtIso: String(topic?.updatedAtIso || '').trim()
           };
         });
         this.MEETING_SLIDES_LIBRARY = nextLibrary;
@@ -861,11 +899,7 @@ const GroupMeeting = {
     this.presentationState.error = null;
 
     try {
-      if (nextDeckId) {
-        window.localStorage?.setItem('goMission_meetingSlidesDeckId', nextDeckId);
-      } else {
-        window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
-      }
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     if (!nextDeckId) {
