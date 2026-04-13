@@ -329,28 +329,44 @@ textarea {
     overflow: visible;
   }
 
-  .seeker-table {
+  .seeker-table,
+  .leader-master-table,
+  .leader-table {
     min-width: 0;
   }
 
-  .seeker-table thead {
+  .seeker-table thead,
+  .leader-master-table thead,
+  .leader-table thead {
     display: none;
   }
 
   .seeker-table,
   .seeker-table tbody,
   .seeker-table tr,
-  .seeker-table td {
+  .seeker-table td,
+  .leader-master-table,
+  .leader-master-table tbody,
+  .leader-master-table tr,
+  .leader-master-table td,
+  .leader-table,
+  .leader-table tbody,
+  .leader-table tr,
+  .leader-table td {
     display: block;
     width: 100%;
   }
 
-  .seeker-table tr {
+  .seeker-table tr,
+  .leader-master-table tr,
+  .leader-table tr {
     padding: 10px 0;
     border-bottom: 1px solid var(--line);
   }
 
-  .seeker-table td {
+  .seeker-table td,
+  .leader-master-table td,
+  .leader-table td {
     display: grid;
     grid-template-columns: 104px minmax(0, 1fr);
     gap: 10px;
@@ -358,7 +374,9 @@ textarea {
     border-bottom: 0;
   }
 
-  .seeker-table td::before {
+  .seeker-table td::before,
+  .leader-master-table td::before,
+  .leader-table td::before {
     content: attr(data-label);
     color: var(--muted);
     font-size: 0.76rem;
@@ -366,13 +384,17 @@ textarea {
     text-transform: uppercase;
   }
 
-  .seeker-table td.table-empty {
+  .seeker-table td.table-empty,
+  .leader-master-table td.table-empty,
+  .leader-table td.table-empty {
     display: block;
     padding: 18px 12px;
     text-align: center;
   }
 
-  .seeker-table td.table-empty::before {
+  .seeker-table td.table-empty::before,
+  .leader-master-table td.table-empty::before,
+  .leader-table td.table-empty::before {
     content: none;
   }
 

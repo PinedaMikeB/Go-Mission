@@ -424,6 +424,10 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /goMission_vlogEngagementLeaders/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Deny anything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;

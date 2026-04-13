@@ -11,6 +11,7 @@ import {
 } from '../js/firebase-config.js';
 
 const SEEKER_COLLECTION = 'goMission_vlogEngagementSeekers';
+const LEADER_COLLECTION = 'goMission_vlogEngagementLeaders';
 const STATUSES = [
   'Processing',
   'Endorsed',
@@ -22,7 +23,7 @@ const STATUSES = [
   'Multiplier'
 ];
 
-const LEADERS = [
+const DEFAULT_LEADERS = [
   { name: 'Nick', day: 'Monday', time: '8PM', groupChatName: 'Bro. Nick Monday Group 8pm' },
   { name: 'Hener', day: 'Monday', time: '8PM', groupChatName: 'BRO HENER- WOTG MONDAY 8PM MALE' },
   { name: 'Marvin', day: 'Tuesday', time: '8PM', groupChatName: 'Bro Marvin - WOTG Tuesday 8PM' },
@@ -104,7 +105,9 @@ const TABLE_COLUMNS = [
 
 const state = {
   seekers: [],
+  leaders: [],
   selectedSeekerId: null,
+  selectedLeaderId: null,
   addMode: 'paste',
   loading: false,
   authReady: false,
@@ -113,12 +116,15 @@ const state = {
 
 const elements = {
   seekerCount: document.getElementById('seeker-count'),
+  leaderCount: document.getElementById('leader-count'),
   feedbackBanner: document.getElementById('feedback-banner'),
   seekerTableBody: document.getElementById('seeker-table-body'),
+  leaderMasterTableBody: document.getElementById('leader-master-table-body'),
   addSeekerBtn: document.getElementById('add-seeker-btn'),
   refreshBtn: document.getElementById('refresh-btn'),
   addModal: document.getElementById('add-modal'),
   editModal: document.getElementById('edit-modal'),
+  leaderModal: document.getElementById('leader-modal'),
   pastePane: document.getElementById('paste-pane'),
   manualForm: document.getElementById('manual-form'),
   addRawText: document.getElementById('add-raw-text'),
@@ -132,6 +138,10 @@ const elements = {
   editMGroupGc: document.getElementById('edit-mGroupGc'),
   editMessengerLink: document.getElementById('edit-messengerLink'),
   editMessengerLinkAction: document.getElementById('edit-messenger-link-action'),
+  leaderForm: document.getElementById('leader-form'),
+  leaderModalTitle: document.getElementById('leader-modal-title'),
+  leaderMessengerLink: document.getElementById('leader-messengerLink'),
+  leaderMessengerLinkAction: document.getElementById('leader-messenger-link-action'),
   leaderMatchNote: document.getElementById('leader-match-note'),
   leaderTableBody: document.getElementById('leader-table-body')
 };
@@ -183,13 +193,18 @@ function buildTimeWindow(value = '') {
   return { start: Math.min(...tokens), end: Math.max(...tokens) };
 }
 
+function allLeaders() {
+  return state.leaders.length ? state.leaders : DEFAULT_LEADERS;
+}
+
 function getMatchingLeaders(preferredDay = '', preferredTime = '') {
   const normalizedDay = normalizeDay(preferredDay);
   const preferredWindow = buildTimeWindow(preferredTime);
+  const leaders = allLeaders();
 
   const dayMatches = normalizedDay
-    ? LEADERS.filter((leader) => normalizeDay(leader.day) === normalizedDay)
-    : [...LEADERS];
+    ? leaders.filter((leader) => normalizeDay(leader.day) === normalizedDay)
+    : [...leaders];
 
   if (!preferredWindow) return dayMatches;
 
@@ -324,6 +339,20 @@ function normalizeSeeker(record = {}) {
   };
 }
 
+function normalizeLeader(record = {}) {
+  return {
+    id: record.id || record.key || '',
+    key: record.key || record.id || '',
+    name: coerceText(record.name),
+    day: coerceText(record.day),
+    time: coerceText(record.time),
+    groupChatName: coerceText(record.groupChatName),
+    messengerLink: normalizeExternalUrl(coerceText(record.messengerLink)),
+    createdAt: record.createdAt || null,
+    updatedAt: record.updatedAt || null
+  };
+}
+
 function getTimestampMs(value) {
   return value && typeof value.toMillis === 'function' ? value.toMillis() : 0;
 }
@@ -369,8 +398,24 @@ function renderMessengerLinkAction(value = '') {
   elements.editMessengerLinkAction.href = normalized;
 }
 
+function renderLeaderMessengerLinkAction(value = '') {
+  const normalized = normalizeExternalUrl(value);
+  if (!normalized) {
+    elements.leaderMessengerLinkAction.hidden = true;
+    elements.leaderMessengerLinkAction.removeAttribute('href');
+    return;
+  }
+
+  elements.leaderMessengerLinkAction.hidden = false;
+  elements.leaderMessengerLinkAction.href = normalized;
+}
+
 function currentSeeker() {
   return state.seekers.find((seeker) => seeker.id === state.selectedSeekerId) || null;
+}
+
+function currentLeader() {
+  return state.leaders.find((leader) => leader.id === state.selectedLeaderId) || null;
 }
 
 function renderSeekerTable() {
@@ -407,9 +452,90 @@ function renderSeekerTable() {
     .join('');
 }
 
+function setLeaderTableMessage(message) {
+  elements.leaderMasterTableBody.innerHTML = `<tr><td colspan="6" class="table-empty">${escapeHtml(message)}</td></tr>`;
+}
+
+function renderMasterLeaderTable() {
+  elements.leaderCount.textContent = String(state.leaders.length);
+
+  if (!state.leaders.length) {
+    setLeaderTableMessage('No leaders saved yet.');
+    return;
+  }
+
+  elements.leaderMasterTableBody.innerHTML = state.leaders
+    .map(
+      (leader) => `
+        <tr>
+          <td data-label="Leader">${escapeHtml(leader.name)}</td>
+          <td data-label="Day">${escapeHtml(leader.day)}</td>
+          <td data-label="Time">${escapeHtml(leader.time)}</td>
+          <td data-label="M-Group GC">${leader.groupChatName ? escapeHtml(leader.groupChatName) : '<span class="table-muted">(blank)</span>'}</td>
+          <td data-label="Messenger Link">${leader.messengerLink ? `<a class="button table-action" href="${escapeHtml(leader.messengerLink)}" target="_blank" rel="noopener noreferrer">Open chat</a>` : '<span class="table-muted">(none)</span>'}</td>
+          <td data-label="Action"><button class="button table-action" type="button" data-edit-leader-id="${leader.id}">Edit</button></td>
+        </tr>
+      `
+    )
+    .join('');
+}
+
 function requireSignedIn() {
   if (state.currentUser) return;
   throw new Error('Sign in to Go Mission first, then reopen Seeker Monitoring.');
+}
+
+async function seedLeadersIfNeeded() {
+  const snapshot = await getDocs(collection(db, LEADER_COLLECTION));
+  if (!snapshot.empty) return snapshot;
+
+  await Promise.all(
+    DEFAULT_LEADERS.map((leader) =>
+      setDoc(doc(db, LEADER_COLLECTION, leader.key), {
+        name: leader.name,
+        day: leader.day,
+        time: leader.time,
+        groupChatName: leader.groupChatName,
+        messengerLink: leader.messengerLink,
+        key: leader.key,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+    )
+  );
+
+  return getDocs(collection(db, LEADER_COLLECTION));
+}
+
+async function fetchLeaders() {
+  if (!state.authReady) return;
+  if (!state.currentUser) {
+    state.leaders = [];
+    elements.leaderCount.textContent = '0';
+    setLeaderTableMessage('Sign in to Go Mission first, then refresh.');
+    return;
+  }
+
+  try {
+    const snapshot = await seedLeadersIfNeeded();
+    state.leaders = snapshot.docs
+      .map((record) => normalizeLeader({ id: record.id, ...record.data() }))
+      .sort((left, right) => {
+        const daySort = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const dayDiff = daySort.indexOf(normalizeDay(left.day)) - daySort.indexOf(normalizeDay(right.day));
+        if (dayDiff !== 0) return dayDiff;
+        const timeDiff = (buildTimeWindow(left.time)?.start || 0) - (buildTimeWindow(right.time)?.start || 0);
+        if (timeDiff !== 0) return timeDiff;
+        return left.name.localeCompare(right.name);
+      });
+    renderMasterLeaderTable();
+  } catch (error) {
+    const message = humanizeError(error);
+    state.leaders = [];
+    elements.leaderCount.textContent = '0';
+    setLeaderTableMessage(message);
+    showFeedback(message, 'error');
+  }
 }
 
 async function fetchSeekers() {
@@ -454,7 +580,7 @@ function openModal(modal) {
 
 function closeModal(modal) {
   modal.hidden = true;
-  if (elements.addModal.hidden && elements.editModal.hidden) {
+  if (elements.addModal.hidden && elements.editModal.hidden && elements.leaderModal.hidden) {
     document.body.classList.remove('modal-open');
   }
 }
@@ -582,12 +708,12 @@ async function saveManualSeeker(event) {
   }
 }
 
-function ensureLeaderOption(select, value, label, dataName = '', dataGc = '') {
+function ensureLeaderOption(select, value, label, dataName = '', dataGc = '', dataLink = '') {
   if (!value) return;
   if ([...select.options].some((option) => option.value === value)) return;
   select.insertAdjacentHTML(
     'beforeend',
-    `<option value="${escapeHtml(value)}" data-name="${escapeHtml(dataName)}" data-gc="${escapeHtml(dataGc)}">${escapeHtml(label || value)}</option>`
+    `<option value="${escapeHtml(value)}" data-name="${escapeHtml(dataName)}" data-gc="${escapeHtml(dataGc)}" data-link="${escapeHtml(dataLink)}">${escapeHtml(label || value)}</option>`
   );
 }
 
@@ -603,7 +729,7 @@ function selectedGroupChat() {
 
 function renderLeaderControls(seeker) {
   const matches = getMatchingLeaders(seeker.preferredDay, seeker.preferredTime);
-  const options = matches.length ? matches : LEADERS;
+  const options = matches.length ? matches : allLeaders();
 
   elements.editLeaderName.innerHTML =
     '<option value="" data-name="" data-gc="" data-link="">Select leader</option>' +
@@ -640,7 +766,7 @@ function renderLeaderControls(seeker) {
     elements.editLeaderName.value = matchingLeaderOption.value;
   } else if (seeker.leaderName) {
     const customValue = `custom-leader:${seeker.leaderName}`;
-    ensureLeaderOption(elements.editLeaderName, customValue, seeker.leaderName, seeker.leaderName, seeker.mGroupGc);
+    ensureLeaderOption(elements.editLeaderName, customValue, seeker.leaderName, seeker.leaderName, seeker.mGroupGc, seeker.messengerLink);
     elements.editLeaderName.value = customValue;
   } else {
     elements.editLeaderName.value = '';
@@ -650,24 +776,26 @@ function renderLeaderControls(seeker) {
     elements.editMGroupGc.value = matchingGcOption.value;
   } else if (seeker.mGroupGc) {
     const customValue = `custom-gc:${seeker.mGroupGc}`;
-    ensureLeaderOption(elements.editMGroupGc, customValue, seeker.mGroupGc, seeker.leaderName, seeker.mGroupGc);
+    ensureLeaderOption(elements.editMGroupGc, customValue, seeker.mGroupGc, seeker.leaderName, seeker.mGroupGc, seeker.messengerLink);
     elements.editMGroupGc.value = customValue;
   } else {
     elements.editMGroupGc.value = '';
   }
 
-  elements.editMessengerLink.value = seeker.messengerLink || '';
-  renderMessengerLinkAction(seeker.messengerLink || '');
+  const inheritedMessengerLink = matchingLeaderOption?.dataset.link || matchingGcOption?.dataset.link || '';
+  elements.editMessengerLink.value = seeker.messengerLink || inheritedMessengerLink || '';
+  renderMessengerLinkAction(elements.editMessengerLink.value);
 
   elements.leaderTableBody.innerHTML = options
     .map(
       (leader) => `
         <tr class="${leader.name === seeker.leaderName || leader.groupChatName === seeker.mGroupGc ? 'matched' : ''}">
-          <td>${escapeHtml(leader.name)}</td>
-          <td>${escapeHtml(leader.day)}</td>
-          <td>${escapeHtml(leader.time)}</td>
-          <td>${leader.groupChatName ? escapeHtml(leader.groupChatName) : '<span class="table-muted">(blank)</span>'}</td>
-          <td><button class="button table-action" type="button" data-use-leader="${leader.key}">Use</button></td>
+          <td data-label="Leader">${escapeHtml(leader.name)}</td>
+          <td data-label="Day">${escapeHtml(leader.day)}</td>
+          <td data-label="Time">${escapeHtml(leader.time)}</td>
+          <td data-label="M-Group GC">${leader.groupChatName ? escapeHtml(leader.groupChatName) : '<span class="table-muted">(blank)</span>'}</td>
+          <td data-label="Messenger">${leader.messengerLink ? `<a class="button table-action" href="${escapeHtml(leader.messengerLink)}" target="_blank" rel="noopener noreferrer">Open chat</a>` : '<span class="table-muted">(none)</span>'}</td>
+          <td data-label="Use"><button class="button table-action" type="button" data-use-leader="${leader.key}">Use</button></td>
         </tr>
       `
     )
@@ -739,13 +867,74 @@ async function saveEdit(event) {
   }
 }
 
+function fillLeaderModal(leader) {
+  state.selectedLeaderId = leader.id;
+  elements.leaderModalTitle.textContent = leader.name ? `Edit ${leader.name}` : 'Edit leader';
+  document.getElementById('leader-name').value = leader.name || '';
+  document.getElementById('leader-day').value = leader.day || '';
+  document.getElementById('leader-time').value = leader.time || '';
+  document.getElementById('leader-groupChatName').value = leader.groupChatName || '';
+  elements.leaderMessengerLink.value = leader.messengerLink || '';
+  renderLeaderMessengerLinkAction(leader.messengerLink || '');
+}
+
+function openLeaderModalById(leaderId) {
+  const leader = state.leaders.find((item) => item.id === leaderId);
+  if (!leader) return;
+  fillLeaderModal(leader);
+  openModal(elements.leaderModal);
+}
+
+async function saveLeader(event) {
+  event.preventDefault();
+  const leader = currentLeader();
+  if (!leader) return;
+
+  showFeedback('Saving leader...', 'info');
+
+  try {
+    requireSignedIn();
+    const payload = {
+      name: document.getElementById('leader-name').value.trim(),
+      day: document.getElementById('leader-day').value.trim(),
+      time: document.getElementById('leader-time').value.trim(),
+      groupChatName: document.getElementById('leader-groupChatName').value.trim(),
+      messengerLink: normalizeExternalUrl(elements.leaderMessengerLink.value),
+      key: leader.key || leader.id,
+      updatedAt: serverTimestamp()
+    };
+
+    await updateDoc(doc(db, LEADER_COLLECTION, leader.id), payload);
+    await fetchLeaders();
+
+    if (!elements.editModal.hidden) {
+      const seeker = currentSeeker();
+      if (seeker) {
+        renderLeaderControls({
+          ...seeker,
+          preferredDay: document.getElementById('edit-preferredDay').value.trim(),
+          preferredTime: document.getElementById('edit-preferredTime').value.trim(),
+          leaderName: selectedLeaderName(),
+          mGroupGc: selectedGroupChat(),
+          messengerLink: elements.editMessengerLink.value.trim()
+        });
+      }
+    }
+
+    closeModal(elements.leaderModal);
+    showFeedback(`Updated ${payload.name || 'leader'}.`, 'success');
+  } catch (error) {
+    showFeedback(humanizeError(error), 'error');
+  }
+}
+
 function syncLeaderAndGroupFromLeader() {
   const option = elements.editLeaderName.selectedOptions[0];
   if (!option?.value) {
     renderMessengerLinkAction(elements.editMessengerLink.value);
     return;
   }
-  const leader = LEADERS.find((entry) => entry.key === option.value);
+  const leader = allLeaders().find((entry) => entry.key === option.value);
   if (leader?.groupChatName) {
     const gcOption = [...elements.editMGroupGc.options].find((entry) => entry.value === leader.key);
     if (gcOption) {
@@ -764,7 +953,7 @@ function syncLeaderAndGroupFromGc() {
     renderMessengerLinkAction(elements.editMessengerLink.value);
     return;
   }
-  const leader = LEADERS.find((entry) => entry.key === option.value);
+  const leader = allLeaders().find((entry) => entry.key === option.value);
   if (leader) {
     const leaderOption = [...elements.editLeaderName.options].find((entry) => entry.value === leader.key);
     if (leaderOption) {
@@ -780,10 +969,12 @@ function syncLeaderAndGroupFromGc() {
 populateStatusSelect();
 setAddMode('paste');
 setTableMessage('Checking sign-in...');
+setLeaderTableMessage('Checking sign-in...');
 
 onAuthStateChanged(auth, async (user) => {
   state.currentUser = user;
   state.authReady = true;
+  await fetchLeaders();
   await fetchSeekers();
 });
 
@@ -796,15 +987,20 @@ elements.addSeekerBtn.addEventListener('click', () => {
   openModal(elements.addModal);
 });
 
-elements.refreshBtn.addEventListener('click', fetchSeekers);
+elements.refreshBtn.addEventListener('click', async () => {
+  await fetchLeaders();
+  await fetchSeekers();
+});
 elements.savePastedBtn.addEventListener('click', savePastedSeeker);
 elements.manualForm.addEventListener('submit', saveManualSeeker);
 elements.editForm.addEventListener('submit', saveEdit);
+elements.leaderForm.addEventListener('submit', saveLeader);
 elements.modePasteBtn.addEventListener('click', () => setAddMode('paste'));
 elements.modeManualBtn.addEventListener('click', () => setAddMode('manual'));
 elements.editLeaderName.addEventListener('change', syncLeaderAndGroupFromLeader);
 elements.editMGroupGc.addEventListener('change', syncLeaderAndGroupFromGc);
 elements.editMessengerLink.addEventListener('input', (event) => renderMessengerLinkAction(event.target.value));
+elements.leaderMessengerLink.addEventListener('input', (event) => renderLeaderMessengerLinkAction(event.target.value));
 document.getElementById('edit-preferredDay').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 document.getElementById('edit-preferredTime').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 
@@ -812,7 +1008,7 @@ document.addEventListener('click', (event) => {
   const closeTarget = event.target.closest('[data-close-modal]');
   if (closeTarget) {
     const modalName = closeTarget.dataset.closeModal;
-    closeModal(modalName === 'add' ? elements.addModal : elements.editModal);
+    closeModal(modalName === 'add' ? elements.addModal : modalName === 'leader' ? elements.leaderModal : elements.editModal);
     return;
   }
 
@@ -822,9 +1018,15 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  const editLeaderButton = event.target.closest('[data-edit-leader-id]');
+  if (editLeaderButton) {
+    openLeaderModalById(editLeaderButton.dataset.editLeaderId);
+    return;
+  }
+
   const useLeaderButton = event.target.closest('[data-use-leader]');
   if (useLeaderButton) {
-    const leader = LEADERS.find((entry) => entry.key === useLeaderButton.dataset.useLeader);
+    const leader = allLeaders().find((entry) => entry.key === useLeaderButton.dataset.useLeader);
     if (!leader) return;
     elements.editLeaderName.value = leader.key;
     if (leader.groupChatName) {
