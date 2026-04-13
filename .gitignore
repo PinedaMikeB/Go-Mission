@@ -35,3 +35,6 @@ android/keystore/
 local.properties
 *.jks
 *.keystore
+
+# Local Netlify folder
+.netlify
