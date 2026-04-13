@@ -35,11 +35,8 @@ const EDITABLE_FIELDS = [
   'profile',
   'status',
   'statusNotes',
-  'coordinatorNote',
   'leaderName',
-  'leaderDay',
-  'leaderTime',
-  'leaderGroupChatName'
+  'mGroupGc'
 ];
 
 let dbInstance = null;
@@ -153,9 +150,7 @@ function buildSeekerRecord({ extraction = {}, followUpStatus = 'Processing', coo
     statusNotes: STATUS_DESCRIPTIONS[status],
     coordinatorNote,
     leaderName: '',
-    leaderDay: '',
-    leaderTime: '',
-    leaderGroupChatName: '',
+    mGroupGc: '',
     summary: extraction.summary || '',
     rawPastedText: rawText || extraction.raw_pasted_text || '',
     extraction
@@ -197,9 +192,7 @@ function serializeSeekerDoc(snapshot) {
     statusNotes: data.statusNotes || STATUS_DESCRIPTIONS[status],
     coordinatorNote: data.coordinatorNote || '',
     leaderName: data.leaderName || '',
-    leaderDay: data.leaderDay || '',
-    leaderTime: data.leaderTime || '',
-    leaderGroupChatName: data.leaderGroupChatName || '',
+    mGroupGc: data.mGroupGc || data.leaderGroupChatName || '',
     summary: data.summary || '',
     rawPastedText: data.rawPastedText || '',
     createdAt: serializeTimestamp(data.createdAt),
@@ -219,6 +212,10 @@ function buildUpdatePatch(input = {}) {
   if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
     patch.status = sanitizeStatus(patch.status);
     patch.statusNotes = STATUS_DESCRIPTIONS[patch.status];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'leaderGroupChatName') && !Object.prototype.hasOwnProperty.call(patch, 'mGroupGc')) {
+    patch.mGroupGc = typeof input.leaderGroupChatName === 'string' ? input.leaderGroupChatName.trim() : input.leaderGroupChatName;
   }
 
   patch.updatedAt = FieldValue.serverTimestamp();
