@@ -51,13 +51,14 @@
                 <th>Profile</th>
                 <th>Leader</th>
                 <th>M-Group GC</th>
+                <th>Messenger</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="seeker-table-body">
               <tr>
-                <td colspan="15" class="table-empty">Loading seekers...</td>
+                <td colspan="16" class="table-empty">Loading seekers...</td>
               </tr>
             </tbody>
           </table>
@@ -139,7 +140,10 @@
             <label><span>Status</span><select id="edit-status" name="status"></select></label>
             <label><span>Leader</span><select id="edit-leaderName" name="leaderName"></select></label>
             <label class="field-span-2"><span>M-Group GC</span><select id="edit-mGroupGc" name="mGroupGc"></select></label>
+            <label class="field-span-2"><span>Messenger Link</span><input id="edit-messengerLink" name="messengerLink" type="url" placeholder="Paste the Messenger group chat link" /></label>
           </div>
+
+          <a id="edit-messenger-link-action" class="button ghost inline-link-button" href="#" target="_blank" rel="noopener noreferrer" hidden>Open group chat</a>
 
           <label>
             <span>Profile</span>

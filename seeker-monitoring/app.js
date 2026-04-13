@@ -48,7 +48,11 @@ const LEADERS = [
   { name: 'Carlo', day: 'Saturday', time: '9PM', groupChatName: '' },
   { name: 'Joel', day: 'Sunday', time: '7PM', groupChatName: 'BRO JOEL-WOTG SUNDAY 7PM MALE' },
   { name: 'Jeff', day: 'Sunday', time: '9PM', groupChatName: 'BRO JEF-WOTG SUNDAY 9PM MALE' }
-].map((leader, index) => ({ ...leader, key: `${leader.name}-${leader.day}-${leader.time}-${index}` }));
+].map((leader, index) => ({
+  ...leader,
+  messengerLink: leader.messengerLink || '',
+  key: `${leader.name}-${leader.day}-${leader.time}-${index}`
+}));
 
 const EDIT_FIELDS = [
   'dateRecorded',
@@ -62,7 +66,8 @@ const EDIT_FIELDS = [
   'preferredTime',
   'church',
   'profile',
-  'status'
+  'status',
+  'messengerLink'
 ];
 
 const MANUAL_FIELDS = [
@@ -92,6 +97,7 @@ const TABLE_COLUMNS = [
   'Profile',
   'Leader',
   'M-Group GC',
+  'Messenger',
   'Status',
   'Action'
 ];
@@ -124,6 +130,8 @@ const elements = {
   editStatus: document.getElementById('edit-status'),
   editLeaderName: document.getElementById('edit-leaderName'),
   editMGroupGc: document.getElementById('edit-mGroupGc'),
+  editMessengerLink: document.getElementById('edit-messengerLink'),
+  editMessengerLinkAction: document.getElementById('edit-messenger-link-action'),
   leaderMatchNote: document.getElementById('leader-match-note'),
   leaderTableBody: document.getElementById('leader-table-body')
 };
@@ -139,6 +147,12 @@ function escapeHtml(value = '') {
 
 function truncate(value = '', max = 84) {
   return value.length > max ? `${value.slice(0, max - 1)}...` : value;
+}
+
+function normalizeExternalUrl(value = '') {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return /^[a-z]+:\/\//i.test(trimmed) || /^fb-messenger:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 function splitLines(value = '') {
@@ -303,6 +317,7 @@ function normalizeSeeker(record = {}) {
     status: coerceText(record.status) || 'Processing',
     leaderName: coerceText(record.leaderName),
     mGroupGc: coerceText(record.mGroupGc),
+    messengerLink: coerceText(record.messengerLink),
     rawPastedText: coerceText(record.rawPastedText),
     createdAt: record.createdAt || null,
     updatedAt: record.updatedAt || null
@@ -342,6 +357,18 @@ function populateStatusSelect() {
   elements.editStatus.innerHTML = STATUSES.map((status) => `<option value="${status}">${status}</option>`).join('');
 }
 
+function renderMessengerLinkAction(value = '') {
+  const normalized = normalizeExternalUrl(value);
+  if (!normalized) {
+    elements.editMessengerLinkAction.hidden = true;
+    elements.editMessengerLinkAction.removeAttribute('href');
+    return;
+  }
+
+  elements.editMessengerLinkAction.hidden = false;
+  elements.editMessengerLinkAction.href = normalized;
+}
+
 function currentSeeker() {
   return state.seekers.find((seeker) => seeker.id === state.selectedSeekerId) || null;
 }
@@ -371,6 +398,7 @@ function renderSeekerTable() {
           <td data-label="Profile" class="profile-cell" title="${escapeHtml(seeker.profile || '')}">${seeker.profile ? escapeHtml(truncate(seeker.profile)) : '<span class="table-muted">(blank)</span>'}</td>
           <td data-label="Leader">${escapeHtml(seeker.leaderName || '')}</td>
           <td data-label="M-Group GC">${escapeHtml(seeker.mGroupGc || '')}</td>
+          <td data-label="Messenger">${seeker.messengerLink ? `<a class="button table-action" href="${escapeHtml(normalizeExternalUrl(seeker.messengerLink))}" target="_blank" rel="noopener noreferrer">Open chat</a>` : '<span class="table-muted">(none)</span>'}</td>
           <td data-label="Status"><span class="status-pill">${escapeHtml(seeker.status || '')}</span></td>
           <td data-label="Action"><button class="button table-action" type="button" data-edit-id="${seeker.id}">Edit</button></td>
         </tr>
@@ -475,6 +503,7 @@ function buildStoredPayload(payload) {
     status: base.status || 'Processing',
     leaderName: base.leaderName,
     mGroupGc: base.mGroupGc,
+    messengerLink: normalizeExternalUrl(base.messengerLink),
     rawPastedText: base.rawPastedText,
     sourceChannel: 'vlogs_engagement',
     recordType: 'seeker_monitoring',
@@ -577,21 +606,21 @@ function renderLeaderControls(seeker) {
   const options = matches.length ? matches : LEADERS;
 
   elements.editLeaderName.innerHTML =
-    '<option value="" data-name="" data-gc="">Select leader</option>' +
+    '<option value="" data-name="" data-gc="" data-link="">Select leader</option>' +
     options
       .map(
         (leader) =>
-          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}">${escapeHtml(`${leader.name} • ${leader.day} ${leader.time}`)}</option>`
+          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}" data-link="${escapeHtml(leader.messengerLink)}">${escapeHtml(`${leader.name} • ${leader.day} ${leader.time}`)}</option>`
       )
       .join('');
 
   elements.editMGroupGc.innerHTML =
-    '<option value="" data-name="" data-gc="">Select M-Group GC</option>' +
+    '<option value="" data-name="" data-gc="" data-link="">Select M-Group GC</option>' +
     options
       .filter((leader) => leader.groupChatName)
       .map(
         (leader) =>
-          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}">${escapeHtml(leader.groupChatName)}</option>`
+          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}" data-link="${escapeHtml(leader.messengerLink)}">${escapeHtml(leader.groupChatName)}</option>`
       )
       .join('');
 
@@ -626,6 +655,9 @@ function renderLeaderControls(seeker) {
   } else {
     elements.editMGroupGc.value = '';
   }
+
+  elements.editMessengerLink.value = seeker.messengerLink || '';
+  renderMessengerLinkAction(seeker.messengerLink || '');
 
   elements.leaderTableBody.innerHTML = options
     .map(
@@ -680,6 +712,7 @@ function readEditPayload() {
   });
   updates.leaderName = selectedLeaderName();
   updates.mGroupGc = selectedGroupChat();
+  updates.messengerLink = normalizeExternalUrl(elements.editMessengerLink.value);
   return updates;
 }
 
@@ -708,7 +741,10 @@ async function saveEdit(event) {
 
 function syncLeaderAndGroupFromLeader() {
   const option = elements.editLeaderName.selectedOptions[0];
-  if (!option?.value) return;
+  if (!option?.value) {
+    renderMessengerLinkAction(elements.editMessengerLink.value);
+    return;
+  }
   const leader = LEADERS.find((entry) => entry.key === option.value);
   if (leader?.groupChatName) {
     const gcOption = [...elements.editMGroupGc.options].find((entry) => entry.value === leader.key);
@@ -716,11 +752,18 @@ function syncLeaderAndGroupFromLeader() {
       elements.editMGroupGc.value = gcOption.value;
     }
   }
+  if (leader?.messengerLink) {
+    elements.editMessengerLink.value = leader.messengerLink;
+  }
+  renderMessengerLinkAction(elements.editMessengerLink.value);
 }
 
 function syncLeaderAndGroupFromGc() {
   const option = elements.editMGroupGc.selectedOptions[0];
-  if (!option?.value) return;
+  if (!option?.value) {
+    renderMessengerLinkAction(elements.editMessengerLink.value);
+    return;
+  }
   const leader = LEADERS.find((entry) => entry.key === option.value);
   if (leader) {
     const leaderOption = [...elements.editLeaderName.options].find((entry) => entry.value === leader.key);
@@ -728,6 +771,10 @@ function syncLeaderAndGroupFromGc() {
       elements.editLeaderName.value = leaderOption.value;
     }
   }
+  if (leader?.messengerLink) {
+    elements.editMessengerLink.value = leader.messengerLink;
+  }
+  renderMessengerLinkAction(elements.editMessengerLink.value);
 }
 
 populateStatusSelect();
@@ -757,6 +804,7 @@ elements.modePasteBtn.addEventListener('click', () => setAddMode('paste'));
 elements.modeManualBtn.addEventListener('click', () => setAddMode('manual'));
 elements.editLeaderName.addEventListener('change', syncLeaderAndGroupFromLeader);
 elements.editMGroupGc.addEventListener('change', syncLeaderAndGroupFromGc);
+elements.editMessengerLink.addEventListener('input', (event) => renderMessengerLinkAction(event.target.value));
 document.getElementById('edit-preferredDay').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 document.getElementById('edit-preferredTime').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 
@@ -785,5 +833,9 @@ document.addEventListener('click', (event) => {
     } else {
       elements.editMGroupGc.value = '';
     }
+    if (leader.messengerLink) {
+      elements.editMessengerLink.value = leader.messengerLink;
+    }
+    renderMessengerLinkAction(elements.editMessengerLink.value);
   }
 });

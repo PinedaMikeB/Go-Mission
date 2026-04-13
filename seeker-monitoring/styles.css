@@ -91,6 +91,8 @@ p {
   padding: 10px 14px;
   background: var(--surface);
   color: var(--text);
+  text-decoration: none;
+  text-align: center;
 }
 
 .button.primary {
@@ -220,6 +222,10 @@ th {
 .table-action {
   min-height: 36px;
   padding: 8px 12px;
+}
+
+.inline-link-button {
+  justify-self: start;
 }
 
 .table-empty {
