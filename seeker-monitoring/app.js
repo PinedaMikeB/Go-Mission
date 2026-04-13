@@ -1,3 +1,16 @@
+import {
+  auth,
+  db,
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  onAuthStateChanged,
+  serverTimestamp
+} from '../js/firebase-config.js';
+
+const SEEKER_COLLECTION = 'goMission_vlogEngagementSeekers';
 const STATUSES = [
   'Processing',
   'Endorsed',
@@ -49,9 +62,7 @@ const EDIT_FIELDS = [
   'preferredTime',
   'church',
   'profile',
-  'status',
-  'leaderName',
-  'mGroupGc'
+  'status'
 ];
 
 const MANUAL_FIELDS = [
@@ -67,12 +78,31 @@ const MANUAL_FIELDS = [
   'profile'
 ];
 
+const TABLE_COLUMNS = [
+  'Date Recorded',
+  'Name',
+  'Email',
+  'Age',
+  'Gender',
+  'Marital Status',
+  'Mobile No',
+  'Preferred Day',
+  'Preferred Time',
+  'Church',
+  'Profile',
+  'Leader',
+  'M-Group GC',
+  'Status',
+  'Action'
+];
+
 const state = {
   seekers: [],
   selectedSeekerId: null,
   addMode: 'paste',
-  addImages: [],
-  loading: false
+  loading: false,
+  authReady: false,
+  currentUser: null
 };
 
 const elements = {
@@ -86,8 +116,6 @@ const elements = {
   pastePane: document.getElementById('paste-pane'),
   manualForm: document.getElementById('manual-form'),
   addRawText: document.getElementById('add-raw-text'),
-  addImageInput: document.getElementById('add-image-input'),
-  addImageMeta: document.getElementById('add-image-meta'),
   savePastedBtn: document.getElementById('save-pasted-btn'),
   modePasteBtn: document.getElementById('mode-paste-btn'),
   modeManualBtn: document.getElementById('mode-manual-btn'),
@@ -113,25 +141,11 @@ function truncate(value = '', max = 84) {
   return value.length > max ? `${value.slice(0, max - 1)}...` : value;
 }
 
-function showFeedback(message, kind = 'info') {
-  if (!message) {
-    elements.feedbackBanner.hidden = true;
-    elements.feedbackBanner.textContent = '';
-    elements.feedbackBanner.className = 'feedback-banner';
-    return;
-  }
-
-  elements.feedbackBanner.hidden = false;
-  elements.feedbackBanner.textContent = message;
-  elements.feedbackBanner.className = `feedback-banner ${kind}`;
-}
-
-function populateStatusSelect() {
-  elements.editStatus.innerHTML = STATUSES.map((status) => `<option value="${status}">${status}</option>`).join('');
-}
-
-function currentSeeker() {
-  return state.seekers.find((seeker) => seeker.id === state.selectedSeekerId) || null;
+function splitLines(value = '') {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function normalizeDay(value = '') {
@@ -174,11 +188,169 @@ function getMatchingLeaders(preferredDay = '', preferredTime = '') {
   return exactTimeMatches.length ? exactTimeMatches : dayMatches;
 }
 
+function getTodayString() {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'numeric',
+    day: 'numeric',
+    year: '2-digit'
+  }).format(new Date());
+}
+
+function firstMatch(text, pattern) {
+  const match = text.match(pattern);
+  return match ? match[0].trim() : '';
+}
+
+function toTitleCase(value = '') {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : '';
+}
+
+function extractName(lines) {
+  const labeled = lines.find((line) => /^name\s*[:\-]/i.test(line));
+  if (labeled) return labeled.replace(/^name\s*[:\-]\s*/i, '').trim();
+
+  return (
+    lines.find((line) => {
+      if (line.length < 3 || line.length > 40) return false;
+      if (/\d/.test(line)) return false;
+      if (/church|monday|tuesday|wednesday|thursday|friday|saturday|sunday|male|female|single|married|widowed|divorced/i.test(line)) {
+        return false;
+      }
+      return /^[a-z .,'-]+$/i.test(line);
+    }) || ''
+  );
+}
+
+function extractAge(lines, text) {
+  const labeled = text.match(/\bage\s*[:\-]?\s*(\d{1,2})\b/i);
+  if (labeled) return labeled[1];
+
+  const bare = lines.find((line) => /^\d{1,2}$/.test(line) && Number(line) >= 10 && Number(line) <= 99);
+  return bare || '';
+}
+
+function extractPreferredDay(lines, text) {
+  const labeled = lines.find((line) => /^preferred\s+day\s*[:\-]/i.test(line));
+  if (labeled) return labeled.replace(/^preferred\s+day\s*[:\-]\s*/i, '').trim();
+
+  const lineMatch = lines.find((line) => /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(line));
+  if (lineMatch) return lineMatch;
+
+  const textMatch = text.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+to\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday))?\b/i);
+  return textMatch ? textMatch[0] : '';
+}
+
+function extractPreferredTime(lines, text) {
+  const labeled = lines.find((line) => /^preferred\s+time\s*[:\-]/i.test(line));
+  if (labeled) return labeled.replace(/^preferred\s+time\s*[:\-]\s*/i, '').trim();
+
+  const timeLines = lines.filter((line) => /(\d{1,2}(?::\d{2})?\s*(?:am|pm|nn))/.test(line.toLowerCase()));
+  if (timeLines.length) return timeLines.join(' / ');
+
+  return firstMatch(text, /\b\d{1,2}(?::\d{2})?\s*(?:am|pm|nn)\s*(?:to|-)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm|nn)\b/i);
+}
+
+function parseRawText(rawText) {
+  const text = rawText.trim();
+  const lines = splitLines(text);
+  const gender = toTitleCase(firstMatch(text, /\b(male|female)\b/i));
+  const rawMaritalStatus = firstMatch(text, /\b(single|married|marriage|widowed|divorced|separated)\b/i);
+  const maritalStatus = /^marriage$/i.test(rawMaritalStatus) ? 'Married' : toTitleCase(rawMaritalStatus);
+  const email = firstMatch(text, /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const mobileNo = firstMatch(text, /(?:\+?63|0)\d{10}\b/);
+  const churchLine =
+    lines.find((line) => /church/i.test(line)) ||
+    firstMatch(text, /[A-Za-z0-9 .,'-]*church[A-Za-z0-9 .,'-]*/i);
+
+  return {
+    dateRecorded: getTodayString(),
+    name: extractName(lines),
+    email,
+    age: extractAge(lines, text),
+    gender,
+    maritalStatus,
+    mobileNo,
+    preferredDay: extractPreferredDay(lines, text),
+    preferredTime: extractPreferredTime(lines, text),
+    church: churchLine,
+    profile: text,
+    rawPastedText: text,
+    status: 'Processing',
+    leaderName: '',
+    mGroupGc: ''
+  };
+}
+
+function coerceText(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+function normalizeSeeker(record = {}) {
+  return {
+    id: record.id || '',
+    dateRecorded: coerceText(record.dateRecorded),
+    name: coerceText(record.name),
+    email: coerceText(record.email),
+    age: coerceText(record.age),
+    gender: coerceText(record.gender),
+    maritalStatus: coerceText(record.maritalStatus),
+    mobileNo: coerceText(record.mobileNo),
+    preferredDay: coerceText(record.preferredDay),
+    preferredTime: coerceText(record.preferredTime),
+    church: coerceText(record.church),
+    profile: coerceText(record.profile),
+    status: coerceText(record.status) || 'Processing',
+    leaderName: coerceText(record.leaderName),
+    mGroupGc: coerceText(record.mGroupGc),
+    rawPastedText: coerceText(record.rawPastedText),
+    createdAt: record.createdAt || null,
+    updatedAt: record.updatedAt || null
+  };
+}
+
+function getTimestampMs(value) {
+  return value && typeof value.toMillis === 'function' ? value.toMillis() : 0;
+}
+
+function setTableMessage(message) {
+  elements.seekerTableBody.innerHTML = `<tr><td colspan="${TABLE_COLUMNS.length}" class="table-empty">${escapeHtml(message)}</td></tr>`;
+}
+
+function showFeedback(message, kind = 'info') {
+  if (!message) {
+    elements.feedbackBanner.hidden = true;
+    elements.feedbackBanner.textContent = '';
+    elements.feedbackBanner.className = 'feedback-banner';
+    return;
+  }
+
+  elements.feedbackBanner.hidden = false;
+  elements.feedbackBanner.textContent = message;
+  elements.feedbackBanner.className = `feedback-banner ${kind}`;
+}
+
+function humanizeError(error) {
+  const message = error?.message || 'Something went wrong.';
+  if (/Missing or insufficient permissions/i.test(message)) {
+    return 'Seeker Monitoring is using Firestore now, but this collection still needs Firestore rule access.';
+  }
+  return message;
+}
+
+function populateStatusSelect() {
+  elements.editStatus.innerHTML = STATUSES.map((status) => `<option value="${status}">${status}</option>`).join('');
+}
+
+function currentSeeker() {
+  return state.seekers.find((seeker) => seeker.id === state.selectedSeekerId) || null;
+}
+
 function renderSeekerTable() {
   elements.seekerCount.textContent = String(state.seekers.length);
 
   if (!state.seekers.length) {
-    elements.seekerTableBody.innerHTML = '<tr><td colspan="15" class="table-empty">No seekers saved yet.</td></tr>';
+    setTableMessage('No seekers saved yet.');
     return;
   }
 
@@ -186,42 +358,62 @@ function renderSeekerTable() {
     .map(
       (seeker) => `
         <tr>
-          <td>${escapeHtml(seeker.dateRecorded || '')}</td>
-          <td>${escapeHtml(seeker.name || '')}</td>
-          <td>${escapeHtml(seeker.email || '')}</td>
-          <td>${escapeHtml(seeker.age || '')}</td>
-          <td>${escapeHtml(seeker.gender || '')}</td>
-          <td>${escapeHtml(seeker.maritalStatus || '')}</td>
-          <td>${escapeHtml(seeker.mobileNo || '')}</td>
-          <td>${escapeHtml(seeker.preferredDay || '')}</td>
-          <td>${escapeHtml(seeker.preferredTime || '')}</td>
-          <td>${escapeHtml(seeker.church || '')}</td>
-          <td class="profile-cell" title="${escapeHtml(seeker.profile || '')}">${seeker.profile ? escapeHtml(truncate(seeker.profile)) : '<span class="table-muted">(blank)</span>'}</td>
-          <td>${escapeHtml(seeker.leaderName || '')}</td>
-          <td>${escapeHtml(seeker.mGroupGc || '')}</td>
-          <td><span class="status-pill">${escapeHtml(seeker.status || '')}</span></td>
-          <td><button class="button table-action" type="button" data-edit-id="${seeker.id}">Edit</button></td>
+          <td data-label="Date Recorded">${escapeHtml(seeker.dateRecorded || '')}</td>
+          <td data-label="Name">${escapeHtml(seeker.name || '')}</td>
+          <td data-label="Email">${escapeHtml(seeker.email || '')}</td>
+          <td data-label="Age">${escapeHtml(seeker.age || '')}</td>
+          <td data-label="Gender">${escapeHtml(seeker.gender || '')}</td>
+          <td data-label="Marital Status">${escapeHtml(seeker.maritalStatus || '')}</td>
+          <td data-label="Mobile No">${escapeHtml(seeker.mobileNo || '')}</td>
+          <td data-label="Preferred Day">${escapeHtml(seeker.preferredDay || '')}</td>
+          <td data-label="Preferred Time">${escapeHtml(seeker.preferredTime || '')}</td>
+          <td data-label="Church">${escapeHtml(seeker.church || '')}</td>
+          <td data-label="Profile" class="profile-cell" title="${escapeHtml(seeker.profile || '')}">${seeker.profile ? escapeHtml(truncate(seeker.profile)) : '<span class="table-muted">(blank)</span>'}</td>
+          <td data-label="Leader">${escapeHtml(seeker.leaderName || '')}</td>
+          <td data-label="M-Group GC">${escapeHtml(seeker.mGroupGc || '')}</td>
+          <td data-label="Status"><span class="status-pill">${escapeHtml(seeker.status || '')}</span></td>
+          <td data-label="Action"><button class="button table-action" type="button" data-edit-id="${seeker.id}">Edit</button></td>
         </tr>
       `
     )
     .join('');
 }
 
+function requireSignedIn() {
+  if (state.currentUser) return;
+  throw new Error('Sign in to Go Mission first, then reopen Seeker Monitoring.');
+}
+
 async function fetchSeekers() {
-  if (state.loading) return;
+  if (state.loading || !state.authReady) return;
+  if (!state.currentUser) {
+    state.seekers = [];
+    elements.seekerCount.textContent = '0';
+    setTableMessage('Sign in to Go Mission first, then refresh.');
+    showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+    return;
+  }
+
   state.loading = true;
+  showFeedback('Loading seekers...', 'info');
 
   try {
-    const response = await fetch('/seeker-monitoring/api/seekers');
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Could not load seekers.');
-
-    state.seekers = Array.isArray(payload.seekers) ? payload.seekers : [];
+    const snapshot = await getDocs(collection(db, SEEKER_COLLECTION));
+    state.seekers = snapshot.docs
+      .map((record) => normalizeSeeker({ id: record.id, ...record.data() }))
+      .sort((left, right) => {
+        const updatedDiff = getTimestampMs(right.updatedAt) - getTimestampMs(left.updatedAt);
+        if (updatedDiff !== 0) return updatedDiff;
+        return getTimestampMs(right.createdAt) - getTimestampMs(left.createdAt);
+      });
     renderSeekerTable();
     showFeedback('');
   } catch (error) {
-    elements.seekerTableBody.innerHTML = `<tr><td colspan="15" class="table-empty">${escapeHtml(error.message)}</td></tr>`;
-    showFeedback(error.message, 'error');
+    const message = humanizeError(error);
+    state.seekers = [];
+    elements.seekerCount.textContent = '0';
+    setTableMessage(message);
+    showFeedback(message, 'error');
   } finally {
     state.loading = false;
   }
@@ -250,65 +442,11 @@ function setAddMode(mode) {
 
 function resetAddModal() {
   elements.addRawText.value = '';
-  elements.addImageInput.value = '';
-  elements.addImageMeta.textContent = 'No image selected';
-  state.addImages = [];
   MANUAL_FIELDS.forEach((field) => {
     const element = document.getElementById(`manual-${field}`);
     if (element) element.value = '';
   });
   setAddMode('paste');
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleAddImageChange(event) {
-  const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/'));
-  state.addImages = await Promise.all(files.map((file) => fileToDataUrl(file)));
-  elements.addImageMeta.textContent = state.addImages.length
-    ? `${state.addImages.length} image${state.addImages.length > 1 ? 's' : ''} selected`
-    : 'No image selected';
-}
-
-async function savePastedSeeker() {
-  const rawText = elements.addRawText.value.trim();
-  if (!rawText && !state.addImages.length) {
-    showFeedback('Paste seeker text or add a screenshot first.', 'error');
-    return;
-  }
-
-  elements.savePastedBtn.disabled = true;
-  showFeedback('Saving seeker...', 'info');
-
-  try {
-    const response = await fetch('/seeker-monitoring/api/ingest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        rawText,
-        images: state.addImages
-      })
-    });
-
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Could not save seeker.');
-
-    await fetchSeekers();
-    resetAddModal();
-    closeModal(elements.addModal);
-    showFeedback(`Saved ${payload.seeker?.name || 'new seeker'}.`, 'success');
-  } catch (error) {
-    showFeedback(error.message, 'error');
-  } finally {
-    elements.savePastedBtn.disabled = false;
-  }
 }
 
 function getManualPayload() {
@@ -318,6 +456,73 @@ function getManualPayload() {
     payload[field] = element?.value?.trim?.() || '';
   });
   return payload;
+}
+
+function buildStoredPayload(payload) {
+  const base = normalizeSeeker(payload);
+  return {
+    dateRecorded: base.dateRecorded || getTodayString(),
+    name: base.name,
+    email: base.email,
+    age: base.age,
+    gender: base.gender,
+    maritalStatus: base.maritalStatus,
+    mobileNo: base.mobileNo,
+    preferredDay: base.preferredDay,
+    preferredTime: base.preferredTime,
+    church: base.church,
+    profile: base.profile,
+    status: base.status || 'Processing',
+    leaderName: base.leaderName,
+    mGroupGc: base.mGroupGc,
+    rawPastedText: base.rawPastedText,
+    sourceChannel: 'vlogs_engagement',
+    recordType: 'seeker_monitoring',
+    isAppUser: false
+  };
+}
+
+async function createSeeker(payload) {
+  requireSignedIn();
+  const ref = doc(collection(db, SEEKER_COLLECTION));
+  const user = state.currentUser;
+
+  await setDoc(ref, {
+    ...buildStoredPayload(payload),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdByUid: user.uid,
+    createdByEmail: user.email || '',
+    updatedByUid: user.uid,
+    updatedByEmail: user.email || ''
+  });
+
+  return ref.id;
+}
+
+async function savePastedSeeker() {
+  const rawText = elements.addRawText.value.trim();
+  if (!rawText) {
+    showFeedback('Paste the seeker details first.', 'error');
+    return;
+  }
+
+  elements.savePastedBtn.disabled = true;
+  showFeedback('Saving seeker...', 'info');
+
+  try {
+    const parsed = parseRawText(rawText);
+    const id = await createSeeker(parsed);
+    await fetchSeekers();
+    resetAddModal();
+    closeModal(elements.addModal);
+    const seeker = state.seekers.find((entry) => entry.id === id);
+    showFeedback(`Saved ${seeker?.name || 'new seeker'}.`, 'success');
+  } catch (error) {
+    showFeedback(humanizeError(error), 'error');
+  } finally {
+    elements.savePastedBtn.disabled = false;
+  }
 }
 
 async function saveManualSeeker(event) {
@@ -331,48 +536,96 @@ async function saveManualSeeker(event) {
   showFeedback('Saving seeker...', 'info');
 
   try {
-    const response = await fetch('/seeker-monitoring/api/ingest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ manualEntry })
+    await createSeeker({
+      ...manualEntry,
+      dateRecorded: getTodayString(),
+      rawPastedText: '',
+      status: 'Processing',
+      leaderName: '',
+      mGroupGc: ''
     });
-
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Could not save seeker.');
-
     await fetchSeekers();
     resetAddModal();
     closeModal(elements.addModal);
-    showFeedback(`Saved ${payload.seeker?.name || 'new seeker'}.`, 'success');
+    showFeedback(`Saved ${manualEntry.name || 'new seeker'}.`, 'success');
   } catch (error) {
-    showFeedback(error.message, 'error');
+    showFeedback(humanizeError(error), 'error');
   }
 }
 
-function ensureOption(select, value, label) {
+function ensureLeaderOption(select, value, label, dataName = '', dataGc = '') {
   if (!value) return;
   if ([...select.options].some((option) => option.value === value)) return;
-  select.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(value)}">${escapeHtml(label || value)}</option>`);
+  select.insertAdjacentHTML(
+    'beforeend',
+    `<option value="${escapeHtml(value)}" data-name="${escapeHtml(dataName)}" data-gc="${escapeHtml(dataGc)}">${escapeHtml(label || value)}</option>`
+  );
+}
+
+function selectedLeaderName() {
+  const option = elements.editLeaderName.selectedOptions[0];
+  return option?.dataset.name || '';
+}
+
+function selectedGroupChat() {
+  const option = elements.editMGroupGc.selectedOptions[0];
+  return option?.dataset.gc || '';
 }
 
 function renderLeaderControls(seeker) {
   const matches = getMatchingLeaders(seeker.preferredDay, seeker.preferredTime);
   const options = matches.length ? matches : LEADERS;
 
-  elements.editLeaderName.innerHTML = '<option value="">Select leader</option>' + options
-    .map((leader) => `<option value="${escapeHtml(leader.name)}" data-key="${leader.key}">${escapeHtml(`${leader.name} • ${leader.day} ${leader.time}`)}</option>`)
-    .join('');
+  elements.editLeaderName.innerHTML =
+    '<option value="" data-name="" data-gc="">Select leader</option>' +
+    options
+      .map(
+        (leader) =>
+          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}">${escapeHtml(`${leader.name} • ${leader.day} ${leader.time}`)}</option>`
+      )
+      .join('');
 
-  elements.editMGroupGc.innerHTML = '<option value="">Select M-Group GC</option>' + options
-    .filter((leader) => leader.groupChatName)
-    .map((leader) => `<option value="${escapeHtml(leader.groupChatName)}" data-key="${leader.key}">${escapeHtml(leader.groupChatName)}</option>`)
-    .join('');
+  elements.editMGroupGc.innerHTML =
+    '<option value="" data-name="" data-gc="">Select M-Group GC</option>' +
+    options
+      .filter((leader) => leader.groupChatName)
+      .map(
+        (leader) =>
+          `<option value="${leader.key}" data-name="${escapeHtml(leader.name)}" data-gc="${escapeHtml(leader.groupChatName)}">${escapeHtml(leader.groupChatName)}</option>`
+      )
+      .join('');
 
-  ensureOption(elements.editLeaderName, seeker.leaderName, seeker.leaderName);
-  ensureOption(elements.editMGroupGc, seeker.mGroupGc, seeker.mGroupGc);
+  const matchingLeaderOption = [...elements.editLeaderName.options].find(
+    (option) =>
+      option.dataset.name === seeker.leaderName &&
+      (!seeker.mGroupGc || option.dataset.gc === seeker.mGroupGc)
+  );
 
-  elements.editLeaderName.value = seeker.leaderName || '';
-  elements.editMGroupGc.value = seeker.mGroupGc || '';
+  const matchingGcOption = [...elements.editMGroupGc.options].find(
+    (option) =>
+      option.dataset.gc === seeker.mGroupGc &&
+      (!seeker.leaderName || option.dataset.name === seeker.leaderName)
+  );
+
+  if (matchingLeaderOption) {
+    elements.editLeaderName.value = matchingLeaderOption.value;
+  } else if (seeker.leaderName) {
+    const customValue = `custom-leader:${seeker.leaderName}`;
+    ensureLeaderOption(elements.editLeaderName, customValue, seeker.leaderName, seeker.leaderName, seeker.mGroupGc);
+    elements.editLeaderName.value = customValue;
+  } else {
+    elements.editLeaderName.value = '';
+  }
+
+  if (matchingGcOption) {
+    elements.editMGroupGc.value = matchingGcOption.value;
+  } else if (seeker.mGroupGc) {
+    const customValue = `custom-gc:${seeker.mGroupGc}`;
+    ensureLeaderOption(elements.editMGroupGc, customValue, seeker.mGroupGc, seeker.leaderName, seeker.mGroupGc);
+    elements.editMGroupGc.value = customValue;
+  } else {
+    elements.editMGroupGc.value = '';
+  }
 
   elements.leaderTableBody.innerHTML = options
     .map(
@@ -389,17 +642,16 @@ function renderLeaderControls(seeker) {
     .join('');
 
   elements.leaderMatchNote.textContent = options.length
-    ? `Leader and M-Group GC options are filtered from the seeker schedule.`
+    ? 'Leader and M-Group GC options are filtered from the seeker schedule.'
     : 'No schedule match found. You can still choose manually.';
 }
 
 function getEditFormSnapshot() {
   return {
-    id: state.selectedSeekerId,
     preferredDay: document.getElementById('edit-preferredDay').value.trim(),
     preferredTime: document.getElementById('edit-preferredTime').value.trim(),
-    leaderName: elements.editLeaderName.value.trim(),
-    mGroupGc: elements.editMGroupGc.value.trim()
+    leaderName: selectedLeaderName(),
+    mGroupGc: selectedGroupChat()
   };
 }
 
@@ -426,6 +678,8 @@ function readEditPayload() {
     const element = document.getElementById(`edit-${field}`);
     if (element) updates[field] = element.value.trim();
   });
+  updates.leaderName = selectedLeaderName();
+  updates.mGroupGc = selectedGroupChat();
   return updates;
 }
 
@@ -437,62 +691,72 @@ async function saveEdit(event) {
   showFeedback('Saving changes...', 'info');
 
   try {
-    const response = await fetch('/seeker-monitoring/api/seekers', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: seeker.id,
-        updates: readEditPayload()
-      })
+    requireSignedIn();
+    await updateDoc(doc(db, SEEKER_COLLECTION, seeker.id), {
+      ...readEditPayload(),
+      updatedAt: serverTimestamp(),
+      updatedByUid: state.currentUser.uid,
+      updatedByEmail: state.currentUser.email || ''
     });
-
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Could not save seeker changes.');
-
     await fetchSeekers();
     closeModal(elements.editModal);
-    showFeedback(`Updated ${payload.seeker?.name || 'seeker'}.`, 'success');
+    showFeedback(`Updated ${readEditPayload().name || 'seeker'}.`, 'success');
   } catch (error) {
-    showFeedback(error.message, 'error');
+    showFeedback(humanizeError(error), 'error');
   }
 }
 
-function syncLeaderAndGroupFromLeader(value) {
-  const selectedKey = elements.editLeaderName.selectedOptions[0]?.dataset.key;
-  const leader = LEADERS.find((entry) => entry.key === selectedKey) || LEADERS.find((entry) => entry.name === value);
-  if (leader && leader.groupChatName) {
-    ensureOption(elements.editMGroupGc, leader.groupChatName, leader.groupChatName);
-    elements.editMGroupGc.value = leader.groupChatName;
+function syncLeaderAndGroupFromLeader() {
+  const option = elements.editLeaderName.selectedOptions[0];
+  if (!option?.value) return;
+  const leader = LEADERS.find((entry) => entry.key === option.value);
+  if (leader?.groupChatName) {
+    const gcOption = [...elements.editMGroupGc.options].find((entry) => entry.value === leader.key);
+    if (gcOption) {
+      elements.editMGroupGc.value = gcOption.value;
+    }
   }
 }
 
-function syncLeaderAndGroupFromGc(value) {
-  const selectedKey = elements.editMGroupGc.selectedOptions[0]?.dataset.key;
-  const leader = LEADERS.find((entry) => entry.key === selectedKey) || LEADERS.find((entry) => entry.groupChatName === value);
+function syncLeaderAndGroupFromGc() {
+  const option = elements.editMGroupGc.selectedOptions[0];
+  if (!option?.value) return;
+  const leader = LEADERS.find((entry) => entry.key === option.value);
   if (leader) {
-    ensureOption(elements.editLeaderName, leader.name, `${leader.name} • ${leader.day} ${leader.time}`);
-    elements.editLeaderName.value = leader.name;
+    const leaderOption = [...elements.editLeaderName.options].find((entry) => entry.value === leader.key);
+    if (leaderOption) {
+      elements.editLeaderName.value = leaderOption.value;
+    }
   }
 }
 
 populateStatusSelect();
 setAddMode('paste');
-fetchSeekers();
+setTableMessage('Checking sign-in...');
+
+onAuthStateChanged(auth, async (user) => {
+  state.currentUser = user;
+  state.authReady = true;
+  await fetchSeekers();
+});
 
 elements.addSeekerBtn.addEventListener('click', () => {
+  if (!state.currentUser) {
+    showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+    return;
+  }
   resetAddModal();
   openModal(elements.addModal);
 });
 
 elements.refreshBtn.addEventListener('click', fetchSeekers);
-elements.addImageInput.addEventListener('change', handleAddImageChange);
 elements.savePastedBtn.addEventListener('click', savePastedSeeker);
 elements.manualForm.addEventListener('submit', saveManualSeeker);
 elements.editForm.addEventListener('submit', saveEdit);
 elements.modePasteBtn.addEventListener('click', () => setAddMode('paste'));
 elements.modeManualBtn.addEventListener('click', () => setAddMode('manual'));
-elements.editLeaderName.addEventListener('change', (event) => syncLeaderAndGroupFromLeader(event.target.value));
-elements.editMGroupGc.addEventListener('change', (event) => syncLeaderAndGroupFromGc(event.target.value));
+elements.editLeaderName.addEventListener('change', syncLeaderAndGroupFromLeader);
+elements.editMGroupGc.addEventListener('change', syncLeaderAndGroupFromGc);
 document.getElementById('edit-preferredDay').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 document.getElementById('edit-preferredTime').addEventListener('input', () => renderLeaderControls(getEditFormSnapshot()));
 
@@ -514,9 +778,12 @@ document.addEventListener('click', (event) => {
   if (useLeaderButton) {
     const leader = LEADERS.find((entry) => entry.key === useLeaderButton.dataset.useLeader);
     if (!leader) return;
-    ensureOption(elements.editLeaderName, leader.name, `${leader.name} • ${leader.day} ${leader.time}`);
-    ensureOption(elements.editMGroupGc, leader.groupChatName, leader.groupChatName);
-    elements.editLeaderName.value = leader.name;
-    elements.editMGroupGc.value = leader.groupChatName || '';
+    elements.editLeaderName.value = leader.key;
+    if (leader.groupChatName) {
+      const matchingGc = [...elements.editMGroupGc.options].find((entry) => entry.value === leader.key);
+      if (matchingGc) elements.editMGroupGc.value = leader.key;
+    } else {
+      elements.editMGroupGc.value = '';
+    }
   }
 });
