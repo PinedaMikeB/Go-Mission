@@ -3540,6 +3540,8 @@
         const bootProgressValue = document.getElementById('bootProgressValue');
         const bootProgressBar = document.getElementById('bootProgressBar');
         const bootProgressHint = document.getElementById('bootProgressHint');
+        const SEEKER_MONITORING_ONLY_NAMES = ['Dona Perez', 'Chatty Claveria'];
+        const SEEKER_MONITORING_ADMIN_EMAILS = ['michael.marga@gmail.com', 'vasquezperlie18@gmail.com'];
         let authBootResolved = false;
         const BOOT_TELEMETRY_STORAGE_KEY = 'goMission_bootTelemetry';
         const BOOT_MILESTONES = {
@@ -3695,6 +3697,35 @@
                 this.setProgress(0, 'Restoring your journey', 'Checking your account and loading the right screen.');
             }
         };
+
+        function normalizeSeekerMonitoringOnlyName(value = '') {
+            return String(value || '')
+                .trim()
+                .replace(/\s+/g, ' ')
+                .toLowerCase();
+        }
+
+        function getSeekerMonitoringOnlyName(profile = {}, user = null) {
+            const candidates = [
+                profile?.fullName,
+                profile?.displayName,
+                profile?.name,
+                user?.displayName
+            ];
+            return candidates.find((value) => typeof value === 'string' && value.trim()) || '';
+        }
+
+        function isSeekerMonitoringOnlyUser(user, profile = {}) {
+            const normalizedEmail = String(user?.email || profile?.email || '').toLowerCase().trim();
+            if (SEEKER_MONITORING_ADMIN_EMAILS.includes(normalizedEmail)) {
+                return false;
+            }
+
+            const normalizedName = normalizeSeekerMonitoringOnlyName(getSeekerMonitoringOnlyName(profile, user));
+            return SEEKER_MONITORING_ONLY_NAMES.some((name) => (
+                normalizeSeekerMonitoringOnlyName(name) === normalizedName
+            ));
+        }
         window.getBootTelemetry = function() {
             try {
                 return JSON.parse(localStorage.getItem(BOOT_TELEMETRY_STORAGE_KEY) || '[]');
@@ -4373,6 +4404,11 @@
                 skipJourneyRender: true,
                 skipStageRefresh: true
             }));
+
+            if (isSeekerMonitoringOnlyUser(user, window.currentUserProfile || {})) {
+                window.location.replace('/seeker-monitoring/');
+                return;
+            }
 
             if (hasPriorityLaunch) {
                 BootRuntime.mode = 'priority-launch';

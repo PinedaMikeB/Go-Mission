@@ -4,6 +4,7 @@ import {
   storage,
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -16,6 +17,9 @@ import {
 
 const SEEKER_COLLECTION = 'goMission_vlogEngagementSeekers';
 const LEADER_COLLECTION = 'goMission_vlogEngagementLeaders';
+const MEMBER_COLLECTION = 'goMission_members';
+const SEEKER_MONITORING_ALLOWED_NAMES = ['Dona Perez', 'Chatty Claveria'];
+const SEEKER_MONITORING_ADMIN_EMAILS = ['michael.marga@gmail.com', 'vasquezperlie18@gmail.com'];
 const STATUSES = [
   'Processing',
   'Endorsed',
@@ -118,7 +122,9 @@ const state = {
   editImages: [],
   loading: false,
   authReady: false,
-  currentUser: null
+  currentUser: null,
+  currentMember: null,
+  isAuthorized: false
 };
 
 const elements = {
@@ -216,6 +222,17 @@ function splitLines(value = '') {
 
 function coerceStringArray(value) {
   return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
+}
+
+function normalizePersonName(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function getMemberProfileName(member = {}) {
+  return member?.fullName || member?.displayName || member?.name || '';
 }
 
 function normalizeDay(value = '') {
@@ -436,7 +453,7 @@ function showFeedback(message, kind = 'info') {
 function humanizeError(error) {
   const message = error?.message || 'Something went wrong.';
   if (/Missing or insufficient permissions/i.test(message)) {
-    return 'Seeker Monitoring is using Firestore now, but this collection still needs Firestore rule access.';
+    return 'You do not have access to Seeker Monitoring.';
   }
   return message;
 }
@@ -545,6 +562,35 @@ function requireSignedIn() {
   throw new Error('Sign in to Go Mission first, then reopen Seeker Monitoring.');
 }
 
+function requireAuthorized() {
+  requireSignedIn();
+  if (state.isAuthorized) return;
+  throw new Error('You do not have access to Seeker Monitoring.');
+}
+
+function showUnauthorizedState() {
+  state.seekers = [];
+  state.leaders = [];
+  elements.seekerCount.textContent = '0';
+  elements.leaderCount.textContent = '0';
+  setTableMessage('You do not have access to Seeker Monitoring.');
+  setLeaderTableMessage('You do not have access to Seeker Monitoring.');
+  showFeedback('Only Dona Perez and Chatty Claveria can access Seeker Monitoring.', 'error');
+}
+
+async function loadCurrentMemberProfile(user) {
+  const snapshot = await getDoc(doc(db, MEMBER_COLLECTION, user.uid));
+  return snapshot.exists() ? snapshot.data() : null;
+}
+
+function isAuthorizedUser(user, member) {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (SEEKER_MONITORING_ADMIN_EMAILS.includes(email)) return true;
+
+  const normalizedName = normalizePersonName(getMemberProfileName(member));
+  return SEEKER_MONITORING_ALLOWED_NAMES.some((name) => normalizePersonName(name) === normalizedName);
+}
+
 async function seedLeadersIfNeeded() {
   const snapshot = await getDocs(collection(db, LEADER_COLLECTION));
   const existingIds = new Set(snapshot.docs.map((record) => record.id));
@@ -578,6 +624,10 @@ async function fetchLeaders() {
     setLeaderTableMessage('Sign in to Go Mission first, then refresh.');
     return;
   }
+  if (!state.isAuthorized) {
+    showUnauthorizedState();
+    return;
+  }
 
   try {
     const snapshot = await seedLeadersIfNeeded();
@@ -608,6 +658,10 @@ async function fetchSeekers() {
     elements.seekerCount.textContent = '0';
     setTableMessage('Sign in to Go Mission first, then refresh.');
     showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+    return;
+  }
+  if (!state.isAuthorized) {
+    showUnauthorizedState();
     return;
   }
 
@@ -753,7 +807,7 @@ function buildStoredPayload(payload) {
 }
 
 async function createSeeker(payload) {
-  requireSignedIn();
+  requireAuthorized();
   const ref = doc(collection(db, SEEKER_COLLECTION));
   const user = state.currentUser;
 
@@ -1012,7 +1066,7 @@ async function saveEdit(event) {
   showFeedback('Saving changes...', 'info');
 
   try {
-    requireSignedIn();
+    requireAuthorized();
     const uploadedImages = await uploadSeekerImages(seeker.id, state.editImages);
     await updateDoc(doc(db, SEEKER_COLLECTION, seeker.id), {
       ...readEditPayload(),
@@ -1066,7 +1120,7 @@ async function saveLeader(event) {
   showFeedback('Saving leader...', 'info');
 
   try {
-    requireSignedIn();
+    requireAuthorized();
     const formValues = {
       name: document.getElementById('leader-name').value.trim(),
       day: document.getElementById('leader-day').value.trim(),
@@ -1163,13 +1217,34 @@ setLeaderTableMessage('Checking sign-in...');
 onAuthStateChanged(auth, async (user) => {
   state.currentUser = user;
   state.authReady = true;
+  state.currentMember = null;
+  state.isAuthorized = false;
+
+  if (!user) {
+    await fetchLeaders();
+    await fetchSeekers();
+    return;
+  }
+
+  try {
+    state.currentMember = await loadCurrentMemberProfile(user);
+    state.isAuthorized = isAuthorizedUser(user, state.currentMember);
+  } catch (error) {
+    state.isAuthorized = false;
+  }
+
+  if (!state.isAuthorized) {
+    showUnauthorizedState();
+    return;
+  }
+
   await fetchLeaders();
   await fetchSeekers();
 });
 
 elements.addSeekerBtn.addEventListener('click', () => {
-  if (!state.currentUser) {
-    showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+  if (!state.currentUser || !state.isAuthorized) {
+    showFeedback(!state.currentUser ? 'Sign in to Go Mission first, then reopen Seeker Monitoring.' : 'You do not have access to Seeker Monitoring.', 'error');
     return;
   }
   resetAddModal();
@@ -1177,8 +1252,8 @@ elements.addSeekerBtn.addEventListener('click', () => {
 });
 
 elements.addLeaderBtn.addEventListener('click', () => {
-  if (!state.currentUser) {
-    showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+  if (!state.currentUser || !state.isAuthorized) {
+    showFeedback(!state.currentUser ? 'Sign in to Go Mission first, then reopen Seeker Monitoring.' : 'You do not have access to Seeker Monitoring.', 'error');
     return;
   }
   openAddLeaderModal();
