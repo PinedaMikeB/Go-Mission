@@ -115,6 +115,7 @@ const state = {
   selectedLeaderId: null,
   addMode: 'paste',
   addImages: [],
+  editImages: [],
   loading: false,
   authReady: false,
   currentUser: null
@@ -147,6 +148,9 @@ const elements = {
   editMGroupGc: document.getElementById('edit-mGroupGc'),
   editMessengerLink: document.getElementById('edit-messengerLink'),
   editMessengerLinkAction: document.getElementById('edit-messenger-link-action'),
+  editImageInput: document.getElementById('edit-image-input'),
+  editImageMeta: document.getElementById('edit-image-meta'),
+  editDropzone: document.getElementById('edit-dropzone'),
   leaderForm: document.getElementById('leader-form'),
   leaderModalTitle: document.getElementById('leader-modal-title'),
   saveLeaderBtn: document.getElementById('save-leader-btn'),
@@ -673,6 +677,46 @@ function handleAddImageChange(event) {
     : 'No image selected';
 }
 
+function updateEditImageMeta() {
+  if (!elements.editImageMeta) return;
+  elements.editImageMeta.textContent = state.editImages.length
+    ? `${state.editImages.length} image${state.editImages.length > 1 ? 's' : ''} ready to upload`
+    : 'No new image selected';
+}
+
+function setEditImages(files = []) {
+  state.editImages = Array.from(files).filter((file) => file.type.startsWith('image/'));
+  if (elements.editImageInput && elements.editImageInput.files !== state.editImages) {
+    // FileList is read-only, so we only sync UI text here.
+  }
+  updateEditImageMeta();
+}
+
+function handleEditImageChange(event) {
+  setEditImages(event.target.files || []);
+}
+
+function bindEditDropzone() {
+  if (!elements.editDropzone || !elements.editImageInput) return;
+
+  const dropzone = elements.editDropzone;
+
+  dropzone.addEventListener('click', () => elements.editImageInput.click());
+  dropzone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('drag-over');
+  });
+  dropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const files = event.dataTransfer?.files || [];
+    setEditImages(files);
+  });
+}
+
 function getManualPayload() {
   const payload = {};
   MANUAL_FIELDS.forEach((field) => {
@@ -929,11 +973,14 @@ function getEditFormSnapshot() {
 
 function fillEditModal(seeker) {
   state.selectedSeekerId = seeker.id;
+  state.editImages = [];
   elements.editModalTitle.textContent = seeker.name ? `Edit ${seeker.name}` : 'Edit seeker';
   EDIT_FIELDS.forEach((field) => {
     const element = document.getElementById(`edit-${field}`);
     if (element) element.value = seeker[field] || '';
   });
+  if (elements.editImageInput) elements.editImageInput.value = '';
+  updateEditImageMeta();
   renderEditImageList(seeker);
   renderLeaderControls(seeker);
 }
@@ -966,8 +1013,10 @@ async function saveEdit(event) {
 
   try {
     requireSignedIn();
+    const uploadedImages = await uploadSeekerImages(seeker.id, state.editImages);
     await updateDoc(doc(db, SEEKER_COLLECTION, seeker.id), {
       ...readEditPayload(),
+      profileImageUrls: [...(seeker.profileImageUrls || []), ...uploadedImages],
       updatedAt: serverTimestamp(),
       updatedByUid: state.currentUser.uid,
       updatedByEmail: state.currentUser.email || ''
@@ -1142,6 +1191,10 @@ elements.refreshBtn.addEventListener('click', async () => {
 if (elements.addImageInput) {
   elements.addImageInput.addEventListener('change', handleAddImageChange);
 }
+if (elements.editImageInput) {
+  elements.editImageInput.addEventListener('change', handleEditImageChange);
+}
+bindEditDropzone();
 elements.savePastedBtn.addEventListener('click', savePastedSeeker);
 elements.manualForm.addEventListener('submit', saveManualSeeker);
 elements.editForm.addEventListener('submit', saveEdit);
