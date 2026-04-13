@@ -241,6 +241,30 @@ th {
   gap: 10px;
 }
 
+.dropzone {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.dropzone strong {
+  font-size: 0.95rem;
+}
+
+.dropzone span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.dropzone.drag-over {
+  border-color: var(--accent);
+  background: rgba(214, 75, 63, 0.08);
+}
+
 .table-empty {
   text-align: center;
   color: var(--muted);
