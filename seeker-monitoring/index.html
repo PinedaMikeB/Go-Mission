@@ -64,6 +64,39 @@
           </table>
         </div>
       </section>
+
+      <section class="band">
+        <div class="band-head">
+          <div>
+            <p class="section-kicker">Leader Master Table</p>
+            <h2>Leaders</h2>
+          </div>
+          <div class="stat-chip">
+            <span>Total</span>
+            <strong id="leader-count">0</strong>
+          </div>
+        </div>
+
+        <div class="table-shell">
+          <table class="leader-master-table">
+            <thead>
+              <tr>
+                <th>Leader</th>
+                <th>Day</th>
+                <th>Time</th>
+                <th>M-Group GC</th>
+                <th>Messenger Link</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="leader-master-table-body">
+              <tr>
+                <td colspan="6" class="table-empty">Loading leaders...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </main>
 
     <div id="add-modal" class="modal" hidden>
@@ -166,6 +199,7 @@
                     <th>Day</th>
                     <th>Time</th>
                     <th>M-Group GC</th>
+                    <th>Messenger</th>
                     <th>Use</th>
                   </tr>
                 </thead>
@@ -175,6 +209,33 @@
           </div>
 
           <button id="save-edit-btn" class="button primary" type="submit">Save changes</button>
+        </form>
+      </section>
+    </div>
+
+    <div id="leader-modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal="leader"></div>
+      <section class="modal-card">
+        <div class="modal-head">
+          <div>
+            <p class="section-kicker">Leader Master Table</p>
+            <h2 id="leader-modal-title">Edit leader</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="leader" aria-label="Close leader modal">×</button>
+        </div>
+
+        <form id="leader-form" class="edit-form">
+          <div class="field-grid">
+            <label><span>Leader</span><input id="leader-name" name="name" type="text" /></label>
+            <label><span>Day</span><input id="leader-day" name="day" type="text" /></label>
+            <label><span>Time</span><input id="leader-time" name="time" type="text" /></label>
+            <label><span>M-Group GC</span><input id="leader-groupChatName" name="groupChatName" type="text" /></label>
+            <label class="field-span-2"><span>Messenger Link</span><input id="leader-messengerLink" name="messengerLink" type="url" placeholder="Paste the Messenger group chat link" /></label>
+          </div>
+
+          <a id="leader-messenger-link-action" class="button ghost inline-link-button" href="#" target="_blank" rel="noopener noreferrer" hidden>Open group chat</a>
+
+          <button class="button primary" type="submit">Save leader</button>
         </form>
       </section>
     </div>
