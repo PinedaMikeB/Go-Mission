@@ -49,6 +49,7 @@
                 <th>Preferred Time</th>
                 <th>Church</th>
                 <th>Profile</th>
+                <th>Screenshots</th>
                 <th>Leader</th>
                 <th>M-Group GC</th>
                 <th>Messenger</th>
@@ -58,7 +59,7 @@
             </thead>
             <tbody id="seeker-table-body">
               <tr>
-                <td colspan="16" class="table-empty">Loading seekers...</td>
+                <td colspan="17" class="table-empty">Loading seekers...</td>
               </tr>
             </tbody>
           </table>
@@ -119,6 +120,12 @@
           <label>
             <span>Pasted seeker text</span>
             <textarea id="add-raw-text" rows="8" placeholder="Paste the seeker details here. This is the fastest way."></textarea>
+          </label>
+
+          <label class="file-picker">
+            <span>Messenger screenshots</span>
+            <input id="add-image-input" type="file" accept="image/*" multiple />
+            <small id="add-image-meta">No image selected</small>
           </label>
 
           <button id="save-pasted-btn" class="button primary" type="button">Extract and save</button>
@@ -182,6 +189,16 @@
             <span>Profile</span>
             <textarea id="edit-profile" name="profile" rows="6"></textarea>
           </label>
+
+          <div class="modal-subsection">
+            <div class="subsection-head">
+              <div>
+                <p class="section-kicker">Saved Screenshots</p>
+                <h3>Messenger details</h3>
+              </div>
+            </div>
+            <div id="edit-image-list" class="link-stack"></div>
+          </div>
 
           <div class="modal-subsection">
             <div class="subsection-head">

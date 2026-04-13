@@ -4,6 +4,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -19,12 +20,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 // Export for use in other modules
 export { 
   app, 
   db, 
   auth,
+  storage,
   // Firestore functions
   collection, 
   doc, 
@@ -39,6 +42,10 @@ export {
   limit, 
   onSnapshot,
   serverTimestamp,
+  // Storage functions
+  storageRef,
+  uploadBytes,
+  getDownloadURL,
   // Auth functions
   onAuthStateChanged, 
   signInWithEmailAndPassword, 

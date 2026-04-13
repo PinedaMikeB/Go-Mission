@@ -72,7 +72,8 @@ p {
 .lede,
 .support-note,
 .table-muted,
-.feedback-banner {
+.feedback-banner,
+.file-picker small {
   color: var(--muted);
 }
 
@@ -226,6 +227,12 @@ th {
 
 .inline-link-button {
   justify-self: start;
+}
+
+.link-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .table-empty {
