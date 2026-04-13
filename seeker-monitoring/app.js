@@ -47,6 +47,7 @@ const DEFAULT_LEADERS = [
   { name: 'Jeff Nicomedez', day: 'Friday', time: '8PM', groupChatName: 'WOTG Bro JEFF/ Friday 8pm' },
   { name: 'Donie', day: 'Friday', time: '7PM', groupChatName: 'BRO DONIE-WOTG FRIDAY 7PM MALE' },
   { name: 'Jhomar', day: 'Friday', time: '6AM', groupChatName: 'FRIDAY 6AM /WOTG WOTG FRIDAYgroup / bro jhomar' },
+  { name: 'Marco/Gary', day: 'Friday', time: '6AM', groupChatName: '' },
   { name: 'Junjun', day: 'Saturday', time: '9AM', groupChatName: 'BRO JUNJUN WOTG SATURDAY 11AM MALE' },
   { name: 'Fortune', day: 'Saturday', time: '7PM', groupChatName: 'BRO FORTUNE SATURDAY MALE 7PM' },
   { name: 'Mike', day: 'Saturday', time: '8PM', groupChatName: 'SATURDAY GROUP WOTG' },
