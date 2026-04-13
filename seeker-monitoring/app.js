@@ -124,6 +124,69 @@ const DEFAULT_LEADERS = [
   key: makeLeaderKey(leader, index)
 }));
 
+const FEMALE_LEADER_SIGNATURES = new Set([
+  'tet|monday|2pm',
+  'vivian|monday|2pm',
+  'mveronica|monday|6pm',
+  'mc|monday|7pm',
+  'jennifer|monday|',
+  'cristina|monday|8pm',
+  'rochelle|tuesday|8:30am',
+  'keyth|tuesday|2pm',
+  'catherine|tuesday|2pm',
+  'jen|tuesday|2pm',
+  'clairelyn|tuesday|3pm',
+  'gie|tuesday|7pm',
+  'karen|tuesday|7pm',
+  'nancy|tuesday|7pm',
+  'faith (ruby)|tuesday|7pm',
+  'laila|tuesday|8pm',
+  'miriam|tuesday|8pm',
+  'myra|wednesday|1pm',
+  'nanay rosa|wednesday|2pm',
+  'anne|wednesday|6pm',
+  'grace|wednesday|8pm',
+  'may|thursday|7:30pm',
+  'alma|thursday|5pm',
+  'brenda|thursday|7pm',
+  'ellen|thursday|8pm',
+  'josie|thursday|8pm',
+  'razel|thursday|8pm',
+  'mariarita|friday|1pm',
+  'merideth|friday|2pm',
+  'mel|friday|2pm',
+  'annaliza|friday|3pm',
+  'evelyn|friday|4pm',
+  'deza|friday|7pm',
+  'malou|friday|7pm',
+  'eva|friday|7pm',
+  'aprilyn|friday|8pm',
+  'corz|friday|8pm',
+  'cherrymae|friday|8pm',
+  'rowena|friday|8pm',
+  'kia|friday|8pm',
+  'maureen|friday|8pm',
+  'heidy|friday|8pm',
+  'jhoana|saturday|11am',
+  'mariarita|saturday|2pm',
+  'fe|saturday|4pm',
+  'dona|saturday|6pm',
+  'jiellyane|saturday|6pm',
+  'den|saturday|8pm',
+  'virgie|saturday|8pm',
+  'michaela|saturday|8pm',
+  'babylyn|saturday|8pm',
+  'audrey|saturday|8pm',
+  'klyn|saturday|8pm',
+  'mary ann|saturday|8pm',
+  'rosemarie|saturday|10pm',
+  'luz|sunday|5pm',
+  'rose palma|sunday|7pm',
+  'irene|sunday|7pm (israel time)',
+  'maricar|sunday|8pm',
+  'let|sunday|9pm'
+]);
+
 const EDIT_FIELDS = [
   'dateRecorded',
   'name',
@@ -221,6 +284,7 @@ const elements = {
   leaderForm: document.getElementById('leader-form'),
   leaderModalTitle: document.getElementById('leader-modal-title'),
   saveLeaderBtn: document.getElementById('save-leader-btn'),
+  leaderGender: document.getElementById('leader-gender'),
   leaderMessengerLink: document.getElementById('leader-messengerLink'),
   leaderMessengerLinkAction: document.getElementById('leader-messenger-link-action'),
   leaderMatchNote: document.getElementById('leader-match-note'),
@@ -301,6 +365,11 @@ function normalizeDay(value = '') {
   return match ? match[0].toLowerCase() : '';
 }
 
+function normalizeGender(value = '') {
+  const match = String(value || '').match(/male|female/i);
+  return match ? `${match[0].charAt(0).toUpperCase()}${match[0].slice(1).toLowerCase()}` : '';
+}
+
 function extractDayTokens(value = '') {
   return [...String(value || '').toLowerCase().matchAll(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/g)].map((match) => match[0]);
 }
@@ -329,10 +398,17 @@ function buildLeaderScheduleText(leader = {}) {
   return [leader.day, leader.time, leader.groupChatName].filter(Boolean).join(' ');
 }
 
-function getMatchingLeaders(preferredDay = '', preferredTime = '') {
+function filterLeadersByGender(leaders = [], seekerGender = '') {
+  const normalizedGender = normalizeGender(seekerGender);
+  return normalizedGender
+    ? leaders.filter((leader) => normalizeGender(leader.gender) === normalizedGender)
+    : leaders;
+}
+
+function getMatchingLeaders(preferredDay = '', preferredTime = '', seekerGender = '') {
   const preferredDays = [...new Set(extractDayTokens(preferredDay))];
   const preferredWindow = buildTimeWindow(preferredTime);
-  const leaders = allLeaders();
+  const leaders = filterLeadersByGender(allLeaders(), seekerGender);
 
   const dayMatches = preferredDays.length
     ? leaders.filter((leader) => {
@@ -488,6 +564,12 @@ function leaderSignature(record = {}) {
     .join('|');
 }
 
+function defaultLeaderGender(record = {}) {
+  const signature = leaderSignature(record);
+  if (!signature) return '';
+  return FEMALE_LEADER_SIGNATURES.has(signature) ? 'Female' : 'Male';
+}
+
 function normalizeLeader(record = {}) {
   return {
     id: record.id || record.key || '',
@@ -495,6 +577,7 @@ function normalizeLeader(record = {}) {
     name: coerceText(record.name),
     day: coerceText(record.day),
     time: coerceText(record.time),
+    gender: normalizeGender(record.gender || defaultLeaderGender(record)),
     groupChatName: coerceText(record.groupChatName),
     messengerLink: normalizeExternalUrl(coerceText(record.messengerLink)),
     createdAt: record.createdAt || null,
@@ -1048,8 +1131,9 @@ function selectedGroupChat() {
 }
 
 function renderLeaderControls(seeker) {
-  const matches = getMatchingLeaders(seeker.preferredDay, seeker.preferredTime);
-  const options = matches.length ? matches : allLeaders();
+  const genderOptions = filterLeadersByGender(allLeaders(), seeker.gender);
+  const matches = getMatchingLeaders(seeker.preferredDay, seeker.preferredTime, seeker.gender);
+  const options = matches.length ? matches : genderOptions;
 
   elements.editLeaderName.innerHTML =
     '<option value="" data-name="" data-gc="" data-link="">Select leader</option>' +
@@ -1207,6 +1291,7 @@ function fillLeaderModal(leader) {
   document.getElementById('leader-name').value = leader.name || '';
   document.getElementById('leader-day').value = leader.day || '';
   document.getElementById('leader-time').value = leader.time || '';
+  if (elements.leaderGender) elements.leaderGender.value = normalizeGender(leader.gender || '');
   document.getElementById('leader-groupChatName').value = leader.groupChatName || '';
   elements.leaderMessengerLink.value = leader.messengerLink || '';
   renderLeaderMessengerLinkAction(leader.messengerLink || '');
@@ -1219,6 +1304,7 @@ function openAddLeaderModal() {
   document.getElementById('leader-name').value = '';
   document.getElementById('leader-day').value = '';
   document.getElementById('leader-time').value = '';
+  if (elements.leaderGender) elements.leaderGender.value = '';
   document.getElementById('leader-groupChatName').value = '';
   elements.leaderMessengerLink.value = '';
   renderLeaderMessengerLinkAction('');
@@ -1242,12 +1328,13 @@ async function saveLeader(event) {
       name: document.getElementById('leader-name').value.trim(),
       day: document.getElementById('leader-day').value.trim(),
       time: document.getElementById('leader-time').value.trim(),
+      gender: normalizeGender(elements.leaderGender?.value),
       groupChatName: document.getElementById('leader-groupChatName').value.trim(),
       messengerLink: normalizeExternalUrl(elements.leaderMessengerLink.value)
     };
 
-    if (!formValues.name || !formValues.day || !formValues.time) {
-      throw new Error('Add at least the leader name, day, and time.');
+    if (!formValues.name || !formValues.day || !formValues.time || !formValues.gender) {
+      throw new Error('Add at least the leader name, day, time, and gender.');
     }
 
     const leader = currentLeader();
