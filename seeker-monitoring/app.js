@@ -240,6 +240,10 @@ function normalizeDay(value = '') {
   return match ? match[0].toLowerCase() : '';
 }
 
+function extractDayTokens(value = '') {
+  return [...String(value || '').toLowerCase().matchAll(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/g)].map((match) => match[0]);
+}
+
 function parseTimeTokens(value = '') {
   const normalized = value.replace(/\bnn\b/gi, 'pm');
   return [...normalized.toLowerCase().matchAll(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/g)].map((match) => {
@@ -260,24 +264,37 @@ function allLeaders() {
   return state.leaders.length ? state.leaders : DEFAULT_LEADERS;
 }
 
+function buildLeaderScheduleText(leader = {}) {
+  return [leader.day, leader.time, leader.groupChatName].filter(Boolean).join(' ');
+}
+
 function getMatchingLeaders(preferredDay = '', preferredTime = '') {
-  const normalizedDay = normalizeDay(preferredDay);
+  const preferredDays = [...new Set(extractDayTokens(preferredDay))];
   const preferredWindow = buildTimeWindow(preferredTime);
   const leaders = allLeaders();
 
-  const dayMatches = normalizedDay
-    ? leaders.filter((leader) => normalizeDay(leader.day) === normalizedDay)
+  const dayMatches = preferredDays.length
+    ? leaders.filter((leader) => {
+        const scheduleText = buildLeaderScheduleText(leader);
+        const leaderDays = new Set(extractDayTokens(scheduleText));
+        const normalizedLeaderDay = normalizeDay(leader.day);
+        if (normalizedLeaderDay) leaderDays.add(normalizedLeaderDay);
+        return preferredDays.some((day) => leaderDays.has(day));
+      })
     : [...leaders];
 
   if (!preferredWindow) return dayMatches;
 
   const exactTimeMatches = dayMatches.filter((leader) => {
-    const leaderWindow = buildTimeWindow(leader.time);
+    const leaderWindow = buildTimeWindow(buildLeaderScheduleText(leader));
     if (!leaderWindow) return true;
     return leaderWindow.start >= preferredWindow.start && leaderWindow.end <= preferredWindow.end;
   });
 
-  return exactTimeMatches.length ? exactTimeMatches : dayMatches;
+  if (!exactTimeMatches.length) return dayMatches;
+
+  const exactMatchKeys = new Set(exactTimeMatches.map((leader) => leader.key));
+  return [...exactTimeMatches, ...dayMatches.filter((leader) => !exactMatchKeys.has(leader.key))];
 }
 
 function getTodayString() {
