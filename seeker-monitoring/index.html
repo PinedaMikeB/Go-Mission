@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seeker Monitoring</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Seeker Monitoring</p>
+        <h1>Paste the seeker screenshots, coordinate with a leader, then move the status forward.</h1>
+        <p class="lede">These records are stored separately for vlog-engagement seekers, not as Go Mission app users.</p>
+      </div>
+      <div class="topbar-meta">
+        <div>
+          <span class="meta-label">Seeker records</span>
+          <strong id="seeker-count">0</strong>
+        </div>
+        <div>
+          <span class="meta-label">Leaders loaded</span>
+          <strong id="leader-count">25</strong>
+        </div>
+        <div>
+          <span class="meta-label">Status</span>
+          <strong id="status-badge" class="status-inline idle">Idle</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="band intake-band">
+        <div class="band-head">
+          <div>
+            <p class="section-kicker">1. Intake</p>
+            <h2>Add a new seeker</h2>
+          </div>
+          <button id="clear-btn" class="button ghost" type="button">Clear Queue</button>
+        </div>
+
+        <div class="intake-grid">
+          <div class="intake-form">
+            <label class="dropzone" id="dropzone">
+              <input id="file-input" type="file" accept="image/*" multiple hidden />
+              <span class="drop-title">Paste or upload Messenger screenshots</span>
+              <span class="drop-copy">Drop profile screenshots, seeker details, or lead cards here.</span>
+            </label>
+
+            <label>
+              <span>Pasted seeker text</span>
+              <textarea id="raw-text-input" rows="6" placeholder="Paste the seeker details directly if you already have the text."></textarea>
+            </label>
+
+            <div class="field-grid">
+              <label>
+                <span>Status</span>
+                <select id="status-input"></select>
+              </label>
+              <label>
+                <span>Status meaning</span>
+                <output id="status-help" class="readonly-block"></output>
+              </label>
+            </div>
+
+            <label>
+              <span>Coordinator note</span>
+              <textarea id="remarks-input" rows="4" placeholder="Leader follow-up notes, church context, or anything you want to remember."></textarea>
+            </label>
+
+            <button id="submit-btn" class="button primary" type="button">Extract And Save Seeker</button>
+          </div>
+
+          <div class="intake-side">
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Queued screenshots</h3>
+                <span id="queue-meta">Nothing queued yet</span>
+              </div>
+              <div id="preview-grid" class="preview-grid"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Run log</h3>
+              </div>
+              <pre id="status-log">Waiting for seeker input...</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="band-head">
+          <div>
+            <p class="section-kicker">2. Seeker List</p>
+            <h2>Monitoring table</h2>
+          </div>
+          <button id="refresh-btn" class="button ghost" type="button">Refresh</button>
+        </div>
+
+        <div class="table-shell">
+          <table class="seeker-table">
+            <thead>
+              <tr>
+                <th>Date Recorded</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Marital Status</th>
+                <th>Mobile No</th>
+                <th>Preferred Day</th>
+                <th>Preferred Time</th>
+                <th>Church</th>
+                <th>Profile</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="seeker-table-body">
+              <tr>
+                <td colspan="13" class="table-empty">Loading seekers...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="detail-layout">
+        <section class="band">
+          <div class="band-head">
+            <div>
+              <p class="section-kicker">3. View / Edit</p>
+              <h2 id="editor-title">Select a seeker from the table</h2>
+            </div>
+          </div>
+
+          <form id="editor-form" class="editor-form">
+            <div class="field-grid field-grid-wide">
+              <label><span>Date Recorded</span><input id="edit-dateRecorded" name="dateRecorded" type="text" /></label>
+              <label><span>Name</span><input id="edit-name" name="name" type="text" /></label>
+              <label><span>Email</span><input id="edit-email" name="email" type="text" /></label>
+              <label><span>Age</span><input id="edit-age" name="age" type="text" /></label>
+              <label><span>Gender</span><input id="edit-gender" name="gender" type="text" /></label>
+              <label><span>Marital Status</span><input id="edit-maritalStatus" name="maritalStatus" type="text" /></label>
+              <label><span>Mobile No</span><input id="edit-mobileNo" name="mobileNo" type="text" /></label>
+              <label><span>Preferred Day</span><input id="edit-preferredDay" name="preferredDay" type="text" /></label>
+              <label><span>Preferred Time</span><input id="edit-preferredTime" name="preferredTime" type="text" /></label>
+              <label><span>Church</span><input id="edit-church" name="church" type="text" /></label>
+              <label><span>Status</span><select id="edit-status" name="status"></select></label>
+              <label><span>Status meaning</span><output id="edit-statusNotes" class="readonly-block"></output></label>
+              <label><span>Leader Name</span><input id="edit-leaderName" name="leaderName" type="text" /></label>
+              <label><span>Leader Day</span><input id="edit-leaderDay" name="leaderDay" type="text" /></label>
+              <label><span>Leader Time</span><input id="edit-leaderTime" name="leaderTime" type="text" /></label>
+              <label><span>Leader Group Chat Name</span><input id="edit-leaderGroupChatName" name="leaderGroupChatName" type="text" /></label>
+            </div>
+
+            <label>
+              <span>Profile (images of profile and details)</span>
+              <textarea id="edit-profile" name="profile" rows="7"></textarea>
+            </label>
+
+            <label>
+              <span>Coordinator Note</span>
+              <textarea id="edit-coordinatorNote" name="coordinatorNote" rows="4"></textarea>
+            </label>
+
+            <div class="editor-actions">
+              <button id="save-btn" class="button primary" type="submit" disabled>Save Changes</button>
+              <p id="editor-meta" class="editor-meta">Pick a seeker row to load the details here.</p>
+            </div>
+          </form>
+        </section>
+
+        <section class="support-stack">
+          <section class="band">
+            <div class="band-head">
+              <div>
+                <p class="section-kicker">4. Leader Table</p>
+                <h2>Coordinate with leaders</h2>
+              </div>
+            </div>
+            <p id="match-note" class="support-note">Matching leaders for the selected seeker will be highlighted here.</p>
+            <div class="table-shell">
+              <table class="leader-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Group Chat Name</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="leader-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="band">
+            <div class="band-head">
+              <div>
+                <p class="section-kicker">5. Status Ladder</p>
+                <h2>Workflow reference</h2>
+              </div>
+            </div>
+            <div id="status-ladder" class="status-ladder"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

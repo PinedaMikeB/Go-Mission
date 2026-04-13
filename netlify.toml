@@ -4,6 +4,7 @@
   # Run version bump script before publishing
   command = "bash scripts/bump-version.sh"
   publish = "."
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -16,6 +17,26 @@
 [[redirects]]
   from = "/yt-landing-install/"
   to = "/yt-landing-install/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/seeker-monitoring"
+  to = "/seeker-monitoring/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/seeker-monitoring/"
+  to = "/seeker-monitoring/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/seeker-monitoring/api/ingest"
+  to = "/.netlify/functions/seeker-monitoring-ingest"
+  status = 200
+
+[[redirects]]
+  from = "/seeker-monitoring/api/seekers"
+  to = "/.netlify/functions/seeker-monitoring-seekers"
   status = 200
 
 # Headers for PWA and caching
