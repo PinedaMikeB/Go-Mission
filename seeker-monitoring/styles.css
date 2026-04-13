@@ -83,6 +83,12 @@ p {
   gap: 10px;
 }
 
+.band-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
 .button,
 .mode-button,
 .icon-button {
@@ -423,6 +429,11 @@ textarea {
 
   .topbar-actions {
     grid-template-columns: auto auto;
+  }
+
+  .band-actions {
+    grid-template-columns: auto auto;
+    align-items: start;
   }
 
   .app-shell {

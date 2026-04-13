@@ -127,6 +127,7 @@ const elements = {
   seekerTableBody: document.getElementById('seeker-table-body'),
   leaderMasterTableBody: document.getElementById('leader-master-table-body'),
   addSeekerBtn: document.getElementById('add-seeker-btn'),
+  addLeaderBtn: document.getElementById('add-leader-btn'),
   refreshBtn: document.getElementById('refresh-btn'),
   addModal: document.getElementById('add-modal'),
   editModal: document.getElementById('edit-modal'),
@@ -148,6 +149,7 @@ const elements = {
   editMessengerLinkAction: document.getElementById('edit-messenger-link-action'),
   leaderForm: document.getElementById('leader-form'),
   leaderModalTitle: document.getElementById('leader-modal-title'),
+  saveLeaderBtn: document.getElementById('save-leader-btn'),
   leaderMessengerLink: document.getElementById('leader-messengerLink'),
   leaderMessengerLinkAction: document.getElementById('leader-messenger-link-action'),
   leaderMatchNote: document.getElementById('leader-match-note'),
@@ -180,6 +182,19 @@ function makeLeaderKey(leader = {}, index = 0) {
   return `${leader.name || 'Leader'}-${leader.day || 'Day'}-${leader.time || 'Time'}-${index}`
     .replaceAll('/', '-')
     .trim();
+}
+
+function buildUniqueLeaderKey(leader = {}) {
+  const takenKeys = new Set(state.leaders.map((entry) => entry.key || entry.id));
+  let attempt = 0;
+  let nextKey = makeLeaderKey(leader, attempt);
+
+  while (takenKeys.has(nextKey)) {
+    attempt += 1;
+    nextKey = makeLeaderKey(leader, attempt);
+  }
+
+  return nextKey;
 }
 
 function normalizeExternalUrl(value = '') {
@@ -968,12 +983,26 @@ async function saveEdit(event) {
 function fillLeaderModal(leader) {
   state.selectedLeaderId = leader.id;
   elements.leaderModalTitle.textContent = leader.name ? `Edit ${leader.name}` : 'Edit leader';
+  if (elements.saveLeaderBtn) elements.saveLeaderBtn.textContent = 'Save leader';
   document.getElementById('leader-name').value = leader.name || '';
   document.getElementById('leader-day').value = leader.day || '';
   document.getElementById('leader-time').value = leader.time || '';
   document.getElementById('leader-groupChatName').value = leader.groupChatName || '';
   elements.leaderMessengerLink.value = leader.messengerLink || '';
   renderLeaderMessengerLinkAction(leader.messengerLink || '');
+}
+
+function openAddLeaderModal() {
+  state.selectedLeaderId = null;
+  elements.leaderModalTitle.textContent = 'Add leader';
+  if (elements.saveLeaderBtn) elements.saveLeaderBtn.textContent = 'Create leader';
+  document.getElementById('leader-name').value = '';
+  document.getElementById('leader-day').value = '';
+  document.getElementById('leader-time').value = '';
+  document.getElementById('leader-groupChatName').value = '';
+  elements.leaderMessengerLink.value = '';
+  renderLeaderMessengerLinkAction('');
+  openModal(elements.leaderModal);
 }
 
 function openLeaderModalById(leaderId) {
@@ -985,24 +1014,37 @@ function openLeaderModalById(leaderId) {
 
 async function saveLeader(event) {
   event.preventDefault();
-  const leader = currentLeader();
-  if (!leader) return;
-
   showFeedback('Saving leader...', 'info');
 
   try {
     requireSignedIn();
-    const payload = {
+    const formValues = {
       name: document.getElementById('leader-name').value.trim(),
       day: document.getElementById('leader-day').value.trim(),
       time: document.getElementById('leader-time').value.trim(),
       groupChatName: document.getElementById('leader-groupChatName').value.trim(),
-      messengerLink: normalizeExternalUrl(elements.leaderMessengerLink.value),
-      key: leader.key || leader.id,
+      messengerLink: normalizeExternalUrl(elements.leaderMessengerLink.value)
+    };
+
+    if (!formValues.name || !formValues.day || !formValues.time) {
+      throw new Error('Add at least the leader name, day, and time.');
+    }
+
+    const leader = currentLeader();
+    const payload = {
+      ...formValues,
+      key: leader?.key || buildUniqueLeaderKey(formValues),
       updatedAt: serverTimestamp()
     };
 
-    await updateDoc(doc(db, LEADER_COLLECTION, leader.id), payload);
+    if (leader) {
+      await updateDoc(doc(db, LEADER_COLLECTION, leader.id), payload);
+    } else {
+      await setDoc(doc(db, LEADER_COLLECTION, payload.key), {
+        ...payload,
+        createdAt: serverTimestamp()
+      });
+    }
     await fetchLeaders();
 
     if (!elements.editModal.hidden) {
@@ -1020,7 +1062,7 @@ async function saveLeader(event) {
     }
 
     closeModal(elements.leaderModal);
-    showFeedback(`Updated ${payload.name || 'leader'}.`, 'success');
+    showFeedback(`${leader ? 'Updated' : 'Added'} ${payload.name || 'leader'}.`, 'success');
   } catch (error) {
     showFeedback(humanizeError(error), 'error');
   }
@@ -1083,6 +1125,14 @@ elements.addSeekerBtn.addEventListener('click', () => {
   }
   resetAddModal();
   openModal(elements.addModal);
+});
+
+elements.addLeaderBtn.addEventListener('click', () => {
+  if (!state.currentUser) {
+    showFeedback('Sign in to Go Mission first, then reopen Seeker Monitoring.', 'error');
+    return;
+  }
+  openAddLeaderModal();
 });
 
 elements.refreshBtn.addEventListener('click', async () => {
