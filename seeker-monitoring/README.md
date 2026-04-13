@@ -2,17 +2,12 @@
 
 Live route: `/seeker-monitoring`
 
-Netlify environment variables needed for the seeker intake APIs:
+This page now uses the same browser Firebase setup as the main Go Mission app through `../js/firebase-config.js`.
 
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL` (optional, defaults to `gpt-4.1-mini`)
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
+Requirements:
 
-Or instead of `FIREBASE_SERVICE_ACCOUNT_JSON`:
-
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_CLIENT_EMAIL`
-- `FIREBASE_PRIVATE_KEY`
+- Signed-in Go Mission session in the browser
+- Firestore rule access for the `goMission_vlogEngagementSeekers` collection
 
 Firestore collection used by this app:
 

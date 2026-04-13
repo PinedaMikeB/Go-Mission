@@ -420,6 +420,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /goMission_vlogEngagementSeekers/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Deny anything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;

@@ -72,8 +72,7 @@ p {
 .lede,
 .support-note,
 .table-muted,
-.feedback-banner,
-.file-picker small {
+.feedback-banner {
   color: var(--muted);
 }
 
@@ -317,6 +316,67 @@ textarea {
 
 .leader-table tbody tr.matched {
   background: rgba(34, 116, 87, 0.08);
+}
+
+@media (max-width: 759px) {
+  .table-shell {
+    overflow: visible;
+  }
+
+  .seeker-table {
+    min-width: 0;
+  }
+
+  .seeker-table thead {
+    display: none;
+  }
+
+  .seeker-table,
+  .seeker-table tbody,
+  .seeker-table tr,
+  .seeker-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .seeker-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .seeker-table td {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 0;
+  }
+
+  .seeker-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .seeker-table td.table-empty {
+    display: block;
+    padding: 18px 12px;
+    text-align: center;
+  }
+
+  .seeker-table td.table-empty::before {
+    content: none;
+  }
+
+  .profile-cell {
+    min-width: 0;
+  }
+
+  .table-action {
+    width: 100%;
+  }
 }
 
 @media (min-width: 760px) {
