@@ -1,13 +1,17 @@
 import {
   auth,
   db,
+  storage,
   collection,
   doc,
   getDocs,
   setDoc,
   updateDoc,
   onAuthStateChanged,
-  serverTimestamp
+  serverTimestamp,
+  storageRef,
+  uploadBytes,
+  getDownloadURL
 } from '../js/firebase-config.js';
 
 const SEEKER_COLLECTION = 'goMission_vlogEngagementSeekers';
@@ -52,7 +56,7 @@ const DEFAULT_LEADERS = [
 ].map((leader, index) => ({
   ...leader,
   messengerLink: leader.messengerLink || '',
-  key: `${leader.name}-${leader.day}-${leader.time}-${index}`
+  key: makeLeaderKey(leader, index)
 }));
 
 const EDIT_FIELDS = [
@@ -96,6 +100,7 @@ const TABLE_COLUMNS = [
   'Preferred Time',
   'Church',
   'Profile',
+  'Screenshots',
   'Leader',
   'M-Group GC',
   'Messenger',
@@ -109,6 +114,7 @@ const state = {
   selectedSeekerId: null,
   selectedLeaderId: null,
   addMode: 'paste',
+  addImages: [],
   loading: false,
   authReady: false,
   currentUser: null
@@ -128,6 +134,8 @@ const elements = {
   pastePane: document.getElementById('paste-pane'),
   manualForm: document.getElementById('manual-form'),
   addRawText: document.getElementById('add-raw-text'),
+  addImageInput: document.getElementById('add-image-input'),
+  addImageMeta: document.getElementById('add-image-meta'),
   savePastedBtn: document.getElementById('save-pasted-btn'),
   modePasteBtn: document.getElementById('mode-paste-btn'),
   modeManualBtn: document.getElementById('mode-manual-btn'),
@@ -143,7 +151,8 @@ const elements = {
   leaderMessengerLink: document.getElementById('leader-messengerLink'),
   leaderMessengerLinkAction: document.getElementById('leader-messenger-link-action'),
   leaderMatchNote: document.getElementById('leader-match-note'),
-  leaderTableBody: document.getElementById('leader-table-body')
+  leaderTableBody: document.getElementById('leader-table-body'),
+  editImageList: document.getElementById('edit-image-list')
 };
 
 function escapeHtml(value = '') {
@@ -159,6 +168,20 @@ function truncate(value = '', max = 84) {
   return value.length > max ? `${value.slice(0, max - 1)}...` : value;
 }
 
+function slugify(value = '') {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function makeLeaderKey(leader = {}, index = 0) {
+  return `${leader.name || 'Leader'}-${leader.day || 'Day'}-${leader.time || 'Time'}-${index}`
+    .replaceAll('/', '-')
+    .trim();
+}
+
 function normalizeExternalUrl(value = '') {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -170,6 +193,10 @@ function splitLines(value = '') {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function coerceStringArray(value) {
+  return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
 }
 
 function normalizeDay(value = '') {
@@ -304,6 +331,7 @@ function parseRawText(rawText) {
     preferredTime: extractPreferredTime(lines, text),
     church: churchLine,
     profile: text,
+    profileImageUrls: [],
     rawPastedText: text,
     status: 'Processing',
     leaderName: '',
@@ -329,6 +357,7 @@ function normalizeSeeker(record = {}) {
     preferredTime: coerceText(record.preferredTime),
     church: coerceText(record.church),
     profile: coerceText(record.profile),
+    profileImageUrls: coerceStringArray(record.profileImageUrls),
     status: coerceText(record.status) || 'Processing',
     leaderName: coerceText(record.leaderName),
     mGroupGc: coerceText(record.mGroupGc),
@@ -351,6 +380,17 @@ function normalizeLeader(record = {}) {
     createdAt: record.createdAt || null,
     updatedAt: record.updatedAt || null
   };
+}
+
+function renderImageLinks(urls = [], emptyLabel = '(none)') {
+  if (!urls.length) return `<span class="table-muted">${escapeHtml(emptyLabel)}</span>`;
+
+  return urls
+    .map(
+      (url, index) =>
+        `<a class="button table-action" href="${escapeHtml(normalizeExternalUrl(url))}" target="_blank" rel="noopener noreferrer">Image ${index + 1}</a>`
+    )
+    .join(' ');
 }
 
 function getTimestampMs(value) {
@@ -441,6 +481,7 @@ function renderSeekerTable() {
           <td data-label="Preferred Time">${escapeHtml(seeker.preferredTime || '')}</td>
           <td data-label="Church">${escapeHtml(seeker.church || '')}</td>
           <td data-label="Profile" class="profile-cell" title="${escapeHtml(seeker.profile || '')}">${seeker.profile ? escapeHtml(truncate(seeker.profile)) : '<span class="table-muted">(blank)</span>'}</td>
+          <td data-label="Screenshots">${renderImageLinks(seeker.profileImageUrls, '(none)')}</td>
           <td data-label="Leader">${escapeHtml(seeker.leaderName || '')}</td>
           <td data-label="M-Group GC">${escapeHtml(seeker.mGroupGc || '')}</td>
           <td data-label="Messenger">${seeker.messengerLink ? `<a class="button table-action" href="${escapeHtml(normalizeExternalUrl(seeker.messengerLink))}" target="_blank" rel="noopener noreferrer">Open chat</a>` : '<span class="table-muted">(none)</span>'}</td>
@@ -487,10 +528,13 @@ function requireSignedIn() {
 
 async function seedLeadersIfNeeded() {
   const snapshot = await getDocs(collection(db, LEADER_COLLECTION));
-  if (!snapshot.empty) return snapshot;
+  const existingIds = new Set(snapshot.docs.map((record) => record.id));
+  const missingLeaders = DEFAULT_LEADERS.filter((leader) => !existingIds.has(leader.key));
+
+  if (!missingLeaders.length) return snapshot;
 
   await Promise.all(
-    DEFAULT_LEADERS.map((leader) =>
+    missingLeaders.map((leader) =>
       setDoc(doc(db, LEADER_COLLECTION, leader.key), {
         name: leader.name,
         day: leader.day,
@@ -596,11 +640,22 @@ function setAddMode(mode) {
 
 function resetAddModal() {
   elements.addRawText.value = '';
+  if (elements.addImageInput) elements.addImageInput.value = '';
+  if (elements.addImageMeta) elements.addImageMeta.textContent = 'No image selected';
+  state.addImages = [];
   MANUAL_FIELDS.forEach((field) => {
     const element = document.getElementById(`manual-${field}`);
     if (element) element.value = '';
   });
   setAddMode('paste');
+}
+
+function handleAddImageChange(event) {
+  state.addImages = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/'));
+  if (!elements.addImageMeta) return;
+  elements.addImageMeta.textContent = state.addImages.length
+    ? `${state.addImages.length} image${state.addImages.length > 1 ? 's' : ''} selected`
+    : 'No image selected';
 }
 
 function getManualPayload() {
@@ -626,6 +681,7 @@ function buildStoredPayload(payload) {
     preferredTime: base.preferredTime,
     church: base.church,
     profile: base.profile,
+    profileImageUrls: coerceStringArray(base.profileImageUrls),
     status: base.status || 'Processing',
     leaderName: base.leaderName,
     mGroupGc: base.mGroupGc,
@@ -655,10 +711,25 @@ async function createSeeker(payload) {
   return ref.id;
 }
 
+async function uploadSeekerImages(seekerId, files = []) {
+  if (!files.length) return [];
+
+  const uploads = files.map(async (file, index) => {
+    const safeName = slugify(file.name.replace(/\.[^.]+$/, '')) || `image-${index + 1}`;
+    const extension = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+    const path = `goMission/seeker-monitoring/${seekerId}/${Date.now()}-${index + 1}-${safeName}.${extension}`;
+    const ref = storageRef(storage, path);
+    const result = await uploadBytes(ref, file, { contentType: file.type || 'image/jpeg' });
+    return getDownloadURL(result.ref);
+  });
+
+  return Promise.all(uploads);
+}
+
 async function savePastedSeeker() {
   const rawText = elements.addRawText.value.trim();
-  if (!rawText) {
-    showFeedback('Paste the seeker details first.', 'error');
+  if (!rawText && !state.addImages.length) {
+    showFeedback('Paste the seeker details or add the Messenger screenshots first.', 'error');
     return;
   }
 
@@ -666,8 +737,27 @@ async function savePastedSeeker() {
   showFeedback('Saving seeker...', 'info');
 
   try {
-    const parsed = parseRawText(rawText);
+    const parsed = rawText
+      ? parseRawText(rawText)
+      : {
+          dateRecorded: getTodayString(),
+          profile: '',
+          profileImageUrls: [],
+          status: 'Processing',
+          leaderName: '',
+          mGroupGc: '',
+          messengerLink: ''
+        };
     const id = await createSeeker(parsed);
+    const uploadedImages = await uploadSeekerImages(id, state.addImages);
+    if (uploadedImages.length) {
+      await updateDoc(doc(db, SEEKER_COLLECTION, id), {
+        profileImageUrls: uploadedImages,
+        updatedAt: serverTimestamp(),
+        updatedByUid: state.currentUser.uid,
+        updatedByEmail: state.currentUser.email || ''
+      });
+    }
     await fetchSeekers();
     resetAddModal();
     closeModal(elements.addModal);
@@ -806,6 +896,13 @@ function renderLeaderControls(seeker) {
     : 'No schedule match found. You can still choose manually.';
 }
 
+function renderEditImageList(seeker) {
+  if (!elements.editImageList) return;
+  elements.editImageList.innerHTML = seeker.profileImageUrls?.length
+    ? renderImageLinks(seeker.profileImageUrls)
+    : '<span class="table-muted">(none)</span>';
+}
+
 function getEditFormSnapshot() {
   return {
     preferredDay: document.getElementById('edit-preferredDay').value.trim(),
@@ -822,6 +919,7 @@ function fillEditModal(seeker) {
     const element = document.getElementById(`edit-${field}`);
     if (element) element.value = seeker[field] || '';
   });
+  renderEditImageList(seeker);
   renderLeaderControls(seeker);
 }
 
@@ -991,6 +1089,9 @@ elements.refreshBtn.addEventListener('click', async () => {
   await fetchLeaders();
   await fetchSeekers();
 });
+if (elements.addImageInput) {
+  elements.addImageInput.addEventListener('change', handleAddImageChange);
+}
 elements.savePastedBtn.addEventListener('click', savePastedSeeker);
 elements.manualForm.addEventListener('submit', saveManualSeeker);
 elements.editForm.addEventListener('submit', saveEdit);
