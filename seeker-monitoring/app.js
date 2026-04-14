@@ -255,6 +255,8 @@ const elements = {
   seekerCount: document.getElementById('seeker-count'),
   leaderCount: document.getElementById('leader-count'),
   feedbackBanner: document.getElementById('feedback-banner'),
+  seekerSearch: document.getElementById('seeker-search'),
+  seekerSearchMeta: document.getElementById('seeker-search-meta'),
   seekerTableBody: document.getElementById('seeker-table-body'),
   leaderMasterTableBody: document.getElementById('leader-master-table-body'),
   addSeekerBtn: document.getElementById('add-seeker-btn'),
@@ -354,6 +356,31 @@ function normalizePersonName(value = '') {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, ' ');
+}
+
+function normalizeComparableText(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeComparablePhone(value = '') {
+  const digits = String(value || '').replace(/\D+/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('63') && digits.length === 12) return `0${digits.slice(2)}`;
+  return digits;
+}
+
+function buildFingerprint(parts = [], minPopulated = 1) {
+  const normalized = parts.map((part) => normalizeComparableText(part));
+  return normalized.filter(Boolean).length >= minPopulated ? normalized.join('|') : '';
+}
+
+function sameFilledValue(left = '', right = '') {
+  return Boolean(left && right && left === right);
 }
 
 function getMemberProfileName(member = {}) {
@@ -558,6 +585,143 @@ function normalizeSeeker(record = {}) {
   };
 }
 
+function buildSeekerDuplicateProfile(record = {}) {
+  const seeker = normalizeSeeker(record);
+
+  return {
+    id: seeker.id,
+    name: normalizeComparableText(seeker.name),
+    email: normalizeComparableText(seeker.email),
+    age: normalizeComparableText(seeker.age),
+    gender: normalizeComparableText(seeker.gender),
+    maritalStatus: normalizeComparableText(seeker.maritalStatus),
+    mobileNo: normalizeComparablePhone(seeker.mobileNo),
+    preferredDay: normalizeComparableText(seeker.preferredDay),
+    preferredTime: normalizeComparableText(seeker.preferredTime),
+    church: normalizeComparableText(seeker.church),
+    profile: normalizeComparableText(seeker.profile),
+    rawPastedText: normalizeComparableText(seeker.rawPastedText),
+    exactText: buildFingerprint([seeker.rawPastedText || seeker.profile], 1),
+    fullDetails: buildFingerprint(
+      [
+        seeker.name,
+        seeker.email,
+        seeker.age,
+        seeker.gender,
+        seeker.maritalStatus,
+        normalizeComparablePhone(seeker.mobileNo),
+        seeker.preferredDay,
+        seeker.preferredTime,
+        seeker.church,
+        seeker.profile
+      ],
+      5
+    )
+  };
+}
+
+function isDuplicateSeeker(candidateRecord = {}, existingRecord = {}) {
+  const candidate = buildSeekerDuplicateProfile(candidateRecord);
+  const existing = buildSeekerDuplicateProfile(existingRecord);
+
+  if (candidate.id && existing.id && candidate.id === existing.id) return false;
+  if (sameFilledValue(candidate.exactText, existing.exactText)) return true;
+  if (sameFilledValue(candidate.fullDetails, existing.fullDetails)) return true;
+  if (sameFilledValue(candidate.name, existing.name) && sameFilledValue(candidate.mobileNo, existing.mobileNo)) return true;
+  if (sameFilledValue(candidate.name, existing.name) && sameFilledValue(candidate.email, existing.email)) return true;
+
+  if (
+    sameFilledValue(candidate.mobileNo, existing.mobileNo) &&
+    sameFilledValue(candidate.preferredDay, existing.preferredDay) &&
+    sameFilledValue(candidate.preferredTime, existing.preferredTime)
+  ) {
+    return true;
+  }
+
+  if (sameFilledValue(candidate.name, existing.name)) {
+    const supportingMatches = [
+      sameFilledValue(candidate.age, existing.age),
+      sameFilledValue(candidate.gender, existing.gender),
+      sameFilledValue(candidate.maritalStatus, existing.maritalStatus),
+      sameFilledValue(candidate.preferredDay, existing.preferredDay),
+      sameFilledValue(candidate.preferredTime, existing.preferredTime),
+      sameFilledValue(candidate.church, existing.church)
+    ].filter(Boolean).length;
+
+    if (supportingMatches >= 3) return true;
+  }
+
+  return false;
+}
+
+function buildSeekerSearchText(seeker = {}) {
+  return normalizeComparableText(
+    [
+      seeker.dateRecorded,
+      seeker.name,
+      seeker.email,
+      seeker.age,
+      seeker.gender,
+      seeker.maritalStatus,
+      seeker.mobileNo,
+      seeker.preferredDay,
+      seeker.preferredTime,
+      seeker.church,
+      seeker.profile,
+      seeker.leaderName,
+      seeker.mGroupGc,
+      seeker.status
+    ].join(' ')
+  );
+}
+
+function getFilteredSeekers() {
+  const searchTerm = normalizeComparableText(elements.seekerSearch?.value || '');
+  if (!searchTerm) return state.seekers;
+  return state.seekers.filter((seeker) => buildSeekerSearchText(seeker).includes(searchTerm));
+}
+
+function updateSeekerSearchMeta(filteredCount) {
+  if (!elements.seekerSearchMeta) return;
+  if (!state.seekers.length) {
+    elements.seekerSearchMeta.textContent = 'No seekers saved yet.';
+    return;
+  }
+
+  const searchTerm = coerceText(elements.seekerSearch?.value || '');
+  elements.seekerSearchMeta.textContent = searchTerm
+    ? `Showing ${filteredCount} of ${state.seekers.length} seekers`
+    : `Showing all ${state.seekers.length} seekers`;
+}
+
+function setSeekerSearch(value = '') {
+  if (!elements.seekerSearch) return;
+  elements.seekerSearch.value = value;
+  renderSeekerTable();
+}
+
+function getDuplicateSearchValue(seeker = {}) {
+  return seeker.name || seeker.mobileNo || seeker.email || '';
+}
+
+async function findDuplicateSeeker(candidateRecord = {}, excludeId = '') {
+  requireAuthorized();
+  const snapshot = await getDocs(collection(db, SEEKER_COLLECTION));
+  const seekers = snapshot.docs.map((record) => normalizeSeeker({ id: record.id, ...record.data() }));
+  return seekers.find((record) => record.id !== excludeId && isDuplicateSeeker(candidateRecord, record)) || null;
+}
+
+async function handleDuplicateSeeker(existingSeeker) {
+  await fetchSeekers();
+  const query = getDuplicateSearchValue(existingSeeker);
+  setSeekerSearch(query);
+  closeModal(elements.addModal);
+  showFeedback(
+    `${existingSeeker.name || 'This seeker'} already exists. Search is now filtered so you can find the existing record.`,
+    'error'
+  );
+}
+
 function leaderSignature(record = {}) {
   return [record.name, record.day, record.time]
     .map((value) => coerceText(value).toLowerCase())
@@ -689,13 +853,21 @@ function currentLeader() {
 
 function renderSeekerTable() {
   elements.seekerCount.textContent = String(state.seekers.length);
+  const filteredSeekers = getFilteredSeekers();
+  updateSeekerSearchMeta(filteredSeekers.length);
 
   if (!state.seekers.length) {
     setTableMessage('No seekers saved yet.');
     return;
   }
 
-  elements.seekerTableBody.innerHTML = state.seekers
+  const searchTerm = coerceText(elements.seekerSearch?.value || '');
+  if (!filteredSeekers.length) {
+    setTableMessage(searchTerm ? `No seekers match "${searchTerm}".` : 'No seekers saved yet.');
+    return;
+  }
+
+  elements.seekerTableBody.innerHTML = filteredSeekers
     .map(
       (seeker) => `
         <tr>
@@ -1061,6 +1233,11 @@ async function savePastedSeeker() {
           mGroupGc: '',
           messengerLink: ''
         };
+    const existingSeeker = await findDuplicateSeeker(parsed);
+    if (existingSeeker) {
+      await handleDuplicateSeeker(existingSeeker);
+      return;
+    }
     const id = await createSeeker(parsed);
     const uploadedImages = await uploadSeekerImages(id, state.addImages);
     if (uploadedImages.length) {
@@ -1094,14 +1271,20 @@ async function saveManualSeeker(event) {
   showFeedback('Saving seeker...', 'info');
 
   try {
-    await createSeeker({
+    const payload = {
       ...manualEntry,
       dateRecorded: getTodayString(),
       rawPastedText: '',
       status: 'Processing',
       leaderName: '',
       mGroupGc: ''
-    });
+    };
+    const existingSeeker = await findDuplicateSeeker(payload);
+    if (existingSeeker) {
+      await handleDuplicateSeeker(existingSeeker);
+      return;
+    }
+    await createSeeker(payload);
     await fetchSeekers();
     resetAddModal();
     closeModal(elements.addModal);
@@ -1268,9 +1451,19 @@ async function saveEdit(event) {
 
   try {
     requireAuthorized();
+    const updates = readEditPayload();
+    const existingSeeker = await findDuplicateSeeker({ ...seeker, ...updates }, seeker.id);
+    if (existingSeeker) {
+      setSeekerSearch(getDuplicateSearchValue(existingSeeker));
+      showFeedback(
+        `${existingSeeker.name || 'This seeker'} already exists. Search is now filtered so you can compare the existing record.`,
+        'error'
+      );
+      return;
+    }
     const uploadedImages = await uploadSeekerImages(seeker.id, state.editImages);
     await updateDoc(doc(db, SEEKER_COLLECTION, seeker.id), {
-      ...readEditPayload(),
+      ...updates,
       profileImageUrls: [...(seeker.profileImageUrls || []), ...uploadedImages],
       updatedAt: serverTimestamp(),
       updatedByUid: state.currentUser.uid,
@@ -1278,7 +1471,7 @@ async function saveEdit(event) {
     });
     await fetchSeekers();
     closeModal(elements.editModal);
-    showFeedback(`Updated ${readEditPayload().name || 'seeker'}.`, 'success');
+    showFeedback(`Updated ${updates.name || 'seeker'}.`, 'success');
   } catch (error) {
     showFeedback(humanizeError(error), 'error');
   }
@@ -1474,6 +1667,9 @@ if (elements.editImageInput) {
   elements.editImageInput.addEventListener('change', handleEditImageChange);
 }
 bindEditDropzone();
+if (elements.seekerSearch) {
+  elements.seekerSearch.addEventListener('input', renderSeekerTable);
+}
 elements.savePastedBtn.addEventListener('click', savePastedSeeker);
 elements.manualForm.addEventListener('submit', saveManualSeeker);
 elements.editForm.addEventListener('submit', saveEdit);

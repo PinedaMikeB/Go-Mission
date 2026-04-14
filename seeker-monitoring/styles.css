@@ -187,6 +187,21 @@ p {
   color: var(--success);
 }
 
+.table-toolbar {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.search-field {
+  display: grid;
+  gap: 8px;
+}
+
+.search-field input[type='search'] {
+  min-height: 44px;
+}
+
 .table-shell {
   margin-top: 14px;
   overflow-x: auto;
@@ -472,6 +487,16 @@ textarea {
   .band-actions {
     grid-template-columns: auto auto;
     align-items: start;
+  }
+
+  .table-toolbar {
+    grid-template-columns: minmax(0, 360px) auto;
+    align-items: end;
+  }
+
+  .table-toolbar .support-note {
+    justify-self: end;
+    text-align: right;
   }
 
   .app-shell {
