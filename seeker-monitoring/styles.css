@@ -92,6 +92,10 @@ p {
 .button,
 .mode-button,
 .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   min-height: 44px;
@@ -100,6 +104,8 @@ p {
   color: var(--text);
   text-decoration: none;
   text-align: center;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .button.primary {
@@ -229,10 +235,18 @@ th {
 .table-action {
   min-height: 36px;
   padding: 8px 12px;
+  min-width: 104px;
+  white-space: nowrap;
 }
 
 .inline-link-button {
   justify-self: start;
+}
+
+.seeker-table td[data-label='Messenger'],
+.leader-master-table td[data-label='Messenger Link'],
+.leader-table td[data-label='Messenger'] {
+  min-width: 132px;
 }
 
 .link-stack {
