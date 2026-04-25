@@ -1179,6 +1179,160 @@ const MyGroups = {
     },
 
     /**
+     * Build the meeting picker list from every group relationship visible to the user.
+     */
+    getMeetingPickerGroups() {
+        const groupMap = new Map();
+        const pushGroup = (group, relationship) => {
+            if (!group?.id) return;
+            const groupId = String(group.id);
+            const existing = groupMap.get(groupId);
+            if (existing) {
+                const priority = { downline: 3, upline: 2, guest: 1 };
+                const existingPriority = priority[existing.relationship] || 0;
+                const nextPriority = priority[relationship] || 0;
+                if (nextPriority > existingPriority) {
+                    groupMap.set(groupId, { ...existing, ...group, relationship });
+                }
+                return;
+            }
+            groupMap.set(groupId, { ...group, id: groupId, relationship });
+        };
+
+        pushGroup(this.uplineGroup, 'upline');
+        (Array.isArray(this.downlineGroups) ? this.downlineGroups : []).forEach((group) => pushGroup(group, 'downline'));
+        (Array.isArray(this.guestGroups) ? this.guestGroups : []).forEach((group) => pushGroup(group, 'guest'));
+
+        const roleOrder = { upline: 0, downline: 1, guest: 2 };
+        return Array.from(groupMap.values()).sort((a, b) => {
+            const roleDelta = (roleOrder[a.relationship] ?? 99) - (roleOrder[b.relationship] ?? 99);
+            if (roleDelta !== 0) return roleDelta;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+    },
+
+    getMeetingRelationshipLabel(relationship, group) {
+        if (relationship === 'upline') return 'Upline group';
+        if (relationship === 'guest') return 'Guest group';
+        if (group?.leaderId === window.currentUser?.uid) return 'Downline group';
+        return 'Mission group';
+    },
+
+    renderMeetingPickerGroup(group) {
+        const groupIdSafe = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const memberCount = this.normalizeCollectionEntries(group.members).length;
+        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const schedule = group.meetingSchedule || group.schedule || null;
+        const hasSchedule = !!(schedule?.day && schedule?.time);
+        const scheduleText = hasSchedule
+            ? `${this.escapeHtml(schedule.day)} at ${this.escapeHtml(this.formatTime(schedule.time))}`
+            : 'No weekly schedule set';
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        const relationshipLabel = this.getMeetingRelationshipLabel(group.relationship, group);
+        const meetingLock = this.getGroupMeetingLockState(group);
+        const actionText = meetingLock.locked ? 'Locked' : (isLeader ? 'Start' : 'Join');
+
+        return `
+            <button type="button"
+                onclick="window.MyGroups.selectMeetingGroup('${groupIdSafe}')"
+                class="w-full text-left rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 hover:border-[var(--mission-gold)]/55 hover:bg-[var(--mission-gold)]/10 transition-colors">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                        <p class="mt-1 text-xs text-[var(--text-muted)]">${this.escapeHtml(relationshipLabel)} • ${scheduleText}</p>
+                        <p class="mt-1 text-[11px] text-[var(--text-dim)]">${memberCount} member${memberCount === 1 ? '' : 's'}${guestCount ? ` • ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}</p>
+                        ${meetingLock.locked ? `<p class="mt-2 text-[11px] font-semibold text-[var(--mission-red-bright)]">${this.escapeHtml(meetingLock.reason || 'Meeting locked')}</p>` : ''}
+                    </div>
+                    <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] border border-[var(--mission-red-bright)]/35' : 'bg-[var(--mission-gold)] text-[var(--mission-red-deep)]'}">
+                        ${actionText}
+                    </span>
+                </div>
+            </button>
+        `;
+    },
+
+    /**
+     * Footer entry point: show every group the user can meet with.
+     */
+    async showJoinMeetingPicker() {
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[var(--mission-gold)]">Video Call</p>
+                        <h3 class="mt-1 text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                    </div>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+                <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-4">
+                    <p class="text-sm text-[var(--text-muted)]">Loading your groups...</p>
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        try {
+            await this.loadGroups();
+            const groups = this.getMeetingPickerGroups();
+            const listHtml = groups.length
+                ? groups.map((group) => this.renderMeetingPickerGroup(group)).join('')
+                : `
+                    <div class="rounded-xl border border-dashed border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-5 text-center">
+                        <p class="text-sm font-semibold text-[var(--text-color)]">No mission groups yet</p>
+                        <p class="mt-1 text-xs text-[var(--text-muted)]">Join a group first, then your meeting room will appear here.</p>
+                        <button onclick="window.MyGroups.showJoinModal()" class="mt-4 w-full rounded-lg bg-[var(--mission-gold)] px-4 py-2.5 text-sm font-bold text-[var(--mission-red-deep)]">
+                            Join with Invite Code
+                        </button>
+                    </div>
+                `;
+
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-[var(--mission-gold)]">Video Call</p>
+                            <h3 class="mt-1 text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                        </div>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <div class="space-y-3">
+                        ${listHtml}
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('[MyGroups] Failed to open meeting picker:', error);
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <div class="rounded-xl border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 p-4">
+                        <p class="text-sm text-[var(--text-color)]">Could not load your groups. Please try again.</p>
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    selectMeetingGroup(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found. Please refresh and try again.');
+            return;
+        }
+
+        this.closeModal();
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        setTimeout(() => this.handleMeetingAction(groupId, isLeader), 80);
+    },
+
+    /**
      * Load current user member profile from Firestore
      */
     async getCurrentMemberData() {
