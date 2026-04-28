@@ -207,20 +207,6 @@ const GroupMeeting = {
       return null;
     }
 
-    if (desiredDomain === this.JITSI_DOMAIN) {
-      this.setMeetingStatus(`Checking ${desiredDomain} meeting connection…`);
-      const realtime = await this.checkSelfHostedRealtime(desiredDomain, roomName, 3000);
-      if (!realtime.ok) {
-        console.warn('[GroupMeeting] Self-hosted Jitsi realtime check failed:', realtime);
-        if (this.allowPublicFallback) {
-          this.setMeetingStatus('Primary call server is unstable. Using backup meeting server…');
-          return this.JITSI_PUBLIC;
-        }
-        this.setMeetingStatus(`${desiredDomain} meeting connection is unavailable. Please try again in a moment.`);
-        return null;
-      }
-    }
-
     return desiredDomain;
   },
 
