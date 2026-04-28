@@ -778,6 +778,26 @@
       gap: 10px;
     }
 
+    .care-search-panel {
+      margin-top: 14px;
+      border: 1px solid rgba(245, 189, 89, 0.18);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 12px;
+    }
+
+    .care-search-panel input {
+      margin-top: 0;
+    }
+
+    .care-search-meta {
+      margin-top: 6px;
+      min-height: 16px;
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
     .care-summary-card {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -1421,6 +1441,11 @@
               <p class="sub">Who to activate, who to invite, and who to affirm across leaders, members, readers, and intercessors.</p>
             </div>
             <button id="refreshMissionCareBtn" class="secondary" style="width:auto;padding:8px 12px;">Refresh Care Board</button>
+          </div>
+          <div class="care-search-panel">
+            <label for="missionCareSearch">Search user or group name</label>
+            <input id="missionCareSearch" placeholder="Search by user, email, group, or leader">
+            <div id="missionCareSearchMeta" class="care-search-meta">Showing priority care records.</div>
           </div>
           <div id="missionCareSummary" class="care-summary-grid"></div>
           <div id="missionCareGroups" class="care-group-strip"></div>
@@ -2419,6 +2444,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
     let notificationImportParsed = [];
     let activeRosterUser = null;
     let activeStageEncouragementTemplateId = '';
+    let missionCareSearchQuery = '';
 
     const USER_ROSTER_STAGE_META = {
       seeker: { label: 'Seeker' },
@@ -4619,7 +4645,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.daysSinceActive !== a.daysSinceActive) return b.daysSinceActive - a.daysSinceActive;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4638,7 +4663,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.streak !== a.streak) return b.streak - a.streak;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4656,7 +4680,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.recentDevotions7 !== a.recentDevotions7) return b.recentDevotions7 - a.recentDevotions7;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4673,7 +4696,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.daysSinceRead !== a.daysSinceRead) return b.daysSinceRead - a.daysSinceRead;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4692,7 +4714,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.prayerRequestCount30 !== a.prayerRequestCount30) return b.prayerRequestCount30 - a.prayerRequestCount30;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4709,7 +4730,6 @@ match /goMission/watch-series-covers/{allPaths=**} {
           if (b.prayerSupportCount !== a.prayerSupportCount) return b.prayerSupportCount - a.prayerSupportCount;
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 12)
         .map((context) => ({
           ...context,
           badges: [
@@ -4729,7 +4749,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
           activeWithGod: activeWithGod.length,
           intercessors: intercessors.length
         },
-        groups: statusGroups.slice(0, 6),
+        groups: statusGroups,
         sections: [
           {
             key: 'leadersNeedingActivation',
@@ -4777,17 +4797,58 @@ match /goMission/watch-series-covers/{allPaths=**} {
       };
     }
 
+    function getMissionCareSearchText(value) {
+      if (Array.isArray(value)) {
+        return value.map(getMissionCareSearchText).join(' ');
+      }
+      if (!value || typeof value !== 'object') {
+        return String(value || '').toLowerCase();
+      }
+      return [
+        value.name,
+        value.email,
+        value.meta,
+        value.primaryGroupName,
+        value.leaderName,
+        value.groupNames,
+        value.badges?.map((badge) => badge?.label)
+      ].map(getMissionCareSearchText).join(' ');
+    }
+
     function renderMissionCareBoard(board) {
       const summaryEl = document.getElementById('missionCareSummary');
       const groupsEl = document.getElementById('missionCareGroups');
       const boardEl = document.getElementById('missionCareBoard');
+      const searchMetaEl = document.getElementById('missionCareSearchMeta');
       if (!summaryEl || !groupsEl || !boardEl) return;
 
       if (!board) {
         summaryEl.innerHTML = '';
         groupsEl.innerHTML = '';
         boardEl.innerHTML = '';
+        if (searchMetaEl) searchMetaEl.textContent = '';
         return;
+      }
+
+      const queryText = String(missionCareSearchQuery || '').trim().toLowerCase();
+      const hasSearch = queryText.length > 0;
+      const visibleGroups = (board.groups || [])
+        .filter((group) => !hasSearch || getMissionCareSearchText(group).includes(queryText))
+        .slice(0, hasSearch ? 24 : 6);
+      const visibleSections = (board.sections || []).map((section) => ({
+        ...section,
+        items: (section.items || []).filter((item) => !hasSearch || getMissionCareSearchText(item).includes(queryText))
+      })).map((section) => ({
+        ...section,
+        totalItems: section.items.length,
+        items: hasSearch ? section.items : section.items.slice(0, 12)
+      }));
+      const visiblePeopleCount = visibleSections.reduce((total, section) => total + section.totalItems, 0);
+
+      if (searchMetaEl) {
+        searchMetaEl.textContent = hasSearch
+          ? `Showing ${visibleGroups.length} group match${visibleGroups.length === 1 ? '' : 'es'} and ${visiblePeopleCount} people match${visiblePeopleCount === 1 ? '' : 'es'} for "${missionCareSearchQuery}".`
+          : 'Showing priority care records.';
       }
 
       summaryEl.innerHTML = [
@@ -4805,8 +4866,8 @@ match /goMission/watch-series-covers/{allPaths=**} {
         </article>
       `).join('');
 
-      groupsEl.innerHTML = board.groups.length
-        ? board.groups.map((group) => `
+      groupsEl.innerHTML = visibleGroups.length
+        ? visibleGroups.map((group) => `
           <article class="care-group-card">
             <h3>${escapeHtml(group.name)}</h3>
             <div class="care-group-meta">
@@ -4821,16 +4882,16 @@ match /goMission/watch-series-covers/{allPaths=**} {
             </div>
           </article>
         `).join('')
-        : '<div class="care-empty">No mission group status could be built from current records.</div>';
+        : `<div class="care-empty">${hasSearch ? 'No groups match this search.' : 'No mission group status could be built from current records.'}</div>`;
 
-      boardEl.innerHTML = board.sections.map((section) => {
+      boardEl.innerHTML = visibleSections.map((section) => {
         const template = CARE_NOTIFICATION_TEMPLATES[section.action] || {};
         return `
           <article class="care-board-card">
             <div class="care-board-head">
               <h3>${escapeHtml(section.title)}</h3>
               <p>${escapeHtml(section.description)}</p>
-              <span class="care-board-count">${escapeHtml(section.items.length)} people</span>
+              <span class="care-board-count">${escapeHtml(section.totalItems)} people</span>
             </div>
             <div class="care-board-list">
               ${section.items.length ? section.items.map((item) => `
@@ -4859,7 +4920,7 @@ match /goMission/watch-series-covers/{allPaths=**} {
                     </button>
                   </div>
                 </div>
-              `).join('') : `<div class="care-empty">No people in this care segment right now.</div>`}
+              `).join('') : `<div class="care-empty">${hasSearch ? 'No people in this segment match the search.' : 'No people in this care segment right now.'}</div>`}
             </div>
           </article>
         `;
@@ -9605,6 +9666,10 @@ match /goMission/watch-series-covers/{allPaths=**} {
       document.getElementById('refreshUserRosterBtn').addEventListener('click', loadMissionHealth);
       document.getElementById('userRosterStageFilter').addEventListener('change', renderUserRoster);
       document.getElementById('userRosterSearch').addEventListener('input', renderUserRoster);
+      document.getElementById('missionCareSearch').addEventListener('input', (event) => {
+        missionCareSearchQuery = String(event.target.value || '').trim();
+        renderMissionCareBoard(latestMissionCareBoard);
+      });
       document.getElementById('userRosterList').addEventListener('click', (event) => {
         const btn = event.target.closest('button[data-action="view-user-roster"][data-user-id]');
         if (!btn) return;
