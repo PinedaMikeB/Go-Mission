@@ -36,7 +36,7 @@ const GroupMeeting = {
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
-  allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
+  allowPublicFallback: true, // Use public Jitsi only when self-hosted realtime transport is down.
   USE_PREJOIN: true, // Default Jitsi prejoin flow
   
   // Meeting window (minutes before/after scheduled time)
@@ -46,7 +46,7 @@ const GroupMeeting = {
   /**
    * Initialize - load Jitsi API script
    */
-  async init() {
+  async init(preferredDomain = null) {
     if (window.JitsiMeetExternalAPI) return;
 
     // Avoid loading the script multiple times if init() is called concurrently.
@@ -56,7 +56,10 @@ const GroupMeeting = {
     }
 
     this.initPromise = (async () => {
-      await this.loadJitsiScript({ timeoutMs: 3500 });
+      await this.loadJitsiScript({
+        timeoutMs: 3500,
+        preferredDomains: preferredDomain ? [preferredDomain] : null
+      });
       console.log('[GroupMeeting] Initialized');
     })();
 
@@ -70,7 +73,7 @@ const GroupMeeting = {
   /**
    * Load Jitsi Meet External API script
    */
-  loadJitsiScript({ timeoutMs = 10000 } = {}) {
+  loadJitsiScript({ timeoutMs = 10000, preferredDomains = null } = {}) {
     return new Promise((resolve, reject) => {
       if (window.JitsiMeetExternalAPI) {
         resolve();
@@ -79,9 +82,12 @@ const GroupMeeting = {
 
       // Script can be loaded from any Jitsi domain; prefer self-hosted but fall back
       // to meet.jit.si for fast/consistent script delivery.
-      const domainsToTry = this.useSelfHosted
+      const defaultDomains = this.useSelfHosted
         ? [this.JITSI_DOMAIN, this.JITSI_PUBLIC]
         : [this.JITSI_PUBLIC, this.JITSI_DOMAIN];
+      const domainsToTry = Array.isArray(preferredDomains) && preferredDomains.length
+        ? [...preferredDomains, ...defaultDomains.filter((domain) => !preferredDomains.includes(domain))]
+        : defaultDomains;
 
       const candidates = domainsToTry.flatMap((domain) => ([
         `https://${domain}/external_api.js`,
@@ -153,10 +159,75 @@ const GroupMeeting = {
     }
   },
 
+  checkSelfHostedRealtime(domain, roomName, timeoutMs = 3000) {
+    return new Promise((resolve) => {
+      if (typeof WebSocket === 'undefined') {
+        resolve({ ok: true, skipped: true });
+        return;
+      }
+
+      let settled = false;
+      let socket = null;
+      const finish = (ok, reason = '') => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          socket?.close();
+        } catch (_) {}
+        resolve({ ok, reason });
+      };
+
+      const timer = setTimeout(() => finish(false, 'timeout'), timeoutMs);
+      try {
+        const healthRoom = encodeURIComponent(roomName || 'GoMissionHealthCheck');
+        socket = new WebSocket(`wss://${domain}/xmpp-websocket?room=${healthRoom}`);
+        socket.onopen = () => finish(true);
+        socket.onerror = () => finish(false, 'websocket');
+        socket.onclose = (event) => {
+          finish(false, event?.code ? `closed ${event.code}` : 'closed');
+        };
+      } catch (error) {
+        finish(false, error?.message || 'websocket');
+      }
+    });
+  },
+
+  async resolveMeetingDomain(roomName) {
+    const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
+
+    this.setMeetingStatus(`Checking ${desiredDomain}…`);
+    const reachable = await this.checkReachable(`https://${desiredDomain}/`, 2500);
+    if (!reachable) {
+      if (this.allowPublicFallback && desiredDomain !== this.JITSI_PUBLIC) {
+        this.setMeetingStatus('Primary call server is not responding. Trying backup meeting server…');
+        return this.JITSI_PUBLIC;
+      }
+      this.setMeetingStatus(`${desiredDomain} is not responding. Please try again in a moment.`);
+      return null;
+    }
+
+    if (desiredDomain === this.JITSI_DOMAIN) {
+      this.setMeetingStatus(`Checking ${desiredDomain} meeting connection…`);
+      const realtime = await this.checkSelfHostedRealtime(desiredDomain, roomName, 3000);
+      if (!realtime.ok) {
+        console.warn('[GroupMeeting] Self-hosted Jitsi realtime check failed:', realtime);
+        if (this.allowPublicFallback) {
+          this.setMeetingStatus('Primary call server is unstable. Using backup meeting server…');
+          return this.JITSI_PUBLIC;
+        }
+        this.setMeetingStatus(`${desiredDomain} meeting connection is unavailable. Please try again in a moment.`);
+        return null;
+      }
+    }
+
+    return desiredDomain;
+  },
+
   retryLastJoin() {
     const a = this.lastJoinArgs;
     if (!a) return;
-    this.joinMeeting(a.groupId, a.groupName, a.userName, a.userEmail, a.isLeader);
+    this.joinMeeting(a);
   },
 
   formatJitsiError(evt) {
@@ -259,46 +330,98 @@ const GroupMeeting = {
       return { text: `${schedule.day} at ${timeStr}`, isToday: false };
     }
   },
+
+  async ensureMeetingMediaPermissions() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { audio: false, video: false, reason: 'unsupported' };
+    }
+
+    const granted = { audio: false, video: false, reason: null };
+    const probes = [
+      { kind: 'audio', constraints: { audio: true, video: false } },
+      { kind: 'video', constraints: { audio: false, video: true } }
+    ];
+
+    for (const probe of probes) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(probe.constraints);
+        granted[probe.kind] = true;
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        console.warn(`[GroupMeeting] ${probe.kind} permission probe failed:`, error);
+        granted.reason = error?.name || error?.message || 'denied';
+      }
+    }
+
+    return granted;
+  },
   
   /**
    * Start/Join a meeting
    */
   async joinMeeting(groupId, groupName, userName, userEmail, isLeader = false) {
     try {
-      this.lastJoinArgs = { groupId, groupName, userName, userEmail, isLeader };
+      const args = (groupId && typeof groupId === 'object')
+        ? {
+            attendanceGroupId: groupId.attendanceGroupId || groupId.groupId || groupId.roomGroupId,
+            attendanceGroupName: groupId.attendanceGroupName || groupId.groupName || groupId.displayGroupName || groupId.roomGroupName,
+            roomGroupId: groupId.roomGroupId || groupId.groupId || groupId.attendanceGroupId,
+            roomGroupName: groupId.roomGroupName || groupId.groupName || groupId.displayGroupName || groupId.attendanceGroupName,
+            displayGroupName: groupId.displayGroupName || groupId.attendanceGroupName || groupId.groupName || groupId.roomGroupName,
+            userName: groupId.userName,
+            userEmail: groupId.userEmail,
+            isLeader: groupId.isLeader === true
+          }
+        : {
+            attendanceGroupId: groupId,
+            attendanceGroupName: groupName,
+            roomGroupId: groupId,
+            roomGroupName: groupName,
+            displayGroupName: groupName,
+            userName,
+            userEmail,
+            isLeader
+          };
+
+      this.lastJoinArgs = { ...args };
 
       // Show UI immediately so users see something happening even if the API load is slow/fails.
-      this.showMeetingModal(groupName);
+      this.showMeetingModal(args.displayGroupName);
       this.setMeetingStatus('Loading meeting…');
 
-      const roomName = this.generateRoomName(groupId, groupName);
+      const roomName = this.generateRoomName(args.roomGroupId, args.roomGroupName);
       const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(desiredDomain, roomName);
 
-      // Fail fast if the call server is not responding.
-      this.setMeetingStatus(`Checking ${desiredDomain}…`);
-      const reachable = await this.checkReachable(`https://${desiredDomain}/`, 2500);
-      if (!reachable) {
-        this.setMeetingStatus(`${desiredDomain} is not responding. Please try again in a moment.`);
+      this.setMeetingStatus('Requesting camera and microphone access…');
+      const mediaAccess = await this.ensureMeetingMediaPermissions();
+      if (!mediaAccess.audio && !mediaAccess.video) {
+        this.setMeetingStatus('Camera and microphone are blocked. Please allow both permissions for Go Mission, then try again.');
+        return;
+      }
+      if (!mediaAccess.audio || !mediaAccess.video) {
+        this.setMeetingStatus('Some meeting permissions are still blocked. You can continue, but audio or video may stay muted.');
+      }
+
+      const activeDomain = await this.resolveMeetingDomain(roomName);
+      if (!activeDomain) {
         return;
       }
 
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
         this.setMeetingStatus('Loading Jitsi API…');
-        await this.init();
+        await this.init(activeDomain);
       }
 
       if (!window.JitsiMeetExternalAPI) {
         throw new Error('Jitsi API not available');
       }
 
-      this.currentGroupId = groupId;
+      this.currentGroupId = args.attendanceGroupId;
       this.joinedAt = new Date();
       this.joinedConference = false;
 
-      // Domain may change if we later allow fallback.
-      const activeDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(activeDomain, roomName);
       console.log('[GroupMeeting] Joining room:', roomName, 'on', activeDomain);
       this.setMeetingStatus(`Connecting to ${activeDomain}…`);
@@ -318,8 +441,8 @@ const GroupMeeting = {
         width: '100%',
         height: '100%',
         userInfo: {
-          displayName: userName || 'Guest',
-          email: userEmail || ''
+          displayName: args.userName || 'Guest',
+          email: args.userEmail || ''
         },
         configOverwrite: {
           // Basic settings
@@ -411,7 +534,7 @@ const GroupMeeting = {
           this.connectTimeoutId = null;
         }
         this.setMeetingStatus('');
-        this.onJoined(groupId, userName);
+        this.onJoined(args.attendanceGroupId, args.userName);
 
         // Default to tile view so stage uses space better for larger meetings.
         setTimeout(() => {
@@ -426,7 +549,7 @@ const GroupMeeting = {
           clearTimeout(this.connectTimeoutId);
           this.connectTimeoutId = null;
         }
-        this.onLeft(groupId);
+        this.onLeft(args.attendanceGroupId);
       });
 
       // Surface failures that otherwise look like "black screen"
@@ -488,23 +611,29 @@ const GroupMeeting = {
    */
   initPresentationState() {
     let savedOpacity = 72;
-    let savedDeckId = '';
+    let savedFontScale = 1.125;
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
       const parsed = Number(raw);
       if (Number.isFinite(parsed)) {
         savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
       }
-      savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
+      const rawFontScale = Number(window.localStorage?.getItem('goMission_meetingSlidesFontScale'));
+      if (Number.isFinite(rawFontScale)) {
+        savedFontScale = Math.min(1.35, Math.max(1.125, rawFontScale));
+      }
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     this.presentationState = {
       mode: 'local',        // future: 'host_synced'
       focusMode: false,     // future moderator setting
       panelOpen: false,
-      selectedDeckId: savedDeckId || null,
+      settingsOpen: false,
+      selectedDeckId: null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
+      fontScale: savedFontScale,
       currentSlideIndex: 0,
       loading: false,
       error: null,
@@ -552,15 +681,21 @@ const GroupMeeting = {
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
+            <button onclick="window.GroupMeeting.toggleSlidesSettings()"
+                    id="meeting-slides-settings-btn"
+                    class="rounded-full font-bold transition-all flex items-center justify-center"
+                    style="width:34px; height:34px; font-size:16px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color: #f4d7a2; box-shadow: 0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08); border: 1px solid rgba(242, 184, 94, 0.22);">
+              ⚙
+            </button>
             <button onclick="window.GroupMeeting.toggleSlidesPanel()"
                     id="meeting-slides-toggle-btn"
-                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-all"
-                    style="background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
+                    class="px-3 py-1.5 rounded-full font-bold transition-all"
+                    style="font-size:13px; background: linear-gradient(135deg, #f5c542, #f39a22); color: #2c1408; box-shadow: 0 5px 12px rgba(242, 162, 37, 0.24), inset 0 1px 0 rgba(255,255,255,0.35);">
               🗂 Slides
             </button>
             <button onclick="window.GroupMeeting.leaveMeeting()" 
-                    class="px-3 py-1.5 rounded-full text-sm font-bold transition-colors"
-                    style="background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 6px 14px rgba(210, 22, 22, 0.28);">
+                    class="px-3 py-1.5 rounded-full font-bold transition-colors"
+                    style="font-size:13px; background: linear-gradient(135deg, #ef2f2f, #cf1717); color: #fff; box-shadow: 0 6px 14px rgba(210, 22, 22, 0.28);">
               ✕ Leave
             </button>
           </div>
@@ -581,41 +716,9 @@ const GroupMeeting = {
             </div>
             <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
           </div>
-          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
-            <div class="flex-1 min-w-0">
-              <label for="meeting-slides-topic-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Topic</label>
-              <select id="meeting-slides-topic-select"
-                      onchange="window.GroupMeeting.setSlidesDeck(this.value)"
-                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
-                <option value="">No topics yet</option>
-              </select>
-            </div>
-            <div class="w-[120px] shrink-0">
-              <label for="meeting-slides-lang-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Lang</label>
-              <select id="meeting-slides-lang-select"
-                      onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
-                      class="w-full rounded-lg border border-white/10 bg-black/35 text-white text-sm px-3 py-2">
-                <option value="tl">Tagalog</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-          </div>
-          <div class="px-4 py-2 border-t border-white/10 flex items-center gap-3">
-            <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
-            <input id="meeting-slides-opacity"
-                   type="range"
-                   min="20"
-                   max="95"
-                   step="1"
-                   value="72"
-                   oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
-                   class="flex-1 accent-amber-400">
-            <span id="meeting-slides-opacity-value"
-                  class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
-          </div>
         </div>
 
-        <div id="meeting-slides-panel-body" class="mt-2 px-4 py-4 min-h-[240px] max-h-[55vh] overflow-y-auto">
+        <div id="meeting-slides-panel-body" class="mt-2 px-0 py-0 min-h-[240px] max-h-[55vh] overflow-y-auto">
           <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
         </div>
 
@@ -631,6 +734,76 @@ const GroupMeeting = {
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
             Next →
           </button>
+        </div>
+      </div>
+
+      <div id="meeting-slides-settings-panel"
+           class="hidden absolute z-[10002] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4">
+        <div id="meeting-slides-settings-card" class="rounded-2xl border border-white/10 shadow-xl overflow-hidden">
+          <div class="px-4 py-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
+              <p id="meeting-slides-settings-deck-title" class="text-white font-bold text-sm truncate">Loading…</p>
+            </div>
+            <button onclick="window.GroupMeeting.toggleSlidesSettings(false)"
+                    class="rounded-full font-bold transition-all flex items-center justify-center"
+                    style="width:30px; height:30px; font-size:14px; background: rgba(255,255,255,0.08); color:#f7e9cc; border:1px solid rgba(255,255,255,0.08);">
+              ✕
+            </button>
+          </div>
+          <div class="px-4 pb-4 flex flex-col gap-3">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <label for="meeting-slides-topic-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Topic</label>
+                <select id="meeting-slides-topic-select"
+                        onchange="window.GroupMeeting.setSlidesDeck(this.value)"
+                        class="w-full rounded-xl text-sm px-3 py-2.5">
+                  <option value="">No topics yet</option>
+                </select>
+              </div>
+              <div style="width:112px;" class="shrink-0">
+                <label for="meeting-slides-lang-select" class="block text-[10px] uppercase tracking-[0.14em] text-white/60 font-semibold mb-1">Lang</label>
+                <select id="meeting-slides-lang-select"
+                        onchange="window.GroupMeeting.setSlidesLanguage(this.value)"
+                        class="w-full rounded-xl text-sm px-3 py-2.5">
+                  <option value="tl">Tagalog</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Opacity</span>
+              <input id="meeting-slides-opacity"
+                     type="range"
+                     min="20"
+                     max="95"
+                     step="1"
+                     value="72"
+                     oninput="window.GroupMeeting.setSlidesOpacity(this.value)"
+                     class="flex-1 accent-amber-400">
+              <span id="meeting-slides-opacity-value"
+                    class="text-xs font-bold text-amber-200 min-w-[46px] text-right">72%</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[11px] uppercase tracking-[0.14em] text-white/65 font-semibold whitespace-nowrap">Text</span>
+              <div class="flex items-center gap-2">
+                <button onclick="window.GroupMeeting.decreaseSlidesFontSize()"
+                        id="meeting-slides-font-decrease"
+                        class="px-3 py-1.5 rounded-full font-bold"
+                        style="font-size:13px;">
+                  A-
+                </button>
+                <span id="meeting-slides-font-value"
+                      class="text-xs font-bold text-amber-200 min-w-[52px] text-center">18px</span>
+                <button onclick="window.GroupMeeting.increaseSlidesFontSize()"
+                        id="meeting-slides-font-increase"
+                        class="px-3 py-1.5 rounded-full font-bold"
+                        style="font-size:13px;">
+                  A+
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -676,9 +849,43 @@ const GroupMeeting = {
     return 'meetingSlidesCatalog';
   },
 
+  getMeetingSlidesTopicSortMs(topic) {
+    const candidates = [
+      topic?.updatedAt,
+      topic?.updatedAtIso,
+      topic?.uploadedAt,
+      topic?.uploadedAtIso,
+      topic?.createdAt,
+      topic?.createdAtIso
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      if (typeof value?.toDate === 'function') {
+        const date = value.toDate();
+        if (date instanceof Date && Number.isFinite(date.getTime())) return date.getTime();
+      }
+      if (value instanceof Date && Number.isFinite(value.getTime())) return value.getTime();
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      if (typeof value === 'object' && Number.isFinite(value.seconds)) {
+        return (Number(value.seconds) * 1000) + Math.round(Number(value.nanoseconds || 0) / 1000000);
+      }
+    }
+
+    return 0;
+  },
+
   getSlidesLibraryEntries() {
     return Object.entries(this.MEETING_SLIDES_LIBRARY || {})
-      .sort((a, b) => String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0])));
+      .sort((a, b) => {
+        const timeDiff = this.getMeetingSlidesTopicSortMs(b[1]) - this.getMeetingSlidesTopicSortMs(a[1]);
+        if (timeDiff) return timeDiff;
+        return String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0]));
+      });
   },
 
   async ensureSlidesLibraryLoaded(force = false) {
@@ -698,7 +905,12 @@ const GroupMeeting = {
           if (!topicId || !title) return;
           nextLibrary[topicId] = {
             title,
-            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {}
+            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {},
+            sourceFilename: String(topic?.sourceFilename || '').trim(),
+            createdAt: topic?.createdAt || null,
+            createdAtIso: String(topic?.createdAtIso || '').trim(),
+            updatedAt: topic?.updatedAt || null,
+            updatedAtIso: String(topic?.updatedAtIso || '').trim()
           };
         });
         this.MEETING_SLIDES_LIBRARY = nextLibrary;
@@ -734,12 +946,36 @@ const GroupMeeting = {
       : !this.presentationState.panelOpen;
 
     this.presentationState.panelOpen = nextOpen;
+    if (!nextOpen) {
+      this.presentationState.settingsOpen = false;
+    }
     panel.classList.toggle('hidden', !nextOpen);
 
     if (nextOpen && !this.presentationState.deck && !this.presentationState.loading) {
       await this.loadSlidesDeck();
     }
 
+    this.renderSlidesPanel();
+  },
+
+  async toggleSlidesSettings(forceOpen) {
+    if (!this.presentationState) return;
+    const panel = document.getElementById('meeting-slides-panel');
+    const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+    const nextOpen = typeof forceOpen === 'boolean'
+      ? forceOpen
+      : !this.presentationState.settingsOpen;
+
+    if (nextOpen && !this.presentationState.panelOpen) {
+      this.presentationState.panelOpen = true;
+      if (panel) panel.classList.remove('hidden');
+      if (!this.presentationState.deck && !this.presentationState.loading) {
+        await this.loadSlidesDeck();
+      }
+    }
+
+    this.presentationState.settingsOpen = nextOpen;
+    if (settingsPanel) settingsPanel.classList.toggle('hidden', !nextOpen);
     this.renderSlidesPanel();
   },
 
@@ -861,11 +1097,7 @@ const GroupMeeting = {
     this.presentationState.error = null;
 
     try {
-      if (nextDeckId) {
-        window.localStorage?.setItem('goMission_meetingSlidesDeckId', nextDeckId);
-      } else {
-        window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
-      }
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     if (!nextDeckId) {
@@ -899,6 +1131,26 @@ const GroupMeeting = {
     this.renderSlidesPanel();
   },
 
+  setSlidesFontScale(value) {
+    if (!this.presentationState) return;
+    const next = Math.min(1.35, Math.max(0.95, Number(value) || 1.125));
+    this.presentationState.fontScale = Number(next.toFixed(3));
+    try {
+      window.localStorage?.setItem('goMission_meetingSlidesFontScale', String(this.presentationState.fontScale));
+    } catch (_) {}
+    this.renderSlidesPanel();
+  },
+
+  increaseSlidesFontSize() {
+    const current = Number(this.presentationState?.fontScale || 1.125);
+    this.setSlidesFontScale(current + 0.08);
+  },
+
+  decreaseSlidesFontSize() {
+    const current = Number(this.presentationState?.fontScale || 1.125);
+    this.setSlidesFontScale(current - 0.08);
+  },
+
   nextSlide() {
     const s = this.presentationState;
     if (!s?.deck?.slides?.length) return;
@@ -926,14 +1178,116 @@ const GroupMeeting = {
       .replace(/'/g, '&#39;');
   },
 
+  isMeetingSlideSectionHeading(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    if (/^LIFE APPLICATION AND MISSIONAL GUIDE/i.test(normalized)) return false;
+    return /^[IVXLCDM]+\.\s+[A-Z0-9][A-Z0-9 /&,'’().:-]+$/i.test(normalized);
+  },
+
+  isMeetingSlideKeyPointMarker(text) {
+    return /^[IVXLCDM]+\.\s+KEY POINT\s+\d+\s*$/i.test(String(text || '').trim());
+  },
+
+  isMeetingSlideScriptureReference(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    return /^(?:[1-3]\s+)?[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'-]*(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'-]*){0,4}\s+\d{1,3}:\d{1,3}(?:\s*[-–]\s*\d{1,3})?$/i.test(normalized);
+  },
+
+  isMeetingSlideVerseText(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    return /^[“"'‘]/.test(normalized) || /^\(?\d{1,3}\)?\s+\S+/.test(normalized);
+  },
+
+  normalizeMeetingSlideLabel(text) {
+    const raw = String(text || '').trim().replace(/\s+/g, ' ');
+    const normalized = raw.replace(/:\s*$/, '');
+    if (!normalized) return null;
+
+    if (/^Title$/i.test(normalized)) return { label: 'Title', kind: 'meta' };
+    if (/^Bible Study Series$/i.test(normalized)) return { label: 'Bible Study Series', kind: 'meta' };
+    if (/^Important Note$/i.test(normalized)) return { label: 'Important Note', kind: 'note' };
+    if (/^Thankfulness Sharing$/i.test(normalized)) return { label: 'Thankfulness Sharing', kind: 'prompt' };
+    if (/^Memorable Conversation with the Lord$/i.test(normalized)) return { label: 'Memorable Conversation with the Lord', kind: 'prompt' };
+    if (/^Missional Follow-up$/i.test(normalized)) return { label: 'Missional Follow-up', kind: 'prompt' };
+    if (/^Group Prayer$/i.test(normalized)) return { label: 'Group Prayer', kind: 'prompt' };
+    if (/^Paliwanag$/i.test(normalized)) return { label: 'Paliwanag', kind: 'explanation' };
+    if (/^Supporting Verse$/i.test(normalized)) return { label: 'Supporting Verse', kind: 'scripture' };
+    if (/^Summary of the point$/i.test(normalized)) return { label: 'Summary of the point', kind: 'summary' };
+    if (/^(Sagot|Suggested Answer|Possible Answer|Posibleng Sagot)$/i.test(normalized)) return { label: 'Sagot', kind: 'answer' };
+    if (/^Guide for Facilitator$/i.test(normalized)) return { label: 'Guide for Facilitator', kind: 'facilitator' };
+    if (/^Facilitator Note$/i.test(normalized)) return { label: 'Facilitator Note', kind: 'facilitator-note' };
+    if (/^Individual Missional Response$/i.test(normalized)) return { label: 'Individual Missional Response', kind: 'response' };
+    if (/^Group Missional Response$/i.test(normalized)) return { label: 'Group Missional Response', kind: 'response' };
+    if (/^Recording and Follow-up$/i.test(normalized)) return { label: 'Recording and Follow-up', kind: 'response' };
+
+    const questionMatch = normalized.match(/^(Tanong\s*\d+)(?::\s*(.+))?$/i);
+    if (questionMatch) {
+      return {
+        label: questionMatch[2] ? `${questionMatch[1]}: ${questionMatch[2]}` : questionMatch[1],
+        kind: 'question'
+      };
+    }
+
+    return null;
+  },
+
+  parseMeetingSlideLabelLine(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return null;
+
+    const direct = this.normalizeMeetingSlideLabel(raw);
+    if (direct) {
+      return { info: direct, inlineBody: '' };
+    }
+
+    const pairMatch = raw.match(/^([^:]{2,80}):\s*(.+)$/);
+    if (!pairMatch) return null;
+
+    const info = this.normalizeMeetingSlideLabel(pairMatch[1]);
+    if (!info) return null;
+
+    return {
+      info,
+      inlineBody: String(pairMatch[2] || '').trim()
+    };
+  },
+
+  getMeetingSlideFontScale(options = {}) {
+    const explicit = Number(options.fontScale);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const stateScale = Number(this.presentationState?.fontScale);
+    if (Number.isFinite(stateScale) && stateScale > 0) return stateScale;
+    return 1.125;
+  },
+
+  scaleMeetingSlidePx(value, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const numeric = typeof value === 'number' ? value : parseFloat(String(value || '').replace('px', ''));
+    const safe = Number.isFinite(numeric) ? numeric : 16;
+    const scaled = safe * fontScale;
+    return `${Number(scaled.toFixed(2)).toString()}px`;
+  },
+
+  scaleMeetingSlideClamp(minPx, vw, maxPx, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const safeMin = Number.isFinite(minPx) ? minPx : 24;
+    const safeVw = Number.isFinite(vw) ? vw : 5.8;
+    const safeMax = Number.isFinite(maxPx) ? maxPx : 38;
+    return `clamp(${Math.round(safeMin * fontScale)}px, ${(safeVw * fontScale).toFixed(2)}vw, ${Math.round(safeMax * fontScale)}px)`;
+  },
+
   renderMeetingSlideParagraphBlocks(paragraphs = [], options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
     const paragraphColor = options.paragraphColor || '#1f1f1f';
     const bulletColor = options.bulletColor || '#181818';
-    const paragraphSize = options.paragraphSize || '18px';
-    const bulletSize = options.bulletSize || paragraphSize;
-    const paragraphGap = options.paragraphGap || '12px';
-    const listGap = options.listGap || '10px';
-    const listIndent = options.listIndent || '22px';
+    const paragraphSize = this.scaleMeetingSlidePx(options.paragraphSize || '18px', { fontScale });
+    const bulletSize = this.scaleMeetingSlidePx(options.bulletSize || options.paragraphSize || '18px', { fontScale });
+    const paragraphGap = this.scaleMeetingSlidePx(options.paragraphGap || '12px', { fontScale });
+    const listGap = this.scaleMeetingSlidePx(options.listGap || '10px', { fontScale });
+    const listIndent = this.scaleMeetingSlidePx(options.listIndent || '22px', { fontScale });
 
     const items = Array.isArray(paragraphs) ? paragraphs.filter((p) => String(p || '').trim()) : [];
     if (!items.length) return '';
@@ -969,97 +1323,336 @@ const GroupMeeting = {
     return blocks.join('');
   },
 
-  buildMeetingSlideDisclosureSections(slide) {
+  buildMeetingSlideContentBlocks(slide) {
     const paragraphs = Array.isArray(slide?.paragraphs) ? slide.paragraphs.filter((p) => String(p || '').trim()) : [];
-    const title = String(slide?.title || '').trim();
-    const kicker = String(slide?.kicker || '').trim();
-    const titleLooksFacilitator = /facilitator(?:'s|’s)?\s+guide/i.test(title) || /facilitator(?:'s|’s)?\s+guide/i.test(kicker);
-    const primary = [];
-    const disclosures = [];
-    let activeDisclosure = null;
+    const blocks = [];
+    let currentSection = null;
+    let currentLabelBlock = null;
+    let currentBodyParagraphs = [];
 
-    const pushDisclosure = () => {
-      if (!activeDisclosure?.paragraphs?.length) return;
-      disclosures.push(activeDisclosure);
-      activeDisclosure = null;
+    const pushNode = (node) => {
+      if (!node) return;
+      if (currentSection) {
+        currentSection.items.push(node);
+      } else {
+        blocks.push(node);
+      }
     };
 
-    const startDisclosure = (label, initialParagraphs = [], tone = 'facilitator') => {
-      pushDisclosure();
-      activeDisclosure = {
-        label,
-        tone,
-        paragraphs: initialParagraphs.filter(Boolean)
+    const flushBody = () => {
+      if (!currentBodyParagraphs.length) return;
+      pushNode({
+        type: 'body',
+        paragraphs: [...currentBodyParagraphs]
+      });
+      currentBodyParagraphs = [];
+    };
+
+    const flushLabelBlock = () => {
+      if (!currentLabelBlock) return;
+      pushNode(currentLabelBlock);
+      currentLabelBlock = null;
+    };
+
+    const pushSectionIfNeeded = () => {
+      if (!currentSection) return;
+      blocks.push(currentSection);
+      currentSection = null;
+    };
+
+    const startSection = (heading) => {
+      flushLabelBlock();
+      flushBody();
+      pushSectionIfNeeded();
+      currentSection = {
+        type: 'section',
+        heading,
+        items: []
       };
     };
 
-    const classifyDisclosureLine = (paragraph) => {
-      const raw = String(paragraph || '').trim();
-      const lower = raw.toLowerCase();
-      const labelMatch = raw.match(/^([^:]{2,80}):\s*(.*)$/);
-      const label = labelMatch ? labelMatch[1].trim() : '';
-      const content = labelMatch ? labelMatch[2].trim() : '';
+    const appendToLabelBlock = (text) => {
+      const raw = String(text || '').trim();
+      if (!raw) return;
+      if (!currentLabelBlock) {
+        currentBodyParagraphs.push(raw);
+        return;
+      }
 
-      if (/^facilitator(?:'s|’s)?\s+guide$/i.test(label) || /^facilitator(?:'s|’s)?\s+guide:?$/i.test(raw)) {
-        return { kind: 'start', label: 'Facilitator Guide', tone: 'facilitator', content };
+      if (currentLabelBlock.kind === 'scripture' && !currentLabelBlock.reference && this.isMeetingSlideScriptureReference(raw)) {
+        currentLabelBlock.reference = raw;
+        return;
       }
-      if (/^facilitator(?:'s|’s)?\s+note$/i.test(label)) {
-        return { kind: 'start', label: 'Facilitator Note', tone: 'facilitator', content };
+      if (currentLabelBlock.kind === 'scripture' && (this.isMeetingSlideVerseText(raw) || currentLabelBlock.verses.length)) {
+        currentLabelBlock.verses.push(raw);
+        return;
       }
-      if (/^(posibleng\s+sagot|possible\s+answer|suggested\s+answer|sagot)$/i.test(label)) {
-        return { kind: 'start', label: 'Suggested Answer', tone: 'answer', content };
-      }
-      if (/^(paano i-guide ang talakayan|analysis|key insight|layunin|segue sa topic|segue to the topic)$/i.test(label)) {
-        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
-      }
-      if (titleLooksFacilitator) {
-        return { kind: 'append', label: 'Facilitator Guide', tone: 'facilitator', content: raw };
-      }
-      if (activeDisclosure && /^(free from|analysis|key insight|facilitator(?:'s|’s)?\s+note|layunin)\b/i.test(lower)) {
-        return { kind: 'append', label: activeDisclosure.label, tone: activeDisclosure.tone, content: raw };
-      }
-      return null;
+
+      currentLabelBlock.body.push(raw);
+    };
+
+    const startLabelBlock = (info, inlineBody = '') => {
+      flushBody();
+      flushLabelBlock();
+      currentLabelBlock = {
+        type: 'label',
+        kind: info.kind,
+        label: info.label,
+        body: [],
+        reference: '',
+        verses: []
+      };
+      if (inlineBody) appendToLabelBlock(inlineBody);
     };
 
     paragraphs.forEach((paragraph) => {
-      const disclosureLine = classifyDisclosureLine(paragraph);
-      if (!disclosureLine) {
-        if (activeDisclosure && titleLooksFacilitator) {
-          activeDisclosure.paragraphs.push(String(paragraph).trim());
-          return;
-        }
-        pushDisclosure();
-        primary.push(String(paragraph).trim());
+      const raw = String(paragraph || '').trim();
+      if (!raw) return;
+
+      if (this.isMeetingSlideSectionHeading(raw)) {
+        startSection(raw);
         return;
       }
 
-      if (disclosureLine.kind === 'start') {
-        startDisclosure(disclosureLine.label, disclosureLine.content ? [disclosureLine.content] : [], disclosureLine.tone);
+      const parsedLabel = this.parseMeetingSlideLabelLine(raw);
+      if (parsedLabel) {
+        startLabelBlock(parsedLabel.info, parsedLabel.inlineBody);
         return;
       }
 
-      if (!activeDisclosure) {
-        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
-      } else if (activeDisclosure.label !== disclosureLine.label && disclosureLine.kind === 'append') {
-        startDisclosure(disclosureLine.label, [], disclosureLine.tone);
+      if (currentLabelBlock) {
+        appendToLabelBlock(raw);
+        return;
       }
 
-      if (disclosureLine.content) {
-        activeDisclosure.paragraphs.push(disclosureLine.content);
-      }
+      currentBodyParagraphs.push(raw);
     });
 
-    pushDisclosure();
+    flushLabelBlock();
+    flushBody();
+    pushSectionIfNeeded();
 
-    if (titleLooksFacilitator && !primary.length && !disclosures.length && paragraphs.length) {
-      disclosures.push({
-        label: 'Facilitator Guide',
-        tone: 'facilitator',
-        paragraphs: paragraphs.map((paragraph) => String(paragraph).trim()).filter(Boolean)
-      });
-    }
+    return blocks;
+  },
 
-    return { primary, disclosures, titleLooksFacilitator };
+  getMeetingSlideLabelTone(kind = 'default') {
+    const tones = {
+      meta: {
+        background: 'rgba(255, 252, 246, 0.92)',
+        border: 'rgba(186, 135, 78, 0.18)',
+        labelBg: 'rgba(122, 79, 38, 0.1)',
+        labelColor: '#7a4f26',
+        bodyColor: '#30261d',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.14em'
+      },
+      note: {
+        background: 'rgba(255, 248, 235, 0.95)',
+        border: 'rgba(217, 119, 6, 0.18)',
+        labelBg: 'rgba(245, 158, 11, 0.14)',
+        labelColor: '#8a3b13',
+        bodyColor: '#35261a',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.13em'
+      },
+      prompt: {
+        background: 'rgba(255, 251, 245, 0.96)',
+        border: 'rgba(145, 92, 44, 0.14)',
+        labelBg: 'rgba(125, 80, 41, 0.1)',
+        labelColor: '#6f4623',
+        bodyColor: '#2e241c',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      explanation: {
+        background: 'rgba(255, 248, 240, 0.96)',
+        border: 'rgba(199, 109, 61, 0.18)',
+        labelBg: 'rgba(191, 88, 42, 0.12)',
+        labelColor: '#8c3517',
+        bodyColor: '#2e241d',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      scripture: {
+        background: 'rgba(252, 247, 237, 0.98)',
+        border: 'rgba(196, 144, 74, 0.22)',
+        labelBg: 'rgba(217, 119, 6, 0.12)',
+        labelColor: '#7a4b12',
+        bodyColor: '#38271a',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.14em'
+      },
+      question: {
+        background: 'rgba(255, 245, 238, 0.96)',
+        border: 'rgba(208, 102, 63, 0.18)',
+        labelBg: 'rgba(192, 79, 47, 0.12)',
+        labelColor: '#8b2e1d',
+        bodyColor: '#2d231c',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      answer: {
+        background: 'rgba(239, 246, 255, 0.96)',
+        border: 'rgba(59, 130, 246, 0.18)',
+        labelBg: 'rgba(59, 130, 246, 0.12)',
+        labelColor: '#1d4ed8',
+        bodyColor: '#1f3557',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      facilitator: {
+        background: 'rgba(255, 248, 235, 0.96)',
+        border: 'rgba(217, 119, 6, 0.18)',
+        labelBg: 'rgba(245, 158, 11, 0.14)',
+        labelColor: '#9a4e12',
+        bodyColor: '#3a2a1d',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      'facilitator-note': {
+        background: 'rgba(255, 246, 240, 0.96)',
+        border: 'rgba(234, 88, 12, 0.18)',
+        labelBg: 'rgba(234, 88, 12, 0.12)',
+        labelColor: '#9a3412',
+        bodyColor: '#3b271b',
+        bodySize: '15px',
+        labelTransform: 'uppercase',
+        labelSpacing: '0.12em'
+      },
+      summary: {
+        background: 'rgba(247, 244, 237, 0.98)',
+        border: 'rgba(104, 86, 67, 0.18)',
+        labelBg: 'rgba(82, 68, 55, 0.1)',
+        labelColor: '#5b4737',
+        bodyColor: '#2f241b',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      response: {
+        background: 'rgba(245, 249, 255, 0.96)',
+        border: 'rgba(96, 165, 250, 0.18)',
+        labelBg: 'rgba(59, 130, 246, 0.1)',
+        labelColor: '#1d4ed8',
+        bodyColor: '#243b5a',
+        bodySize: '15px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      },
+      default: {
+        background: 'rgba(255, 251, 245, 0.94)',
+        border: 'rgba(150, 110, 67, 0.14)',
+        labelBg: 'rgba(115, 83, 54, 0.1)',
+        labelColor: '#6b4e38',
+        bodyColor: '#2f261f',
+        bodySize: '16px',
+        labelTransform: 'none',
+        labelSpacing: '0.01em'
+      }
+    };
+    return tones[kind] || tones.default;
+  },
+
+  renderMeetingSlideLabelBlock(block, options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const compactMobile = !!options.compactMobile;
+    const tone = this.getMeetingSlideLabelTone(block.kind);
+    const isScripture = block.kind === 'scripture';
+    const bodyHtml = block.body.length
+      ? this.renderMeetingSlideParagraphBlocks(block.body, {
+          paragraphColor: tone.bodyColor,
+          bulletColor: tone.bodyColor,
+          paragraphSize: tone.bodySize,
+          bulletSize: tone.bodySize,
+          paragraphGap: '10px',
+          listGap: '8px',
+          listIndent: '20px',
+          fontScale
+        })
+      : '';
+    const referenceHtml = block.reference
+      ? `<div style="margin-top:${this.scaleMeetingSlidePx('12px', { fontScale })}; color:#8a4b14; font-size:${this.scaleMeetingSlidePx('12px', { fontScale })}; line-height:1.35; font-weight:900; letter-spacing:0.14em; text-transform:uppercase;">${this.escapeHtml(block.reference)}</div>`
+      : '';
+    const versesHtml = block.verses.length
+      ? block.verses.map((verse) => (
+          `<p style="margin:${this.scaleMeetingSlidePx('10px', { fontScale })} 0 0 0; color:#3a2617; font-size:${this.scaleMeetingSlidePx('16px', { fontScale })}; line-height:1.72; font-style:italic; font-weight:600;">${this.escapeHtml(verse)}</p>`
+        )).join('')
+      : '';
+    const labelMarginBottom = isScripture || bodyHtml ? this.scaleMeetingSlidePx('10px', { fontScale }) : '0';
+    const cardPadding = compactMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })}` : `${this.scaleMeetingSlidePx('12px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })} ${this.scaleMeetingSlidePx('13px', { fontScale })}`;
+    const cardRadius = compactMobile ? this.scaleMeetingSlidePx('13px', { fontScale }) : this.scaleMeetingSlidePx('15px', { fontScale });
+    const labelFontSize = this.scaleMeetingSlidePx('11px', { fontScale });
+    const labelPadding = `${this.scaleMeetingSlidePx('6px', { fontScale })} ${this.scaleMeetingSlidePx('10px', { fontScale })}`;
+
+    return `
+      <div style="border-radius:${cardRadius}; border:1px solid ${tone.border}; background:${tone.background}; padding:${cardPadding}; box-shadow:${compactMobile ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.45)'};">
+        <div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; max-width:100%; border-radius:999px; background:${tone.labelBg}; color:${tone.labelColor}; padding:${labelPadding}; font-size:${labelFontSize}; line-height:1.2; font-weight:900; text-transform:${tone.labelTransform}; letter-spacing:${tone.labelSpacing}; margin-bottom:${labelMarginBottom};">${this.escapeHtml(block.label)}</div>
+        ${isScripture ? `<div>${referenceHtml}${versesHtml}${bodyHtml ? `<div style="margin-top:${this.scaleMeetingSlidePx('12px', { fontScale })};">${bodyHtml}</div>` : ''}</div>` : bodyHtml}
+      </div>
+    `;
+  },
+
+  renderMeetingSlideContentBlocks(blocks = [], options = {}) {
+    const fontScale = this.getMeetingSlideFontScale(options);
+    const compactMobile = !!options.compactMobile;
+    const depth = Number(options.depth || 0);
+    const items = Array.isArray(blocks) ? blocks : [];
+    if (!items.length) return '';
+
+    return items.map((block, idx) => {
+      const marginTop = idx === 0 ? '0' : (block.type === 'section' ? this.scaleMeetingSlidePx(compactMobile ? '14px' : '18px', { fontScale }) : this.scaleMeetingSlidePx(compactMobile ? '10px' : '12px', { fontScale }));
+      if (block.type === 'section') {
+        if (compactMobile) {
+          return `
+            <section style="margin-top:${marginTop};">
+              <div style="margin-bottom:${block.items.length ? this.scaleMeetingSlidePx('10px', { fontScale }) : '0'};">
+                <div style="color:#2b1d13; font-size:${this.scaleMeetingSlidePx(depth > 0 ? '16px' : '19px', { fontScale })}; line-height:1.04; font-weight:900; letter-spacing:-0.02em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
+              </div>
+              <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1, fontScale, compactMobile })}</div>
+            </section>
+          `;
+        }
+        return `
+          <section style="margin-top:${marginTop}; border-radius:${this.scaleMeetingSlidePx('18px', { fontScale })}; border:1px solid rgba(191, 126, 63, 0.18); background:linear-gradient(180deg, rgba(255,250,244,0.96), rgba(255,245,234,0.92)); padding:${this.scaleMeetingSlidePx('14px', { fontScale })} ${this.scaleMeetingSlidePx('14px', { fontScale })} ${this.scaleMeetingSlidePx('15px', { fontScale })} ${this.scaleMeetingSlidePx('14px', { fontScale })}; box-shadow:inset 0 1px 0 rgba(255,255,255,0.55);">
+            <div style="margin-bottom:${block.items.length ? this.scaleMeetingSlidePx('12px', { fontScale }) : '0'};">
+              <div style="color:#2b1d13; font-size:${this.scaleMeetingSlidePx(depth > 0 ? '15px' : '17px', { fontScale })}; line-height:1.08; font-weight:900; letter-spacing:-0.015em; text-transform:uppercase;">${this.escapeHtml(block.heading)}</div>
+            </div>
+            <div>${this.renderMeetingSlideContentBlocks(block.items, { depth: depth + 1, fontScale, compactMobile })}</div>
+          </section>
+        `;
+      }
+
+      if (block.type === 'label') {
+        return `<div style="margin-top:${marginTop};">${this.renderMeetingSlideLabelBlock(block, { depth, fontScale, compactMobile })}</div>`;
+      }
+
+      if (block.type === 'body') {
+        return `
+          <div style="margin-top:${marginTop};">
+            ${this.renderMeetingSlideParagraphBlocks(block.paragraphs, {
+              paragraphColor: depth > 0 ? '#35281e' : '#2d241c',
+              bulletColor: depth > 0 ? '#35281e' : '#2d241c',
+              paragraphSize: depth > 0 ? '17px' : '18px',
+              bulletSize: depth > 0 ? '17px' : '18px',
+              paragraphGap: depth > 0 ? '10px' : '12px',
+              listGap: '8px',
+              listIndent: compactMobile ? '18px' : '20px',
+              fontScale
+            })}
+          </div>
+        `;
+      }
+
+      return '';
+    }).join('');
   },
 
   renderSlidesPanel() {
@@ -1069,16 +1662,27 @@ const GroupMeeting = {
 
     const body = document.getElementById('meeting-slides-panel-body');
     const titleEl = document.getElementById('meeting-slides-deck-title');
+    const settingsTitleEl = document.getElementById('meeting-slides-settings-deck-title');
     const counterEl = document.getElementById('meeting-slide-counter');
     const prevBtn = document.getElementById('meeting-slide-prev-btn');
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
+    const settingsToggleBtn = document.getElementById('meeting-slides-settings-btn');
+    const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+    const settingsCard = document.getElementById('meeting-slides-settings-card');
     const topicSelect = document.getElementById('meeting-slides-topic-select');
     const langSelect = document.getElementById('meeting-slides-lang-select');
     const opacitySlider = document.getElementById('meeting-slides-opacity');
     const opacityValueEl = document.getElementById('meeting-slides-opacity-value');
+    const fontValueEl = document.getElementById('meeting-slides-font-value');
+    const fontDecreaseBtn = document.getElementById('meeting-slides-font-decrease');
+    const fontIncreaseBtn = document.getElementById('meeting-slides-font-increase');
     const topicEntries = this.getSlidesLibraryEntries();
     const hasTopics = topicEntries.length > 0;
+    const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+    const isNarrowMobile = viewportWidth > 0 && viewportWidth <= 640;
+    const compactMobile = viewportWidth > 0 && viewportWidth <= 430;
     const selectedDeckId = hasTopics && this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]
       ? state.selectedDeckId
       : (topicEntries[0]?.[0] || null);
@@ -1103,23 +1707,50 @@ const GroupMeeting = {
     }
 
     const opacityPct = Math.min(95, Math.max(20, Number(state.overlayOpacity || 72)));
+    const fontScale = Math.min(1.35, Math.max(0.95, Number(state.fontScale || 1.125)));
     const panelAlpha = Math.max(0.08, opacityPct / 100);
     const chromeAlpha = Math.max(0.08, panelAlpha * 0.34);
     const borderAlpha = Math.max(0.04, panelAlpha * 0.18);
-    // Opacity slider now controls the white reading surface transparency.
-    const noteSurfaceAlpha = Math.min(0.9, Math.max(0.46, 0.35 + (opacityPct / 100) * 0.55));
+    const controlBackground = 'linear-gradient(180deg, rgba(43,30,24,0.96), rgba(24,16,13,0.94))';
+    const controlBorder = 'rgba(236, 186, 104, 0.22)';
+    // Keep the reading surface substantially opaque so live video does not bleed through the text.
+    const noteSurfaceAlpha = isNarrowMobile
+      ? Math.min(0.99, Math.max(0.93, 0.88 + (opacityPct / 100) * 0.08))
+      : Math.min(0.98, Math.max(0.84, 0.76 + (opacityPct / 100) * 0.2));
 
     if (opacitySlider) opacitySlider.value = String(opacityPct);
     if (opacityValueEl) opacityValueEl.textContent = `${Math.round(opacityPct)}%`;
+    if (fontValueEl) fontValueEl.textContent = `${Math.round(16 * fontScale)}px`;
+    if (fontDecreaseBtn) fontDecreaseBtn.disabled = fontScale <= 0.95;
+    if (fontIncreaseBtn) fontIncreaseBtn.disabled = fontScale >= 1.35;
 
     if (toggleBtn) {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
       toggleBtn.classList.toggle('text-amber-200', !!state.panelOpen);
     }
+    if (settingsToggleBtn) {
+      settingsToggleBtn.style.color = state.settingsOpen ? '#22140c' : '#f4d7a2';
+      settingsToggleBtn.style.background = state.settingsOpen
+        ? 'linear-gradient(135deg, #f2bf61, #d98b31)'
+        : 'linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98))';
+      settingsToggleBtn.style.borderColor = state.settingsOpen ? 'rgba(255,255,255,0.14)' : 'rgba(242, 184, 94, 0.22)';
+      settingsToggleBtn.style.boxShadow = state.settingsOpen
+        ? '0 6px 16px rgba(217, 139, 49, 0.24), inset 0 1px 0 rgba(255,255,255,0.28)'
+        : '0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08)';
+    }
     if (titleEl) {
-      titleEl.style.color = '#f7f3ea';
-      titleEl.style.fontWeight = '700';
-      titleEl.style.letterSpacing = '0.01em';
+      titleEl.style.color = '#f8e3b4';
+      titleEl.style.fontWeight = '800';
+      titleEl.style.fontSize = isNarrowMobile ? '22px' : '16px';
+      titleEl.style.letterSpacing = '-0.01em';
+      titleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
+    }
+    if (settingsTitleEl) {
+      settingsTitleEl.style.color = '#f8e3b4';
+      settingsTitleEl.style.fontWeight = '800';
+      settingsTitleEl.style.fontSize = isNarrowMobile ? '22px' : '16px';
+      settingsTitleEl.style.letterSpacing = '-0.01em';
+      settingsTitleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
     }
     if (counterEl) {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
@@ -1129,9 +1760,59 @@ const GroupMeeting = {
     panel.style.border = 'none';
     panel.style.backdropFilter = 'none';
     panel.style.webkitBackdropFilter = 'none';
+    panel.style.position = isNarrowMobile ? 'fixed' : '';
+    panel.style.top = isNarrowMobile ? '96px' : '';
+    panel.style.left = isNarrowMobile ? '12px' : '';
+    panel.style.right = isNarrowMobile ? '12px' : '';
+    panel.style.bottom = isNarrowMobile ? '76px' : '';
+    panel.style.width = isNarrowMobile ? 'auto' : '';
+    panel.style.maxHeight = isNarrowMobile ? `calc(${Math.round(viewportHeight || 0)}px - 168px)` : '';
+    panel.style.contain = isNarrowMobile ? 'layout paint style' : '';
+    panel.style.transform = isNarrowMobile ? 'translateZ(0)' : '';
+    panel.style.overflowX = 'hidden';
+
+    if (settingsPanel) {
+      settingsPanel.classList.toggle('hidden', !state.settingsOpen);
+      settingsPanel.style.position = isNarrowMobile ? 'fixed' : '';
+      settingsPanel.style.top = isNarrowMobile ? '96px' : '';
+      settingsPanel.style.left = isNarrowMobile ? '12px' : '';
+      settingsPanel.style.right = isNarrowMobile ? '12px' : '';
+      settingsPanel.style.width = isNarrowMobile ? 'auto' : '';
+      settingsPanel.style.maxWidth = isNarrowMobile ? '' : '440px';
+      settingsPanel.style.overflowX = 'hidden';
+    }
 
     if (titleEl) {
       titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
+    }
+    if (settingsTitleEl) {
+      settingsTitleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
+    }
+
+    const selectBaseStyles = (el) => {
+      if (!el) return;
+      el.style.color = '#f7ecda';
+      el.style.background = controlBackground;
+      el.style.border = `1px solid ${controlBorder}`;
+      el.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+      el.style.outline = 'none';
+      el.style.minHeight = isNarrowMobile ? '44px' : '42px';
+      el.style.fontWeight = '600';
+    };
+    selectBaseStyles(topicSelect);
+    selectBaseStyles(langSelect);
+
+    if (fontDecreaseBtn) {
+      fontDecreaseBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
+      fontDecreaseBtn.style.color = fontScale <= 0.95 ? 'rgba(244,222,191,0.34)' : '#f6e4c7';
+      fontDecreaseBtn.style.border = `1px solid ${controlBorder}`;
+      fontDecreaseBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+    }
+    if (fontIncreaseBtn) {
+      fontIncreaseBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
+      fontIncreaseBtn.style.color = fontScale >= 1.35 ? 'rgba(244,222,191,0.34)' : '#f6e4c7';
+      fontIncreaseBtn.style.border = `1px solid ${controlBorder}`;
+      fontIncreaseBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
     }
 
     if (state.loading) {
@@ -1174,75 +1855,54 @@ const GroupMeeting = {
     const slideIndex = Math.min(Math.max(state.currentSlideIndex || 0, 0), slides.length - 1);
     state.currentSlideIndex = slideIndex;
     const slide = slides[slideIndex];
-    const slideSections = this.buildMeetingSlideDisclosureSections(slide);
+    const slideBlocks = this.buildMeetingSlideContentBlocks(slide);
+    const explicitEyebrow = String(slide.eyebrow || slide.sectionLabel || slide.overline || '').trim();
+    const titleRaw = String(slide.title || '').trim() || 'Slide';
+    const subtitleRaw = String(slide.subtitle || '').trim();
+    const titleIsMarker = this.isMeetingSlideKeyPointMarker(titleRaw);
+    const subtitleIsSectionMarker = this.isMeetingSlideKeyPointMarker(subtitleRaw) || this.isMeetingSlideSectionHeading(subtitleRaw);
+    const eyebrowText = explicitEyebrow || (titleIsMarker && subtitleRaw ? titleRaw : (subtitleIsSectionMarker ? subtitleRaw : ''));
+    const displayTitle = titleIsMarker && subtitleRaw ? subtitleRaw : titleRaw;
+    const displaySubtitle = !eyebrowText && subtitleRaw ? subtitleRaw : '';
+    const isKeyPointSlide = this.isMeetingSlideKeyPointMarker(eyebrowText);
+    const titleFontSize = isKeyPointSlide
+      ? this.scaleMeetingSlideClamp(31, 6.6, 46, { fontScale })
+      : (slide.type === 'title' ? this.scaleMeetingSlideClamp(25, 5.8, 38, { fontScale }) : this.scaleMeetingSlideClamp(24, 5.9, 37, { fontScale }));
     const kickerHtml = slide.kicker
-      ? `<div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:5px 10px; font-weight:800; margin-bottom:10px;">
-          <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
+      ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:${this.scaleMeetingSlidePx('5px', { fontScale })} ${this.scaleMeetingSlidePx('10px', { fontScale })}; font-weight:800; margin-bottom:${this.scaleMeetingSlidePx('10px', { fontScale })};">
+          <span style="display:inline-block; width:${this.scaleMeetingSlidePx('7px', { fontScale })}; height:${this.scaleMeetingSlidePx('7px', { fontScale })}; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
         </div>`
       : '';
-    const titleHtml = `<div style="color:#141414; font-size:clamp(24px,5.8vw,38px); line-height:1.02; font-weight:900; letter-spacing:-0.01em; margin-bottom:${slide.subtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(slide.title || 'Slide')}</div>`;
-    const subtitleHtml = slide.subtitle
-      ? `<div style="color:#5a4a3a; font-size:14px; line-height:1.4; margin-bottom:14px; font-weight:600;">${this.escapeHtml(slide.subtitle)}</div>`
+    const eyebrowHtml = eyebrowText
+      ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; max-width:100%; border-radius:999px; background:rgba(129, 66, 23, 0.08); color:#8c4317; border:1px solid rgba(209, 146, 76, 0.24); padding:${this.scaleMeetingSlidePx('6px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.2; letter-spacing:0.14em; text-transform:uppercase; font-weight:900; margin-bottom:${this.scaleMeetingSlidePx('12px', { fontScale })};">${this.escapeHtml(eyebrowText)}</div>`
       : '';
-    const primaryBodyHtml = slideSections.primary.length
-      ? this.renderMeetingSlideParagraphBlocks(slideSections.primary)
-      : (
-          slideSections.titleLooksFacilitator
-            ? `<p style="color:#6a5748; font-size:14px; line-height:1.5; margin:0 0 12px 0;">Facilitator notes are hidden by default. Expand below when you need them.</p>`
-            : ''
-        );
-    const disclosureSectionsHtml = slideSections.disclosures.map((section, idx) => {
-      const tone = section.tone === 'answer'
-        ? {
-            border: 'rgba(37, 99, 235, 0.18)',
-            background: 'rgba(237, 244, 255, 0.88)',
-            summary: '#0f3b8f',
-            badge: 'rgba(59,130,246,0.12)',
-            badgeText: '#1d4ed8'
-          }
-        : {
-            border: 'rgba(217, 119, 6, 0.18)',
-            background: 'rgba(255, 248, 235, 0.9)',
-            summary: '#8a3b13',
-            badge: 'rgba(245, 158, 11, 0.14)',
-            badgeText: '#a16207'
-          };
-      return `
-        <details style="margin-top:${idx === 0 && !primaryBodyHtml ? '0' : '14px'}; border-radius:16px; border:1px solid ${tone.border}; background:${tone.background}; overflow:hidden;">
-          <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; font-weight:800; color:${tone.summary}; font-size:13px; letter-spacing:0.01em;">
-            <span>${this.escapeHtml(section.label)}</span>
-            <span style="display:inline-flex; align-items:center; border-radius:999px; background:${tone.badge}; color:${tone.badgeText}; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:0.12em;">Tap to Expand</span>
-          </summary>
-          <div style="padding:0 14px 14px 14px; border-top:1px solid rgba(0,0,0,0.05);">
-            ${this.renderMeetingSlideParagraphBlocks(section.paragraphs, {
-              paragraphColor: '#2d241f',
-              bulletColor: '#2d241f',
-              paragraphSize: '15px',
-              bulletSize: '15px',
-              paragraphGap: '10px',
-              listGap: '8px',
-              listIndent: '20px'
-            })}
-          </div>
-        </details>
-      `;
-    }).join('');
+    const titleHtml = `<div style="color:#141414; font-size:${titleFontSize}; line-height:${isKeyPointSlide ? '0.95' : '1.02'}; font-weight:900; letter-spacing:${isKeyPointSlide ? '-0.03em' : '-0.015em'}; margin-bottom:${displaySubtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(displayTitle)}</div>`;
+    const subtitleHtml = displaySubtitle
+      ? `<div style="color:#5a4737; font-size:${this.scaleMeetingSlidePx(slide.type === 'title' ? '18px' : '14px', { fontScale })}; line-height:1.45; margin-bottom:${this.scaleMeetingSlidePx('15px', { fontScale })}; font-weight:${slide.type === 'title' ? '700' : '600'};">${this.escapeHtml(displaySubtitle)}</div>`
+      : '';
+    const structuredContentHtml = this.renderMeetingSlideContentBlocks(slideBlocks, { fontScale, compactMobile });
     const bodyHtml = `
       <div style="
         position:relative;
-        border-radius:18px;
+        width:100%;
+        box-sizing:border-box;
+        overflow:hidden;
+        border-radius:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};
         border:1px solid rgba(255,255,255,0.55);
         background:
-          linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.4, noteSurfaceAlpha - 0.08).toFixed(2)}));
+          linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.86, noteSurfaceAlpha - 0.04).toFixed(2)})),
+          radial-gradient(circle at top right, rgba(245,158,11,0.1), transparent 36%),
+          radial-gradient(circle at bottom left, rgba(220,38,38,0.05), transparent 42%);
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        padding:18px 18px 16px 18px;">
-        <div style="position:absolute; left:0; top:14px; bottom:14px; width:5px; border-radius:5px; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
-        <div style="padding-left:12px;">
+        padding:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '14px' : '16px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};">
+        <div style="position:absolute; left:0; top:${this.scaleMeetingSlidePx('14px', { fontScale })}; bottom:${this.scaleMeetingSlidePx('14px', { fontScale })}; width:${this.scaleMeetingSlidePx('5px', { fontScale })}; border-radius:${this.scaleMeetingSlidePx('5px', { fontScale })}; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
+        <div style="position:absolute; right:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; bottom:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; width:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; height:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; border-radius:50%; background:radial-gradient(circle, rgba(245,158,11,${compactMobile ? '0.08' : '0.14'}), rgba(245,158,11,0.04) 58%, transparent 74%); filter:blur(1px); pointer-events:none;"></div>
+        <div style="position:relative; z-index:1; padding-left:${this.scaleMeetingSlidePx('12px', { fontScale })};">
           ${kickerHtml}
+          ${eyebrowHtml}
           ${titleHtml}
           ${subtitleHtml}
-          <div>${primaryBodyHtml}</div>
-          ${disclosureSectionsHtml}
+          <div>${structuredContentHtml}</div>
         </div>
       </div>
     `;
@@ -1256,21 +1916,64 @@ const GroupMeeting = {
     if (body) {
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
+      body.style.overflowY = 'auto';
+      body.style.overflowX = 'hidden';
+      body.style.overscrollBehavior = 'contain';
+      body.style.webkitOverflowScrolling = 'touch';
+      body.style.scrollbarGutter = 'stable';
+      body.style.maxHeight = '';
+      body.style.minHeight = isNarrowMobile ? '0' : '';
+      body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`;
     }
 
     const topbar = document.getElementById('meeting-slides-topbar');
     const bottombar = document.getElementById('meeting-slides-bottombar');
     if (topbar) {
+      topbar.style.flexShrink = '0';
       topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
       topbar.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)})`;
-      topbar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
-      topbar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      topbar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+      topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+    }
+    if (settingsCard) {
+      settingsCard.style.background = 'linear-gradient(180deg, rgba(20,14,12,0.9), rgba(28,18,14,0.88))';
+      settingsCard.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha + 0.04).toFixed(2)})`;
+      settingsCard.style.backdropFilter = `blur(${isNarrowMobile ? 14 : 12}px)`;
+      settingsCard.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 14 : 12}px)`;
+      settingsCard.style.boxShadow = '0 18px 34px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)';
     }
     if (bottombar) {
-      bottombar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.07, chromeAlpha * 0.9).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.75).toFixed(2)}))`;
-      bottombar.style.borderColor = `rgba(255,255,255,${Math.min(0.14, borderAlpha).toFixed(2)})`;
-      bottombar.style.backdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
-      bottombar.style.webkitBackdropFilter = `blur(${panelAlpha > 0.4 ? 10 : 6}px)`;
+      bottombar.style.flexShrink = '0';
+      bottombar.style.background = 'linear-gradient(180deg, rgba(28,20,16,0.94), rgba(43,30,24,0.9))';
+      bottombar.style.borderColor = 'rgba(236, 186, 104, 0.16)';
+      bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
+      bottombar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
+      bottombar.style.boxShadow = '0 14px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)';
+    }
+    if (prevBtn) {
+      prevBtn.style.background = slideIndex <= 0
+        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
+      prevBtn.style.color = slideIndex <= 0 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
+      prevBtn.style.boxShadow = slideIndex <= 0
+        ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
+        : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+    }
+    if (nextBtn) {
+      nextBtn.style.background = slideIndex >= slides.length - 1
+        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
+      nextBtn.style.color = slideIndex >= slides.length - 1 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      nextBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
+      nextBtn.style.boxShadow = slideIndex >= slides.length - 1
+        ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
+        : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+    }
+
+    if (isNarrowMobile && body && topbar && bottombar) {
+      const availableBodyHeight = Math.max(220, viewportHeight - 96 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 18);
+      body.style.maxHeight = `${Math.round(availableBodyHeight)}px`;
     }
   },
   

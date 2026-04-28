@@ -1,27 +1,30 @@
 {
-  "status": "running",
-  "updatedAt": "2026-04-02T15:18:25.975Z",
-  "current": {
-    "bookId": "LUK",
-    "chapter": "15",
-    "verse": "16",
-    "commentary": "Tyndale Open Study Notes"
+  "status": "completed",
+  "startedAt": "2026-04-11T02:23:08.793Z",
+  "updatedAt": "2026-04-11T02:23:08.793Z",
+  "completedAt": "2026-04-11T02:23:08.793Z",
+  "config": {
+    "books": [
+      "1CH",
+      "DAN",
+      "PHP",
+      "DEU",
+      "MAT",
+      "ECC",
+      "LAM"
+    ],
+    "limit": null,
+    "model": "gpt-5-mini"
   },
   "totals": {
-    "generated": 438,
-    "skippedExisting": 1887,
-    "errors": 660,
-    "queued": 2648,
-    "processedBooks": 6,
+    "generated": 231,
+    "skippedExisting": 3575,
+    "errors": 0,
+    "queued": 231,
+    "processedBooks": 7,
     "byCommentary": {
-      "Tyndale Open Study Notes": 288,
-      "None": 150
+      "Tyndale Open Study Notes": 222,
+      "None": 9
     }
-  },
-  "lastError": {
-    "bookId": "LUK",
-    "chapter": "15",
-    "verse": "16",
-    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors."
   }
 }

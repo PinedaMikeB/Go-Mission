@@ -36,7 +36,7 @@ const GroupMeeting = {
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
-  allowPublicFallback: false, // Keep false so production never silently falls back to demo meet.jit.si
+  allowPublicFallback: true, // Use public Jitsi only when self-hosted realtime transport is down.
   USE_PREJOIN: true, // Default Jitsi prejoin flow
   
   // Meeting window (minutes before/after scheduled time)
@@ -46,7 +46,7 @@ const GroupMeeting = {
   /**
    * Initialize - load Jitsi API script
    */
-  async init() {
+  async init(preferredDomain = null) {
     if (window.JitsiMeetExternalAPI) return;
 
     // Avoid loading the script multiple times if init() is called concurrently.
@@ -56,7 +56,10 @@ const GroupMeeting = {
     }
 
     this.initPromise = (async () => {
-      await this.loadJitsiScript({ timeoutMs: 3500 });
+      await this.loadJitsiScript({
+        timeoutMs: 3500,
+        preferredDomains: preferredDomain ? [preferredDomain] : null
+      });
       console.log('[GroupMeeting] Initialized');
     })();
 
@@ -70,7 +73,7 @@ const GroupMeeting = {
   /**
    * Load Jitsi Meet External API script
    */
-  loadJitsiScript({ timeoutMs = 10000 } = {}) {
+  loadJitsiScript({ timeoutMs = 10000, preferredDomains = null } = {}) {
     return new Promise((resolve, reject) => {
       if (window.JitsiMeetExternalAPI) {
         resolve();
@@ -79,9 +82,12 @@ const GroupMeeting = {
 
       // Script can be loaded from any Jitsi domain; prefer self-hosted but fall back
       // to meet.jit.si for fast/consistent script delivery.
-      const domainsToTry = this.useSelfHosted
+      const defaultDomains = this.useSelfHosted
         ? [this.JITSI_DOMAIN, this.JITSI_PUBLIC]
         : [this.JITSI_PUBLIC, this.JITSI_DOMAIN];
+      const domainsToTry = Array.isArray(preferredDomains) && preferredDomains.length
+        ? [...preferredDomains, ...defaultDomains.filter((domain) => !preferredDomains.includes(domain))]
+        : defaultDomains;
 
       const candidates = domainsToTry.flatMap((domain) => ([
         `https://${domain}/external_api.js`,
@@ -153,10 +159,75 @@ const GroupMeeting = {
     }
   },
 
+  checkSelfHostedRealtime(domain, roomName, timeoutMs = 3000) {
+    return new Promise((resolve) => {
+      if (typeof WebSocket === 'undefined') {
+        resolve({ ok: true, skipped: true });
+        return;
+      }
+
+      let settled = false;
+      let socket = null;
+      const finish = (ok, reason = '') => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          socket?.close();
+        } catch (_) {}
+        resolve({ ok, reason });
+      };
+
+      const timer = setTimeout(() => finish(false, 'timeout'), timeoutMs);
+      try {
+        const healthRoom = encodeURIComponent(roomName || 'GoMissionHealthCheck');
+        socket = new WebSocket(`wss://${domain}/xmpp-websocket?room=${healthRoom}`);
+        socket.onopen = () => finish(true);
+        socket.onerror = () => finish(false, 'websocket');
+        socket.onclose = (event) => {
+          finish(false, event?.code ? `closed ${event.code}` : 'closed');
+        };
+      } catch (error) {
+        finish(false, error?.message || 'websocket');
+      }
+    });
+  },
+
+  async resolveMeetingDomain(roomName) {
+    const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
+
+    this.setMeetingStatus(`Checking ${desiredDomain}…`);
+    const reachable = await this.checkReachable(`https://${desiredDomain}/`, 2500);
+    if (!reachable) {
+      if (this.allowPublicFallback && desiredDomain !== this.JITSI_PUBLIC) {
+        this.setMeetingStatus('Primary call server is not responding. Trying backup meeting server…');
+        return this.JITSI_PUBLIC;
+      }
+      this.setMeetingStatus(`${desiredDomain} is not responding. Please try again in a moment.`);
+      return null;
+    }
+
+    if (desiredDomain === this.JITSI_DOMAIN) {
+      this.setMeetingStatus(`Checking ${desiredDomain} meeting connection…`);
+      const realtime = await this.checkSelfHostedRealtime(desiredDomain, roomName, 3000);
+      if (!realtime.ok) {
+        console.warn('[GroupMeeting] Self-hosted Jitsi realtime check failed:', realtime);
+        if (this.allowPublicFallback) {
+          this.setMeetingStatus('Primary call server is unstable. Using backup meeting server…');
+          return this.JITSI_PUBLIC;
+        }
+        this.setMeetingStatus(`${desiredDomain} meeting connection is unavailable. Please try again in a moment.`);
+        return null;
+      }
+    }
+
+    return desiredDomain;
+  },
+
   retryLastJoin() {
     const a = this.lastJoinArgs;
     if (!a) return;
-    this.joinMeeting(a.groupId, a.groupName, a.userName, a.userEmail, a.isLeader);
+    this.joinMeeting(a);
   },
 
   formatJitsiError(evt) {
@@ -290,13 +361,35 @@ const GroupMeeting = {
    */
   async joinMeeting(groupId, groupName, userName, userEmail, isLeader = false) {
     try {
-      this.lastJoinArgs = { groupId, groupName, userName, userEmail, isLeader };
+      const args = (groupId && typeof groupId === 'object')
+        ? {
+            attendanceGroupId: groupId.attendanceGroupId || groupId.groupId || groupId.roomGroupId,
+            attendanceGroupName: groupId.attendanceGroupName || groupId.groupName || groupId.displayGroupName || groupId.roomGroupName,
+            roomGroupId: groupId.roomGroupId || groupId.groupId || groupId.attendanceGroupId,
+            roomGroupName: groupId.roomGroupName || groupId.groupName || groupId.displayGroupName || groupId.attendanceGroupName,
+            displayGroupName: groupId.displayGroupName || groupId.attendanceGroupName || groupId.groupName || groupId.roomGroupName,
+            userName: groupId.userName,
+            userEmail: groupId.userEmail,
+            isLeader: groupId.isLeader === true
+          }
+        : {
+            attendanceGroupId: groupId,
+            attendanceGroupName: groupName,
+            roomGroupId: groupId,
+            roomGroupName: groupName,
+            displayGroupName: groupName,
+            userName,
+            userEmail,
+            isLeader
+          };
+
+      this.lastJoinArgs = { ...args };
 
       // Show UI immediately so users see something happening even if the API load is slow/fails.
-      this.showMeetingModal(groupName);
+      this.showMeetingModal(args.displayGroupName);
       this.setMeetingStatus('Loading meeting…');
 
-      const roomName = this.generateRoomName(groupId, groupName);
+      const roomName = this.generateRoomName(args.roomGroupId, args.roomGroupName);
       const desiredDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(desiredDomain, roomName);
 
@@ -310,30 +403,25 @@ const GroupMeeting = {
         this.setMeetingStatus('Some meeting permissions are still blocked. You can continue, but audio or video may stay muted.');
       }
 
-      // Fail fast if the call server is not responding.
-      this.setMeetingStatus(`Checking ${desiredDomain}…`);
-      const reachable = await this.checkReachable(`https://${desiredDomain}/`, 2500);
-      if (!reachable) {
-        this.setMeetingStatus(`${desiredDomain} is not responding. Please try again in a moment.`);
+      const activeDomain = await this.resolveMeetingDomain(roomName);
+      if (!activeDomain) {
         return;
       }
 
       // Load Jitsi API if not loaded
       if (!window.JitsiMeetExternalAPI) {
         this.setMeetingStatus('Loading Jitsi API…');
-        await this.init();
+        await this.init(activeDomain);
       }
 
       if (!window.JitsiMeetExternalAPI) {
         throw new Error('Jitsi API not available');
       }
 
-      this.currentGroupId = groupId;
+      this.currentGroupId = args.attendanceGroupId;
       this.joinedAt = new Date();
       this.joinedConference = false;
 
-      // Domain may change if we later allow fallback.
-      const activeDomain = this.useSelfHosted ? this.JITSI_DOMAIN : this.JITSI_PUBLIC;
       this.currentRoomUrl = this.getRoomUrl(activeDomain, roomName);
       console.log('[GroupMeeting] Joining room:', roomName, 'on', activeDomain);
       this.setMeetingStatus(`Connecting to ${activeDomain}…`);
@@ -353,8 +441,8 @@ const GroupMeeting = {
         width: '100%',
         height: '100%',
         userInfo: {
-          displayName: userName || 'Guest',
-          email: userEmail || ''
+          displayName: args.userName || 'Guest',
+          email: args.userEmail || ''
         },
         configOverwrite: {
           // Basic settings
@@ -446,7 +534,7 @@ const GroupMeeting = {
           this.connectTimeoutId = null;
         }
         this.setMeetingStatus('');
-        this.onJoined(groupId, userName);
+        this.onJoined(args.attendanceGroupId, args.userName);
 
         // Default to tile view so stage uses space better for larger meetings.
         setTimeout(() => {
@@ -461,7 +549,7 @@ const GroupMeeting = {
           clearTimeout(this.connectTimeoutId);
           this.connectTimeoutId = null;
         }
-        this.onLeft(groupId);
+        this.onLeft(args.attendanceGroupId);
       });
 
       // Surface failures that otherwise look like "black screen"
@@ -523,7 +611,6 @@ const GroupMeeting = {
    */
   initPresentationState() {
     let savedOpacity = 72;
-    let savedDeckId = '';
     let savedFontScale = 1.125;
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
@@ -531,11 +618,11 @@ const GroupMeeting = {
       if (Number.isFinite(parsed)) {
         savedOpacity = Math.min(95, Math.max(20, Math.round(parsed)));
       }
-      savedDeckId = String(window.localStorage?.getItem('goMission_meetingSlidesDeckId') || '').trim();
       const rawFontScale = Number(window.localStorage?.getItem('goMission_meetingSlidesFontScale'));
       if (Number.isFinite(rawFontScale)) {
         savedFontScale = Math.min(1.35, Math.max(1.125, rawFontScale));
       }
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     this.presentationState = {
@@ -543,7 +630,7 @@ const GroupMeeting = {
       focusMode: false,     // future moderator setting
       panelOpen: false,
       settingsOpen: false,
-      selectedDeckId: savedDeckId || null,
+      selectedDeckId: null,
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       fontScale: savedFontScale,
@@ -762,9 +849,43 @@ const GroupMeeting = {
     return 'meetingSlidesCatalog';
   },
 
+  getMeetingSlidesTopicSortMs(topic) {
+    const candidates = [
+      topic?.updatedAt,
+      topic?.updatedAtIso,
+      topic?.uploadedAt,
+      topic?.uploadedAtIso,
+      topic?.createdAt,
+      topic?.createdAtIso
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      if (typeof value?.toDate === 'function') {
+        const date = value.toDate();
+        if (date instanceof Date && Number.isFinite(date.getTime())) return date.getTime();
+      }
+      if (value instanceof Date && Number.isFinite(value.getTime())) return value.getTime();
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      if (typeof value === 'object' && Number.isFinite(value.seconds)) {
+        return (Number(value.seconds) * 1000) + Math.round(Number(value.nanoseconds || 0) / 1000000);
+      }
+    }
+
+    return 0;
+  },
+
   getSlidesLibraryEntries() {
     return Object.entries(this.MEETING_SLIDES_LIBRARY || {})
-      .sort((a, b) => String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0])));
+      .sort((a, b) => {
+        const timeDiff = this.getMeetingSlidesTopicSortMs(b[1]) - this.getMeetingSlidesTopicSortMs(a[1]);
+        if (timeDiff) return timeDiff;
+        return String(a[1]?.title || a[0]).localeCompare(String(b[1]?.title || b[0]));
+      });
   },
 
   async ensureSlidesLibraryLoaded(force = false) {
@@ -784,7 +905,12 @@ const GroupMeeting = {
           if (!topicId || !title) return;
           nextLibrary[topicId] = {
             title,
-            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {}
+            variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {},
+            sourceFilename: String(topic?.sourceFilename || '').trim(),
+            createdAt: topic?.createdAt || null,
+            createdAtIso: String(topic?.createdAtIso || '').trim(),
+            updatedAt: topic?.updatedAt || null,
+            updatedAtIso: String(topic?.updatedAtIso || '').trim()
           };
         });
         this.MEETING_SLIDES_LIBRARY = nextLibrary;
@@ -971,11 +1097,7 @@ const GroupMeeting = {
     this.presentationState.error = null;
 
     try {
-      if (nextDeckId) {
-        window.localStorage?.setItem('goMission_meetingSlidesDeckId', nextDeckId);
-      } else {
-        window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
-      }
+      window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
 
     if (!nextDeckId) {

@@ -2257,9 +2257,9 @@ const GroupChat = {
   autoResizeComposerInput(inputEl = null) {
     const input = inputEl || document.getElementById('chatInput');
     if (!input) return;
-    const maxHeight = 176;
+    const maxHeight = 208;
     input.style.height = 'auto';
-    const nextHeight = Math.min(maxHeight, Math.max(48, input.scrollHeight || 48));
+    const nextHeight = Math.min(maxHeight, Math.max(56, input.scrollHeight || 56));
     input.style.height = `${nextHeight}px`;
     input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
   },

@@ -8654,6 +8654,25 @@ match /goMission/watch-series-covers/{allPaths=**} {
       return slugify(value, 'meeting-topic').replace(/[^a-z0-9_-]/g, '-').slice(0, 80);
     }
 
+    function getMeetingSlidesCatalogSortTime(topic) {
+      return pickDate(
+        topic?.updatedAt,
+        topic?.updatedAtIso,
+        topic?.uploadedAt,
+        topic?.uploadedAtIso,
+        topic?.createdAt,
+        topic?.createdAtIso
+      )?.getTime() || 0;
+    }
+
+    function sortMeetingSlidesCatalogNewestFirst(topics) {
+      return [...(Array.isArray(topics) ? topics : [])].sort((a, b) => {
+        const timeDiff = getMeetingSlidesCatalogSortTime(b) - getMeetingSlidesCatalogSortTime(a);
+        if (timeDiff) return timeDiff;
+        return String(a?.title || a?.id || '').localeCompare(String(b?.title || b?.id || ''));
+      });
+    }
+
     function getMeetingSlidesSelectedTopicId() {
       const select = document.getElementById('meetingSlidesTopicSelect');
       if (!select) return '';
@@ -8709,14 +8728,21 @@ match /goMission/watch-series-covers/{allPaths=**} {
         const snap = await getDoc(doc(db, 'goMission_config', meetingSlidesCatalogDocId()));
         const data = snap.exists() ? (snap.data() || {}) : {};
         const rawTopics = Array.isArray(data.topics) ? data.topics : [];
-        meetingSlidesCatalog = rawTopics
-          .map((topic) => ({
-            id: normalizeMeetingSlidesTopicId(topic?.id || topic?.deckId || topic?.title || ''),
-            title: String(topic?.title || topic?.name || topic?.deckTitle || topic?.id || '').trim(),
-            languages: Array.isArray(topic?.languages) ? topic.languages.filter(Boolean) : []
-          }))
-          .filter((topic) => topic.id && topic.title)
-          .sort((a, b) => a.title.localeCompare(b.title));
+        meetingSlidesCatalog = sortMeetingSlidesCatalogNewestFirst(
+          rawTopics
+            .map((topic) => ({
+              id: normalizeMeetingSlidesTopicId(topic?.id || topic?.deckId || topic?.title || ''),
+              title: String(topic?.title || topic?.name || topic?.deckTitle || topic?.id || '').trim(),
+              languages: Array.isArray(topic?.languages) ? topic.languages.filter(Boolean) : [],
+              variants: (topic?.variants && typeof topic.variants === 'object') ? topic.variants : {},
+              sourceFilename: String(topic?.sourceFilename || '').trim(),
+              createdAt: topic?.createdAt || null,
+              createdAtIso: String(topic?.createdAtIso || '').trim(),
+              updatedAt: topic?.updatedAt || null,
+              updatedAtIso: String(topic?.updatedAtIso || '').trim()
+            }))
+            .filter((topic) => topic.id && topic.title)
+        );
         const nextTopicId = previousTopicId && meetingSlidesCatalog.some((topic) => topic.id === previousTopicId)
           ? previousTopicId
           : '';
@@ -8737,19 +8763,23 @@ match /goMission/watch-series-covers/{allPaths=**} {
       const existing = meetingSlidesCatalog.find((topic) => topic.id === safeTopicId) || null;
       const languages = new Set(Array.isArray(existing?.languages) ? existing.languages : []);
       if (language) languages.add(language);
+      const nowIso = new Date().toISOString();
 
       const nextTopic = {
+        ...(existing && typeof existing === 'object' ? existing : {}),
         id: safeTopicId,
         title: safeTitle,
         languages: [...languages].sort(),
         sourceFilename: String(sourceFilename || existing?.sourceFilename || '').trim(),
-        updatedAtIso: new Date().toISOString()
+        createdAtIso: String(existing?.createdAtIso || '').trim() || nowIso,
+        updatedAtIso: nowIso
       };
 
-      const nextCatalog = meetingSlidesCatalog
-        .filter((topic) => topic.id !== safeTopicId)
-        .concat(nextTopic)
-        .sort((a, b) => a.title.localeCompare(b.title));
+      const nextCatalog = sortMeetingSlidesCatalogNewestFirst(
+        meetingSlidesCatalog
+          .filter((topic) => topic.id !== safeTopicId)
+          .concat(nextTopic)
+      );
 
       await setDoc(doc(db, 'goMission_config', meetingSlidesCatalogDocId()), {
         type: 'meetingSlidesCatalog',

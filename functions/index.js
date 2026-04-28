@@ -3521,8 +3521,7 @@ exports.sendPasswordResetCode = onCall({ secrets: [gmailEmail, gmailPassword] },
     gmailPassword.value()
   );
   
-  // Log for debugging
-  console.log(`Password reset code for ${normalizedEmail}: ${code} (email sent: ${emailSent})`);
+  console.log(`Password reset requested for ${normalizedEmail} (email sent: ${emailSent})`);
   
   return { 
     success: true, 

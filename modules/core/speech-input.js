@@ -6,6 +6,7 @@
 const SpeechInput = {
   activeElement: null,
   previousActiveElement: null,
+  dockControls: null,
   dock: null,
   toggleBtn: null,
   cleanBtn: null,
@@ -60,7 +61,7 @@ const SpeechInput = {
     dock.id = 'speechInputDock';
     dock.className = 'hidden fixed z-[200]';
     dock.innerHTML = `
-      <div class="flex items-center gap-2">
+      <div id="speechInputDockControls" class="flex items-center gap-2">
         <button id="speechInputCleanBtn" type="button" class="h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10" aria-label="Clean up dictation" title="Clean up dictation">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.7 3.7L17 8.4l-3 2.9.7 4.1-3.7-2-3.7 2 .7-4.1-3-2.9 3.3-1.7L12 3z"></path>
@@ -76,6 +77,7 @@ const SpeechInput = {
     document.body.appendChild(dock);
 
     this.dock = dock;
+    this.dockControls = dock.querySelector('#speechInputDockControls');
     this.cleanBtn = dock.querySelector('#speechInputCleanBtn');
     this.toggleBtn = dock.querySelector('#speechInputToggleBtn');
 
@@ -191,10 +193,14 @@ const SpeechInput = {
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
 
+    const dockConfig = this.getDockConfig(this.activeElement);
     const isTallField = rect.height > 54 || String(this.activeElement.tagName || '').toLowerCase() === 'textarea';
-    let top = isTallField
-      ? rect.bottom - dockRect.height - 8
-      : rect.top + ((rect.height - dockRect.height) / 2);
+    const placeAboveRight = dockConfig.position === 'above-right';
+    let top = placeAboveRight
+      ? rect.top - dockRect.height - 8
+      : (isTallField
+        ? rect.bottom - dockRect.height - 8
+        : rect.top + ((rect.height - dockRect.height) / 2));
     let left = rect.right - dockRect.width - 8;
 
     if (left < 12) left = 12;
@@ -325,11 +331,26 @@ const SpeechInput = {
 
   reserveSpaceForMic(target) {
     if (!target || target.dataset?.speechPaddingApplied === 'true') return;
+    const dockConfig = this.getDockConfig(target);
+    if (!dockConfig.reserveSpace) return;
     const computed = window.getComputedStyle(target);
     const currentPaddingRight = parseFloat(computed.paddingRight || '0') || 0;
+    const extraPadding = dockConfig.hideClean ? 44 : 52;
     target.dataset.speechOriginalPaddingRight = String(currentPaddingRight);
-    target.style.paddingRight = `${Math.max(currentPaddingRight, 16) + 52}px`;
+    target.style.paddingRight = `${Math.max(currentPaddingRight, 16) + extraPadding}px`;
     target.dataset.speechPaddingApplied = 'true';
+  },
+
+  getDockConfig(target = null) {
+    const element = target || this.activeElement;
+    const mode = String(element?.dataset?.speechDockMode || '').toLowerCase();
+    const compactViewport = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    return {
+      compact: mode === 'compact' || mode === 'minimal' || compactViewport,
+      hideClean: mode === 'minimal' || element?.dataset?.speechHideClean === 'true',
+      reserveSpace: element?.dataset?.speechReserveSpace !== 'false',
+      position: String(element?.dataset?.speechDockPosition || '').toLowerCase()
+    };
   },
 
   restoreTargetPadding(target) {
@@ -437,25 +458,43 @@ const SpeechInput = {
 
     const labels = this.getLabels();
     const isLive = this.isListening;
+    const dockConfig = this.getDockConfig();
+    const sizeClass = dockConfig.compact ? 'h-9 w-9' : 'h-11 w-11';
+    const iconClass = dockConfig.compact ? 'w-3.5 h-3.5' : 'w-4 h-4';
+    if (this.dockControls) {
+      this.dockControls.className = dockConfig.hideClean ? 'flex items-center gap-0' : `flex items-center ${dockConfig.compact ? 'gap-1.5' : 'gap-2'}`;
+    }
     this.toggleBtn.className = isLive
-      ? 'h-11 w-11 rounded-full border border-red-400/60 bg-red-500 text-white flex items-center justify-center shadow-xl transition-colors hover:bg-red-400'
-      : 'h-11 w-11 rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400';
+      ? `${sizeClass} rounded-full border border-red-400/60 bg-red-500 text-white flex items-center justify-center shadow-xl transition-colors hover:bg-red-400`
+      : `${sizeClass} rounded-full border border-amber-500/40 bg-amber-500 text-[#2a0505] flex items-center justify-center shadow-xl transition-colors hover:bg-amber-400`;
     this.toggleBtn.setAttribute('aria-label', isLive ? labels.listening : labels.ready);
     this.toggleBtn.setAttribute('title', isLive ? labels.listening : labels.ready);
+    const toggleIcon = this.toggleBtn.querySelector('svg');
+    if (toggleIcon) toggleIcon.className = iconClass;
 
     if (this.cleanBtn) {
+      const cleanIcon = this.cleanBtn.querySelector('svg');
+      if (cleanIcon) cleanIcon.className = iconClass;
+      if (dockConfig.hideClean) {
+        this.cleanBtn.classList.add('hidden');
+        this.cleanBtn.setAttribute('disabled', 'disabled');
+        this.positionDock();
+        return;
+      }
+      this.cleanBtn.classList.remove('hidden');
       const hasValue = !!String(this.activeElement?.value || '').trim();
       this.cleanBtn.setAttribute('title', labels.cleanup);
       this.cleanBtn.setAttribute('aria-label', labels.cleanup);
       this.cleanBtn.className = hasValue
-        ? 'h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10'
-        : 'h-11 w-11 rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-[var(--text-muted)] flex items-center justify-center shadow-xl opacity-60 cursor-not-allowed';
+        ? `${sizeClass} rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-amber-500 flex items-center justify-center shadow-xl transition-colors hover:bg-amber-500/10`
+        : `${sizeClass} rounded-full border border-[var(--card-border)] bg-[var(--card-bg-solid)] text-[var(--text-muted)] flex items-center justify-center shadow-xl opacity-60 cursor-not-allowed`;
       if (hasValue) {
         this.cleanBtn.removeAttribute('disabled');
       } else {
         this.cleanBtn.setAttribute('disabled', 'disabled');
       }
     }
+    this.positionDock();
   },
 
   cleanActiveText() {
