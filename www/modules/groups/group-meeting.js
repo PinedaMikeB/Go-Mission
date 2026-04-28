@@ -36,7 +36,7 @@ const GroupMeeting = {
   JITSI_DOMAIN: 'call.wotgonline.com', // Self-hosted - FAST
   JITSI_PUBLIC: 'meet.jit.si', // Public fallback
   useSelfHosted: true, // Use self-hosted (faster)
-  allowPublicFallback: true, // Use public Jitsi only when self-hosted realtime transport is down.
+  allowPublicFallback: false, // Never fall back to public Jitsi; it can require moderator login.
   USE_PREJOIN: true, // Default Jitsi prejoin flow
   
   // Meeting window (minutes before/after scheduled time)
