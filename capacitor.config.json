@@ -20,5 +20,13 @@
     "appendUserAgent": "GoMissionAndroidApp",
     "allowMixedContent": false,
     "captureInput": true
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "sound",
+        "alert"
+      ]
+    }
   }
 }

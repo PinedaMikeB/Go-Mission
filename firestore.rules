@@ -353,6 +353,34 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /goMission_sharedMeetingRoomRequests/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.sourceLeaderId == request.auth.uid &&
+        request.resource.data.sourceGroupId is string &&
+        request.resource.data.targetGroupId is string &&
+        request.resource.data.status == 'pending' &&
+        get(/databases/$(database)/documents/goMission_groups/$(request.resource.data.sourceGroupId)).data.leaderId == request.auth.uid &&
+        get(/databases/$(database)/documents/goMission_groups/$(request.resource.data.targetGroupId)).data.leaderId == request.resource.data.targetLeaderId;
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.targetLeaderId == request.auth.uid &&
+        request.resource.data.sourceGroupId == resource.data.sourceGroupId &&
+        request.resource.data.targetGroupId == resource.data.targetGroupId &&
+        request.resource.data.sourceLeaderId == resource.data.sourceLeaderId &&
+        request.resource.data.targetLeaderId == resource.data.targetLeaderId &&
+        request.resource.data.status in ['accepted', 'declined']
+      ) || (
+        isSignedIn() &&
+        resource.data.sourceLeaderId == request.auth.uid &&
+        request.resource.data.sourceGroupId == resource.data.sourceGroupId &&
+        request.resource.data.targetGroupId == resource.data.targetGroupId &&
+        request.resource.data.sourceLeaderId == resource.data.sourceLeaderId &&
+        request.resource.data.targetLeaderId == resource.data.targetLeaderId
+      );
+      allow delete: if isAdmin();
+    }
+
     match /goMission_integrityLogs/{docId} {
       allow read: if isAdmin();
       allow create: if

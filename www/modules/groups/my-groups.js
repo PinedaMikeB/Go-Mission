@@ -14,6 +14,7 @@ const MyGroups = {
     pendingRequestsCount: 0,
     dashboardTab: 'downline', // 'downline' | 'upline'
     pendingGroupDeletionRequestsById: {},
+    sharedMeetingRoomRequestsByGroupId: {},
     isCreatingGroup: false,
     currentMemberProfile: null,
     activeGroupDetailContext: null,
@@ -26,6 +27,7 @@ const MyGroups = {
     lastGroupPhotoBackfillCheckAt: 0,
     ADMIN_INBOX_COLLECTION: 'goMission_adminInbox',
     INTEGRITY_LOGS_COLLECTION: 'goMission_integrityLogs',
+    SHARED_MEETING_ROOM_REQUESTS_COLLECTION: 'goMission_sharedMeetingRoomRequests',
     GROUP_DASHBOARD_THRESHOLDS: {
         INACTIVE_DAYS: 7,
         NO_DEVOTION_DAYS: 3,
@@ -217,6 +219,27 @@ const MyGroups = {
         if (!groupData || !userId) return false;
         const memberEntries = this.normalizeCollectionEntries(groupData.members);
         return memberEntries.some((member) => this.getEntityUserId(member) === userId);
+    },
+
+    normalizeSharedMeetingRoomLinks(group) {
+        const rawLinks = group?.meetingRoomLinks;
+        if (!rawLinks || typeof rawLinks !== 'object') return [];
+        return Object.entries(rawLinks)
+            .map(([sourceGroupId, link]) => ({
+                ...(link && typeof link === 'object' ? link : {}),
+                sourceGroupId
+            }))
+            .filter((link) => String(link.status || '').toLowerCase() === 'accepted' && link.sourceGroupId);
+    },
+
+    getSharedMeetingRoomRequestsForGroup(groupId) {
+        const list = this.sharedMeetingRoomRequestsByGroupId?.[groupId] || [];
+        return Array.isArray(list) ? list : [];
+    },
+
+    getPendingSharedMeetingRequestCount(group) {
+        return this.getSharedMeetingRoomRequestsForGroup(group?.id)
+            .filter((request) => String(request.status || '').toLowerCase() === 'pending' && request.outgoing !== true).length;
     },
 
     /**
@@ -545,6 +568,53 @@ const MyGroups = {
     },
 
     /**
+     * Load meeting-room share requests for groups led by the current user.
+     */
+    async loadSharedMeetingRoomRequests() {
+        if (!window.db || !window.currentUser?.uid || !window.collection || !window.query || !window.where || !window.getDocs) {
+            this.sharedMeetingRoomRequestsByGroupId = {};
+            return;
+        }
+
+        const nextMap = {};
+        try {
+            const incomingQuery = window.query(
+                window.collection(window.db, this.SHARED_MEETING_ROOM_REQUESTS_COLLECTION),
+                window.where('targetLeaderId', '==', window.currentUser.uid)
+            );
+            const incomingSnap = await window.getDocs(incomingQuery);
+            incomingSnap.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                const targetGroupId = String(data.targetGroupId || '').trim();
+                if (!targetGroupId) return;
+                nextMap[targetGroupId] = nextMap[targetGroupId] || [];
+                nextMap[targetGroupId].push({ id: docSnap.id, ...data });
+            });
+        } catch (error) {
+            console.warn('[MyGroups] Failed loading incoming shared meeting requests:', error);
+        }
+
+        try {
+            const outgoingQuery = window.query(
+                window.collection(window.db, this.SHARED_MEETING_ROOM_REQUESTS_COLLECTION),
+                window.where('sourceLeaderId', '==', window.currentUser.uid)
+            );
+            const outgoingSnap = await window.getDocs(outgoingQuery);
+            outgoingSnap.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                const sourceGroupId = String(data.sourceGroupId || '').trim();
+                if (!sourceGroupId) return;
+                nextMap[sourceGroupId] = nextMap[sourceGroupId] || [];
+                nextMap[sourceGroupId].push({ id: docSnap.id, ...data, outgoing: true });
+            });
+        } catch (error) {
+            console.warn('[MyGroups] Failed loading outgoing shared meeting requests:', error);
+        }
+
+        this.sharedMeetingRoomRequestsByGroupId = nextMap;
+    },
+
+    /**
      * Find guest object by user id
      */
     findGuestInGroup(group, guestId) {
@@ -797,7 +867,10 @@ const MyGroups = {
                 this.guestGroups = nextGuestGroups;
                 this.currentMemberProfile = nextCurrentMemberProfile;
 
-                await this.loadPendingGroupDeletionRequests();
+                await Promise.all([
+                    this.loadPendingGroupDeletionRequests(),
+                    this.loadSharedMeetingRoomRequests()
+                ]);
 
                 console.log('[MyGroups] Loaded:', {
                     upline: this.uplineGroup?.name || 'None',
@@ -850,6 +923,7 @@ const MyGroups = {
         let total = 0;
         for (const group of this.downlineGroups) {
             total += this.getUnifiedJoinRequests(group).length;
+            total += this.getPendingSharedMeetingRequestCount(group);
         }
         this.pendingRequestsCount = total;
         return total;
@@ -904,7 +978,10 @@ const MyGroups = {
                 uplineGroup: this.uplineGroup
             });
 
-            await this.loadPendingGroupDeletionRequests();
+            await Promise.all([
+                this.loadPendingGroupDeletionRequests(),
+                this.loadSharedMeetingRoomRequests()
+            ]);
             
             // Update badges
             this.updateBadges();
@@ -1176,6 +1253,160 @@ const MyGroups = {
             if (guestGroup) return guestGroup;
         }
         return this.downlineGroups.find((g) => g.id === groupId) || null;
+    },
+
+    /**
+     * Build the meeting picker list from every group relationship visible to the user.
+     */
+    getMeetingPickerGroups() {
+        const groupMap = new Map();
+        const pushGroup = (group, relationship) => {
+            if (!group?.id) return;
+            const groupId = String(group.id);
+            const existing = groupMap.get(groupId);
+            if (existing) {
+                const priority = { downline: 3, upline: 2, guest: 1 };
+                const existingPriority = priority[existing.relationship] || 0;
+                const nextPriority = priority[relationship] || 0;
+                if (nextPriority > existingPriority) {
+                    groupMap.set(groupId, { ...existing, ...group, relationship });
+                }
+                return;
+            }
+            groupMap.set(groupId, { ...group, id: groupId, relationship });
+        };
+
+        pushGroup(this.uplineGroup, 'upline');
+        (Array.isArray(this.downlineGroups) ? this.downlineGroups : []).forEach((group) => pushGroup(group, 'downline'));
+        (Array.isArray(this.guestGroups) ? this.guestGroups : []).forEach((group) => pushGroup(group, 'guest'));
+
+        const roleOrder = { upline: 0, downline: 1, guest: 2 };
+        return Array.from(groupMap.values()).sort((a, b) => {
+            const roleDelta = (roleOrder[a.relationship] ?? 99) - (roleOrder[b.relationship] ?? 99);
+            if (roleDelta !== 0) return roleDelta;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+    },
+
+    getMeetingRelationshipLabel(relationship, group) {
+        if (relationship === 'upline') return 'Upline group';
+        if (relationship === 'guest') return 'Guest group';
+        if (group?.leaderId === window.currentUser?.uid) return 'Downline group';
+        return 'Mission group';
+    },
+
+    renderMeetingPickerGroup(group) {
+        const groupIdSafe = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const memberCount = this.normalizeCollectionEntries(group.members).length;
+        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const schedule = group.meetingSchedule || group.schedule || null;
+        const hasSchedule = !!(schedule?.day && schedule?.time);
+        const scheduleText = hasSchedule
+            ? `${this.escapeHtml(schedule.day)} at ${this.escapeHtml(this.formatTime(schedule.time))}`
+            : 'No weekly schedule set';
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        const relationshipLabel = this.getMeetingRelationshipLabel(group.relationship, group);
+        const meetingLock = this.getGroupMeetingLockState(group);
+        const actionText = meetingLock.locked ? 'Locked' : (isLeader ? 'Start' : 'Join');
+
+        return `
+            <button type="button"
+                onclick="window.MyGroups.selectMeetingGroup('${groupIdSafe}')"
+                class="w-full text-left rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-3 hover:border-[var(--mission-gold)]/55 hover:bg-[var(--mission-gold)]/10 transition-colors">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-[var(--text-color)] truncate">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                        <p class="mt-1 text-xs text-[var(--text-muted)]">${this.escapeHtml(relationshipLabel)} • ${scheduleText}</p>
+                        <p class="mt-1 text-[11px] text-[var(--text-dim)]">${memberCount} member${memberCount === 1 ? '' : 's'}${guestCount ? ` • ${guestCount} guest${guestCount === 1 ? '' : 's'}` : ''}</p>
+                        ${meetingLock.locked ? `<p class="mt-2 text-[11px] font-semibold text-[var(--mission-red-bright)]">${this.escapeHtml(meetingLock.reason || 'Meeting locked')}</p>` : ''}
+                    </div>
+                    <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${meetingLock.locked ? 'bg-[var(--mission-red-bright)]/15 text-[var(--mission-red-bright)] border border-[var(--mission-red-bright)]/35' : 'bg-[var(--mission-gold)] text-[var(--mission-red-deep)]'}">
+                        ${actionText}
+                    </span>
+                </div>
+            </button>
+        `;
+    },
+
+    /**
+     * Footer entry point: show every group the user can meet with.
+     */
+    async showJoinMeetingPicker() {
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[var(--mission-gold)]">Video Call</p>
+                        <h3 class="mt-1 text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                    </div>
+                    <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                </div>
+                <div class="rounded-xl border border-[var(--card-border)] bg-[var(--input-bg)] p-4">
+                    <p class="text-sm text-[var(--text-muted)]">Loading your groups...</p>
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        try {
+            await this.loadGroups();
+            const groups = this.getMeetingPickerGroups();
+            const listHtml = groups.length
+                ? groups.map((group) => this.renderMeetingPickerGroup(group)).join('')
+                : `
+                    <div class="rounded-xl border border-dashed border-[var(--card-border)] bg-[var(--input-bg)] px-4 py-5 text-center">
+                        <p class="text-sm font-semibold text-[var(--text-color)]">No mission groups yet</p>
+                        <p class="mt-1 text-xs text-[var(--text-muted)]">Join a group first, then your meeting room will appear here.</p>
+                        <button onclick="window.MyGroups.showJoinModal()" class="mt-4 w-full rounded-lg bg-[var(--mission-gold)] px-4 py-2.5 text-sm font-bold text-[var(--mission-red-deep)]">
+                            Join with Invite Code
+                        </button>
+                    </div>
+                `;
+
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-[var(--mission-gold)]">Video Call</p>
+                            <h3 class="mt-1 text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                        </div>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <div class="space-y-3">
+                        ${listHtml}
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('[MyGroups] Failed to open meeting picker:', error);
+            content.innerHTML = `
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-[var(--text-color)]">Join Meeting</h3>
+                        <button onclick="window.MyGroups.closeModal()" class="text-[var(--text-muted)] text-xl">✕</button>
+                    </div>
+                    <div class="rounded-xl border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 p-4">
+                        <p class="text-sm text-[var(--text-color)]">Could not load your groups. Please try again.</p>
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    selectMeetingGroup(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found. Please refresh and try again.');
+            return;
+        }
+
+        this.closeModal();
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        setTimeout(() => this.handleMeetingAction(groupId, isLeader), 80);
     },
 
     /**
@@ -3383,6 +3614,8 @@ const MyGroups = {
             const meetingLive = !!(scheduleConfig && typeof GroupMeeting !== 'undefined' && GroupMeeting.isMeetingTime(scheduleConfig));
             const meetingLock = this.getGroupMeetingLockState(group);
             const pendingRequestsCount = this.getUnifiedJoinRequests(group).length;
+            const sharedMeetingRequestCount = this.getPendingSharedMeetingRequestCount(group);
+            const sharedRoomLinks = this.normalizeSharedMeetingRoomLinks(group);
             const groupIdSafe = this.escapeForJs(groupId);
             const dashboardData = await this.loadGroupDetailDashboardData(group);
 
@@ -3684,7 +3917,27 @@ const MyGroups = {
                                 class="px-4 py-3 rounded-full text-sm font-black bg-[#f7cc00] text-[#3f1400] shadow-sm">
                             Edit Day & Time
                         </button>
+                        <button onclick="window.MyGroups.openShareRoomSettings('${groupIdSafe}')"
+                                class="px-4 py-3 rounded-full text-sm font-black border border-[#e7d6c9] bg-white text-[#6d0707] shadow-sm">
+                            Share Room
+                        </button>
+                        ${sharedMeetingRequestCount > 0 ? `
+                            <button onclick="window.MyGroups.showSharedMeetingRoomRequests('${groupIdSafe}')"
+                                    class="px-4 py-3 rounded-full text-sm font-black bg-[#fff8df] border border-[#f1d279] text-[#6d0707] shadow-sm">
+                                ${sharedMeetingRequestCount} Room Request${sharedMeetingRequestCount === 1 ? '' : 's'}
+                            </button>
+                        ` : ''}
                     </div>
+                    ${sharedRoomLinks.length ? `
+                        <div class="rounded-[24px] border border-[#efe3d8] bg-white/82 p-4">
+                            <p class="text-sm font-black text-[#6d0707]">Shared Rooms Available</p>
+                            <div class="mt-3 space-y-2">
+                                ${sharedRoomLinks.map((link) => `
+                                    <p class="text-sm text-[#655751]">${this.escapeHtml(link.roomLabel || link.sourceGroupName || 'Shared Meeting Room')}</p>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                     ${meetingLock.locked ? `
                         <p class="text-sm text-[#b43a3a]">🚫 ${this.escapeHtml(meetingLock.reason || 'Join a valid upline group first.')}</p>
                     ` : ''}
@@ -4076,8 +4329,10 @@ const MyGroups = {
         const memberCount = this.normalizeCollectionEntries(group.members).length;
         const guestCount = this.normalizeCollectionEntries(group.guests).length;
         const requestCount = this.getUnifiedJoinRequests(group).length;
-        const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const isLeader = group.leaderId === window.currentUser?.uid;
+        const sharedMeetingRequestCount = isLeader ? this.getPendingSharedMeetingRequestCount(group) : 0;
+        const sharedRoomLinks = this.normalizeSharedMeetingRoomLinks(group);
+        const hasSchedule = group.meetingSchedule?.day && group.meetingSchedule?.time;
         const meetingLock = this.getGroupMeetingLockState(group);
         
         // Determine icon based on type
@@ -4115,6 +4370,9 @@ const MyGroups = {
                             ${meetingLock.locked ? `
                                 <p class="text-xs text-[var(--mission-red-bright)] mt-1">🚫 ${this.escapeHtml(meetingLock.reason || 'Meeting locked')}</p>
                             ` : ''}
+                            ${sharedRoomLinks.length ? `
+                                <p class="text-xs text-[var(--mission-gold)] mt-1">${sharedRoomLinks.length} shared room option${sharedRoomLinks.length === 1 ? '' : 's'}</p>
+                            ` : ''}
                         </div>
                         ${type === 'downline' ? `
                             <!-- Leader: Start Meeting + Edit Schedule -->
@@ -4148,6 +4406,11 @@ const MyGroups = {
                     <!-- Pending Requests Badge -->
                     <button onclick="window.MyGroups.showJoinRequests('${group.id}')" class="w-full bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
                         🔔 ${requestCount} Pending Request${requestCount > 1 ? 's' : ''}
+                    </button>
+                    ` : ''}
+                    ${type === 'downline' && sharedMeetingRequestCount > 0 ? `
+                    <button onclick="window.MyGroups.showSharedMeetingRoomRequests('${group.id}')" class="w-full bg-[var(--card-bg)] border border-[var(--mission-gold)]/30 text-[var(--mission-gold)] font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2">
+                        📹 ${sharedMeetingRequestCount} Room Share Request${sharedMeetingRequestCount > 1 ? 's' : ''}
                     </button>
                     ` : ''}
                     
@@ -5099,6 +5362,122 @@ const MyGroups = {
             alert('Code: ' + code);
         });
     },
+
+    buildMeetingJoinPayload(group, roomGroup, isLeader = false) {
+        return {
+            attendanceGroupId: group.id,
+            attendanceGroupName: group.name || 'Mission Group',
+            displayGroupName: group.name || 'Mission Group',
+            roomGroupId: roomGroup.id,
+            roomGroupName: roomGroup.name || 'Shared Meeting Room',
+            userName: window.currentUser?.displayName || (isLeader ? 'Leader' : 'Guest'),
+            userEmail: window.currentUser?.email || '',
+            isLeader
+        };
+    },
+
+    async resolveSharedRoomGroup(link) {
+        const sourceGroupId = String(link?.sourceGroupId || link?.roomGroupId || '').trim();
+        if (!sourceGroupId) return null;
+        const cachedGroup = this.getGroupById(sourceGroupId);
+        if (cachedGroup) return cachedGroup;
+        try {
+            const groupDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', sourceGroupId));
+            if (groupDoc.exists()) return { id: groupDoc.id, ...groupDoc.data() };
+        } catch (error) {
+            console.warn('[MyGroups] Could not load shared room group:', sourceGroupId, error);
+        }
+        return {
+            id: sourceGroupId,
+            name: link?.sourceGroupName || link?.roomLabel || 'Shared Meeting Room'
+        };
+    },
+
+    showMeetingRoomChoice(group, isLeader = false) {
+        const links = this.normalizeSharedMeetingRoomLinks(group);
+        if (!links.length) {
+            this.openMeetingRoom(group, { id: group.id, name: group.name }, isLeader);
+            return;
+        }
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        const groupIdSafe = this.escapeForJs(group.id);
+        const optionsHtml = links.map((link) => {
+            const sourceGroupId = this.escapeForJs(link.sourceGroupId);
+            const label = link.roomLabel || link.sourceGroupName || 'Shared Room';
+            const leaderName = link.sourceLeaderName || 'Another leader';
+            return `
+                <button onclick="window.MyGroups.selectSharedMeetingRoom('${groupIdSafe}', '${sourceGroupId}', ${isLeader ? 'true' : 'false'})"
+                        class="w-full rounded-[22px] border border-[#f1d279] bg-[#fff8df] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                    <span class="block text-sm font-black text-[#6d0707]">${this.escapeHtml(label)}</span>
+                    <span class="block mt-1 text-xs text-[#7d6c64]">Shared by ${this.escapeHtml(leaderName)}. Attendance stays with ${this.escapeHtml(group.name || 'this group')}.</span>
+                </button>
+            `;
+        }).join('');
+
+        content.innerHTML = `
+            <div class="p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Meeting Room</p>
+                        <h3 class="mt-2 text-[1.25rem] leading-tight font-black text-[#6d0707]">Choose Room</h3>
+                        <p class="mt-2 text-sm text-[#7d6c64]">${this.escapeHtml(group.name || 'Mission Group')}</p>
+                    </div>
+                    <button onclick="window.MyGroups.closeModal()" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
+                </div>
+                <div class="space-y-3">
+                    <button onclick="window.MyGroups.openOwnMeetingRoom('${groupIdSafe}', ${isLeader ? 'true' : 'false'})"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">${this.escapeHtml(group.name || 'Group')} Room</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Use this group's own video room.</span>
+                    </button>
+                    ${optionsHtml}
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+    },
+
+    openOwnMeetingRoom(groupId, isLeader = false) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+        this.closeModal();
+        this.openMeetingRoom(group, { id: group.id, name: group.name }, isLeader);
+    },
+
+    async selectSharedMeetingRoom(groupId, sourceGroupId, isLeader = false) {
+        const group = this.getGroupById(groupId);
+        if (!group) {
+            alert('Group not found');
+            return;
+        }
+        const link = this.normalizeSharedMeetingRoomLinks(group).find((item) => item.sourceGroupId === sourceGroupId);
+        if (!link) {
+            alert('Shared room is no longer available.');
+            return;
+        }
+        const roomGroup = await this.resolveSharedRoomGroup(link);
+        if (!roomGroup) {
+            alert('Shared room not found.');
+            return;
+        }
+        this.closeModal();
+        this.openMeetingRoom(group, roomGroup, isLeader);
+    },
+
+    openMeetingRoom(group, roomGroup, isLeader = false) {
+        if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
+            GroupMeeting.joinMeeting(this.buildMeetingJoinPayload(group, roomGroup, isLeader));
+        } else {
+            alert('Meeting system not available. Please refresh the app and try again.');
+        }
+    },
     
     /**
      * Open group chat
@@ -5139,14 +5518,7 @@ const MyGroups = {
             return;
         }
         
-        // Use GroupMeeting module if available
-        if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
-            const userName = window.currentUser?.displayName || 'Leader';
-            const userEmail = window.currentUser?.email || '';
-            GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, true);
-        } else {
-            alert('Meeting system not available. Please refresh the app and try again.');
-        }
+        this.showMeetingRoomChoice(group, true);
     },
     
     /**
@@ -5178,19 +5550,12 @@ const MyGroups = {
             return;
         }
         
-        // Use GroupMeeting module if available
-        if (typeof GroupMeeting !== 'undefined' && GroupMeeting.joinMeeting) {
-            const userName = window.currentUser?.displayName || 'Guest';
-            const userEmail = window.currentUser?.email || '';
-            const isLeader = group.leaderId === window.currentUser?.uid;
-            try {
-                GroupMeeting.joinMeeting(group.id, group.name, userName, userEmail, isLeader);
-            } catch (e) {
-                console.error('[MyGroups] GroupMeeting.joinMeeting threw:', e);
-                alert('Failed to start the in-app meeting. Please refresh and try again.');
-            }
-        } else {
-            alert('Meeting system not available. Please refresh the app and try again.');
+        const isLeader = group.leaderId === window.currentUser?.uid;
+        try {
+            this.showMeetingRoomChoice(group, isLeader);
+        } catch (e) {
+            console.error('[MyGroups] showMeetingRoomChoice threw:', e);
+            alert('Failed to start the in-app meeting. Please refresh and try again.');
         }
     },
     
@@ -5318,6 +5683,7 @@ const MyGroups = {
         const memberCount = this.normalizeCollectionEntries(group.members).length;
         const guestCount = this.normalizeCollectionEntries(group.guests).length;
         const requestCount = this.getUnifiedJoinRequests(group).length;
+        const sharedMeetingRequestCount = isLeader ? this.getPendingSharedMeetingRequestCount(group) : 0;
         const groupIdSafe = String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
         content.innerHTML = `
@@ -5385,6 +5751,20 @@ const MyGroups = {
                             <span class="block mt-1 text-xs text-[#7d6c64]">${requestCount} pending request${requestCount === 1 ? '' : 's'} waiting for review.</span>
                         </button>
                     ` : ''}
+                    ${sharedMeetingRequestCount > 0 ? `
+                        <button onclick="window.MyGroups.showSharedMeetingRoomRequests('${groupIdSafe}')"
+                                class="w-full rounded-[22px] border border-[#f0d06f] bg-[#fff8df] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                            <span class="block text-sm font-black text-[#6d0707]">Review Shared Room Requests</span>
+                            <span class="block mt-1 text-xs text-[#7d6c64]">${sharedMeetingRequestCount} group${sharedMeetingRequestCount === 1 ? '' : 's'} asking to share a meeting room.</span>
+                        </button>
+                    ` : ''}
+                    ${isLeader ? `
+                    <button onclick="window.MyGroups.openShareRoomSettings('${groupIdSafe}')"
+                            class="w-full rounded-[22px] border border-[#eadcd2] bg-white/84 px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
+                        <span class="block text-sm font-black text-[#6d0707]">Share Meeting Room</span>
+                        <span class="block mt-1 text-xs text-[#7d6c64]">Invite another group to use this group’s video room.</span>
+                    </button>
+                    ` : ''}
                     ${isLeader ? `
                     <button onclick="window.MyGroups.showDeleteGroupRequestForm('${groupIdSafe}')"
                             class="w-full rounded-[22px] border border-[#f0c4c4] bg-[#fff1f1] px-4 py-4 text-left shadow-[0_10px_24px_rgba(89,49,22,0.04)]">
@@ -5401,6 +5781,243 @@ const MyGroups = {
         `;
 
         modal.classList.remove('hidden');
+    },
+
+    async openShareRoomSettings(groupId) {
+        const sourceGroup = this.getGroupById(groupId);
+        if (!sourceGroup || sourceGroup.leaderId !== window.currentUser?.uid) {
+            alert('Only the group leader can share this meeting room.');
+            return;
+        }
+
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-6">
+                <p class="text-[var(--text-muted)] text-sm">Loading groups...</p>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        try {
+            const allGroupsSnap = await window.getDocs(window.collection(window.db, 'goMission_groups'));
+            const requests = this.getSharedMeetingRoomRequestsForGroup(groupId);
+            const requestByTarget = new Map(requests
+                .filter((request) => request.outgoing)
+                .map((request) => [String(request.targetGroupId || ''), request]));
+            const enabled = sourceGroup.sharedMeetingRoom?.enabled === true;
+            const sourceGroupIdSafe = this.escapeForJs(groupId);
+
+            const candidateGroups = allGroupsSnap.docs
+                .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+                .filter((group) => group.id !== groupId && group.leaderId)
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+            const candidateHtml = candidateGroups.length ? candidateGroups.map((targetGroup) => {
+                const existing = requestByTarget.get(targetGroup.id);
+                const status = String(existing?.status || '').toLowerCase();
+                const label = status === 'accepted' ? 'Accepted' : (status === 'pending' ? 'Pending' : (status === 'declined' ? 'Send Again' : 'Invite'));
+                const disabled = status === 'accepted' || status === 'pending';
+                return `
+                    <div class="rounded-[20px] border border-[#eadcd2] bg-white/84 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-black text-[#6d0707] break-words">${this.escapeHtml(targetGroup.name || 'Mission Group')}</p>
+                                <p class="mt-1 text-xs text-[#7d6c64]">Leader: ${this.escapeHtml(targetGroup.leaderName || targetGroup.leaderEmail || targetGroup.leaderId || 'Unknown')}</p>
+                            </div>
+                            <button ${disabled ? 'disabled' : ''} onclick="window.MyGroups.sendSharedMeetingRoomRequest('${sourceGroupIdSafe}', '${this.escapeForJs(targetGroup.id)}')"
+                                    class="shrink-0 px-4 py-2.5 rounded-full text-xs font-black ${disabled ? 'bg-[#eee5de] text-[#9a8a80]' : 'bg-[#f7cc00] text-[#3f1400]'}">
+                                ${label}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('') : '<p class="text-sm text-[#7d6c64]">No other leader groups found yet.</p>';
+
+            content.innerHTML = `
+                <div class="p-5 sm:p-6 max-h-[84vh] overflow-y-auto">
+                    <div class="flex items-start justify-between gap-4 mb-5">
+                        <div>
+                            <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Shared Meeting Room</p>
+                            <h3 class="mt-2 text-[1.25rem] leading-tight font-black text-[#6d0707]">${this.escapeHtml(sourceGroup.name || 'Mission Group')}</h3>
+                            <p class="mt-2 text-sm text-[#7d6c64]">Choose which groups may use this room after their leader accepts.</p>
+                        </div>
+                        <button onclick="window.MyGroups.showGroupMenu('${sourceGroupIdSafe}')" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
+                    </div>
+                    <label class="mb-4 flex items-center justify-between gap-3 rounded-[22px] border border-[#eadcd2] bg-white/84 p-4">
+                        <span>
+                            <span class="block text-sm font-black text-[#6d0707]">Allow sharing this room</span>
+                            <span class="block mt-1 text-xs text-[#7d6c64]">Turn this on before inviting other groups.</span>
+                        </span>
+                        <input id="sharedRoomEnabled" type="checkbox" class="accent-[#f7cc00]" ${enabled ? 'checked' : ''} onchange="window.MyGroups.saveSharedRoomEnabled('${sourceGroupIdSafe}')">
+                    </label>
+                    <div class="space-y-3">${candidateHtml}</div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('[MyGroups] openShareRoomSettings error:', error);
+            alert('Could not load meeting room sharing settings.');
+        }
+    },
+
+    async saveSharedRoomEnabled(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group || group.leaderId !== window.currentUser?.uid) return;
+        const enabled = !!document.getElementById('sharedRoomEnabled')?.checked;
+        const patch = {
+            sharedMeetingRoom: {
+                ...(group.sharedMeetingRoom || {}),
+                enabled,
+                updatedAt: new Date().toISOString()
+            },
+            updatedAt: new Date().toISOString()
+        };
+        await window.setDoc(window.doc(window.db, 'goMission_groups', groupId), patch, { merge: true });
+        this.syncGroupState(groupId, patch);
+    },
+
+    async sendSharedMeetingRoomRequest(sourceGroupId, targetGroupId) {
+        const sourceGroup = this.getGroupById(sourceGroupId);
+        if (!sourceGroup || sourceGroup.leaderId !== window.currentUser?.uid) {
+            alert('Only the source group leader can send this request.');
+            return;
+        }
+
+        try {
+            if (sourceGroup.sharedMeetingRoom?.enabled !== true) {
+                const patch = {
+                    sharedMeetingRoom: {
+                        ...(sourceGroup.sharedMeetingRoom || {}),
+                        enabled: true,
+                        updatedAt: new Date().toISOString()
+                    },
+                    updatedAt: new Date().toISOString()
+                };
+                await window.setDoc(window.doc(window.db, 'goMission_groups', sourceGroupId), patch, { merge: true });
+                this.syncGroupState(sourceGroupId, patch);
+            }
+            const targetDoc = await window.getDoc(window.doc(window.db, 'goMission_groups', targetGroupId));
+            if (!targetDoc.exists()) {
+                alert('Target group not found.');
+                return;
+            }
+            const targetGroup = { id: targetDoc.id, ...targetDoc.data() };
+            const requestId = `${sourceGroupId}_${targetGroupId}`;
+            await window.setDoc(window.doc(window.db, this.SHARED_MEETING_ROOM_REQUESTS_COLLECTION, requestId), {
+                sourceGroupId,
+                sourceGroupName: sourceGroup.name || 'Mission Group',
+                sourceLeaderId: window.currentUser.uid,
+                sourceLeaderName: window.currentUser.displayName || sourceGroup.leaderName || 'Leader',
+                sourceLeaderEmail: window.currentUser.email || '',
+                targetGroupId,
+                targetGroupName: targetGroup.name || 'Mission Group',
+                targetLeaderId: targetGroup.leaderId || '',
+                targetLeaderName: targetGroup.leaderName || '',
+                status: 'pending',
+                roomLabel: `${sourceGroup.name || 'Shared'} Room`,
+                createdAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                createdAtIso: new Date().toISOString(),
+                updatedAtIso: new Date().toISOString()
+            }, { merge: true });
+
+            await this.loadSharedMeetingRoomRequests();
+            await this.openShareRoomSettings(sourceGroupId);
+            alert('Shared room request sent.');
+        } catch (error) {
+            console.error('[MyGroups] sendSharedMeetingRoomRequest error:', error);
+            alert('Could not send shared room request.');
+        }
+    },
+
+    showSharedMeetingRoomRequests(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group || group.leaderId !== window.currentUser?.uid) return;
+        const requests = this.getSharedMeetingRoomRequestsForGroup(groupId)
+            .filter((request) => String(request.status || '').toLowerCase() === 'pending' && !request.outgoing);
+        const modal = document.getElementById('groupModal');
+        const content = document.getElementById('groupModalContent');
+        if (!modal || !content) return;
+
+        const rows = requests.length ? requests.map((request) => `
+            <div class="rounded-[22px] border border-[#eadcd2] bg-white/84 p-4">
+                <p class="text-sm font-black text-[#6d0707]">${this.escapeHtml(request.sourceGroupName || 'Mission Group')}</p>
+                <p class="mt-1 text-xs text-[#7d6c64]">${this.escapeHtml(request.sourceLeaderName || 'A leader')} wants your group to use their meeting room.</p>
+                <div class="mt-3 flex gap-2">
+                    <button onclick="window.MyGroups.respondSharedMeetingRoomRequest('${this.escapeForJs(request.id)}', true)"
+                            class="flex-1 rounded-full bg-[#f7cc00] px-4 py-2.5 text-sm font-black text-[#3f1400]">Accept</button>
+                    <button onclick="window.MyGroups.respondSharedMeetingRoomRequest('${this.escapeForJs(request.id)}', false)"
+                            class="flex-1 rounded-full border border-[#eadcd2] bg-white px-4 py-2.5 text-sm font-black text-[#6d0707]">Decline</button>
+                </div>
+            </div>
+        `).join('') : '<p class="text-sm text-[#7d6c64]">No pending shared room requests.</p>';
+
+        content.innerHTML = `
+            <div class="p-5 sm:p-6">
+                <div class="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-[#c19200]">Shared Room Requests</p>
+                        <h3 class="mt-2 text-[1.25rem] leading-tight font-black text-[#6d0707]">${this.escapeHtml(group.name || 'Mission Group')}</h3>
+                    </div>
+                    <button onclick="window.MyGroups.showGroupMenu('${this.escapeForJs(groupId)}')" class="shrink-0 w-11 h-11 rounded-full border border-[#dfd0c6] bg-white/82 text-[#8e7c74] text-2xl leading-none inline-flex items-center justify-center">×</button>
+                </div>
+                <div class="space-y-3">${rows}</div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+    },
+
+    async respondSharedMeetingRoomRequest(requestId, accepted) {
+        try {
+            const requestRef = window.doc(window.db, this.SHARED_MEETING_ROOM_REQUESTS_COLLECTION, requestId);
+            const requestDoc = await window.getDoc(requestRef);
+            if (!requestDoc.exists()) {
+                alert('Request not found.');
+                return;
+            }
+            const request = { id: requestDoc.id, ...requestDoc.data() };
+            const targetGroup = this.getGroupById(request.targetGroupId);
+            if (!targetGroup || targetGroup.leaderId !== window.currentUser?.uid) {
+                alert('Only the invited group leader can respond.');
+                return;
+            }
+
+            const status = accepted ? 'accepted' : 'declined';
+            await window.setDoc(requestRef, {
+                status,
+                respondedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+                respondedAtIso: new Date().toISOString(),
+                updatedAtIso: new Date().toISOString()
+            }, { merge: true });
+
+            if (accepted) {
+                const links = {
+                    ...(targetGroup.meetingRoomLinks && typeof targetGroup.meetingRoomLinks === 'object' ? targetGroup.meetingRoomLinks : {}),
+                    [request.sourceGroupId]: {
+                        sourceGroupId: request.sourceGroupId,
+                        sourceGroupName: request.sourceGroupName || 'Shared Meeting Room',
+                        sourceLeaderId: request.sourceLeaderId || '',
+                        sourceLeaderName: request.sourceLeaderName || '',
+                        roomLabel: request.roomLabel || `${request.sourceGroupName || 'Shared'} Room`,
+                        status: 'accepted',
+                        acceptedAtIso: new Date().toISOString()
+                    }
+                };
+                await window.setDoc(window.doc(window.db, 'goMission_groups', request.targetGroupId), {
+                    meetingRoomLinks: links,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            }
+
+            await this.loadGroups({ emitUpdate: false });
+            this.updateBadges();
+            this.showSharedMeetingRoomRequests(request.targetGroupId);
+            alert(accepted ? 'Shared meeting room accepted.' : 'Shared meeting room declined.');
+        } catch (error) {
+            console.error('[MyGroups] respondSharedMeetingRoomRequest error:', error);
+            alert('Could not update shared room request.');
+        }
     },
 
     /**
