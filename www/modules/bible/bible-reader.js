@@ -1946,6 +1946,9 @@ const BibleReader = {
     const preview = this.buildInlineSharePreviewPayload();
     const lang = preview.lang;
     const L = preview.labels;
+    const selectedGroups = preview.selectedGroups.length
+      ? preview.selectedGroups.map(group => group.name || 'Mission Group')
+      : preview.shareGroupIds;
     const sectionTitles = lang === 'tl'
       ? {
           scripture: 'Ano ang sinabi ng Diyos',
@@ -1959,8 +1962,26 @@ const BibleReader = {
           action: 'What will I do',
           conversationTime: 'Conversation Time'
         };
+    const numberedGroupsHtml = selectedGroups.length
+      ? `<ol class="mt-3 space-y-1 pl-6 list-decimal text-[var(--text-color)]">${selectedGroups.map(name => `
+          <li class="leading-relaxed">${this.escapeHTML(name)}</li>
+        `).join('')}</ol>`
+      : `<p class="mt-3 text-[var(--text-muted)]">-</p>`;
+    const prayerRequestsHtml = preview.prayerRequests.length
+      ? `<div class="mt-3 space-y-2">${preview.prayerRequests.map((item, index) => `
+          <div class="text-[var(--text-color)] leading-relaxed">
+            <p><span class="font-semibold">${index + 1}. ${this.escapeHTML(item.topic || item.title || '-')}</span></p>
+            <p class="mt-1">${this.formatInlineMultilineHtml(item.description || item.text || '')}</p>
+          </div>
+        `).join('')}</div>`
+      : `<p class="mt-3 text-[var(--text-muted)]">${this.escapeHTML(L.noPrayerRequests)}</p>`;
     const previewContentHtml = `
       <div class="space-y-8 text-[var(--text-color)]">
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(L.previewGroups)}:</p>
+          ${numberedGroupsHtml}
+        </section>
+
         <section>
           <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(sectionTitles.conversationTime)}</p>
         </section>
@@ -1977,8 +1998,18 @@ const BibleReader = {
         </section>
 
         <section>
-          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">3. ${this.escapeHTML(sectionTitles.action)}</p>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">3. ${this.escapeHTML(L.previewQuestion)}</p>
+          <div class="mt-3 text-[var(--text-color)] leading-relaxed">${preview.question ? this.formatInlineMultilineHtml(preview.question) : `<span class="text-[var(--text-muted)]">-</span>`}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">4. ${this.escapeHTML(sectionTitles.action)}</p>
           <div class="mt-3 text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.action || '')}</div>
+        </section>
+
+        <section>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">5. ${this.escapeHTML(L.previewPrayerRequests)}</p>
+          ${prayerRequestsHtml}
         </section>
       </div>
     `;
