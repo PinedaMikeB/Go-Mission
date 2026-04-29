@@ -1015,7 +1015,7 @@ const BibleReader = {
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
         openPreview: 'Preview what to share',
-        previewCancel: 'Save',
+        previewCancel: 'Save and copy',
         previewConfirm: 'Confirm and save',
         viewReflection: '👁 View Reflection',
         saveSuccess: 'Conversation time saved successfully.',
@@ -1063,7 +1063,7 @@ const BibleReader = {
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
         openPreview: 'I-preview ang ise-share',
-        previewCancel: 'I-save',
+        previewCancel: 'Save and copy',
         previewConfirm: 'I-confirm at i-save',
         viewReflection: '👁 Tingnan ang Reflection',
         saveSuccess: 'Matagumpay na na-save ang conversation time.',
@@ -1388,7 +1388,7 @@ const BibleReader = {
         previewQuestion: 'Reflection Question',
         previewPrayerRequests: 'Prayer Requests',
         openPreview: 'Preview what to share',
-        previewCancel: 'Save',
+        previewCancel: 'Save and copy',
         previewConfirm: 'Confirm and save',
         viewReflection: '👁 View Reflection',
         saveSuccess: 'Conversation time saved successfully.',
@@ -1426,7 +1426,7 @@ const BibleReader = {
         previewQuestion: 'Tanong sa Pagninilay',
         previewPrayerRequests: 'Mga prayer request',
         openPreview: 'I-preview ang ise-share',
-        previewCancel: 'I-save',
+        previewCancel: 'Save and copy',
         previewConfirm: 'I-confirm at i-save',
         viewReflection: '👁 Tingnan ang Reflection',
         saveSuccess: 'Matagumpay na na-save ang conversation time.',
@@ -1946,9 +1946,6 @@ const BibleReader = {
     const preview = this.buildInlineSharePreviewPayload();
     const lang = preview.lang;
     const L = preview.labels;
-    const selectedGroups = preview.selectedGroups.length
-      ? preview.selectedGroups.map(group => group.name || 'Mission Group')
-      : preview.shareGroupIds;
     const sectionTitles = lang === 'tl'
       ? {
           scripture: 'Ano ang sinabi ng Diyos',
@@ -1962,26 +1959,8 @@ const BibleReader = {
           action: 'What will I do',
           conversationTime: 'Conversation Time'
         };
-    const numberedGroupsHtml = selectedGroups.length
-      ? `<ol class="mt-3 space-y-1 pl-6 list-decimal text-[var(--text-color)]">${selectedGroups.map(name => `
-          <li class="leading-relaxed">${this.escapeHTML(name)}</li>
-        `).join('')}</ol>`
-      : `<p class="mt-3 text-[var(--text-muted)]">-</p>`;
-    const prayerRequestsHtml = preview.prayerRequests.length
-      ? `<div class="mt-3 space-y-2">${preview.prayerRequests.map((item, index) => `
-          <div class="text-[var(--text-color)] leading-relaxed">
-            <p><span class="font-semibold">${index + 1}. ${this.escapeHTML(item.topic || item.title || '-')}</span></p>
-            <p class="mt-1">${this.formatInlineMultilineHtml(item.description || item.text || '')}</p>
-          </div>
-        `).join('')}</div>`
-      : `<p class="mt-3 text-[var(--text-muted)]">${this.escapeHTML(L.noPrayerRequests)}</p>`;
     const previewContentHtml = `
       <div class="space-y-8 text-[var(--text-color)]">
-        <section>
-          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(L.previewGroups)}:</p>
-          ${numberedGroupsHtml}
-        </section>
-
         <section>
           <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">${this.escapeHTML(sectionTitles.conversationTime)}</p>
         </section>
@@ -1998,18 +1977,8 @@ const BibleReader = {
         </section>
 
         <section>
-          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">3. ${this.escapeHTML(L.previewQuestion)}</p>
-          <div class="mt-3 text-[var(--text-color)] leading-relaxed">${preview.question ? this.formatInlineMultilineHtml(preview.question) : `<span class="text-[var(--text-muted)]">-</span>`}</div>
-        </section>
-
-        <section>
-          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">4. ${this.escapeHTML(sectionTitles.action)}</p>
+          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">3. ${this.escapeHTML(sectionTitles.action)}</p>
           <div class="mt-3 text-[var(--text-color)] leading-relaxed">${this.formatInlineMultilineHtml(preview.action || '')}</div>
-        </section>
-
-        <section>
-          <p class="font-bold text-[var(--text-color)]" style="font-size:${Math.max(18, Number(this.preferences.fontSize) || 16)}px;">5. ${this.escapeHTML(L.previewPrayerRequests)}</p>
-          ${prayerRequestsHtml}
         </section>
       </div>
     `;
@@ -2061,7 +2030,71 @@ const BibleReader = {
   async saveInlineSharePreview() {
     const payload = this.pendingInlineSavePayload;
     if (!payload) return;
+    await this.copyInlineSharePreviewToClipboard();
     await this.persistInlineReflectionPayload(payload);
+  },
+
+  buildInlineShareClipboardText() {
+    const preview = this.buildInlineSharePreviewPayload();
+    const lang = preview.lang;
+    const titles = lang === 'tl'
+      ? {
+          scripture: 'Ano ang sinabi ng Diyos',
+          understanding: 'Ano ang aking pagkaunawa',
+          action: 'Ano ang aking gagawin'
+        }
+      : {
+          scripture: 'What did God say',
+          understanding: 'What is my understanding',
+          action: 'What will I do'
+        };
+    return [
+      'Conversation Time',
+      '',
+      `1. ${titles.scripture}`,
+      preview.scriptureReference || '',
+      preview.scriptureText || '',
+      '',
+      `2. ${titles.understanding}`,
+      preview.understanding || '',
+      '',
+      `3. ${titles.action}`,
+      preview.action || ''
+    ]
+      .map(part => String(part || '').trim())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  },
+
+  async copyInlineSharePreviewToClipboard() {
+    const text = this.buildInlineShareClipboardText();
+    if (!text) return false;
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (error) {
+      console.warn('[BibleReader] Clipboard API failed, trying fallback:', error);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } finally {
+      textarea.remove();
+    }
+    return copied;
   },
 
   async persistInlineReflectionPayload(payload) {
@@ -2075,7 +2108,7 @@ const BibleReader = {
     }
     if (previewSaveBtn) {
       previewSaveBtn.disabled = true;
-      previewSaveBtn.innerHTML = 'Saving...';
+      previewSaveBtn.innerHTML = 'Saving and copying...';
     }
 
     try {
