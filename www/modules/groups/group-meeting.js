@@ -725,6 +725,7 @@ const GroupMeeting = {
   initPresentationState() {
     let savedOpacity = 72;
     let savedFontScale = 1.125;
+    let savedSlideSize = 'medium';
     try {
       const raw = window.localStorage?.getItem('goMission_meetingSlidesOpacity');
       const parsed = Number(raw);
@@ -734,6 +735,10 @@ const GroupMeeting = {
       const rawFontScale = Number(window.localStorage?.getItem('goMission_meetingSlidesFontScale'));
       if (Number.isFinite(rawFontScale)) {
         savedFontScale = Math.min(1.35, Math.max(1.125, rawFontScale));
+      }
+      const rawSlideSize = window.localStorage?.getItem('goMission_meetingSlidesSize');
+      if (['small', 'medium', 'full'].includes(rawSlideSize)) {
+        savedSlideSize = rawSlideSize;
       }
       window.localStorage?.removeItem('goMission_meetingSlidesDeckId');
     } catch (_) {}
@@ -747,6 +752,7 @@ const GroupMeeting = {
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       fontScale: savedFontScale,
+      slideSize: savedSlideSize,
       followLeader: true,
       currentSlideIndex: 0,
       loading: false,
@@ -801,6 +807,32 @@ const GroupMeeting = {
                     style="width:34px; height:34px; font-size:16px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color: #f4d7a2; box-shadow: 0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08); border: 1px solid rgba(242, 184, 94, 0.22);">
               ⚙
             </button>
+            <div id="meeting-slides-size-controls" class="flex items-center gap-1">
+              <button onclick="window.GroupMeeting.setSlidesSize('small')"
+                      id="meeting-slides-size-small"
+                      title="Small slides"
+                      aria-label="Small slides"
+                      class="rounded-full font-bold transition-all flex items-center justify-center"
+                      style="width:30px; height:30px; font-size:14px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color:#f4d7a2; border:1px solid rgba(242,184,94,0.22);">
+                ◱
+              </button>
+              <button onclick="window.GroupMeeting.setSlidesSize('medium')"
+                      id="meeting-slides-size-medium"
+                      title="Medium slides"
+                      aria-label="Medium slides"
+                      class="rounded-full font-bold transition-all flex items-center justify-center"
+                      style="width:30px; height:30px; font-size:14px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color:#f4d7a2; border:1px solid rgba(242,184,94,0.22);">
+                ◧
+              </button>
+              <button onclick="window.GroupMeeting.setSlidesSize('full')"
+                      id="meeting-slides-size-full"
+                      title="Full slides"
+                      aria-label="Full slides"
+                      class="rounded-full font-bold transition-all flex items-center justify-center"
+                      style="width:30px; height:30px; font-size:14px; background: linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98)); color:#f4d7a2; border:1px solid rgba(242,184,94,0.22);">
+                ⛶
+              </button>
+            </div>
             <button onclick="window.GroupMeeting.toggleSlidesPanel()"
                     id="meeting-slides-toggle-btn"
                     class="px-3 py-1.5 rounded-full font-bold transition-all"
@@ -1119,6 +1151,22 @@ const GroupMeeting = {
     this.toggleSlidesPanel(false);
   },
 
+  getSlidesSize(value = null) {
+    const next = value || this.presentationState?.slideSize || 'medium';
+    return ['small', 'medium', 'full'].includes(next) ? next : 'medium';
+  },
+
+  setSlidesSize(size) {
+    if (!this.presentationState) return;
+    const next = this.getSlidesSize(size);
+    this.presentationState.slideSize = next;
+    try {
+      window.localStorage?.setItem('goMission_meetingSlidesSize', next);
+    } catch (_) {}
+    this.renderSlidesPanel();
+    this.publishSlidesSync({ slideSize: next, action: 'size' });
+  },
+
   setSlidesFollowLeader(enabled) {
     if (!this.presentationState) return;
     const next = enabled !== false;
@@ -1159,6 +1207,7 @@ const GroupMeeting = {
       selectedDeckId: state.selectedDeckId || null,
       selectedLang: state.selectedLang === 'en' ? 'en' : 'tl',
       currentSlideIndex: Math.max(0, Math.round(Number(state.currentSlideIndex || 0))),
+      slideSize: this.getSlidesSize(state.slideSize),
       hidden: state.panelOpen !== true,
       leaderUid: window.currentUser?.uid || null,
       leaderName: window.currentUser?.displayName || '',
@@ -1236,6 +1285,7 @@ const GroupMeeting = {
     try {
       const nextDeckId = this.normalizeMeetingSlidesTopicId(sync.selectedDeckId || '');
       const nextLang = sync.selectedLang === 'en' ? 'en' : 'tl';
+      const nextSlideSize = this.getSlidesSize(sync.slideSize);
       const hasDeckChange = nextDeckId && nextDeckId !== state.selectedDeckId;
       const hasLangChange = nextLang !== state.selectedLang;
 
@@ -1251,6 +1301,7 @@ const GroupMeeting = {
       const slidesLength = state.deck?.slides?.length || 0;
       const nextIndex = Math.max(0, Math.round(Number(sync.currentSlideIndex || 0)));
       state.currentSlideIndex = slidesLength ? Math.min(nextIndex, slidesLength - 1) : nextIndex;
+      state.slideSize = nextSlideSize;
       state.panelOpen = sync.panelOpen === true && sync.hidden !== true;
       if (!state.panelOpen) state.settingsOpen = false;
 
@@ -1967,6 +2018,8 @@ const GroupMeeting = {
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
     const settingsToggleBtn = document.getElementById('meeting-slides-settings-btn');
+    const topbar = document.getElementById('meeting-slides-topbar');
+    const bottombar = document.getElementById('meeting-slides-bottombar');
     const settingsPanel = document.getElementById('meeting-slides-settings-panel');
     const settingsCard = document.getElementById('meeting-slides-settings-card');
     const topicSelect = document.getElementById('meeting-slides-topic-select');
@@ -1980,12 +2033,27 @@ const GroupMeeting = {
     const followLeaderTitle = document.getElementById('meeting-slides-follow-title');
     const followLeaderCopy = document.getElementById('meeting-slides-follow-copy');
     const hideBtn = document.getElementById('meeting-slide-hide-btn');
+    const sizeControls = ['small', 'medium', 'full'].map((size) => ({
+      size,
+      el: document.getElementById(`meeting-slides-size-${size}`)
+    }));
     const topicEntries = this.getSlidesLibraryEntries();
     const hasTopics = topicEntries.length > 0;
     const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
     const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
-    const isNarrowMobile = viewportWidth > 0 && viewportWidth <= 640;
+    const shortSide = Math.min(viewportWidth || 0, viewportHeight || 0);
+    const longSide = Math.max(viewportWidth || 0, viewportHeight || 0);
+    const isPhoneViewport = shortSide > 0 && shortSide <= 767 && longSide <= 932;
+    const isLandscapePhone = isPhoneViewport && viewportWidth > viewportHeight;
+    const isPortraitPhone = isPhoneViewport && !isLandscapePhone;
+    const isNarrowMobile = isPhoneViewport || (viewportWidth > 0 && viewportWidth <= 640);
     const compactMobile = viewportWidth > 0 && viewportWidth <= 430;
+    const slideSize = this.getSlidesSize(state.slideSize);
+    state.slideSize = slideSize;
+    const portraitHeightBySize = { small: 34, medium: 50, full: 82 };
+    const landscapeWidthBySize = { small: 34, medium: 46, full: 68 };
+    const portraitHeightPct = portraitHeightBySize[slideSize] || portraitHeightBySize.medium;
+    const landscapeWidthPct = landscapeWidthBySize[slideSize] || landscapeWidthBySize.medium;
     const selectedDeckId = hasTopics && this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]
       ? state.selectedDeckId
       : (topicEntries[0]?.[0] || null);
@@ -2054,6 +2122,18 @@ const GroupMeeting = {
         ? '0 6px 16px rgba(217, 139, 49, 0.24), inset 0 1px 0 rgba(255,255,255,0.28)'
         : '0 5px 14px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08)';
     }
+    sizeControls.forEach(({ size, el }) => {
+      if (!el) return;
+      const active = slideSize === size;
+      el.style.color = active ? '#22140c' : '#f4d7a2';
+      el.style.background = active
+        ? 'linear-gradient(135deg, #f2bf61, #d98b31)'
+        : 'linear-gradient(135deg, rgba(61,40,27,0.96), rgba(27,17,13,0.98))';
+      el.style.borderColor = active ? 'rgba(255,255,255,0.14)' : 'rgba(242, 184, 94, 0.22)';
+      el.style.boxShadow = active
+        ? '0 6px 16px rgba(217, 139, 49, 0.24), inset 0 1px 0 rgba(255,255,255,0.28)'
+        : '0 5px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08)';
+    });
     if (titleEl) {
       titleEl.style.color = '#f8e3b4';
       titleEl.style.fontWeight = '800';
@@ -2076,24 +2156,28 @@ const GroupMeeting = {
     panel.style.border = 'none';
     panel.style.backdropFilter = 'none';
     panel.style.webkitBackdropFilter = 'none';
-    panel.style.position = isNarrowMobile ? 'fixed' : '';
-    panel.style.top = isNarrowMobile ? '96px' : '';
-    panel.style.left = isNarrowMobile ? '12px' : '';
-    panel.style.right = isNarrowMobile ? '12px' : '';
-    panel.style.bottom = isNarrowMobile ? '76px' : '';
-    panel.style.width = isNarrowMobile ? 'auto' : '';
-    panel.style.maxHeight = isNarrowMobile ? `calc(${Math.round(viewportHeight || 0)}px - 168px)` : '';
+    panel.style.position = isPhoneViewport ? 'fixed' : '';
+    panel.style.top = isLandscapePhone ? '66px' : (isPortraitPhone ? 'auto' : '');
+    panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '10px' : '');
+    panel.style.right = isPhoneViewport ? '10px' : '';
+    panel.style.bottom = isPhoneViewport ? '70px' : '';
+    panel.style.width = isLandscapePhone ? `${landscapeWidthPct}vw` : (isPortraitPhone ? 'auto' : '');
+    panel.style.height = isPortraitPhone ? `${portraitHeightPct}vh` : '';
+    panel.style.maxWidth = isLandscapePhone ? (slideSize === 'full' ? '680px' : '520px') : '';
+    panel.style.maxHeight = isPhoneViewport ? '' : '';
     panel.style.contain = isNarrowMobile ? 'layout paint style' : '';
     panel.style.transform = isNarrowMobile ? 'translateZ(0)' : '';
     panel.style.overflowX = 'hidden';
+    panel.style.display = isPhoneViewport && state.panelOpen ? 'flex' : '';
+    panel.style.flexDirection = isPhoneViewport ? 'column' : '';
 
     if (settingsPanel) {
       settingsPanel.classList.toggle('hidden', !state.settingsOpen);
-      settingsPanel.style.position = isNarrowMobile ? 'fixed' : '';
-      settingsPanel.style.top = isNarrowMobile ? '96px' : '';
-      settingsPanel.style.left = isNarrowMobile ? '12px' : '';
-      settingsPanel.style.right = isNarrowMobile ? '12px' : '';
-      settingsPanel.style.width = isNarrowMobile ? 'auto' : '';
+      settingsPanel.style.position = isPhoneViewport ? 'fixed' : '';
+      settingsPanel.style.top = isLandscapePhone ? '66px' : '96px';
+      settingsPanel.style.left = isLandscapePhone ? 'auto' : (isPhoneViewport ? '12px' : '');
+      settingsPanel.style.right = isPhoneViewport ? '12px' : '';
+      settingsPanel.style.width = isLandscapePhone ? '360px' : (isPhoneViewport ? 'auto' : '');
       settingsPanel.style.maxWidth = isNarrowMobile ? '' : '440px';
       settingsPanel.style.overflowX = 'hidden';
     }
@@ -2231,6 +2315,9 @@ const GroupMeeting = {
     if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
     if (body) {
+      const slideBodyReserve = isPhoneViewport
+        ? ((topbar?.offsetHeight || 0) + (bottombar?.offsetHeight || 0) + 22)
+        : 0;
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
       body.style.overflowY = 'auto';
@@ -2241,10 +2328,12 @@ const GroupMeeting = {
       body.style.maxHeight = '';
       body.style.minHeight = isNarrowMobile ? '0' : '';
       body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`;
+      body.style.flex = isPhoneViewport ? '1 1 auto' : '';
+      body.style.maxHeight = isPhoneViewport
+        ? `calc(100% - ${Math.round(slideBodyReserve)}px)`
+        : '';
     }
 
-    const topbar = document.getElementById('meeting-slides-topbar');
-    const bottombar = document.getElementById('meeting-slides-bottombar');
     if (topbar) {
       topbar.style.flexShrink = '0';
       topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
@@ -2296,7 +2385,7 @@ const GroupMeeting = {
       hideBtn.style.boxShadow = '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
 
-    if (isNarrowMobile && body && topbar && bottombar) {
+    if (isNarrowMobile && !isPhoneViewport && body && topbar && bottombar) {
       const availableBodyHeight = Math.max(220, viewportHeight - 96 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 18);
       body.style.maxHeight = `${Math.round(availableBodyHeight)}px`;
     }

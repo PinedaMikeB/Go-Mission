@@ -81,6 +81,18 @@
 - Phone meetings now force Jitsi non-responsive tile layout with `TILE_VIEW_MAX_COLUMNS = 2`, so three participants resolve to two columns instead of a single stack.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Slide Size Controls
+
+- Preserve the final working Jitsi mobile layout: phone portrait and landscape should stay forced to a two-column tile grid.
+- Added three compact slide-size icon buttons between Settings and Slides:
+  - `◱` Small
+  - `◧` Medium
+  - `⛶` Full
+- In portrait phone layout, the buttons adjust the bottom slide sheet height.
+- In landscape phone layout, the buttons adjust the side slide panel width.
+- Medium is the default and is stored locally; leaders publish size changes through the existing slide sync payload.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

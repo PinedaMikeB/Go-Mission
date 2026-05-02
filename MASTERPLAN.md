@@ -13,6 +13,7 @@
 
 - 2026-05-02: Embedded Jitsi meeting on phone viewports should behave mobile-first in portrait and landscape. The current app-side approach detects phones by viewport short/long side, forces Jitsi non-responsive tile layout with max columns `2`, targets up to four visible rows (`8` tiles), recomputes after join/leave events, and requests square-ish mobile camera capture.
 - 2026-05-02: Meeting slides now support default-on leader sync. Mission Group leaders can hide/unhide slides for all participants and drive the current slide; participants can uncheck follow mode to navigate locally.
+- 2026-05-02: Meeting slides now have Small/Medium/Full icon controls in the meeting header. Portrait phones adjust bottom-sheet height; landscape phones adjust side-panel width. Preserve the working two-column Jitsi phone layout when changing slide UI.
 
 ---
 
