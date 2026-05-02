@@ -2,6 +2,30 @@
 
 > ⚡ READ THIS FIRST - Everything you need to continue development
 
+## Standing Operating Rule — Push Every Change
+
+- Every completed code or documentation change should be committed and pushed to `main` automatically before ending the work, unless Mike explicitly says not to push.
+- Keep commits scoped to the current task and do not stage unrelated local artifacts or user files.
+
+## Current Task Status (2026-05-02) — Mobile Jitsi Tile Layout
+
+- **Active modules**
+  - `/modules/groups/group-meeting.js`
+  - `/www/modules/groups/group-meeting.js`
+  - `/index.html`
+  - `/www/index.html`
+- **Goal**: On mobile phones, embedded Jitsi participant video tiles should use two columns instead of stacking every participant in one column.
+- **Status**: ✅ Implemented and pushed
+  - Added phone-width detection for Jitsi tile view.
+  - Sets `interfaceConfigOverwrite.TILE_VIEW_MAX_COLUMNS = 2` only on phone-sized viewports (`<= 767px`).
+  - Kept desktop/tablet behavior unchanged.
+  - Updated script cache-bust query string to force clients to fetch the new meeting module.
+- **Validation**
+  - `node --check modules/groups/group-meeting.js`
+  - `node --check www/modules/groups/group-meeting.js`
+- **Next Steps**
+  - Live-test with at least 3 participants on iOS Safari and Android Chrome to confirm the tile view renders as two columns.
+
 ## Current Task Status (2026-03-03) — Admin Notifications List + Announcement Presets
 
 - **Active modules**

@@ -230,6 +230,15 @@ const GroupMeeting = {
       return 'unknown error';
     }
   },
+
+  getTileViewMaxColumns() {
+    const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
+    const isPhoneViewport = viewportWidth > 0 && viewportWidth <= 767;
+
+    // Jitsi owns the participant grid inside its iframe. This documented
+    // interface config keeps phone tile view from collapsing into one column.
+    return isPhoneViewport ? 2 : undefined;
+  },
   
   /**
    * Generate unique room name for group (Self-hosted format)
@@ -419,6 +428,8 @@ const GroupMeeting = {
         if (this.joinedConference) return;
         this.setMeetingStatus('Still connecting…');
       }, 12000);
+
+      const tileViewMaxColumns = this.getTileViewMaxColumns();
       
       // Simpler Jitsi configuration for reliability
       const options = {
@@ -505,7 +516,8 @@ const GroupMeeting = {
           // Clean UI
           DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
           HIDE_INVITE_MORE_HEADER: true,
-          SETTINGS_SECTIONS: ['devices']
+          SETTINGS_SECTIONS: ['devices'],
+          ...(tileViewMaxColumns ? { TILE_VIEW_MAX_COLUMNS: tileViewMaxColumns } : {})
         }
       };
       

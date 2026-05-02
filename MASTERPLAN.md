@@ -4,6 +4,13 @@
 
 ---
 
+## Operating Rule
+
+- Push every completed change to `main` automatically unless Mike explicitly says not to push.
+- Keep commits scoped and do not stage unrelated local artifacts or user files.
+
+---
+
 ## Vision
 **Making Disciple-Making Leaders** - A mobile-first PWA guiding Filipino believers worldwide through a complete discipleship journey: from seeker to multiplier.
 

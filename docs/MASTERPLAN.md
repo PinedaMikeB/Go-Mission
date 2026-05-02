@@ -7,6 +7,13 @@
 
 ---
 
+## OPERATING RULE
+
+- Push every completed change to `main` automatically unless Mike explicitly says not to push.
+- Keep commits scoped and do not stage unrelated local artifacts or user files.
+
+---
+
 ## 🎯 VISION
 
 **Goal:** To make disciple-making leaders
