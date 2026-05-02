@@ -26,6 +26,12 @@
 - **Next Steps**
   - Live-test with at least 3 participants on iOS Safari and Android Chrome to confirm the tile view renders as two columns.
 
+### Update (2026-05-02) — Fixed Phone Tile Grid Follow-up
+
+- The first pass set `TILE_VIEW_MAX_COLUMNS = 2`, but live mobile testing still showed a single column because Jitsi's responsive tile algorithm prefers the layout with the largest tile area.
+- Added `disableResponsiveTiles: true` only for phone-sized viewports while keeping `TILE_VIEW_MAX_COLUMNS = 2`.
+- Updated script cache-bust query string to force clients to load the fixed phone tile-grid config.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

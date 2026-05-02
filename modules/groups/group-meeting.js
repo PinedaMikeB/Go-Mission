@@ -435,6 +435,7 @@ const GroupMeeting = {
       }, 12000);
 
       const tileViewMaxColumns = this.getTileViewMaxColumns();
+      const useFixedPhoneTileGrid = tileViewMaxColumns === 2;
       
       // Simpler Jitsi configuration for reliability
       const options = {
@@ -455,6 +456,7 @@ const GroupMeeting = {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableTileEnlargement: true,
+          disableResponsiveTiles: useFixedPhoneTileGrid,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           
