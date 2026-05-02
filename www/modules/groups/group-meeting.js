@@ -240,8 +240,12 @@ const GroupMeeting = {
   isPhoneMeetingViewport() {
     const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
     const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+    if (!viewportWidth || !viewportHeight) return false;
 
-    return viewportWidth > 0 && viewportWidth <= 767 && (!viewportHeight || viewportHeight >= viewportWidth);
+    const shortSide = Math.min(viewportWidth, viewportHeight);
+    const longSide = Math.max(viewportWidth, viewportHeight);
+
+    return shortSide <= 767 && longSide <= 932;
   },
 
   getTileViewMaxColumns() {
@@ -279,8 +283,8 @@ const GroupMeeting = {
 
     try {
       this.api.executeCommand('overwriteConfig', {
-        disableResponsiveTiles: false,
-        disableTileEnlargement: true,
+        disableResponsiveTiles: true,
+        disableTileEnlargement: false,
         tileView: {
           numberOfVisibleTiles: 8
         }
@@ -554,8 +558,8 @@ const GroupMeeting = {
               video: this.getMobileVideoConstraints()
             }
           } : {}),
-          disableTileEnlargement: true,
-          disableResponsiveTiles: false,
+          disableTileEnlargement: !usePhoneTileGrid,
+          disableResponsiveTiles: usePhoneTileGrid,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           

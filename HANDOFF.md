@@ -74,6 +74,13 @@
 - Note: true edge-to-edge cropping of portrait camera video inside the Jitsi iframe would require a Jitsi server renderer/CSS patch because Jitsi intentionally uses `object-fit: contain` for portrait videos in tile view.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Force Phone Two-Column Grid
+
+- Live testing with three participants still showed one column on some iPhones because Jitsi's responsive tile algorithm can choose one column per device/viewport.
+- Phone detection now uses the short/long side of the viewport, so iPhone portrait and landscape both use the phone meeting layout.
+- Phone meetings now force Jitsi non-responsive tile layout with `TILE_VIEW_MAX_COLUMNS = 2`, so three participants resolve to two columns instead of a single stack.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**
