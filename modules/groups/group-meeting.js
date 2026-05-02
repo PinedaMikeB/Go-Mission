@@ -253,6 +253,11 @@ const GroupMeeting = {
     const width = Math.floor(container?.clientWidth || window.visualViewport?.width || window.innerWidth || 0);
     const height = Math.floor(container?.clientHeight || window.visualViewport?.height || window.innerHeight || 0);
     if (!width || !height) return;
+    const layoutScale = width < 430 ? 1.48 : 1.32;
+    const layoutWidth = Math.round(width * layoutScale);
+    const layoutHeight = Math.round(height * layoutScale);
+
+    this.fitMobileJitsiIframe(layoutScale, layoutWidth, layoutHeight);
 
     try {
       this.api.executeCommand('overwriteConfig', {
@@ -262,14 +267,27 @@ const GroupMeeting = {
           numberOfVisibleTiles: 4
         }
       });
-      this.api.resizeLargeVideo(width, height);
-      this.api.executeCommand('resizeFilmStrip', { width });
+      this.api.resizeLargeVideo(layoutWidth, layoutHeight);
+      this.api.executeCommand('resizeFilmStrip', { width: layoutWidth });
       this.api.executeCommand('setTileView', true);
     } catch (error) {
       console.warn('[GroupMeeting] Could not apply mobile tile layout:', error?.message || error);
     }
 
     this.scheduleMobileTileLayoutRefresh();
+  },
+
+  fitMobileJitsiIframe(layoutScale, layoutWidth, layoutHeight) {
+    const iframe = document.querySelector('#jitsi-container iframe');
+    if (!iframe) return;
+
+    iframe.style.width = `${layoutWidth}px`;
+    iframe.style.height = `${layoutHeight}px`;
+    iframe.style.maxWidth = 'none';
+    iframe.style.maxHeight = 'none';
+    iframe.style.transform = `scale(${(1 / layoutScale).toFixed(4)})`;
+    iframe.style.transformOrigin = 'top left';
+    iframe.style.border = '0';
   },
 
   scheduleMobileTileLayoutRefresh() {
@@ -293,6 +311,15 @@ const GroupMeeting = {
     if (this.mobileTileLayoutTimer) {
       clearTimeout(this.mobileTileLayoutTimer);
       this.mobileTileLayoutTimer = null;
+    }
+    const iframe = document.querySelector('#jitsi-container iframe');
+    if (iframe) {
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.maxWidth = '';
+      iframe.style.maxHeight = '';
+      iframe.style.transform = '';
+      iframe.style.transformOrigin = '';
     }
   },
   

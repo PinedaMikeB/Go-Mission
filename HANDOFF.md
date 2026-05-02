@@ -49,6 +49,15 @@
   - repeats on mobile viewport resize.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Mobile Tile Fit Follow-up
+
+- Live testing showed the post-join two-column grid could still be clipped on narrow phones.
+- Added mobile-only iframe virtual sizing:
+  - Jitsi receives a wider virtual layout surface for tile calculations.
+  - The iframe is scaled back down to the actual phone viewport.
+  - The same scaled dimensions are used when resizing large video and filmstrip.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**
