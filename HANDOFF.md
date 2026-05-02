@@ -32,6 +32,12 @@
 - Added `disableResponsiveTiles: true` only for phone-sized viewports while keeping `TILE_VIEW_MAX_COLUMNS = 2`.
 - Updated script cache-bust query string to force clients to load the fixed phone tile-grid config.
 
+### Update (2026-05-02) — Responsive Phone Tile Proportion Follow-up
+
+- Live testing showed the fixed two-column grid could overflow horizontally and crop the right column.
+- Reverted phone meetings back to Jitsi's responsive tile sizing, kept `TILE_VIEW_MAX_COLUMNS = 2`, and set `tileView.numberOfVisibleTiles = 4` on phones so Jitsi favors a fitted two-column layout without horizontal overflow.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

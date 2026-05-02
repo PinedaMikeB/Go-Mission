@@ -435,7 +435,7 @@ const GroupMeeting = {
       }, 12000);
 
       const tileViewMaxColumns = this.getTileViewMaxColumns();
-      const useFixedPhoneTileGrid = tileViewMaxColumns === 2;
+      const usePhoneTileGrid = tileViewMaxColumns === 2;
       
       // Simpler Jitsi configuration for reliability
       const options = {
@@ -456,7 +456,7 @@ const GroupMeeting = {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableTileEnlargement: true,
-          disableResponsiveTiles: useFixedPhoneTileGrid,
+          disableResponsiveTiles: false,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           
@@ -473,6 +473,7 @@ const GroupMeeting = {
           // Performance
           resolution: 480,
           p2p: { enabled: true },
+          ...(usePhoneTileGrid ? { tileView: { numberOfVisibleTiles: 4 } } : {}),
 
           // Keep share-screen visible on main bar; move extra actions to More menu.
           toolbarButtons: [
