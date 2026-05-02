@@ -825,7 +825,7 @@ const GroupMeeting = {
                 <span id="meeting-slides-follow-title"
                       class="block text-xs font-bold text-amber-100">Follow leader slides</span>
                 <span id="meeting-slides-follow-copy"
-                      class="block mt-1 text-[11px] leading-snug text-white/58">On by default. Uncheck to navigate locally.</span>
+                      class="block mt-1 text-[11px] leading-snug">On by default. Uncheck to navigate locally.</span>
               </span>
             </label>
           </div>
@@ -1926,6 +1926,8 @@ const GroupMeeting = {
       followLeaderCopy.textContent = this.currentUserIsMeetingLeader
         ? 'On by default. Your slide, next/prev, and hide state sync to everyone.'
         : 'On by default. Uncheck to navigate locally on this device.';
+      followLeaderCopy.style.color = 'rgba(255, 236, 204, 0.78)';
+      followLeaderCopy.style.textShadow = '0 1px 2px rgba(0,0,0,0.38)';
     }
 
     if (toggleBtn) {
@@ -2178,10 +2180,10 @@ const GroupMeeting = {
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
     if (hideBtn) {
-      hideBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
-      hideBtn.style.color = '#f6e4c7';
+      hideBtn.style.background = 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
+      hideBtn.style.color = '#2a170c';
       hideBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
-      hideBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
+      hideBtn.style.boxShadow = '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
 
     if (isNarrowMobile && body && topbar && bottombar) {
