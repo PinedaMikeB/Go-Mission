@@ -18,6 +18,7 @@
 - 2026-05-02: Meeting slides now support default-on leader sync. Mission Group leaders can hide/unhide slides for all participants and drive the current slide; participants can uncheck follow mode to navigate locally.
 - 2026-05-02: Meeting slides now have Small/Medium/Full icon controls in the meeting header. Portrait phones adjust bottom-sheet height; landscape phones adjust side-panel width. Preserve the working two-column Jitsi phone layout when changing slide UI.
 - 2026-05-02: Portrait phone `Small` slide mode should remain a compact bottom sheet around `28vh`, with compact chrome and internal body scrolling so participant faces remain visible.
+- 2026-05-02: Portrait phone `Small` slide mode should anchor above the Jitsi toolbar/home-indicator area, scroll to the top when opened/resized, and use arrow-only Prev/Next controls.
 
 ---
 

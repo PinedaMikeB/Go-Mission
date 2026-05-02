@@ -1123,6 +1123,9 @@ const GroupMeeting = {
     }
 
     this.renderSlidesPanel();
+    if (nextOpen) {
+      this.scrollSlidesBodyToTop();
+    }
     this.publishSlidesSync({ panelOpen: nextOpen, action: 'visibility' });
   },
 
@@ -1164,7 +1167,15 @@ const GroupMeeting = {
       window.localStorage?.setItem('goMission_meetingSlidesSize', next);
     } catch (_) {}
     this.renderSlidesPanel();
+    this.scrollSlidesBodyToTop();
     this.publishSlidesSync({ slideSize: next, action: 'size' });
+  },
+
+  scrollSlidesBodyToTop() {
+    window.requestAnimationFrame?.(() => {
+      const body = document.getElementById('meeting-slides-panel-body');
+      if (body) body.scrollTop = 0;
+    });
   },
 
   setSlidesFollowLeader(enabled) {
@@ -2161,7 +2172,7 @@ const GroupMeeting = {
     panel.style.top = isLandscapePhone ? '66px' : (isPortraitPhone ? 'auto' : '');
     panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '8px' : '');
     panel.style.right = isPhoneViewport ? '8px' : '';
-    panel.style.bottom = isPhoneViewport ? '70px' : '';
+    panel.style.bottom = isPortraitSmall ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : (isPhoneViewport ? '70px' : '');
     panel.style.width = isLandscapePhone ? `${landscapeWidthPct}vw` : (isPortraitPhone ? 'auto' : '');
     panel.style.height = isPortraitPhone ? `${portraitHeightPct}vh` : '';
     panel.style.maxWidth = isLandscapePhone ? (slideSize === 'full' ? '680px' : '520px') : '';
@@ -2184,7 +2195,9 @@ const GroupMeeting = {
     }
 
     if (titleEl) {
-      titleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
+      titleEl.textContent = isPortraitSmall
+        ? 'Slides'
+        : (state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides');
     }
     if (settingsTitleEl) {
       settingsTitleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
@@ -2266,19 +2279,21 @@ const GroupMeeting = {
     const displayTitle = titleIsMarker && subtitleRaw ? subtitleRaw : titleRaw;
     const displaySubtitle = !eyebrowText && subtitleRaw ? subtitleRaw : '';
     const isKeyPointSlide = this.isMeetingSlideKeyPointMarker(eyebrowText);
-    const titleFontSize = isKeyPointSlide
+    const titleFontSize = isPortraitSmall
+      ? '16px'
+      : (isKeyPointSlide
       ? this.scaleMeetingSlideClamp(31, 6.6, 46, { fontScale })
-      : (slide.type === 'title' ? this.scaleMeetingSlideClamp(25, 5.8, 38, { fontScale }) : this.scaleMeetingSlideClamp(24, 5.9, 37, { fontScale }));
-    const kickerHtml = slide.kicker
+      : (slide.type === 'title' ? this.scaleMeetingSlideClamp(25, 5.8, 38, { fontScale }) : this.scaleMeetingSlideClamp(24, 5.9, 37, { fontScale })));
+    const kickerHtml = !isPortraitSmall && slide.kicker
       ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.25; letter-spacing:0.16em; text-transform:uppercase; color:#8a3b13; background:rgba(246, 225, 189, 0.9); border:1px solid rgba(206,157,87,0.45); border-radius:999px; padding:${this.scaleMeetingSlidePx('5px', { fontScale })} ${this.scaleMeetingSlidePx('10px', { fontScale })}; font-weight:800; margin-bottom:${this.scaleMeetingSlidePx('10px', { fontScale })};">
           <span style="display:inline-block; width:${this.scaleMeetingSlidePx('7px', { fontScale })}; height:${this.scaleMeetingSlidePx('7px', { fontScale })}; border-radius:50%; background:#d97706;"></span>${this.escapeHtml(slide.kicker)}
         </div>`
       : '';
-    const eyebrowHtml = eyebrowText
+    const eyebrowHtml = !isPortraitSmall && eyebrowText
       ? `<div style="display:inline-flex; align-items:center; gap:${this.scaleMeetingSlidePx('6px', { fontScale })}; max-width:100%; border-radius:999px; background:rgba(129, 66, 23, 0.08); color:#8c4317; border:1px solid rgba(209, 146, 76, 0.24); padding:${this.scaleMeetingSlidePx('6px', { fontScale })} ${this.scaleMeetingSlidePx('11px', { fontScale })}; font-size:${this.scaleMeetingSlidePx('11px', { fontScale })}; line-height:1.2; letter-spacing:0.14em; text-transform:uppercase; font-weight:900; margin-bottom:${this.scaleMeetingSlidePx('12px', { fontScale })};">${this.escapeHtml(eyebrowText)}</div>`
       : '';
-    const titleHtml = `<div style="color:#141414; font-size:${titleFontSize}; line-height:${isKeyPointSlide ? '0.95' : '1.02'}; font-weight:900; letter-spacing:${isKeyPointSlide ? '-0.03em' : '-0.015em'}; margin-bottom:${displaySubtitle ? '10px' : '16px'}; text-wrap:balance;">${this.escapeHtml(displayTitle)}</div>`;
-    const subtitleHtml = displaySubtitle
+    const titleHtml = `<div style="color:#141414; font-size:${titleFontSize}; line-height:${isPortraitSmall ? '1.12' : (isKeyPointSlide ? '0.95' : '1.02')}; font-weight:900; letter-spacing:${isKeyPointSlide ? '-0.03em' : '-0.015em'}; margin-bottom:${isPortraitSmall ? '6px' : (displaySubtitle ? '10px' : '16px')}; text-wrap:balance;">${this.escapeHtml(displayTitle)}</div>`;
+    const subtitleHtml = displaySubtitle && !isPortraitSmall
       ? `<div style="color:#5a4737; font-size:${this.scaleMeetingSlidePx(slide.type === 'title' ? '18px' : '14px', { fontScale })}; line-height:1.45; margin-bottom:${this.scaleMeetingSlidePx('15px', { fontScale })}; font-weight:${slide.type === 'title' ? '700' : '600'};">${this.escapeHtml(displaySubtitle)}</div>`
       : '';
     const structuredContentHtml = this.renderMeetingSlideContentBlocks(slideBlocks, { fontScale, compactMobile });
@@ -2309,15 +2324,23 @@ const GroupMeeting = {
     `;
 
     if (body) body.innerHTML = bodyHtml;
+    if (body && isPortraitSmall) {
+      const firstCard = body.firstElementChild;
+      if (firstCard) {
+        firstCard.style.maxHeight = '100%';
+      }
+    }
     if (counterEl) counterEl.textContent = `${slideIndex + 1} / ${slides.length}`;
     const followerNavigationLocked = !this.currentUserIsMeetingLeader && state.followLeader !== false;
+    if (prevBtn) prevBtn.textContent = isPortraitSmall ? '←' : '← Prev';
+    if (nextBtn) nextBtn.textContent = isPortraitSmall ? '→' : 'Next →';
     if (prevBtn) prevBtn.disabled = followerNavigationLocked || slideIndex <= 0;
     if (nextBtn) nextBtn.disabled = followerNavigationLocked || slideIndex >= slides.length - 1;
     if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
     if (body) {
       const slideBodyReserve = isPhoneViewport
-        ? ((topbar?.offsetHeight || 0) + (bottombar?.offsetHeight || 0) + 22)
+        ? (isPortraitSmall ? 82 : ((topbar?.offsetHeight || 0) + (bottombar?.offsetHeight || 0) + 22))
         : 0;
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
@@ -2346,8 +2369,12 @@ const GroupMeeting = {
       topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
       const topbarInner = topbar.firstElementChild;
       if (topbarInner) {
-        topbarInner.style.padding = isPortraitSmall ? '7px 10px' : '';
-        topbarInner.style.minHeight = isPortraitSmall ? '40px' : '';
+        topbarInner.style.padding = isPortraitSmall ? '5px 9px' : '';
+        topbarInner.style.minHeight = isPortraitSmall ? '30px' : '';
+      }
+      const eyebrow = topbar.querySelector('p');
+      if (eyebrow) {
+        eyebrow.style.display = isPortraitSmall ? 'none' : '';
       }
     }
     if (settingsCard) {
@@ -2361,7 +2388,7 @@ const GroupMeeting = {
       bottombar.style.flexShrink = '0';
       bottombar.style.borderRadius = isPortraitSmall ? '12px' : '';
       bottombar.style.marginTop = isPortraitSmall ? '4px' : '';
-      bottombar.style.padding = isPortraitSmall ? '7px 10px' : '';
+      bottombar.style.padding = isPortraitSmall ? '6px 9px' : '';
       bottombar.style.background = 'linear-gradient(180deg, rgba(28,20,16,0.94), rgba(43,30,24,0.9))';
       bottombar.style.borderColor = 'rgba(236, 186, 104, 0.16)';
       bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
@@ -2378,8 +2405,9 @@ const GroupMeeting = {
       prevBtn.style.boxShadow = prevDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
-      prevBtn.style.padding = isPortraitSmall ? '7px 10px' : '';
+      prevBtn.style.padding = isPortraitSmall ? '6px 10px' : '';
       prevBtn.style.fontSize = isPortraitSmall ? '12px' : '';
+      prevBtn.style.minWidth = isPortraitSmall ? '38px' : '';
     }
     if (nextBtn) {
       const nextDisabled = followerNavigationLocked || slideIndex >= slides.length - 1;
@@ -2391,15 +2419,16 @@ const GroupMeeting = {
       nextBtn.style.boxShadow = nextDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
-      nextBtn.style.padding = isPortraitSmall ? '7px 10px' : '';
+      nextBtn.style.padding = isPortraitSmall ? '6px 10px' : '';
       nextBtn.style.fontSize = isPortraitSmall ? '12px' : '';
+      nextBtn.style.minWidth = isPortraitSmall ? '38px' : '';
     }
     if (hideBtn) {
       hideBtn.style.background = 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
       hideBtn.style.color = '#2a170c';
       hideBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
       hideBtn.style.boxShadow = '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
-      hideBtn.style.padding = isPortraitSmall ? '7px 12px' : '';
+      hideBtn.style.padding = isPortraitSmall ? '6px 12px' : '';
       hideBtn.style.fontSize = isPortraitSmall ? '12px' : '';
     }
 

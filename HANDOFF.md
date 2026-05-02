@@ -101,6 +101,13 @@
 - Slide content scrolls inside the smaller sheet instead of expanding over the participant grid.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Small Sheet Bottom Position
+
+- Portrait `Small` slide mode now anchors from the viewport bottom above the Jitsi toolbar/home-indicator area.
+- Opening slides or switching size scrolls the slide body back to the top so the beginning of the slide is visible.
+- Small mode hides the topbar eyebrow, compresses the body header, and uses arrow-only Prev/Next controls.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**
