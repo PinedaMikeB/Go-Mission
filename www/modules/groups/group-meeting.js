@@ -20,10 +20,14 @@ const GroupMeeting = {
   joinedAt: null,
   participants: [],
   joinedConference: false,
+  currentUserIsMeetingLeader: false,
   connectTimeoutId: null,
   currentRoomUrl: null,
   initPromise: null,
   lastJoinArgs: null,
+  slidesSyncUnsubscribe: null,
+  slidesSyncApplying: false,
+  lastSlidesSyncVersion: 0,
   presentationState: null,
   presentationDeckCache: {},
   meetingSlidesLibraryLoaded: false,
@@ -379,6 +383,7 @@ const GroupMeeting = {
           };
 
       this.lastJoinArgs = { ...args };
+      this.currentUserIsMeetingLeader = args.isLeader === true;
 
       // Show UI immediately so users see something happening even if the API load is slow/fails.
       this.showMeetingModal(args.displayGroupName);
@@ -632,6 +637,7 @@ const GroupMeeting = {
       selectedLang: (window.currentLang === 'en' ? 'en' : 'tl'),
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       fontScale: savedFontScale,
+      followLeader: true,
       currentSlideIndex: 0,
       loading: false,
       error: null,
@@ -726,7 +732,14 @@ const GroupMeeting = {
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
             ← Prev
           </button>
-          <div class="text-[11px] text-white/65 uppercase tracking-[0.14em]">Slides</div>
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="text-[11px] text-white/65 uppercase tracking-[0.14em] hidden min-[380px]:block">Slides</div>
+            <button onclick="window.GroupMeeting.hideSlidesFromBottombar()"
+                    id="meeting-slide-hide-btn"
+                    class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
+              Hide
+            </button>
+          </div>
           <button onclick="window.GroupMeeting.nextSlide()"
                   id="meeting-slide-next-btn"
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
@@ -801,6 +814,20 @@ const GroupMeeting = {
                 </button>
               </div>
             </div>
+            <label class="flex items-start gap-3 rounded-xl px-3 py-3"
+                   style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);">
+              <input id="meeting-slides-follow-leader"
+                     type="checkbox"
+                     checked
+                     onchange="window.GroupMeeting.setSlidesFollowLeader(this.checked)"
+                     class="mt-1 h-4 w-4 accent-amber-400">
+              <span class="min-w-0">
+                <span id="meeting-slides-follow-title"
+                      class="block text-xs font-bold text-amber-100">Follow leader slides</span>
+                <span id="meeting-slides-follow-copy"
+                      class="block mt-1 text-[11px] leading-snug text-white/58">On by default. Uncheck to navigate locally.</span>
+              </span>
+            </label>
           </div>
         </div>
       </div>
@@ -954,6 +981,7 @@ const GroupMeeting = {
     }
 
     this.renderSlidesPanel();
+    this.publishSlidesSync({ panelOpen: nextOpen, action: 'visibility' });
   },
 
   async toggleSlidesSettings(forceOpen) {
@@ -975,6 +1003,156 @@ const GroupMeeting = {
     this.presentationState.settingsOpen = nextOpen;
     if (settingsPanel) settingsPanel.classList.toggle('hidden', !nextOpen);
     this.renderSlidesPanel();
+  },
+
+  hideSlidesFromBottombar() {
+    this.toggleSlidesPanel(false);
+  },
+
+  setSlidesFollowLeader(enabled) {
+    if (!this.presentationState) return;
+    const next = enabled !== false;
+    this.presentationState.followLeader = next;
+    this.renderSlidesPanel();
+
+    if (this.currentUserIsMeetingLeader) {
+      this.publishSlidesSync({ enabled: next, action: 'mode' });
+    } else if (next) {
+      this.pullLatestSlidesSync();
+    }
+  },
+
+  async pullLatestSlidesSync() {
+    if (!window.getDoc) return;
+    const ref = this.getSlidesSyncRef();
+    if (!ref) return;
+    try {
+      const snap = await window.getDoc(ref);
+      const sync = snap.exists() ? (snap.data()?.slidesSync || null) : null;
+      await this.applySlidesSync(sync);
+    } catch (error) {
+      console.warn('[GroupMeeting] Could not pull latest slides sync:', error?.message || error);
+    }
+  },
+
+  getSlidesSyncRef() {
+    if (!window.db || !window.doc || !this.currentMeetingId) return null;
+    return window.doc(window.db, 'goMission_meetings', this.currentMeetingId);
+  },
+
+  getCurrentSlidesSyncPayload(overrides = {}) {
+    const state = this.presentationState;
+    if (!state) return null;
+    return {
+      enabled: state.followLeader !== false,
+      panelOpen: state.panelOpen === true,
+      selectedDeckId: state.selectedDeckId || null,
+      selectedLang: state.selectedLang === 'en' ? 'en' : 'tl',
+      currentSlideIndex: Math.max(0, Math.round(Number(state.currentSlideIndex || 0))),
+      hidden: state.panelOpen !== true,
+      leaderUid: window.currentUser?.uid || null,
+      leaderName: window.currentUser?.displayName || '',
+      action: 'state',
+      version: Date.now(),
+      updatedAt: window.serverTimestamp ? window.serverTimestamp() : new Date().toISOString(),
+      ...overrides
+    };
+  },
+
+  async publishSlidesSync(overrides = {}) {
+    if (!this.currentUserIsMeetingLeader || this.slidesSyncApplying) return;
+    if (!window.setDoc) return;
+    const ref = this.getSlidesSyncRef();
+    const payload = this.getCurrentSlidesSyncPayload(overrides);
+    if (!ref || !payload) return;
+
+    try {
+      await window.setDoc(ref, { slidesSync: payload }, { merge: true });
+    } catch (error) {
+      console.warn('[GroupMeeting] Could not publish slides sync:', error?.message || error);
+    }
+  },
+
+  subscribeSlidesSync() {
+    this.unsubscribeSlidesSync();
+    const ref = this.getSlidesSyncRef();
+    if (!ref || typeof window.onSnapshot !== 'function') return;
+
+    this.slidesSyncUnsubscribe = window.onSnapshot(ref, async (snapshot) => {
+      const sync = snapshot.exists() ? (snapshot.data()?.slidesSync || null) : null;
+      await this.applySlidesSync(sync);
+    }, (error) => {
+      console.warn('[GroupMeeting] Slides sync listener failed:', error?.message || error);
+    });
+  },
+
+  unsubscribeSlidesSync() {
+    if (typeof this.slidesSyncUnsubscribe === 'function') {
+      try {
+        this.slidesSyncUnsubscribe();
+      } catch (_) {}
+    }
+    this.slidesSyncUnsubscribe = null;
+  },
+
+  async applySlidesSync(sync) {
+    const state = this.presentationState;
+    if (!state || !sync || typeof sync !== 'object') return;
+    if (this.currentUserIsMeetingLeader) return;
+    const version = Number(sync.version || 0);
+    if (version && version < this.lastSlidesSyncVersion) return;
+    if (version) this.lastSlidesSyncVersion = version;
+    if (sync.action === 'mode') {
+      state.followLeader = sync.enabled !== false;
+      this.renderSlidesPanel();
+      if (sync.enabled === false) return;
+    }
+    if (sync.enabled === false) return;
+
+    if (state.followLeader === false) {
+      if (sync.action === 'visibility') {
+        state.panelOpen = sync.panelOpen === true && sync.hidden !== true;
+        if (!state.panelOpen) state.settingsOpen = false;
+        const panel = document.getElementById('meeting-slides-panel');
+        const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+        if (panel) panel.classList.toggle('hidden', !state.panelOpen);
+        if (settingsPanel) settingsPanel.classList.toggle('hidden', !state.settingsOpen);
+        this.renderSlidesPanel();
+      }
+      return;
+    }
+
+    this.slidesSyncApplying = true;
+    try {
+      const nextDeckId = this.normalizeMeetingSlidesTopicId(sync.selectedDeckId || '');
+      const nextLang = sync.selectedLang === 'en' ? 'en' : 'tl';
+      const hasDeckChange = nextDeckId && nextDeckId !== state.selectedDeckId;
+      const hasLangChange = nextLang !== state.selectedLang;
+
+      if (hasDeckChange || hasLangChange || !state.deck) {
+        if (nextDeckId) state.selectedDeckId = nextDeckId;
+        state.selectedLang = nextLang;
+        state.deck = null;
+        state.loading = false;
+        state.error = null;
+        await this.loadSlidesDeck();
+      }
+
+      const slidesLength = state.deck?.slides?.length || 0;
+      const nextIndex = Math.max(0, Math.round(Number(sync.currentSlideIndex || 0)));
+      state.currentSlideIndex = slidesLength ? Math.min(nextIndex, slidesLength - 1) : nextIndex;
+      state.panelOpen = sync.panelOpen === true && sync.hidden !== true;
+      if (!state.panelOpen) state.settingsOpen = false;
+
+      const panel = document.getElementById('meeting-slides-panel');
+      const settingsPanel = document.getElementById('meeting-slides-settings-panel');
+      if (panel) panel.classList.toggle('hidden', !state.panelOpen);
+      if (settingsPanel) settingsPanel.classList.toggle('hidden', !state.settingsOpen);
+
+      this.renderSlidesPanel();
+    } finally {
+      this.slidesSyncApplying = false;
+    }
   },
 
   async loadSlidesDeck() {
@@ -1106,6 +1284,12 @@ const GroupMeeting = {
 
     this.renderSlidesPanel();
     await this.loadSlidesDeck();
+    this.publishSlidesSync({
+      selectedDeckId: this.presentationState.selectedDeckId,
+      selectedLang: this.presentationState.selectedLang,
+      currentSlideIndex: this.presentationState.currentSlideIndex,
+      action: 'deck'
+    });
   },
 
   setSlidesLanguage(lang) {
@@ -1117,6 +1301,11 @@ const GroupMeeting = {
     this.presentationState.currentSlideIndex = 0;
     this.loadSlidesDeck();
     this.renderSlidesPanel();
+    this.publishSlidesSync({
+      selectedLang: this.presentationState.selectedLang,
+      currentSlideIndex: 0,
+      action: 'deck'
+    });
   },
 
   setSlidesOpacity(value) {
@@ -1155,6 +1344,7 @@ const GroupMeeting = {
     if (s.currentSlideIndex < s.deck.slides.length - 1) {
       s.currentSlideIndex += 1;
       this.renderSlidesPanel();
+      this.publishSlidesSync({ currentSlideIndex: s.currentSlideIndex, action: 'slide' });
     }
   },
 
@@ -1164,6 +1354,7 @@ const GroupMeeting = {
     if (s.currentSlideIndex > 0) {
       s.currentSlideIndex -= 1;
       this.renderSlidesPanel();
+      this.publishSlidesSync({ currentSlideIndex: s.currentSlideIndex, action: 'slide' });
     }
   },
 
@@ -1675,6 +1866,10 @@ const GroupMeeting = {
     const fontValueEl = document.getElementById('meeting-slides-font-value');
     const fontDecreaseBtn = document.getElementById('meeting-slides-font-decrease');
     const fontIncreaseBtn = document.getElementById('meeting-slides-font-increase');
+    const followLeaderCheckbox = document.getElementById('meeting-slides-follow-leader');
+    const followLeaderTitle = document.getElementById('meeting-slides-follow-title');
+    const followLeaderCopy = document.getElementById('meeting-slides-follow-copy');
+    const hideBtn = document.getElementById('meeting-slide-hide-btn');
     const topicEntries = this.getSlidesLibraryEntries();
     const hasTopics = topicEntries.length > 0;
     const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
@@ -1721,6 +1916,17 @@ const GroupMeeting = {
     if (fontValueEl) fontValueEl.textContent = `${Math.round(16 * fontScale)}px`;
     if (fontDecreaseBtn) fontDecreaseBtn.disabled = fontScale <= 0.95;
     if (fontIncreaseBtn) fontIncreaseBtn.disabled = fontScale >= 1.35;
+    if (followLeaderCheckbox) {
+      followLeaderCheckbox.checked = state.followLeader !== false;
+    }
+    if (followLeaderTitle) {
+      followLeaderTitle.textContent = this.currentUserIsMeetingLeader ? 'Lead group slides' : 'Follow leader slides';
+    }
+    if (followLeaderCopy) {
+      followLeaderCopy.textContent = this.currentUserIsMeetingLeader
+        ? 'On by default. Your slide, next/prev, and hide state sync to everyone.'
+        : 'On by default. Uncheck to navigate locally on this device.';
+    }
 
     if (toggleBtn) {
       toggleBtn.classList.toggle('bg-amber-500/20', !!state.panelOpen);
@@ -1907,10 +2113,11 @@ const GroupMeeting = {
 
     if (body) body.innerHTML = bodyHtml;
     if (counterEl) counterEl.textContent = `${slideIndex + 1} / ${slides.length}`;
-    if (prevBtn) prevBtn.disabled = slideIndex <= 0;
-    if (nextBtn) nextBtn.disabled = slideIndex >= slides.length - 1;
-    if (prevBtn) prevBtn.classList.toggle('opacity-40', slideIndex <= 0);
-    if (nextBtn) nextBtn.classList.toggle('opacity-40', slideIndex >= slides.length - 1);
+    const followerNavigationLocked = !this.currentUserIsMeetingLeader && state.followLeader !== false;
+    if (prevBtn) prevBtn.disabled = followerNavigationLocked || slideIndex <= 0;
+    if (nextBtn) nextBtn.disabled = followerNavigationLocked || slideIndex >= slides.length - 1;
+    if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex <= 0);
+    if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
     if (body) {
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
@@ -1949,24 +2156,32 @@ const GroupMeeting = {
       bottombar.style.boxShadow = '0 14px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)';
     }
     if (prevBtn) {
-      prevBtn.style.background = slideIndex <= 0
+      const prevDisabled = followerNavigationLocked || slideIndex <= 0;
+      prevBtn.style.background = prevDisabled
         ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
-      prevBtn.style.color = slideIndex <= 0 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      prevBtn.style.color = prevDisabled ? 'rgba(247,230,201,0.45)' : '#2a170c';
       prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
-      prevBtn.style.boxShadow = slideIndex <= 0
+      prevBtn.style.boxShadow = prevDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
     }
     if (nextBtn) {
-      nextBtn.style.background = slideIndex >= slides.length - 1
+      const nextDisabled = followerNavigationLocked || slideIndex >= slides.length - 1;
+      nextBtn.style.background = nextDisabled
         ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
-      nextBtn.style.color = slideIndex >= slides.length - 1 ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      nextBtn.style.color = nextDisabled ? 'rgba(247,230,201,0.45)' : '#2a170c';
       nextBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
-      nextBtn.style.boxShadow = slideIndex >= slides.length - 1
+      nextBtn.style.boxShadow = nextDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+    }
+    if (hideBtn) {
+      hideBtn.style.background = 'linear-gradient(180deg, rgba(65,46,36,0.96), rgba(39,27,22,0.94))';
+      hideBtn.style.color = '#f6e4c7';
+      hideBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
+      hideBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05)';
     }
 
     if (isNarrowMobile && body && topbar && bottombar) {
@@ -1981,6 +2196,7 @@ const GroupMeeting = {
   hideMeetingModal() {
     const modal = document.getElementById('meeting-modal');
     if (modal) modal.remove();
+    this.unsubscribeSlidesSync();
     this.presentationState = null;
     
     // Restore body scroll
@@ -2004,6 +2220,9 @@ const GroupMeeting = {
     
     this.hideMeetingModal();
     this.currentGroupId = null;
+    this.currentMeetingId = null;
+    this.currentUserIsMeetingLeader = false;
+    this.lastSlidesSyncVersion = 0;
     this.participants = [];
   },
   
@@ -2047,6 +2266,10 @@ const GroupMeeting = {
       }, { merge: true });
       
       console.log('[GroupMeeting] Attendance recorded');
+      this.subscribeSlidesSync();
+      if (this.currentUserIsMeetingLeader) {
+        this.publishSlidesSync();
+      }
     } catch (error) {
       console.error('[GroupMeeting] Error recording attendance:', error);
     }

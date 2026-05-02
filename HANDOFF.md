@@ -26,6 +26,29 @@
 - **Next Steps**
   - Live-test with at least 3 participants on iOS Safari and Android Chrome to confirm the tile view renders as two columns.
 
+## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
+
+- **Active modules**
+  - `/modules/groups/group-meeting.js`
+  - `/www/modules/groups/group-meeting.js`
+  - `/index.html`
+  - `/www/index.html`
+- **Goal**: Let the Mission Group leader drive the in-meeting slide deck for participants, including hiding/unhiding slides for everyone, while allowing members to opt out and navigate locally.
+- **Status**: ✅ Implemented and pushed
+  - Added a `Hide` button in the slide overlay bottom bar before `Next`.
+  - Added a default-on settings checkbox:
+    - leader sees `Lead group slides`
+    - members see `Follow leader slides`
+  - Leader slide state is stored in the current `goMission_meetings/{groupId_date}` document under `slidesSync`.
+  - Members listen with Firestore `onSnapshot` and follow the leader's deck, language, current slide, and hide/unhide state.
+  - If the checkbox is unchecked, participants can navigate slides locally; leader visibility changes still apply as a group visibility action.
+  - Updated script cache-bust query string to force clients to fetch the new meeting module.
+- **Validation**
+  - `node --check modules/groups/group-meeting.js`
+  - `node --check www/modules/groups/group-meeting.js`
+- **Next Steps**
+  - Live-test with one leader plus at least one member on separate devices to confirm slide sync, hide/unhide, and local opt-out behavior.
+
 ## Current Task Status (2026-03-03) — Admin Notifications List + Announcement Presets
 
 - **Active modules**
