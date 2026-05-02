@@ -93,6 +93,14 @@
 - Medium is the default and is stored locally; leaders publish size changes through the existing slide sync payload.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Compact Portrait Small Slide Sheet
+
+- Refined portrait phone `Small` slide size into a bottom sheet only.
+- Portrait `Small` now uses `28vh` height so Jitsi participants remain clearly visible above it.
+- Compacted the slide top bar, bottom controls, body padding, and card radius for the small sheet.
+- Slide content scrolls inside the smaller sheet instead of expanding over the participant grid.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

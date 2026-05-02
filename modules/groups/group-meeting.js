@@ -2050,10 +2050,11 @@ const GroupMeeting = {
     const compactMobile = viewportWidth > 0 && viewportWidth <= 430;
     const slideSize = this.getSlidesSize(state.slideSize);
     state.slideSize = slideSize;
-    const portraitHeightBySize = { small: 34, medium: 50, full: 82 };
+    const portraitHeightBySize = { small: 28, medium: 50, full: 82 };
     const landscapeWidthBySize = { small: 34, medium: 46, full: 68 };
     const portraitHeightPct = portraitHeightBySize[slideSize] || portraitHeightBySize.medium;
     const landscapeWidthPct = landscapeWidthBySize[slideSize] || landscapeWidthBySize.medium;
+    const isPortraitSmall = isPortraitPhone && slideSize === 'small';
     const selectedDeckId = hasTopics && this.MEETING_SLIDES_LIBRARY[state.selectedDeckId]
       ? state.selectedDeckId
       : (topicEntries[0]?.[0] || null);
@@ -2137,7 +2138,7 @@ const GroupMeeting = {
     if (titleEl) {
       titleEl.style.color = '#f8e3b4';
       titleEl.style.fontWeight = '800';
-      titleEl.style.fontSize = isNarrowMobile ? '22px' : '16px';
+      titleEl.style.fontSize = isPortraitSmall ? '15px' : (isNarrowMobile ? '22px' : '16px');
       titleEl.style.letterSpacing = '-0.01em';
       titleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
     }
@@ -2158,8 +2159,8 @@ const GroupMeeting = {
     panel.style.webkitBackdropFilter = 'none';
     panel.style.position = isPhoneViewport ? 'fixed' : '';
     panel.style.top = isLandscapePhone ? '66px' : (isPortraitPhone ? 'auto' : '');
-    panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '10px' : '');
-    panel.style.right = isPhoneViewport ? '10px' : '';
+    panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '8px' : '');
+    panel.style.right = isPhoneViewport ? '8px' : '';
     panel.style.bottom = isPhoneViewport ? '70px' : '';
     panel.style.width = isLandscapePhone ? `${landscapeWidthPct}vw` : (isPortraitPhone ? 'auto' : '');
     panel.style.height = isPortraitPhone ? `${portraitHeightPct}vh` : '';
@@ -2287,17 +2288,17 @@ const GroupMeeting = {
         width:100%;
         box-sizing:border-box;
         overflow:hidden;
-        border-radius:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};
+        border-radius:${this.scaleMeetingSlidePx(isPortraitSmall ? '12px' : (compactMobile ? '16px' : '18px'), { fontScale })};
         border:1px solid rgba(255,255,255,0.55);
         background:
           linear-gradient(165deg, rgba(255,255,255,${noteSurfaceAlpha.toFixed(2)}), rgba(249,246,238,${Math.max(0.86, noteSurfaceAlpha - 0.04).toFixed(2)})),
           radial-gradient(circle at top right, rgba(245,158,11,0.1), transparent 36%),
           radial-gradient(circle at bottom left, rgba(220,38,38,0.05), transparent 42%);
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        padding:${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '14px' : '16px', { fontScale })} ${this.scaleMeetingSlidePx(compactMobile ? '16px' : '18px', { fontScale })};">
+        padding:${this.scaleMeetingSlidePx(isPortraitSmall ? '10px' : (compactMobile ? '16px' : '18px'), { fontScale })} ${this.scaleMeetingSlidePx(isPortraitSmall ? '12px' : (compactMobile ? '16px' : '18px'), { fontScale })} ${this.scaleMeetingSlidePx(isPortraitSmall ? '10px' : (compactMobile ? '14px' : '16px'), { fontScale })} ${this.scaleMeetingSlidePx(isPortraitSmall ? '12px' : (compactMobile ? '16px' : '18px'), { fontScale })};">
         <div style="position:absolute; left:0; top:${this.scaleMeetingSlidePx('14px', { fontScale })}; bottom:${this.scaleMeetingSlidePx('14px', { fontScale })}; width:${this.scaleMeetingSlidePx('5px', { fontScale })}; border-radius:${this.scaleMeetingSlidePx('5px', { fontScale })}; background:linear-gradient(180deg, #f59e0b, #dc2626);"></div>
         <div style="position:absolute; right:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; bottom:${compactMobile ? this.scaleMeetingSlidePx('-10px', { fontScale }) : this.scaleMeetingSlidePx('-18px', { fontScale })}; width:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; height:${compactMobile ? this.scaleMeetingSlidePx('88px', { fontScale }) : this.scaleMeetingSlidePx('132px', { fontScale })}; border-radius:50%; background:radial-gradient(circle, rgba(245,158,11,${compactMobile ? '0.08' : '0.14'}), rgba(245,158,11,0.04) 58%, transparent 74%); filter:blur(1px); pointer-events:none;"></div>
-        <div style="position:relative; z-index:1; padding-left:${this.scaleMeetingSlidePx('12px', { fontScale })};">
+        <div style="position:relative; z-index:1; padding-left:${this.scaleMeetingSlidePx(isPortraitSmall ? '8px' : '12px', { fontScale })};">
           ${kickerHtml}
           ${eyebrowHtml}
           ${titleHtml}
@@ -2327,7 +2328,9 @@ const GroupMeeting = {
       body.style.scrollbarGutter = 'stable';
       body.style.maxHeight = '';
       body.style.minHeight = isNarrowMobile ? '0' : '';
-      body.style.padding = isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`;
+      body.style.padding = isPortraitSmall
+        ? '4px 0 5px 0'
+        : (isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`);
       body.style.flex = isPhoneViewport ? '1 1 auto' : '';
       body.style.maxHeight = isPhoneViewport
         ? `calc(100% - ${Math.round(slideBodyReserve)}px)`
@@ -2336,10 +2339,16 @@ const GroupMeeting = {
 
     if (topbar) {
       topbar.style.flexShrink = '0';
+      topbar.style.borderRadius = isPortraitSmall ? '12px' : '';
       topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
       topbar.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)})`;
       topbar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
       topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
+      const topbarInner = topbar.firstElementChild;
+      if (topbarInner) {
+        topbarInner.style.padding = isPortraitSmall ? '7px 10px' : '';
+        topbarInner.style.minHeight = isPortraitSmall ? '40px' : '';
+      }
     }
     if (settingsCard) {
       settingsCard.style.background = 'linear-gradient(180deg, rgba(20,14,12,0.9), rgba(28,18,14,0.88))';
@@ -2350,6 +2359,9 @@ const GroupMeeting = {
     }
     if (bottombar) {
       bottombar.style.flexShrink = '0';
+      bottombar.style.borderRadius = isPortraitSmall ? '12px' : '';
+      bottombar.style.marginTop = isPortraitSmall ? '4px' : '';
+      bottombar.style.padding = isPortraitSmall ? '7px 10px' : '';
       bottombar.style.background = 'linear-gradient(180deg, rgba(28,20,16,0.94), rgba(43,30,24,0.9))';
       bottombar.style.borderColor = 'rgba(236, 186, 104, 0.16)';
       bottombar.style.backdropFilter = `blur(${isNarrowMobile ? 10 : 8}px)`;
@@ -2366,6 +2378,8 @@ const GroupMeeting = {
       prevBtn.style.boxShadow = prevDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+      prevBtn.style.padding = isPortraitSmall ? '7px 10px' : '';
+      prevBtn.style.fontSize = isPortraitSmall ? '12px' : '';
     }
     if (nextBtn) {
       const nextDisabled = followerNavigationLocked || slideIndex >= slides.length - 1;
@@ -2377,12 +2391,16 @@ const GroupMeeting = {
       nextBtn.style.boxShadow = nextDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
         : '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+      nextBtn.style.padding = isPortraitSmall ? '7px 10px' : '';
+      nextBtn.style.fontSize = isPortraitSmall ? '12px' : '';
     }
     if (hideBtn) {
       hideBtn.style.background = 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
       hideBtn.style.color = '#2a170c';
       hideBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
       hideBtn.style.boxShadow = '0 10px 18px rgba(217, 139, 49, 0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
+      hideBtn.style.padding = isPortraitSmall ? '7px 12px' : '';
+      hideBtn.style.fontSize = isPortraitSmall ? '12px' : '';
     }
 
     if (isNarrowMobile && !isPhoneViewport && body && topbar && bottombar) {
