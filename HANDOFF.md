@@ -38,6 +38,17 @@
 - Reverted phone meetings back to Jitsi's responsive tile sizing, kept `TILE_VIEW_MAX_COLUMNS = 2`, and set `tileView.numberOfVisibleTiles = 4` on phones so Jitsi favors a fitted two-column layout without horizontal overflow.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Mobile Tile Resize Follow-up
+
+- Live testing showed responsive sizing could still return to a single column after the earlier proportion fix.
+- Added a post-join mobile tile layout pass that:
+  - reapplies fixed two-column tile config,
+  - resizes Jitsi's large-video area to the actual embedded container width/height,
+  - resizes the filmstrip width,
+  - reapplies tile view after Jitsi finishes joining,
+  - repeats on mobile viewport resize.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

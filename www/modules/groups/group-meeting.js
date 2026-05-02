@@ -28,6 +28,8 @@ const GroupMeeting = {
   slidesSyncUnsubscribe: null,
   slidesSyncApplying: false,
   lastSlidesSyncVersion: 0,
+  mobileTileLayoutTimer: null,
+  mobileTileLayoutHandler: null,
   presentationState: null,
   presentationDeckCache: {},
   meetingSlidesLibraryLoaded: false,
@@ -243,6 +245,56 @@ const GroupMeeting = {
     // interface config keeps phone tile view from collapsing into one column.
     return isPhoneViewport ? 2 : undefined;
   },
+
+  applyMobileTileLayout() {
+    if (!this.api || this.getTileViewMaxColumns() !== 2) return;
+
+    const container = document.getElementById('jitsi-container');
+    const width = Math.floor(container?.clientWidth || window.visualViewport?.width || window.innerWidth || 0);
+    const height = Math.floor(container?.clientHeight || window.visualViewport?.height || window.innerHeight || 0);
+    if (!width || !height) return;
+
+    try {
+      this.api.executeCommand('overwriteConfig', {
+        disableResponsiveTiles: true,
+        disableTileEnlargement: true,
+        tileView: {
+          numberOfVisibleTiles: 4
+        }
+      });
+      this.api.resizeLargeVideo(width, height);
+      this.api.executeCommand('resizeFilmStrip', { width });
+      this.api.executeCommand('setTileView', true);
+    } catch (error) {
+      console.warn('[GroupMeeting] Could not apply mobile tile layout:', error?.message || error);
+    }
+
+    this.scheduleMobileTileLayoutRefresh();
+  },
+
+  scheduleMobileTileLayoutRefresh() {
+    if (this.mobileTileLayoutHandler || this.getTileViewMaxColumns() !== 2) return;
+
+    this.mobileTileLayoutHandler = () => {
+      clearTimeout(this.mobileTileLayoutTimer);
+      this.mobileTileLayoutTimer = setTimeout(() => this.applyMobileTileLayout(), 180);
+    };
+
+    window.visualViewport?.addEventListener('resize', this.mobileTileLayoutHandler);
+    window.addEventListener('resize', this.mobileTileLayoutHandler);
+  },
+
+  teardownMobileTileLayoutRefresh() {
+    if (this.mobileTileLayoutHandler) {
+      window.visualViewport?.removeEventListener('resize', this.mobileTileLayoutHandler);
+      window.removeEventListener('resize', this.mobileTileLayoutHandler);
+      this.mobileTileLayoutHandler = null;
+    }
+    if (this.mobileTileLayoutTimer) {
+      clearTimeout(this.mobileTileLayoutTimer);
+      this.mobileTileLayoutTimer = null;
+    }
+  },
   
   /**
    * Generate unique room name for group (Self-hosted format)
@@ -456,7 +508,7 @@ const GroupMeeting = {
           startWithAudioMuted: false,
           startWithVideoMuted: false,
           disableTileEnlargement: true,
-          disableResponsiveTiles: false,
+          disableResponsiveTiles: usePhoneTileGrid,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           
@@ -545,7 +597,9 @@ const GroupMeeting = {
         // Default to tile view so stage uses space better for larger meetings.
         setTimeout(() => {
           this.api.executeCommand('setTileView', true);
+          this.applyMobileTileLayout();
         }, 900);
+        setTimeout(() => this.applyMobileTileLayout(), 1800);
       });
       
       this.api.addListener('videoConferenceLeft', (data) => {
@@ -2216,6 +2270,8 @@ const GroupMeeting = {
       this.api.dispose();
       this.api = null;
     }
+
+    this.teardownMobileTileLayoutRefresh();
 
     if (this.connectTimeoutId) {
       clearTimeout(this.connectTimeoutId);
