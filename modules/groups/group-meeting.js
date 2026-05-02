@@ -253,11 +253,7 @@ const GroupMeeting = {
     const width = Math.floor(container?.clientWidth || window.visualViewport?.width || window.innerWidth || 0);
     const height = Math.floor(container?.clientHeight || window.visualViewport?.height || window.innerHeight || 0);
     if (!width || !height) return;
-    const layoutScale = width < 430 ? 1.48 : 1.32;
-    const layoutWidth = Math.round(width * layoutScale);
-    const layoutHeight = Math.round(height * layoutScale);
-
-    this.fitMobileJitsiIframe(layoutScale, layoutWidth, layoutHeight);
+    const layoutWidth = Math.min(width, 360);
 
     try {
       this.api.executeCommand('overwriteConfig', {
@@ -267,7 +263,8 @@ const GroupMeeting = {
           numberOfVisibleTiles: 4
         }
       });
-      this.api.resizeLargeVideo(layoutWidth, layoutHeight);
+      this.resetMobileJitsiIframe();
+      this.api.resizeLargeVideo(layoutWidth, height);
       this.api.executeCommand('resizeFilmStrip', { width: layoutWidth });
       this.api.executeCommand('setTileView', true);
     } catch (error) {
@@ -277,16 +274,16 @@ const GroupMeeting = {
     this.scheduleMobileTileLayoutRefresh();
   },
 
-  fitMobileJitsiIframe(layoutScale, layoutWidth, layoutHeight) {
+  resetMobileJitsiIframe() {
     const iframe = document.querySelector('#jitsi-container iframe');
     if (!iframe) return;
 
-    iframe.style.width = `${layoutWidth}px`;
-    iframe.style.height = `${layoutHeight}px`;
-    iframe.style.maxWidth = 'none';
-    iframe.style.maxHeight = 'none';
-    iframe.style.transform = `scale(${(1 / layoutScale).toFixed(4)})`;
-    iframe.style.transformOrigin = 'top left';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.maxWidth = '';
+    iframe.style.maxHeight = '';
+    iframe.style.transform = '';
+    iframe.style.transformOrigin = '';
     iframe.style.border = '0';
   },
 
@@ -312,15 +309,7 @@ const GroupMeeting = {
       clearTimeout(this.mobileTileLayoutTimer);
       this.mobileTileLayoutTimer = null;
     }
-    const iframe = document.querySelector('#jitsi-container iframe');
-    if (iframe) {
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.maxWidth = '';
-      iframe.style.maxHeight = '';
-      iframe.style.transform = '';
-      iframe.style.transformOrigin = '';
-    }
+    this.resetMobileJitsiIframe();
   },
   
   /**

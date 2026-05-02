@@ -58,6 +58,13 @@
   - The same scaled dimensions are used when resizing large video and filmstrip.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Mobile Tile Width Follow-up
+
+- Live testing showed virtual iframe scaling still clipped the right column on phones and made the Jitsi controls too small.
+- Removed the mobile iframe scaling approach and now resets the iframe back to `100%` width/height before applying tile layout.
+- Caps the mobile Jitsi large-video/filmstrip layout width at `360px` while keeping fixed two-column tile mode, so the tile grid stays inside the phone viewport.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**
