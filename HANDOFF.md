@@ -65,6 +65,15 @@
 - Caps the mobile Jitsi large-video/filmstrip layout width at `360px` while keeping fixed two-column tile mode, so the tile grid stays inside the phone viewport.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-02) — Mobile Portrait Grid Follow-up
+
+- Since almost all video meetings happen on mobile phones, changed the phone path to prioritize portrait mobile behavior over desktop-style tile sizing.
+- Phone portrait meetings now keep Jitsi responsive tile sizing enabled with tile enlargement disabled, which lets the self-hosted Jitsi build use its square-tile path on narrow screens.
+- Phone portrait meetings target two columns, up to four visible rows (`8` visible tiles), and recompute the grid after participants join/leave.
+- Added square-ish mobile camera constraints so Go Mission mobile participants send video that fits the square tile grid better.
+- Note: true edge-to-edge cropping of portrait camera video inside the Jitsi iframe would require a Jitsi server renderer/CSS patch because Jitsi intentionally uses `object-fit: contain` for portrait videos in tile view.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

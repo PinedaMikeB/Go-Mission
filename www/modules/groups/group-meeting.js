@@ -237,13 +237,30 @@ const GroupMeeting = {
     }
   },
 
-  getTileViewMaxColumns() {
+  isPhoneMeetingViewport() {
     const viewportWidth = window.visualViewport?.width || window.innerWidth || 0;
-    const isPhoneViewport = viewportWidth > 0 && viewportWidth <= 767;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+
+    return viewportWidth > 0 && viewportWidth <= 767 && (!viewportHeight || viewportHeight >= viewportWidth);
+  },
+
+  getTileViewMaxColumns() {
+    const isPhoneViewport = this.isPhoneMeetingViewport();
 
     // Jitsi owns the participant grid inside its iframe. This documented
     // interface config keeps phone tile view from collapsing into one column.
     return isPhoneViewport ? 2 : undefined;
+  },
+
+  getMobileVideoConstraints() {
+    if (!this.isPhoneMeetingViewport()) return true;
+
+    return {
+      aspectRatio: { ideal: 1 },
+      width: { ideal: 480, max: 720 },
+      height: { ideal: 480, max: 720 },
+      facingMode: 'user'
+    };
   },
 
   applyMobileTileLayout() {
@@ -253,18 +270,23 @@ const GroupMeeting = {
     const width = Math.floor(container?.clientWidth || window.visualViewport?.width || window.innerWidth || 0);
     const height = Math.floor(container?.clientHeight || window.visualViewport?.height || window.innerHeight || 0);
     if (!width || !height) return;
-    const layoutWidth = Math.min(width, 360);
+
+    const columns = 2;
+    const rows = Math.min(Math.max(Math.ceil(this.getCurrentMeetingParticipantCount() / columns), 1), 4);
+    const tileSize = Math.max(96, Math.floor((width - 14 - (columns * 4)) / columns));
+    const layoutWidth = width;
+    const layoutHeight = Math.min(height, 14 + (rows * (tileSize + 4)));
 
     try {
       this.api.executeCommand('overwriteConfig', {
-        disableResponsiveTiles: true,
+        disableResponsiveTiles: false,
         disableTileEnlargement: true,
         tileView: {
-          numberOfVisibleTiles: 4
+          numberOfVisibleTiles: 8
         }
       });
       this.resetMobileJitsiIframe();
-      this.api.resizeLargeVideo(layoutWidth, height);
+      this.api.resizeLargeVideo(layoutWidth, layoutHeight);
       this.api.executeCommand('resizeFilmStrip', { width: layoutWidth });
       this.api.executeCommand('setTileView', true);
     } catch (error) {
@@ -272,6 +294,10 @@ const GroupMeeting = {
     }
 
     this.scheduleMobileTileLayoutRefresh();
+  },
+
+  getCurrentMeetingParticipantCount() {
+    return Math.max(1, this.participants.length + (this.joinedConference ? 1 : 0));
   },
 
   resetMobileJitsiIframe() {
@@ -406,7 +432,7 @@ const GroupMeeting = {
     const granted = { audio: false, video: false, reason: null };
     const probes = [
       { kind: 'audio', constraints: { audio: true, video: false } },
-      { kind: 'video', constraints: { audio: false, video: true } }
+      { kind: 'video', constraints: { audio: false, video: this.getMobileVideoConstraints() } }
     ];
 
     for (const probe of probes) {
@@ -523,8 +549,13 @@ const GroupMeeting = {
           },
           startWithAudioMuted: false,
           startWithVideoMuted: false,
+          ...(usePhoneTileGrid ? {
+            constraints: {
+              video: this.getMobileVideoConstraints()
+            }
+          } : {}),
           disableTileEnlargement: true,
-          disableResponsiveTiles: usePhoneTileGrid,
+          disableResponsiveTiles: false,
           disableDeepLinking: true,
           disableInviteFunctions: true,
           
@@ -541,7 +572,7 @@ const GroupMeeting = {
           // Performance
           resolution: 480,
           p2p: { enabled: true },
-          ...(usePhoneTileGrid ? { tileView: { numberOfVisibleTiles: 4 } } : {}),
+          ...(usePhoneTileGrid ? { tileView: { numberOfVisibleTiles: 8 } } : {}),
 
           // Keep share-screen visible on main bar; move extra actions to More menu.
           toolbarButtons: [
@@ -651,12 +682,14 @@ const GroupMeeting = {
         console.log('[GroupMeeting] Participant joined:', data);
         this.participants.push(data);
         this.updateParticipantCount();
+        this.applyMobileTileLayout();
       });
       
       this.api.addListener('participantLeft', (data) => {
         console.log('[GroupMeeting] Participant left:', data);
         this.participants = this.participants.filter(p => p.id !== data.id);
         this.updateParticipantCount();
+        this.applyMobileTileLayout();
       });
       
       this.api.addListener('readyToClose', () => {

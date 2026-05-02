@@ -14,7 +14,7 @@
 
 ## CURRENT IMPLEMENTATION NOTES
 
-- 2026-05-02: Embedded Jitsi meeting on phone viewports should keep participant tiles in a two-column tile grid. The current app-side approach sets phone tile max columns to `2`, disables responsive tile collapse on phones, and caps the mobile Jitsi layout width at `360px` so the second column is not clipped.
+- 2026-05-02: Embedded Jitsi meeting on phone portrait viewports should behave mobile-first. The current app-side approach sets phone tile max columns to `2`, keeps Jitsi's square responsive tile path active, targets up to four visible rows (`8` tiles), recomputes after join/leave events, and requests square-ish mobile camera capture.
 - 2026-05-02: Meeting slides now support default-on leader sync. Mission Group leaders can hide/unhide slides for all participants and drive the current slide; participants can uncheck follow mode to navigate locally.
 
 ---
