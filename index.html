@@ -2788,6 +2788,20 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="px-4 pb-4">
+                            <button id="journalNewEntryBtn"
+                                    type="button"
+                                    onclick="createBlankJournalEntry()"
+                                    class="journal-action-btn w-full rounded-[22px] border border-[var(--mission-gold)]/45 bg-[linear-gradient(135deg,rgba(255,201,51,0.22),rgba(255,157,47,0.16))] px-4 py-3 text-left shadow-[0_12px_24px_rgba(249,157,47,0.12)] transition-transform hover:-translate-y-0.5 active:scale-[0.99]">
+                                <span class="flex items-center gap-3">
+                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--mission-gold)] text-xl text-[#5a2100]">+</span>
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-bold text-[#6b260b]">New Entry</span>
+                                        <span class="block text-xs text-[var(--text-muted)]">Open a blank page for notes or pasted reflections.</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
                         <div id="journalSearchPanel" class="hidden px-4 pb-4">
                             <div id="journalEntriesFilters">
                                 <input id="journalSearchInput"
@@ -8414,6 +8428,9 @@
             const formattedDate = formatJournalEntryHeadline(dateObj, lang);
             const calendar = getJournalEntryCalendarParts(dateObj, lang);
             const reference = String(data.godSaidReference || buildLegacyDevotionReference(data, lang) || '').trim();
+            const entryTypeLabel = data.manualEntry
+                ? (lang === 'tl' ? 'Journal Entry' : 'Journal Entry')
+                : 'Conversation Time';
             const prayerCountLabel = prayerRequests.length
                 ? `${prayerRequests.length} ${lang === 'tl' ? 'prayer request' : 'prayer request'}${prayerRequests.length === 1 ? '' : 's'}`
                 : (lang === 'tl' ? 'Walang prayer request' : 'No prayer requests');
@@ -8432,7 +8449,7 @@
                                 <div class="min-w-0">
                                     <h3 class="text-[20px] sm:text-[22px] font-semibold leading-tight text-[#6b260b]">${escapeDevotionHtml(formattedDate)}</h3>
                                     <p class="mt-1 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(reference || '-')}</p>
-                                    <p class="mt-2 text-[11px] uppercase tracking-[0.16em] text-amber-500 font-semibold">Conversation Time</p>
+                                    <p class="mt-2 text-[11px] uppercase tracking-[0.16em] text-amber-500 font-semibold">${escapeDevotionHtml(entryTypeLabel)}</p>
                                     <p class="mt-2 text-sm text-[var(--text-muted)]">${escapeDevotionHtml(prayerCountLabel)}</p>
                                 </div>
                                 <span class="mt-1 text-[var(--mission-gold)] text-lg">${isExpanded ? '−' : '+'}</span>
@@ -8532,7 +8549,7 @@
                                         <div class="pt-2">
                                             <button onclick="saveJournalEntryEdits('${entryIdForJs}')"
                                                     class="w-full rounded-full border border-[var(--mission-red-bright)]/35 bg-[var(--mission-red-bright)]/10 px-4 py-3 text-[15px] font-bold text-[var(--mission-red-bright)] hover:bg-[var(--mission-red-bright)]/15 transition-colors">
-                                                ${lang === 'tl' ? 'I-save ang Conversation Time' : 'Save Conversation Time'}
+                                                ${data.manualEntry ? (lang === 'tl' ? 'I-save ang Journal Entry' : 'Save Journal Entry') : (lang === 'tl' ? 'I-save ang Conversation Time' : 'Save Conversation Time')}
                                             </button>
                                         </div>
                                     </div>
@@ -8543,6 +8560,79 @@
                 </article>
             `;
         }
+
+        window.createBlankJournalEntry = function() {
+            if (!window.currentUser || !window.db) {
+                alert('Please sign in to create a journal entry.');
+                return;
+            }
+
+            try {
+                const lang = getDevotionLanguage();
+                const labels = getDevotionSectionLabels(lang);
+                const now = new Date();
+                const entryId = `draft_manual_${now.getTime()}`;
+                const today = getTodayString();
+                const draftEntry = {
+                    id: entryId,
+                    _resolvedDate: now,
+                    data: {
+                        uid: window.currentUser.uid,
+                        userName: window.currentUser.displayName || '',
+                        date: today,
+                        book: '',
+                        chapter: '',
+                        highlightedVerses: [],
+                        verses: [],
+                        question: '',
+                        reflection: '',
+                        commitment: '',
+                        godSaidTitle: 'Personal Journal',
+                        godSaidReference: 'Personal notes',
+                        godSaidText: '',
+                        understandingTitle: lang === 'tl' ? 'Mga note ko' : 'My notes',
+                        understandingText: '',
+                        reflectionTitle: lang === 'tl' ? 'Mga note ko' : 'My notes',
+                        reflectionText: '',
+                        actionTitle: labels.actionTitle,
+                        actionText: '',
+                        prayerRequests: [],
+                        sharedWithGroup: false,
+                        groupId: null,
+                        sharedGroupIds: [],
+                        language: lang,
+                        manualEntry: true,
+                        isDraft: true,
+                        source: 'journal',
+                        devotionAt: now.toISOString()
+                    }
+                };
+
+                const searchInput = document.getElementById('journalSearchInput');
+                if (searchInput) searchInput.value = '';
+                journalState.searchOpen = false;
+                journalState.activeTab = 'entries';
+                journalState.entries = [
+                    draftEntry,
+                    ...(journalState.entries || []).filter(item => !item?.data?.isDraft)
+                ];
+                journalState.viewEntryId = entryId;
+                journalState.filteredEntries = filterAndSortJournalEntries(journalState.entries, getJournalFiltersFromInputs());
+                window.switchJournalTab('entries');
+                renderJournalEntriesFromState();
+
+                requestAnimationFrame(() => {
+                    const input = document.getElementById(getJournalDomSafeId('journal_understanding', entryId));
+                    if (input) {
+                        input.focus();
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            } catch (error) {
+                console.error('[Journal] Could not create blank journal entry:', error);
+                alert('Could not create a new journal entry right now.');
+            }
+        };
 
         function renderJournalEntriesFromState() {
             const list = document.getElementById('journalEntriesList');
@@ -8873,11 +8963,27 @@
                     return;
                 }
 
-                const entryRef = window.doc(window.db, 'goMission_devotions', normalizedId);
-                const entryDoc = await window.getDoc(entryRef);
-                if (!entryDoc.exists()) return;
-                const entryData = entryDoc.data() || {};
-                if (entryData.uid !== window.currentUser.uid) return;
+                const draftEntry = (journalState.entries || []).find(item => String(item.id || '') === normalizedId);
+                const isDraftEntry = !!draftEntry?.data?.isDraft || normalizedId.startsWith('draft_manual_');
+                let entryRef = window.doc(window.db, 'goMission_devotions', normalizedId);
+                let entryData = draftEntry?.data || {};
+
+                if (!isDraftEntry) {
+                    const entryDoc = await window.getDoc(entryRef);
+                    if (!entryDoc.exists()) return;
+                    entryData = entryDoc.data() || {};
+                    if (entryData.uid !== window.currentUser.uid) return;
+                } else {
+                    const now = new Date();
+                    entryRef = window.doc(window.db, 'goMission_devotions', `${window.currentUser.uid}_manual_${now.getTime()}`);
+                    entryData = {
+                        ...entryData,
+                        uid: window.currentUser.uid,
+                        userName: window.currentUser.displayName || '',
+                        date: entryData.date || getTodayString(),
+                        devotionAt: entryData.devotionAt || now.toISOString()
+                    };
+                }
                 const existingPrayerRequests = normalizePrayerRequests(entryData?.prayerRequests || []);
                 const updatedPrayerRequests = existingPrayerRequests.map((item, index) => {
                     const prayerTopicInputId = getJournalDomSafeId(`journal_prayer_topic_${index}`, normalizedId);
@@ -8917,7 +9023,7 @@
                     });
                 }
 
-                await window.setDoc(entryRef, {
+                const updatePayload = {
                     understandingText: understandingValue,
                     reflectionText: understandingValue,
                     reflection: understandingValue,
@@ -8925,10 +9031,45 @@
                     commitment: actionValue,
                     prayerRequests: updatedPrayerRequests,
                     savedAt: window.serverTimestamp()
-                }, { merge: true });
+                };
 
+                const draftPayload = isDraftEntry
+                    ? {
+                        uid: entryData.uid,
+                        userName: entryData.userName || '',
+                        date: entryData.date || getTodayString(),
+                        book: '',
+                        chapter: '',
+                        highlightedVerses: [],
+                        verses: [],
+                        question: '',
+                        godSaidTitle: entryData.godSaidTitle || 'Personal Journal',
+                        godSaidReference: entryData.godSaidReference || 'Personal notes',
+                        godSaidText: '',
+                        understandingTitle: entryData.understandingTitle || 'My notes',
+                        actionTitle: entryData.actionTitle || getDevotionSectionLabels(entryData.language).actionTitle,
+                        sharedWithGroup: false,
+                        groupId: null,
+                        sharedGroupIds: [],
+                        language: entryData.language || getDevotionLanguage(),
+                        manualEntry: true,
+                        source: 'journal',
+                        devotionAt: entryData.devotionAt || new Date().toISOString(),
+                        ...updatePayload
+                    }
+                    : updatePayload;
+
+                if (isDraftEntry) {
+                    await window.setDoc(entryRef, draftPayload);
+                } else {
+                    await window.setDoc(entryRef, draftPayload, { merge: true });
+                }
+
+                if (isDraftEntry) {
+                    journalState.viewEntryId = entryRef.id;
+                }
                 await renderJournalEntriesList();
-                alert('Conversation Time updated.');
+                alert(isDraftEntry || entryData.manualEntry ? 'Journal Entry saved.' : 'Conversation Time updated.');
             } catch (error) {
                 console.error('[Journal] Could not save journal entry edits:', error);
                 alert('Could not save journal edits right now.');
