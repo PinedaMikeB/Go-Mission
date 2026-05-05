@@ -854,17 +854,7 @@ const GroupMeeting = {
       <!-- Local Slides Panel (hybrid-ready: future host sync reads/writes same state shape) -->
       <div id="meeting-slides-panel"
            class="hidden absolute z-[10001] top-[76px] right-3 left-3 md:left-auto md:w-[440px] md:top-[74px] md:right-4">
-        <div id="meeting-slides-topbar" class="rounded-2xl border border-white/10 shadow-xl overflow-hidden">
-          <div class="px-4 py-3 flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-bold">Meeting Slides</p>
-              <p id="meeting-slides-deck-title" class="text-white font-bold text-sm truncate">Loading…</p>
-            </div>
-            <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
-          </div>
-        </div>
-
-        <div id="meeting-slides-panel-body" class="mt-2 px-0 py-0 min-h-[240px] max-h-[55vh] overflow-y-auto">
+        <div id="meeting-slides-panel-body" class="px-0 py-0 min-h-[240px] max-h-[55vh] overflow-y-auto">
           <p class="text-white/70 text-sm">Open slides to load the lesson guide.</p>
         </div>
 
@@ -874,8 +864,8 @@ const GroupMeeting = {
                   class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
             ← Prev
           </button>
+          <div id="meeting-slide-counter" class="text-xs text-white/70 whitespace-nowrap">0 / 0</div>
           <div class="flex items-center gap-2 min-w-0">
-            <div class="text-[11px] text-white/65 uppercase tracking-[0.14em] hidden min-[380px]:block">Slides</div>
             <button onclick="window.GroupMeeting.hideSlidesFromBottombar()"
                     id="meeting-slide-hide-btn"
                     class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-semibold">
@@ -2022,14 +2012,12 @@ const GroupMeeting = {
     if (!panel || !state) return;
 
     const body = document.getElementById('meeting-slides-panel-body');
-    const titleEl = document.getElementById('meeting-slides-deck-title');
     const settingsTitleEl = document.getElementById('meeting-slides-settings-deck-title');
     const counterEl = document.getElementById('meeting-slide-counter');
     const prevBtn = document.getElementById('meeting-slide-prev-btn');
     const nextBtn = document.getElementById('meeting-slide-next-btn');
     const toggleBtn = document.getElementById('meeting-slides-toggle-btn');
     const settingsToggleBtn = document.getElementById('meeting-slides-settings-btn');
-    const topbar = document.getElementById('meeting-slides-topbar');
     const bottombar = document.getElementById('meeting-slides-bottombar');
     const settingsPanel = document.getElementById('meeting-slides-settings-panel');
     const settingsCard = document.getElementById('meeting-slides-settings-card');
@@ -2146,13 +2134,6 @@ const GroupMeeting = {
         ? '0 6px 16px rgba(217, 139, 49, 0.24), inset 0 1px 0 rgba(255,255,255,0.28)'
         : '0 5px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08)';
     });
-    if (titleEl) {
-      titleEl.style.color = '#f8e3b4';
-      titleEl.style.fontWeight = '800';
-      titleEl.style.fontSize = isPortraitSmall ? '15px' : (isNarrowMobile ? '22px' : '16px');
-      titleEl.style.letterSpacing = '-0.01em';
-      titleEl.style.textShadow = '0 1px 14px rgba(0,0,0,0.45)';
-    }
     if (settingsTitleEl) {
       settingsTitleEl.style.color = '#f8e3b4';
       settingsTitleEl.style.fontWeight = '800';
@@ -2163,6 +2144,10 @@ const GroupMeeting = {
     if (counterEl) {
       counterEl.style.color = 'rgba(255,255,255,0.82)';
       counterEl.style.fontWeight = '600';
+      counterEl.style.fontSize = isPortraitSmall ? '12px' : '13px';
+      counterEl.style.padding = isPortraitSmall ? '0 4px' : '0 6px';
+      counterEl.style.minWidth = isPortraitSmall ? '40px' : '52px';
+      counterEl.style.textAlign = 'center';
     }
     panel.style.background = 'transparent';
     panel.style.border = 'none';
@@ -2194,11 +2179,6 @@ const GroupMeeting = {
       settingsPanel.style.overflowX = 'hidden';
     }
 
-    if (titleEl) {
-      titleEl.textContent = isPortraitSmall
-        ? 'Slides'
-        : (state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides');
-    }
     if (settingsTitleEl) {
       settingsTitleEl.textContent = state.deck?.title || this.MEETING_SLIDES_LIBRARY[selectedDeckId]?.title || 'Meeting Slides';
     }
@@ -2340,7 +2320,7 @@ const GroupMeeting = {
     if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
     if (body) {
       const slideBodyReserve = isPhoneViewport
-        ? (isPortraitSmall ? 82 : ((topbar?.offsetHeight || 0) + (bottombar?.offsetHeight || 0) + 22))
+        ? (isPortraitSmall ? 54 : ((bottombar?.offsetHeight || 0) + 16))
         : 0;
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
@@ -2357,25 +2337,8 @@ const GroupMeeting = {
       body.style.flex = isPhoneViewport ? '1 1 auto' : '';
       body.style.maxHeight = isPhoneViewport
         ? `calc(100% - ${Math.round(slideBodyReserve)}px)`
-        : '';
-    }
-
-    if (topbar) {
-      topbar.style.flexShrink = '0';
-      topbar.style.borderRadius = isPortraitSmall ? '12px' : '';
-      topbar.style.background = `linear-gradient(180deg, rgba(0,0,0,${Math.max(0.08, chromeAlpha).toFixed(2)}), rgba(0,0,0,${Math.max(0.05, chromeAlpha * 0.82).toFixed(2)}))`;
-      topbar.style.borderColor = `rgba(255,255,255,${Math.min(0.16, borderAlpha).toFixed(2)})`;
-      topbar.style.backdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
-      topbar.style.webkitBackdropFilter = `blur(${isNarrowMobile ? 4 : (panelAlpha > 0.4 ? 10 : 6)}px)`;
-      const topbarInner = topbar.firstElementChild;
-      if (topbarInner) {
-        topbarInner.style.padding = isPortraitSmall ? '5px 9px' : '';
-        topbarInner.style.minHeight = isPortraitSmall ? '30px' : '';
-      }
-      const eyebrow = topbar.querySelector('p');
-      if (eyebrow) {
-        eyebrow.style.display = isPortraitSmall ? 'none' : '';
-      }
+        : 'min(58vh, calc(100vh - 220px))';
+      body.style.minHeight = '0';
     }
     if (settingsCard) {
       settingsCard.style.background = 'linear-gradient(180deg, rgba(20,14,12,0.9), rgba(28,18,14,0.88))';
@@ -2398,9 +2361,9 @@ const GroupMeeting = {
     if (prevBtn) {
       const prevDisabled = followerNavigationLocked || slideIndex <= 0;
       prevBtn.style.background = prevDisabled
-        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        ? 'linear-gradient(180deg, rgba(245,198,116,0.42), rgba(132,82,34,0.38))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
-      prevBtn.style.color = prevDisabled ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      prevBtn.style.color = prevDisabled ? 'rgba(255,239,211,0.76)' : '#2a170c';
       prevBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
       prevBtn.style.boxShadow = prevDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
@@ -2412,9 +2375,9 @@ const GroupMeeting = {
     if (nextBtn) {
       const nextDisabled = followerNavigationLocked || slideIndex >= slides.length - 1;
       nextBtn.style.background = nextDisabled
-        ? 'linear-gradient(180deg, rgba(73,59,50,0.72), rgba(48,38,33,0.7))'
+        ? 'linear-gradient(180deg, rgba(245,198,116,0.42), rgba(132,82,34,0.38))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
-      nextBtn.style.color = nextDisabled ? 'rgba(247,230,201,0.45)' : '#2a170c';
+      nextBtn.style.color = nextDisabled ? 'rgba(255,239,211,0.76)' : '#2a170c';
       nextBtn.style.border = '1px solid rgba(236, 186, 104, 0.22)';
       nextBtn.style.boxShadow = nextDisabled
         ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
@@ -2432,10 +2395,6 @@ const GroupMeeting = {
       hideBtn.style.fontSize = isPortraitSmall ? '12px' : '';
     }
 
-    if (isNarrowMobile && !isPhoneViewport && body && topbar && bottombar) {
-      const availableBodyHeight = Math.max(220, viewportHeight - 96 - 76 - topbar.offsetHeight - bottombar.offsetHeight - 18);
-      body.style.maxHeight = `${Math.round(availableBodyHeight)}px`;
-    }
   },
   
   /**

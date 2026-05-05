@@ -108,6 +108,14 @@
 - Small mode hides the topbar eyebrow, compresses the body header, and uses arrow-only Prev/Next controls.
 - Updated script cache-bust query string again.
 
+### Update (2026-05-05) — Slide Scroll Fix
+
+- Removed the separate meeting slide top header from the overlay so the slide content gets the space.
+- Moved the slide counter into the bottom navigation bar after the previous arrow and before `Hide`.
+- Restored a real scroll box for the slide body on desktop, landscape, and phone layouts.
+- Improved disabled arrow contrast so previous/next arrows remain visible.
+- Updated script cache-bust query string again.
+
 ## Current Task Status (2026-05-02) — Meeting Slides Leader Sync
 
 - **Active modules**

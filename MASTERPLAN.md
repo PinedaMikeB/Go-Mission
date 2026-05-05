@@ -16,6 +16,7 @@
 - 2026-05-02: Meeting slides now have Small/Medium/Full icon controls in the meeting header. Portrait phones adjust bottom-sheet height; landscape phones adjust side-panel width. Preserve the working two-column Jitsi phone layout when changing slide UI.
 - 2026-05-02: Portrait phone `Small` slide mode should remain a compact bottom sheet around `28vh`, with compact chrome and internal body scrolling so participant faces remain visible.
 - 2026-05-02: Portrait phone `Small` slide mode should anchor above the Jitsi toolbar/home-indicator area, scroll to the top when opened/resized, and use arrow-only Prev/Next controls.
+- 2026-05-05: Meeting slide overlays should not use a separate top header. Put slide count in the bottom nav after Prev, keep arrows visible, and keep the slide body as the scrollable area across phone, landscape, and desktop views.
 
 ---
 
