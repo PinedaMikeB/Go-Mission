@@ -115,6 +115,7 @@
 - Restored a real scroll box for the slide body on desktop, landscape, and phone layouts.
 - Fixed the slide overlay shell as a definite-height flex panel; the bottom controls stay fixed while only `meeting-slides-panel-body` scrolls.
 - Added explicit wheel/touch gesture routing on the slide panel so scroll gestures over slides move `meeting-slides-panel-body` instead of being swallowed by the Jitsi iframe/pre-join layer.
+- Wheel/touch gestures now advance to the next/previous slide when the current slide has no scrollable overflow or is already at the scroll edge. This keeps title slides from feeling frozen.
 - Preserve the now-working portrait and landscape Jitsi participant layouts when adjusting slide behavior.
 - Improved disabled arrow contrast so previous/next arrows remain visible.
 - Updated script cache-bust query string again.

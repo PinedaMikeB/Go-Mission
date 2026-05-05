@@ -1177,9 +1177,11 @@ const GroupMeeting = {
 
     panel.dataset.scrollWired = 'true';
     let lastTouchY = 0;
+    let lastSlideStepAt = 0;
 
     const getScrollBody = () => document.getElementById('meeting-slides-panel-body');
     const isInteractiveControl = (target) => !!target?.closest?.('button, input, select, textarea, label, [role="button"]');
+    const slideNavigationLocked = () => !this.currentUserIsMeetingLeader && this.presentationState?.followLeader !== false;
     const canScroll = (el, deltaY) => {
       if (!el) return false;
       const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -1187,6 +1189,28 @@ const GroupMeeting = {
       if (deltaY < 0) return el.scrollTop > 0;
       if (deltaY > 0) return el.scrollTop < maxScroll - 1;
       return true;
+    };
+    const stepSlide = (deltaY) => {
+      const state = this.presentationState;
+      const slides = state?.deck?.slides || [];
+      if (!slides.length || slideNavigationLocked() || Math.abs(deltaY) < 18) return false;
+
+      const now = Date.now();
+      if (now - lastSlideStepAt < 520) return false;
+
+      if (deltaY > 0 && state.currentSlideIndex < slides.length - 1) {
+        lastSlideStepAt = now;
+        this.nextSlide();
+        return true;
+      }
+
+      if (deltaY < 0 && state.currentSlideIndex > 0) {
+        lastSlideStepAt = now;
+        this.prevSlide();
+        return true;
+      }
+
+      return false;
     };
 
     panel.addEventListener('wheel', (event) => {
@@ -1198,6 +1222,12 @@ const GroupMeeting = {
         event.preventDefault();
         event.stopPropagation();
         scrollBody.scrollTop += event.deltaY;
+        return;
+      }
+
+      if (stepSlide(event.deltaY)) {
+        event.preventDefault();
+        event.stopPropagation();
       }
     }, { passive: false });
 
@@ -1219,6 +1249,12 @@ const GroupMeeting = {
         event.preventDefault();
         event.stopPropagation();
         scrollBody.scrollTop += deltaY;
+        return;
+      }
+
+      if (stepSlide(deltaY)) {
+        event.preventDefault();
+        event.stopPropagation();
       }
     }, { passive: false });
   },
@@ -1561,6 +1597,7 @@ const GroupMeeting = {
     if (s.currentSlideIndex < s.deck.slides.length - 1) {
       s.currentSlideIndex += 1;
       this.renderSlidesPanel();
+      this.scrollSlidesBodyToTop();
       this.publishSlidesSync({ currentSlideIndex: s.currentSlideIndex, action: 'slide' });
     }
   },
@@ -1571,6 +1608,7 @@ const GroupMeeting = {
     if (s.currentSlideIndex > 0) {
       s.currentSlideIndex -= 1;
       this.renderSlidesPanel();
+      this.scrollSlidesBodyToTop();
       this.publishSlidesSync({ currentSlideIndex: s.currentSlideIndex, action: 'slide' });
     }
   },

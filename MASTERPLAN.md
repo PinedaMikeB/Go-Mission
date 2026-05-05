@@ -19,6 +19,7 @@
 - 2026-05-05: Meeting slide overlays should not use a separate top header. Put slide count in the bottom nav after Prev, keep arrows visible, and keep the slide body as the scrollable area across phone, landscape, and desktop views.
 - 2026-05-05: Preserve the working Jitsi portrait/landscape participant grid. Slide overlays must use a definite-height flex panel with fixed bottom controls so only the slide body scrolls.
 - 2026-05-05: Slide overlays must route wheel and touch gestures to the slide body, because the embedded Jitsi iframe/pre-join layer can otherwise consume scroll input.
+- 2026-05-05: Slide overlays should treat wheel/touch gestures as deck navigation when the current slide cannot scroll further, especially on title slides with no overflow.
 
 ---
 
