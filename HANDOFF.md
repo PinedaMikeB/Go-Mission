@@ -113,6 +113,8 @@
 - Removed the separate meeting slide top header from the overlay so the slide content gets the space.
 - Moved the slide counter into the bottom navigation bar after the previous arrow and before `Hide`.
 - Restored a real scroll box for the slide body on desktop, landscape, and phone layouts.
+- Fixed the slide overlay shell as a definite-height flex panel; the bottom controls stay fixed while only `meeting-slides-panel-body` scrolls.
+- Preserve the now-working portrait and landscape Jitsi participant layouts when adjusting slide behavior.
 - Improved disabled arrow contrast so previous/next arrows remain visible.
 - Updated script cache-bust query string again.
 

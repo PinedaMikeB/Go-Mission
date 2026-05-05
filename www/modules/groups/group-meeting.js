@@ -2149,24 +2149,36 @@ const GroupMeeting = {
       counterEl.style.minWidth = isPortraitSmall ? '40px' : '52px';
       counterEl.style.textAlign = 'center';
     }
+    const desktopWidthBySize = { small: 38, medium: 46, full: 58 };
+    const desktopMaxWidthBySize = { small: 520, medium: 620, full: 760 };
+    const desktopWidthPct = desktopWidthBySize[slideSize] || desktopWidthBySize.medium;
+    const desktopMaxWidth = desktopMaxWidthBySize[slideSize] || desktopMaxWidthBySize.medium;
+    const desktopTop = viewportHeight > 0 && viewportHeight <= 720 ? 68 : 78;
+    const desktopBottom = viewportHeight > 0 && viewportHeight <= 720 ? 18 : 24;
+
     panel.style.background = 'transparent';
     panel.style.border = 'none';
     panel.style.backdropFilter = 'none';
     panel.style.webkitBackdropFilter = 'none';
-    panel.style.position = isPhoneViewport ? 'fixed' : '';
-    panel.style.top = isLandscapePhone ? '66px' : (isPortraitPhone ? 'auto' : '');
-    panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '8px' : '');
-    panel.style.right = isPhoneViewport ? '8px' : '';
-    panel.style.bottom = isPortraitSmall ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : (isPhoneViewport ? '70px' : '');
-    panel.style.width = isLandscapePhone ? `${landscapeWidthPct}vw` : (isPortraitPhone ? 'auto' : '');
-    panel.style.height = isPortraitPhone ? `${portraitHeightPct}vh` : '';
+    panel.style.position = 'fixed';
+    panel.style.top = isLandscapePhone ? '66px' : (isPortraitPhone ? 'auto' : `${desktopTop}px`);
+    panel.style.left = isLandscapePhone ? 'auto' : (isPortraitPhone ? '8px' : 'auto');
+    panel.style.right = isPhoneViewport ? '8px' : '20px';
+    panel.style.bottom = isPortraitSmall
+      ? 'calc(92px + env(safe-area-inset-bottom, 0px))'
+      : (isPhoneViewport ? '70px' : `${desktopBottom}px`);
+    panel.style.width = isLandscapePhone
+      ? `${landscapeWidthPct}vw`
+      : (isPortraitPhone ? 'auto' : `min(${desktopWidthPct}vw, ${desktopMaxWidth}px)`);
+    panel.style.height = isPortraitPhone ? `${portraitHeightPct}vh` : 'auto';
     panel.style.maxWidth = isLandscapePhone ? (slideSize === 'full' ? '680px' : '520px') : '';
-    panel.style.maxHeight = isPhoneViewport ? '' : '';
+    panel.style.maxHeight = '';
     panel.style.contain = isNarrowMobile ? 'layout paint style' : '';
     panel.style.transform = isNarrowMobile ? 'translateZ(0)' : '';
-    panel.style.overflowX = 'hidden';
-    panel.style.display = isPhoneViewport && state.panelOpen ? 'flex' : '';
-    panel.style.flexDirection = isPhoneViewport ? 'column' : '';
+    panel.style.overflow = 'hidden';
+    panel.style.display = state.panelOpen ? 'flex' : '';
+    panel.style.flexDirection = 'column';
+    panel.style.pointerEvents = 'auto';
 
     if (settingsPanel) {
       settingsPanel.classList.toggle('hidden', !state.settingsOpen);
@@ -2304,10 +2316,11 @@ const GroupMeeting = {
     `;
 
     if (body) body.innerHTML = bodyHtml;
-    if (body && isPortraitSmall) {
+    if (body) {
       const firstCard = body.firstElementChild;
       if (firstCard) {
-        firstCard.style.maxHeight = '100%';
+        firstCard.style.maxHeight = '';
+        firstCard.style.overflow = 'visible';
       }
     }
     if (counterEl) counterEl.textContent = `${slideIndex + 1} / ${slides.length}`;
@@ -2319,9 +2332,6 @@ const GroupMeeting = {
     if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex <= 0);
     if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
     if (body) {
-      const slideBodyReserve = isPhoneViewport
-        ? (isPortraitSmall ? 54 : ((bottombar?.offsetHeight || 0) + 16))
-        : 0;
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
       body.style.overflowY = 'auto';
@@ -2329,15 +2339,13 @@ const GroupMeeting = {
       body.style.overscrollBehavior = 'contain';
       body.style.webkitOverflowScrolling = 'touch';
       body.style.scrollbarGutter = 'stable';
-      body.style.maxHeight = '';
-      body.style.minHeight = isNarrowMobile ? '0' : '';
+      body.style.touchAction = 'pan-y';
+      body.style.pointerEvents = 'auto';
       body.style.padding = isPortraitSmall
         ? '4px 0 5px 0'
         : (isNarrowMobile ? `${this.scaleMeetingSlidePx('10px', { fontScale })} 0 ${this.scaleMeetingSlidePx('16px', { fontScale })} 0` : `${this.scaleMeetingSlidePx('12px', { fontScale })} 0 ${this.scaleMeetingSlidePx('18px', { fontScale })} 0`);
-      body.style.flex = isPhoneViewport ? '1 1 auto' : '';
-      body.style.maxHeight = isPhoneViewport
-        ? `calc(100% - ${Math.round(slideBodyReserve)}px)`
-        : 'min(58vh, calc(100vh - 220px))';
+      body.style.flex = '1 1 auto';
+      body.style.maxHeight = '';
       body.style.minHeight = '0';
     }
     if (settingsCard) {
