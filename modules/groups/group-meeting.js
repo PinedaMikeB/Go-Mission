@@ -977,10 +977,12 @@ const GroupMeeting = {
 
     this.ensureSlidesLibraryLoaded().finally(() => {
       this.renderSlidesPanel();
+      this.wireSlidesPanelScroll();
     });
 
     // Keep selector in sync with current state on first render.
     this.renderSlidesPanel();
+    this.wireSlidesPanelScroll();
   },
 
   /**
@@ -1166,6 +1168,59 @@ const GroupMeeting = {
       const body = document.getElementById('meeting-slides-panel-body');
       if (body) body.scrollTop = 0;
     });
+  },
+
+  wireSlidesPanelScroll() {
+    const panel = document.getElementById('meeting-slides-panel');
+    const body = document.getElementById('meeting-slides-panel-body');
+    if (!panel || !body || panel.dataset.scrollWired === 'true') return;
+
+    panel.dataset.scrollWired = 'true';
+    let lastTouchY = 0;
+
+    const getScrollBody = () => document.getElementById('meeting-slides-panel-body');
+    const isInteractiveControl = (target) => !!target?.closest?.('button, input, select, textarea, label, [role="button"]');
+    const canScroll = (el, deltaY) => {
+      if (!el) return false;
+      const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+      if (maxScroll <= 1) return false;
+      if (deltaY < 0) return el.scrollTop > 0;
+      if (deltaY > 0) return el.scrollTop < maxScroll - 1;
+      return true;
+    };
+
+    panel.addEventListener('wheel', (event) => {
+      if (isInteractiveControl(event.target)) return;
+      const scrollBody = getScrollBody();
+      if (!scrollBody) return;
+
+      if (canScroll(scrollBody, event.deltaY)) {
+        event.preventDefault();
+        event.stopPropagation();
+        scrollBody.scrollTop += event.deltaY;
+      }
+    }, { passive: false });
+
+    panel.addEventListener('touchstart', (event) => {
+      if (!event.touches?.length) return;
+      lastTouchY = event.touches[0].clientY;
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (event) => {
+      if (isInteractiveControl(event.target) || !event.touches?.length) return;
+      const scrollBody = getScrollBody();
+      if (!scrollBody) return;
+
+      const currentY = event.touches[0].clientY;
+      const deltaY = lastTouchY - currentY;
+      lastTouchY = currentY;
+
+      if (canScroll(scrollBody, deltaY)) {
+        event.preventDefault();
+        event.stopPropagation();
+        scrollBody.scrollTop += deltaY;
+      }
+    }, { passive: false });
   },
 
   setSlidesFollowLeader(enabled) {
