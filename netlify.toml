@@ -28,6 +28,11 @@
   to = "/seeker-monitoring/index.html"
   status = 200
 
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
 # Headers for PWA and caching
 [[headers]]
   for = "/firebase-messaging-sw.js"

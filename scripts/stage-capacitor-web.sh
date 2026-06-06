@@ -8,6 +8,7 @@ FILES=(
   "index.html"
   "admin.html"
   "install.html"
+  "privacy.html"
   "watch.html"
   "manifest.json"
   "offline.html"
