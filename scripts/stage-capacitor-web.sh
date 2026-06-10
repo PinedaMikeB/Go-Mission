@@ -9,6 +9,7 @@ FILES=(
   "admin.html"
   "install.html"
   "privacy.html"
+  "delete-account.html"
   "watch.html"
   "manifest.json"
   "offline.html"
@@ -40,7 +41,13 @@ done
 
 for dir in "${DIRS[@]}"; do
   if [[ -d "$ROOT_DIR/$dir" ]]; then
-    rsync -a "$ROOT_DIR/$dir" "$WWW_DIR/"
+    rsync -a \
+      --exclude='.*' \
+      --exclude='*.tmp' \
+      --exclude='*.swp' \
+      --exclude='*.swo' \
+      --exclude='*~' \
+      "$ROOT_DIR/$dir" "$WWW_DIR/"
   fi
 done
 
