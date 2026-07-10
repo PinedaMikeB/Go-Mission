@@ -753,7 +753,7 @@ const GroupMeeting = {
       overlayOpacity: savedOpacity, // 20-95 for readable transparent overlay
       fontScale: savedFontScale,
       slideSize: savedSlideSize,
-      followLeader: true,
+      followLeader: false,
       currentSlideIndex: 0,
       loading: false,
       error: null,
@@ -957,7 +957,7 @@ const GroupMeeting = {
                 <span id="meeting-slides-follow-title"
                       class="block text-xs font-bold text-amber-100">Follow leader slides</span>
                 <span id="meeting-slides-follow-copy"
-                      class="block mt-1 text-[11px] leading-snug">On by default. Uncheck to navigate locally.</span>
+                      class="block mt-1 text-[11px] leading-snug">Off by default. Turn on only when you want everyone to follow one slide flow.</span>
               </span>
             </label>
           </div>
@@ -2188,15 +2188,15 @@ const GroupMeeting = {
     if (fontDecreaseBtn) fontDecreaseBtn.disabled = fontScale <= 0.95;
     if (fontIncreaseBtn) fontIncreaseBtn.disabled = fontScale >= 1.35;
     if (followLeaderCheckbox) {
-      followLeaderCheckbox.checked = state.followLeader !== false;
+      followLeaderCheckbox.checked = state.followLeader === true;
     }
     if (followLeaderTitle) {
       followLeaderTitle.textContent = this.currentUserIsMeetingLeader ? 'Lead group slides' : 'Follow leader slides';
     }
     if (followLeaderCopy) {
       followLeaderCopy.textContent = this.currentUserIsMeetingLeader
-        ? 'On by default. Your slide, next/prev, and hide state sync to everyone.'
-        : 'On by default. Uncheck to navigate locally on this device.';
+        ? 'Off by default. Turn on to sync your slide, next/prev, and hide state to everyone.'
+        : 'Off by default. Turn on only when you want to follow the leader slides.';
       followLeaderCopy.style.color = 'rgba(255, 236, 204, 0.78)';
       followLeaderCopy.style.textShadow = '0 1px 2px rgba(0,0,0,0.38)';
     }
@@ -2420,10 +2420,10 @@ const GroupMeeting = {
     const followerNavigationLocked = !this.currentUserIsMeetingLeader && state.followLeader !== false;
     if (prevBtn) prevBtn.textContent = isPortraitSmall ? '←' : '← Prev';
     if (nextBtn) nextBtn.textContent = isPortraitSmall ? '→' : 'Next →';
-    if (prevBtn) prevBtn.disabled = followerNavigationLocked || slideIndex <= 0;
-    if (nextBtn) nextBtn.disabled = followerNavigationLocked || slideIndex >= slides.length - 1;
-    if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex <= 0);
-    if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked || slideIndex >= slides.length - 1);
+    if (prevBtn) prevBtn.disabled = followerNavigationLocked;
+    if (nextBtn) nextBtn.disabled = followerNavigationLocked;
+    if (prevBtn) prevBtn.classList.toggle('opacity-40', followerNavigationLocked);
+    if (nextBtn) nextBtn.classList.toggle('opacity-40', followerNavigationLocked);
     if (body) {
       body.style.background = 'transparent';
       body.style.borderRadius = '0';
@@ -2460,7 +2460,7 @@ const GroupMeeting = {
       bottombar.style.boxShadow = '0 14px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)';
     }
     if (prevBtn) {
-      const prevDisabled = followerNavigationLocked || slideIndex <= 0;
+      const prevDisabled = followerNavigationLocked;
       prevBtn.style.background = prevDisabled
         ? 'linear-gradient(180deg, rgba(245,198,116,0.42), rgba(132,82,34,0.38))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';
@@ -2474,7 +2474,7 @@ const GroupMeeting = {
       prevBtn.style.minWidth = isPortraitSmall ? '38px' : '';
     }
     if (nextBtn) {
-      const nextDisabled = followerNavigationLocked || slideIndex >= slides.length - 1;
+      const nextDisabled = followerNavigationLocked;
       nextBtn.style.background = nextDisabled
         ? 'linear-gradient(180deg, rgba(245,198,116,0.42), rgba(132,82,34,0.38))'
         : 'linear-gradient(180deg, rgba(247,192,92,0.96), rgba(219,140,48,0.94))';

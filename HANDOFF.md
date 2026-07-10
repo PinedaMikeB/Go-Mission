@@ -130,9 +130,10 @@
 - **Goal**: Let the Mission Group leader drive the in-meeting slide deck for participants, including hiding/unhiding slides for everyone, while allowing members to opt out and navigate locally.
 - **Status**: ✅ Implemented and pushed
   - Added a `Hide` button in the slide overlay bottom bar before `Next`.
-  - Added a default-on settings checkbox:
+  - Added a slide sync settings checkbox:
     - leader sees `Lead group slides`
     - members see `Follow leader slides`
+  - 2026-07-10 update: the checkbox is off by default so participants start with manual Prev/Next slide control.
   - Leader slide state is stored in the current `goMission_meetings/{groupId_date}` document under `slidesSync`.
   - Members listen with Firestore `onSnapshot` and follow the leader's deck, language, current slide, and hide/unhide state.
   - If the checkbox is unchecked, participants can navigate slides locally; leader visibility changes still apply as a group visibility action.

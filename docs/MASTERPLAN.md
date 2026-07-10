@@ -15,7 +15,7 @@
 ## CURRENT IMPLEMENTATION NOTES
 
 - 2026-05-02: Embedded Jitsi meeting on phone viewports should behave mobile-first in portrait and landscape. The current app-side approach detects phones by viewport short/long side, forces Jitsi non-responsive tile layout with max columns `2`, targets up to four visible rows (`8` tiles), recomputes after join/leave events, and requests square-ish mobile camera capture.
-- 2026-05-02: Meeting slides now support default-on leader sync. Mission Group leaders can hide/unhide slides for all participants and drive the current slide; participants can uncheck follow mode to navigate locally.
+- 2026-05-02: Meeting slides support leader sync. Mission Group leaders can hide/unhide slides for all participants and drive the current slide when lead/follow mode is enabled; participants can navigate locally when it is off.
 - 2026-05-02: Meeting slides now have Small/Medium/Full icon controls in the meeting header. Portrait phones adjust bottom-sheet height; landscape phones adjust side-panel width. Preserve the working two-column Jitsi phone layout when changing slide UI.
 - 2026-05-02: Portrait phone `Small` slide mode should remain a compact bottom sheet around `28vh`, with compact chrome and internal body scrolling so participant faces remain visible.
 - 2026-05-02: Portrait phone `Small` slide mode should anchor above the Jitsi toolbar/home-indicator area, scroll to the top when opened/resized, and use arrow-only Prev/Next controls.
@@ -23,6 +23,7 @@
 - 2026-05-05: Preserve the working Jitsi portrait/landscape participant grid. Slide overlays must use a definite-height flex panel with fixed bottom controls so only the slide body scrolls.
 - 2026-05-05: Slide overlays must route wheel and touch gestures to the slide body, because the embedded Jitsi iframe/pre-join layer can otherwise consume scroll input.
 - 2026-05-05: Slide overlays should treat wheel/touch gestures as deck navigation when the current slide cannot scroll further, especially on title slides with no overflow.
+- 2026-07-10: Meeting slide follow/lead mode should be off by default. Participants should start in manual slide control with Prev/Next visible and active.
 
 ---
 
