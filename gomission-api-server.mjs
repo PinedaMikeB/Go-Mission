@@ -18,6 +18,7 @@ const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.GOMISSION_API_PORT || 3100);
 const HOST = process.env.GOMISSION_API_HOST || '127.0.0.1';
 const require = createRequire(import.meta.url);
+const { handleJoinRequest } = require('./gomission-join-handler.js');
 
 const ALLOWED_ORIGINS = new Set([
   'https://gomission.wotgonline.com',
@@ -104,6 +105,24 @@ const server = http.createServer(async (req, res) => {
   // Health check — used by the start script and Cloudflare health monitors
   if (url.pathname === '/health' || url.pathname === '/api/health') {
     return send(req, res, 200, { ok: true, service: 'gomission-api', port: PORT });
+  }
+
+  // Group join — entirely local Postgres, no Firebase, no quota limits
+  if (url.pathname === '/api/join' || url.pathname === '/.netlify/functions/gomission-join') {
+    try {
+      const bodyStr = await readBody(req);
+      const result = await handleJoinRequest({
+        httpMethod: req.method,
+        headers: req.headers,
+        body: bodyStr,
+      });
+      res.writeHead(result.statusCode, { ...corsHeaders(req), ...(result.headers || {}) });
+      res.end(result.body);
+    } catch (err) {
+      console.error('[gomission-api] join error:', err);
+      send(req, res, 500, { error: err.message || 'Join request failed.' });
+    }
+    return;
   }
 
   // Route /.netlify/functions/<name> → local handler

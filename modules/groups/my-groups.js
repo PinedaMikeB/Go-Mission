@@ -109,6 +109,23 @@ const MyGroups = {
     },
 
     /**
+     * Deduplicate entity collections by resolved user id while preserving order.
+     */
+    normalizeUniqueEntityEntries(collectionValue) {
+        const entries = this.normalizeCollectionEntries(collectionValue);
+        const seen = new Set();
+        const out = [];
+        for (const entry of entries) {
+            const userId = this.getEntityUserId(entry);
+            if (!userId) continue;
+            if (seen.has(userId)) continue;
+            seen.add(userId);
+            out.push(entry);
+        }
+        return out;
+    },
+
+    /**
      * Extract id-like strings from array/map/string values
      */
     extractIdList(value) {
@@ -1297,8 +1314,8 @@ const MyGroups = {
 
     renderMeetingPickerGroup(group) {
         const groupIdSafe = String(group.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        const memberCount = this.normalizeCollectionEntries(group.members).length;
-        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const memberCount = this.extractIdList(group.members).length;
+        const guestCount = this.normalizeUniqueEntityEntries(group.guests).length;
         const schedule = group.meetingSchedule || group.schedule || null;
         const hasSchedule = !!(schedule?.day && schedule?.time);
         const scheduleText = hasSchedule
@@ -1876,7 +1893,7 @@ const MyGroups = {
                 : null;
             const hasPendingDelete = !!pendingDeleteRequest;
 
-            const memberCount = this.normalizeCollectionEntries(group.members).length;
+            const memberCount = this.extractIdList(group.members).length;
             const previewLine = scheduleConfig?.day && scheduleConfig?.time
                 ? `${scheduleConfig.day} • ${this.formatTime(scheduleConfig.time)}`
                 : 'Meeting waiting';
@@ -4326,8 +4343,8 @@ const MyGroups = {
      * Render a single group card
      */
     renderGroupCard(group, type) {
-        const memberCount = this.normalizeCollectionEntries(group.members).length;
-        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const memberCount = this.extractIdList(group.members).length;
+        const guestCount = this.normalizeUniqueEntityEntries(group.guests).length;
         const requestCount = this.getUnifiedJoinRequests(group).length;
         const isLeader = group.leaderId === window.currentUser?.uid;
         const sharedMeetingRequestCount = isLeader ? this.getPendingSharedMeetingRequestCount(group) : 0;
@@ -4569,9 +4586,14 @@ const MyGroups = {
         const inputEl = document.getElementById('joinCodeInput');
         const code = this.normalizeInviteCode(inputEl?.value);
         const errorEl = document.getElementById('joinError');
+        const joinBtn = errorEl?.nextElementSibling;
 
         if (inputEl) {
             inputEl.value = code;
+        }
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
         }
         
         if (!code || code.length !== 6) {
@@ -4580,6 +4602,48 @@ const MyGroups = {
                 errorEl.classList.remove('hidden');
             }
             return;
+        }
+
+        if (joinBtn instanceof HTMLButtonElement) {
+            if (joinBtn.disabled) return;
+            joinBtn.disabled = true;
+            joinBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            joinBtn.textContent = 'Joining...';
+        }
+
+        // Try local Postgres API first — no Firebase quota, no limits
+        try {
+            const apiBase = (window.GoMissionBackend?.mode === 'postgres' ||
+                             window.localStorage?.getItem?.('goMissionBackend') === 'postgres')
+                ? 'https://gomission-api.wotgonline.com'
+                : null;
+
+            if (apiBase) {
+                const response = await fetch(`${apiBase}/api/join`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code }),
+                });
+                const payload = await response.json();
+                if (response.ok && payload.ok) {
+                    this.closeModal();
+                    alert(`Request sent to ${payload.groupName || 'the group'}!\n\nThe group leader will review your request.`);
+                    return;
+                }
+                if (errorEl) {
+                    errorEl.textContent = payload.error || 'Failed to send request. Please try again.';
+                    errorEl.classList.remove('hidden');
+                }
+                if (joinBtn instanceof HTMLButtonElement) {
+                    joinBtn.disabled = false;
+                    joinBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    joinBtn.textContent = 'Send Join Request';
+                }
+                return;
+            }
+        } catch (localApiError) {
+            console.warn('[MyGroups] Local API join failed, falling back:', localApiError.message);
         }
 
         if (typeof window.submitMissionGroupJoinRequestCallable === 'function') {
@@ -4593,7 +4657,26 @@ const MyGroups = {
                 console.error('[MyGroups] submitMissionGroupJoinRequest callable failed:', callableError);
                 const callableCode = String(callableError?.code || '').toLowerCase();
                 const callableMessage = String(callableError?.message || '').trim();
-                const isFallbackWorthy = callableCode.includes('unimplemented') || callableCode.includes('unavailable');
+                const normalizedCallableMessage = callableMessage.toLowerCase();
+                const isKnownBusinessError =
+                    callableCode.includes('invalid-argument') ||
+                    callableCode.includes('not-found') ||
+                    callableCode.includes('already-exists') ||
+                    callableCode.includes('failed-precondition') ||
+                    callableCode.includes('unauthenticated') ||
+                    callableCode.includes('permission');
+                const isFallbackWorthy =
+                    !isKnownBusinessError ||
+                    callableCode.includes('unimplemented') ||
+                    callableCode.includes('unavailable') ||
+                    callableCode.includes('internal') ||
+                    callableCode.includes('unknown') ||
+                    callableCode.includes('resource-exhausted') ||
+                    normalizedCallableMessage === 'internal' ||
+                    normalizedCallableMessage.includes('unavailable') ||
+                    normalizedCallableMessage.includes('billing') ||
+                    normalizedCallableMessage.includes('failed to fetch') ||
+                    normalizedCallableMessage.includes('network request failed');
 
                 if (!isFallbackWorthy) {
                     if (errorEl) {
@@ -4816,6 +4899,12 @@ const MyGroups = {
                     ? 'Request blocked by permissions. Please refresh and try again.'
                     : 'Failed to send request. Please try again.';
                 errorEl.classList.remove('hidden');
+            }
+        } finally {
+            if (joinBtn instanceof HTMLButtonElement) {
+                joinBtn.disabled = false;
+                joinBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                joinBtn.textContent = 'Join Group';
             }
         }
     },
@@ -5332,7 +5421,7 @@ const MyGroups = {
      * Share invite code via native share or copy
      */
     async shareInviteCode(code, groupName) {
-        const shareText = `Join my Go Mission discipleship group "${groupName}"!\n\nUse this invite code: ${code}\n\nDownload the app: https://gomission.netlify.app`;
+        const shareText = `Join my Go Mission discipleship group "${groupName}"!\n\nUse this invite code: ${code}\n\nDownload the app: https://gomission.wotgonline.com`;
         
         if (navigator.share) {
             try {
@@ -5680,8 +5769,8 @@ const MyGroups = {
             console.warn('[MyGroups] Could not load group deletion request status:', error);
         }
 
-        const memberCount = this.normalizeCollectionEntries(group.members).length;
-        const guestCount = this.normalizeCollectionEntries(group.guests).length;
+        const memberCount = this.extractIdList(group.members).length;
+        const guestCount = this.normalizeUniqueEntityEntries(group.guests).length;
         const requestCount = this.getUnifiedJoinRequests(group).length;
         const sharedMeetingRequestCount = isLeader ? this.getPendingSharedMeetingRequestCount(group) : 0;
         const groupIdSafe = String(groupId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -6672,10 +6761,8 @@ const MyGroups = {
         modal.classList.remove('hidden');
         
         try {
-            const memberIds = this.normalizeCollectionEntries(group.members)
-                .map((member) => this.getEntityUserId(member))
-                .filter(Boolean);
-            const guests = this.normalizeCollectionEntries(group.guests);
+            const memberIds = this.extractIdList(group.members);
+            const guests = this.normalizeUniqueEntityEntries(group.guests);
             const isLeader = group.leaderId === window.currentUser?.uid;
 
             const leaderDoc = await window.getDoc(window.doc(window.db, 'goMission_members', group.leaderId));
