@@ -91,6 +91,7 @@
         window.GO_MISSION_ENABLE_INSTALL_MODAL = false;
     </script>
     <script src="modules/core/auto-update.js"></script>
+    <script src="modules/core/native-app-update.js"></script>
     
     <!-- PWA launch guard: keep notification/deep-link params intact -->
     <script>
@@ -3549,9 +3550,11 @@
     
     <!-- Bible Data & Reading Plan -->
     <script src="js/bible-data.js"></script>
+    <script src="js/postgres-backend.js"></script>
 
     <!-- Firebase SDK -->
     <script type="module">
+        import { GoMissionMigrationBridge } from '/js/firebase-migration-bridge.js';
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, orderBy, limit, startAfter, serverTimestamp, onSnapshot, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, RecaptchaVerifier, signInWithPhoneNumber, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
@@ -3570,6 +3573,8 @@
         
         // VAPID Key for Web Push Notifications
         window.FIREBASE_VAPID_KEY = 'BNcvs5HoLfqTpzfqC2WIshbnBE6SrVTGrQZOV0LEZl_Ks9bc79euFwCfBowRmnj6WDzacNy4_E7RgV7aOZG1LLM';
+        const backendMode = window.GoMissionBackend?.mode || 'firebase';
+        const usingPostgresBackend = backendMode === 'postgres';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -3613,7 +3618,14 @@
         window.uploadBytes = uploadBytes;
         window.getDownloadURL = getDownloadURL;
         window.currentUser = null;
-        const authPersistenceReady = (async () => {
+        if (usingPostgresBackend && window.GoMissionBackend) {
+            window.GoMissionBackend.attachFirestoreCompat();
+            window.sendPasswordResetCode = async ({ email }) => ({ data: await window.GoMissionBackend.requestPasswordReset(email) });
+            window.verifyPasswordResetCode = async ({ email, code }) => ({ data: await window.GoMissionBackend.verifyPasswordResetCode(email, code) });
+            window.completePasswordReset = async ({ email, code, newPassword }) => ({ data: await window.GoMissionBackend.completePasswordReset(email, code, newPassword) });
+            window.ensureMemberProfileCallable = async () => ({ data: { ok: true } });
+        }
+        const authPersistenceReady = usingPostgresBackend ? Promise.resolve() : (async () => {
             try {
                 await setPersistence(auth, browserLocalPersistence);
                 console.log('[Auth] Using local persistence');
@@ -4608,7 +4620,29 @@
             });
         }
 
-        onAuthStateChanged(auth, async (user) => {
+        // --- Silent Firebase → Postgres migration ---
+        // For users with a remembered Firebase session who haven't yet migrated,
+        // exchange their Firebase ID token for a local Postgres session cookie.
+        // This runs invisibly — no login prompt, no user action required.
+        // Once exchanged, GoMissionBackend switches to postgres mode automatically.
+        if (!usingPostgresBackend && window.GoMissionBackend) {
+            // Fire and forget — we don't await this; the authStateSubscriber below
+            // will pick up the local session on the next app open after exchange.
+            // On this same open, Firebase auth still handles the session normally.
+            GoMissionMigrationBridge.init(auth, onAuthStateChanged).then((localUser) => {
+                if (localUser) {
+                    console.log('[Migration] Token exchanged — next open will use Postgres.');
+                }
+            }).catch((err) => {
+                console.warn('[Migration] Bridge init failed silently:', err.message);
+            });
+        }
+
+        const authStateSubscriber = usingPostgresBackend && window.GoMissionBackend
+            ? window.GoMissionBackend.onAuthStateChanged.bind(window.GoMissionBackend)
+            : onAuthStateChanged.bind(null, auth);
+
+        authStateSubscriber(async (user) => {
             authBootResolved = true;
             clearTimeout(authBootWatchdog);
 
@@ -6046,7 +6080,13 @@
             btn.textContent = 'Signing in...';
             
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                if (usingPostgresBackend && window.GoMissionBackend) {
+                    const signedInUser = await window.GoMissionBackend.signIn(email, password);
+                    window.currentUser = signedInUser;
+                    await bootstrapSignedInUser(signedInUser);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
                 rememberAuthEmail(email);
                 // Success! onAuthStateChanged will handle the rest
             } catch (error) {
@@ -6105,16 +6145,23 @@
             btn.textContent = 'Creating account...';
             
             try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                rememberAuthEmail(email);
-                // Update display name
-                await updateProfile(userCredential.user, { displayName: name });
-                try {
-                    await userCredential.user.reload();
-                } catch (_) {}
-                const refreshedUser = auth.currentUser || userCredential.user;
-                await ensureUserExists(refreshedUser);
-                // Success! onAuthStateChanged will handle the rest
+                if (usingPostgresBackend && window.GoMissionBackend) {
+                    const signedUpUser = await window.GoMissionBackend.signUp({ name, email, password });
+                    rememberAuthEmail(email);
+                    window.currentUser = signedUpUser;
+                    await bootstrapSignedInUser(signedUpUser);
+                } else {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    rememberAuthEmail(email);
+                    // Update display name
+                    await updateProfile(userCredential.user, { displayName: name });
+                    try {
+                        await userCredential.user.reload();
+                    } catch (_) {}
+                    const refreshedUser = auth.currentUser || userCredential.user;
+                    await ensureUserExists(refreshedUser);
+                    // Success! onAuthStateChanged will handle the rest
+                }
             } catch (error) {
                 console.error('Sign up error:', error);
                 let message = 'Sign up failed. ';
@@ -6271,7 +6318,13 @@
 
                 try {
                     await applyPreferredAuthPersistence();
-                    await signInWithEmailAndPassword(auth, resetEmail, newPassword);
+                    if (usingPostgresBackend && window.GoMissionBackend) {
+                        const resetUser = result?.data?.user || null;
+                        window.currentUser = resetUser;
+                        await bootstrapSignedInUser(resetUser);
+                    } else {
+                        await signInWithEmailAndPassword(auth, resetEmail, newPassword);
+                    }
                 } catch (signInError) {
                     console.warn('[Auth] Password reset succeeded but auto sign-in failed:', signInError);
                     switchAuthMode('signin');
@@ -6341,7 +6394,11 @@
             });
 
             try {
-                await signOut(auth);
+                if (usingPostgresBackend && window.GoMissionBackend) {
+                    await window.GoMissionBackend.signOut();
+                } else {
+                    await signOut(auth);
+                }
                 window.currentUser = null;
                 showLoginFallback('manual-signout');
                 return true;
